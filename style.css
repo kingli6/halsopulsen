@@ -423,9 +423,10 @@ section {
 
 /* About photo / placeholder */
 .about-image {
-  flex-shrink: 0;
+  flex: 0 0 200px;   /* don't grow, don't shrink, always 200px wide */
   width: 200px;
   height: 200px;
+  max-width: 200px;
 }
 
 .about-image-placeholder {
