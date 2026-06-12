@@ -346,6 +346,14 @@ section {
 }
 .hero-image-placeholder svg { width: 60%; height: auto; }
 
+/* Real photo — shown once you swap in the <img> tag */
+.hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+}
+
 
 /* ================================================================
   7. SERVICES
