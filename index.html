@@ -1,206 +1,359 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="sv">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- ============================================================
+    <!-- ============================================================
     SEO — update description and keywords when you have final copy
   ============================================================ -->
-  <meta name="description" content="Hälso Pulsen – Utbildad hälsocoach och diplomerad massör i Örnsköldsvik. Personlig träning, grupptränare, massage, kostcoach och motiverande samtal – online och på plats." />
-  <meta name="keywords" content="hälsocoach, personlig tränare, övik pt, massage, kostråd, örnsköldsvik, gruppträning, Övik kostråd, hälsa, träning, kost, mi" />
-  <meta name="author" content="Hälso Pulsen" />
+    <meta
+      name="description"
+      content="HälsoPulsen – Utbildad hälsocoach och diplomerad massör i Örnsköldsvik. Personlig träning, grupptränare, massage, kostcoach och motiverande samtal – online och på plats."
+    />
+    <meta
+      name="keywords"
+      content="hälsocoach, personlig tränare, övik pt, massage, kostråd, örnsköldsvik, gruppträning, Övik kostråd, hälsa, träning, kost, mi"
+    />
+    <meta name="author" content="HälsoPulsen" />
 
-  <!-- Open Graph (link previews on social media) -->
-  <meta property="og:title" content="HälsoPulsen" />
-  <meta property="og:description" content="Hälsocoach i Örnsköldsvik – online och på plats." />
-  <meta property="og:type" content="website" />
-  <!-- <meta property="og:image" content="YOUR_IMAGE_URL_HERE" /> -->
+    <!-- Open Graph (link previews on social media) -->
+    <meta property="og:title" content="HälsoPulsen" />
+    <meta
+      property="og:description"
+      content="Hälsocoach i Örnsköldsvik – online och på plats."
+    />
+    <meta property="og:type" content="website" />
+    <!-- <meta property="og:image" content="YOUR_IMAGE_URL_HERE" /> -->
 
-  <title>Hälso Pulsen</title>
+    <title>HälsoPulsen</title>
 
-  <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-</head>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
 
-<body>
-
-  <!-- ============================================================
+  <body>
+    <!-- ============================================================
     NAVIGATION
     — Logo left, language toggle + mobile menu right
     — Add/remove nav links in the <ul> below
   ============================================================ -->
-  <header class="nav-wrapper">
-    <nav class="nav container">
-      <a href="#" class="nav-logo">HälsoPulsen</a>
+    <header class="nav-wrapper">
+      <nav class="nav container">
+        <a href="#" class="nav-logo">HälsoPulsen</a>
 
-      <ul class="nav-links" id="navLinks">
-        <li><a href="#services"   data-sv="Tjänster"    data-en="Services">Tjänster</a></li>
-        <li><a href="#about"      data-sv="Om mig"      data-en="About">Om mig</a></li>
-        <li><a href="#contact"    data-sv="Kontakt"     data-en="Contact">Kontakt</a></li>
-      </ul>
+        <ul class="nav-links" id="navLinks">
+          <li>
+            <a href="#services" data-sv="Tjänster" data-en="Services"
+              >Tjänster</a
+            >
+          </li>
+          <li><a href="#about" data-sv="Om mig" data-en="About">Om mig</a></li>
+          <li>
+            <a href="#contact" data-sv="Kontakt" data-en="Contact">Kontakt</a>
+          </li>
+        </ul>
 
-      <div class="nav-actions">
-        <!-- Language toggle -->
-        <button class="lang-toggle" id="langToggle" aria-label="Switch language">EN</button>
-        <!-- Mobile hamburger -->
-        <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
-          <span></span><span></span><span></span>
-        </button>
-      </div>
-    </nav>
-  </header>
+        <div class="nav-actions">
+          <!-- Language toggle -->
+          <button
+            class="lang-toggle"
+            id="langToggle"
+            aria-label="Switch language"
+          >
+            EN
+          </button>
+          <!-- Mobile hamburger -->
+          <button
+            class="hamburger"
+            id="hamburger"
+            aria-label="Open menu"
+            aria-expanded="false"
+          >
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </nav>
+    </header>
 
-
-  <!-- ============================================================
+    <!-- ============================================================
     HERO
     — Main headline, tagline and primary CTA button
     — Replace placeholder text with your own copy
   ============================================================ -->
-  <section class="hero" id="hero">
-    <div class="container hero-inner">
-      <div class="hero-text">
-        <span class="hero-label" data-sv="Hälsocoach · Örnsköldsvik" data-en="Health Coach · Örnsköldsvik">Hälsocoach · Örnsköldsvik</span>
-        <h1 data-sv="Din partner för ett starkare, friskare liv." data-en="Your partner for a stronger, healthier life.">Din partner för ett starkare, friskare liv.</h1>
-        <p class="hero-sub" data-sv="Online och på plats — anpassat efter just dig." data-en="Online and in person — tailored to you.">Online och på plats — anpassat efter just dig.</p>
-        <div class="hero-cta">
-          <a href="#contact" class="btn btn-primary" data-sv="Boka ett samtal" data-en="Book a call">Boka ett samtal</a>
-          <a href="#services" class="btn btn-ghost" data-sv="Se tjänster" data-en="See services">Se tjänster</a>
+    <section class="hero" id="hero">
+      <div class="container hero-inner">
+        <div class="hero-text">
+          <span
+            class="hero-label"
+            data-sv="Hälsocoach · Örnsköldsvik"
+            data-en="Health Coach · Örnsköldsvik"
+            >Hälsocoach · Örnsköldsvik</span
+          >
+          <h1
+            data-sv="Bygg styrka för livet – på dina villkor."
+            data-en="Build strength for life – on your terms."
+          >
+            Bygg styrka för livet – på dina villkor.
+          </h1>
+          <p
+            class="hero-sub"
+            data-sv="Online och på plats — anpassat efter just dig."
+            data-en="Online and in person — tailored to you."
+          >
+            Online och på plats — anpassat efter just dig.
+          </p>
+          <div class="hero-cta">
+            <a
+              href="#contact"
+              class="btn btn-primary"
+              data-sv="Boka ett samtal"
+              data-en="Book a call"
+              >Boka ett samtal</a
+            >
+            <a
+              href="#services"
+              class="btn btn-ghost"
+              data-sv="Se tjänster"
+              data-en="See services"
+              >Se tjänster</a
+            >
+          </div>
         </div>
-      </div>
 
-      <!-- ============================================================
+        <!-- ============================================================
         HERO IMAGE — replace src with your own photo
         Recommended size: 600×700px, portrait orientation
       ============================================================ -->
-      <div class="hero-image">
-        <div class="hero-image-placeholder" aria-hidden="true">
-          <!-- Placeholder: swap this div for an <img> tag when you have a photo -->
-          <svg viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="100" cy="80" r="48" fill="#C7E6D4"/>
-            <path d="M30 240c0-38.66 31.34-70 70-70s70 31.34 70 70" fill="#C7E6D4"/>
-          </svg>
+        <div class="hero-image">
+          <!-- ============================================================
+            HERO PHOTO — add your photo to an images/ folder next to index.html
+            Recommended: portrait, at least 600×700px, JPG or WebP
+            Then uncomment the <img> line below and delete the placeholder div
+          ============================================================ -->
+          <!-- <img src="images/hero.jpg" alt="HälsoPulsen – hälsocoach" class="hero-photo" /> -->
+          <div class="hero-image-placeholder" aria-hidden="true">
+            <svg viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="100" cy="80" r="48" fill="#C7E6D4" />
+              <path d="M30 240c0-38.66 31.34-70 70-70s70 31.34 70 70" fill="#C7E6D4" />
+            </svg>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-
-  <!-- ============================================================
+    <!-- ============================================================
     SERVICES
     — Six service cards. Edit the icon SVGs, titles and descriptions
     — Add or remove <article class="card"> blocks as needed
   ============================================================ -->
-  <section class="services" id="services">
-    <div class="container">
-      <h2 class="section-title" data-sv="Tjänster" data-en="Services">Tjänster</h2>
-      <p class="section-sub" data-sv="Vad jag erbjuder — online eller nära Örnsköldsvik." data-en="What I offer — online or near Örnsköldsvik.">Vad jag erbjuder — online eller nära Örnsköldsvik.</p>
+    <section class="services" id="services">
+      <div class="container">
+        <h2 class="section-title" data-sv="Tjänster" data-en="Services">
+          Tjänster
+        </h2>
+        <p
+          class="section-sub"
+          data-sv="Vad jag erbjuder — online eller nära Örnsköldsvik."
+          data-en="What I offer — online or near Örnsköldsvik."
+        >
+          Vad jag erbjuder — online eller nära Örnsköldsvik.
+        </p>
 
-      <div class="cards">
+        <div class="cards">
+          <!-- Personal Training -->
+          <article class="card">
+            <div class="card-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 4v16M18 4v16M3 8h18M3 16h18" />
+              </svg>
+            </div>
+            <h3 data-sv="Personlig Träning" data-en="Personal Training">
+              Personlig Träning
+            </h3>
+            <p
+              data-sv="Bred träningskunskap med strukturerade makro- och mesocykler. Från grundläggande kondition till explosiv träning, Calisthenics, Soma Move och Animal Flow."
+              data-en="Broad training knowledge with structured macro- and mesocycles. From basic conditioning to explosive training, Calisthenics, Soma Move and Animal Flow."
+            >
+              Bred träningskunskap med strukturerade makro- och mesocykler. Från grundläggande kondition till explosiv träning, Calisthenics, Soma Move och Animal Flow.
+            </p>
+          </article>
 
-        <!-- Personal Training -->
-        <article class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 4v16M18 4v16M3 8h18M3 16h18"/>
-            </svg>
-          </div>
-          <h3 data-sv="Personlig Träning" data-en="Personal Training">Personlig Träning</h3>
-          <p data-sv="Individanpassad träning som ger resultat — oavsett nivå. Bred träningskunskap med strukturerade makro- och mesocykler. Från grundläggande kondition till explosiv träning, Calisthenics, Soma Move och Animal Flow." data-en="Individualised training that delivers results — whatever your level. Broad training knowledge with structured macro- and mesocycles. From basic conditioning to explosive training, Calisthenics, Soma Move and Animal Flow.">Individanpassad träning som ger resultat — oavsett nivå. Bred träningskunskap med strukturerade makro- och mesocykler. Från grundläggande kondition till explosiv träning, Calisthenics, Soma Move och Animal Flow.</p>
-        </article>
+          <!-- Group Training -->
+          <article class="card">
+            <div class="card-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="9" cy="7" r="3" />
+                <circle cx="15" cy="7" r="3" />
+                <path
+                  d="M3 21v-1a6 6 0 0112 0v1M15 21v-1a6 6 0 016 6v1"
+                  stroke-width="1.8"
+                />
+              </svg>
+            </div>
+            <h3 data-sv="Grupptränare" data-en="Group Training">
+              Grupptränare
+            </h3>
+            <p
+              data-sv="Roliga pass med styrka, rörlighet och lek – svårighetsgraden anpassas så att alla kan vara med, oavsett form."
+              data-en="Fun sessions mixing strength, mobility and play – difficulty adjusted so everyone can join, whatever their fitness level."
+            >
+              Roliga pass med styrka, rörlighet och lek – svårighetsgraden anpassas så att alla kan vara med, oavsett form.
+            </p>
+          </article>
 
-        <!-- Group Training -->
-        <article class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/>
-              <path d="M3 21v-1a6 6 0 0112 0v1M15 21v-1a6 6 0 016 6v1" stroke-width="1.8"/>
-            </svg>
-          </div>
-          <h3 data-sv="Grupptränare" data-en="Group Training">Grupptränare</h3>
-          <p data-sv="Roliga pass med styrka, rörlighet och lek – svårighetsgraden anpassas så att alla kan vara med, oavsett form." data-en="Fun sessions mixing strength, mobility and play – difficulty adjusted so everyone can join, whatever their fitness level."
-        <article class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5zM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
-            </svg>
-          </div>
-          <h3 data-sv="Massage" data-en="Massage">Massage</h3>
-          <p data-sv="Diplomerad massör i klassisk svensk massage (Örnsköldsviks folkhögskola 2026). Återhämtning och avslappning för kropp och sinne." data-en="Certified in classical Swedish massage (Örnsköldsvik Folk High School 2026). Recovery and relaxation for body and mind.">Diplomerad massör i klassisk svensk massage (Örnsköldsviks folkhögskola 2026). Återhämtning och avslappning för kropp och sinne.</p>
-        </article>
+          <!-- Massage -->
+          <article class="card">
+            <div class="card-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5zM4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"
+                />
+              </svg>
+            </div>
+            <h3 data-sv="Massage" data-en="Massage">Massage</h3>
+            <p
+              data-sv="Diplomerad massör i klassisk svensk massage (Örnsköldsviks folkhögskola 2026). Återhämtning och avslappning för kropp och sinne."
+              data-en="Certified in classical Swedish massage (Örnsköldsvik Folk High School 2026). Recovery and relaxation for body and mind."
+            >
+              Diplomerad massör i klassisk svensk massage (Örnsköldsviks folkhögskola 2026). Återhämtning och avslappning för kropp och sinne.
+            </p>
+          </article>
 
-        <!-- Diet -->
-        <article class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-          </div>
-          <h3 data-sv="Kostcoach" data-en="Dietician">Kostcoach</h3>
-          <p
+          <!-- Diet -->
+          <article class="card">
+            <div class="card-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"
+                />
+                <path d="M12 6v6l4 2" />
+              </svg>
+            </div>
+            <h3 data-sv="Kostcoach" data-en="Dietician">Kostcoach</h3>
+            <p
               data-sv="Prestigelös och praktisk kostkunskap. Hjälp med kalorier, näringsanalys och viktmål – utan krångliga recept. Bra råvaror och ett enkelt flöde i vardagsköket."
               data-en="No-nonsense practical nutrition. Help with calories, nutrient analysis and weight goals – without complicated recipes. Good ingredients and a simple everyday kitchen flow."
             >
               Prestigelös och praktisk kostkunskap. Hjälp med kalorier, näringsanalys och viktmål – utan krångliga recept. Bra råvaror och ett enkelt flöde i vardagsköket.
             </p>
-        </article>
+          </article>
 
-        <!-- Motivational Interviewing -->
-        <article class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-            </svg>
-          </div>
-          <h3 data-sv="Motiverande Samtal" data-en="Motivational Interviewing">Motiverande Samtal</h3>
-          <p
+          <!-- Motivational Interviewing -->
+          <article class="card">
+            <div class="card-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                />
+              </svg>
+            </div>
+            <h3
+              data-sv="Motiverande Samtal"
+              data-en="Motivational Interviewing"
+            >
+              Motiverande Samtal
+            </h3>
+            <p
               data-sv="Du vet bäst vad som fungerar för dig. MI är en röd tråd genom träning och kost – inte för att påtvinga en agenda, utan för att plocka fram din inre drivkraft och hitta lösningar som passar din vardag."
               data-en="You know best what works for you. MI runs through training and nutrition – not to push an agenda, but to unlock your inner drive and find solutions that fit your everyday life."
             >
               Du vet bäst vad som fungerar för dig. MI är en röd tråd genom träning och kost – inte för att påtvinga en agenda, utan för att plocka fram din inre drivkraft och hitta lösningar som passar din vardag.
             </p>
-        </article>
+          </article>
 
-        <!-- Online -->
-        <article class="card">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-            </svg>
-          </div>
-          <h3 data-sv="Online" data-en="Online">Online</h3>
-          <p data-sv="Alla tjänster finns tillgängliga på distans — var du än befinner dig." data-en="All services available remotely — wherever you are.">Alla tjänster finns tillgängliga på distans — var du än befinner dig.</p>
-        </article>
-
+          <!-- Online -->
+          <article class="card">
+            <div class="card-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
+              </svg>
+            </div>
+            <h3 data-sv="Online" data-en="Online">Online</h3>
+            <p
+              data-sv="Alla tjänster finns tillgängliga på distans — var du än befinner dig."
+              data-en="All services available remotely — wherever you are."
+            >
+              Alla tjänster finns tillgängliga på distans — var du än befinner
+              dig.
+            </p>
+          </article>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-
-  <!-- ============================================================
+    <!-- ============================================================
     ABOUT
     — Replace placeholder text with your own story
     — Replace the image div with an <img> tag when you have a photo
   ============================================================ -->
-  <section class="about" id="about">
-    <div class="container about-inner">
-
-      <!-- About image placeholder — replace with <img src="your-photo.jpg" alt="..."> -->
-      <div class="about-image">
-        <div class="about-image-placeholder" aria-hidden="true">
-          <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="80" cy="60" r="36" fill="#C7E6D4"/>
-            <path d="M20 160c0-33.1 26.9-60 60-60s60 26.9 60 60" fill="#C7E6D4"/>
-          </svg>
+    <section class="about" id="about">
+      <div class="container about-inner">
+        <div class="about-image">
+          <!-- ============================================================
+            ABOUT PHOTO — can be the same photo as hero, or a different one
+            Uncomment the <img> line below and delete the placeholder div
+          ============================================================ -->
+          <!-- <img src="images/about.jpg" alt="HälsoPulsen – om mig" class="about-photo" /> -->
+          <div class="about-image-placeholder" aria-hidden="true">
+            <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="80" cy="60" r="36" fill="#C7E6D4" />
+              <path d="M20 160c0-33.1 26.9-60 60-60s60 26.9 60 60" fill="#C7E6D4" />
+            </svg>
+          </div>
         </div>
-      </div>
 
-      <div class="about-text">
-        <h2 data-sv="Om mig" data-en="About me">Om mig</h2>
-        <p
+        <div class="about-text">
+          <h2 data-sv="Om mig" data-en="About me">Om mig</h2>
+          <p
             data-sv="Hej! Jag är utbildad hälsocoach och diplomerad massör i klassisk svensk massage via Örnsköldsviks folkhögskola 2026. Under det senaste året har jag djupdykt i olika aspekter av hälsan – träning, kost och samtal – för att hjälpa människor att bli starka både fysiskt och mentalt."
             data-en="Hi! I'm a trained health coach and certified classical Swedish massage therapist (Örnsköldsvik Folk High School 2026). Over the past year I've dived deep into training, nutrition and coaching conversations – helping people grow stronger physically and mentally."
           >
@@ -212,13 +365,11 @@
           >
             Mitt mål är att hjälpa dig bygga tillräcklig styrka och vitalitet för att kunna delta i alla roliga aktiviteter som livet erbjuder. Just nu fokuserar jag på praktisk erfarenhet inför min kommande certifiering – därför erbjuder jag de flesta tjänster gratis eller till en bråkdel av priset. Jag arbetar online och på plats i och runt Örnsköldsvik.
           </p>
+        </div>
       </div>
+    </section>
 
-    </div>
-  </section>
-
-
-  <!-- ============================================================
+    <!-- ============================================================
     CONTACT / BOOKING
     — Powered by Formspree (free plan, no server needed)
     — Steps to activate:
@@ -226,101 +377,167 @@
         2. Create a new form — Formspree gives you an ID like "xyzabcde"
         3. Replace YOUR_FORMSPREE_ID in the action URL below
   ============================================================ -->
-  <section class="contact" id="contact">
-    <div class="container contact-inner">
+    <section class="contact" id="contact">
+      <div class="container contact-inner">
+        <div class="contact-intro">
+          <h2 data-sv="Boka eller fråga" data-en="Book or ask">
+            Boka eller fråga
+          </h2>
+          <p
+            data-sv="Fyll i formuläret så återkommer jag inom 24 timmar."
+            data-en="Fill in the form and I'll get back to you within 24 hours."
+          >
+            Fyll i formuläret så återkommer jag inom 24 timmar.
+          </p>
 
-      <div class="contact-intro">
-        <h2 data-sv="Boka eller fråga" data-en="Book or ask">Boka eller fråga</h2>
-        <p data-sv="Fyll i formuläret så återkommer jag inom 24 timmar." data-en="Fill in the form and I'll get back to you within 24 hours.">Fyll i formuläret så återkommer jag inom 24 timmar.</p>
-
-        <!-- ============================================================
+          <!-- ============================================================
           OPTIONAL SOCIAL LINKS — uncomment and add your handle/URL
         ============================================================ -->
-        <!--
+          <!--
         <div class="social-links">
           <a href="https://instagram.com/YOUR_HANDLE" target="_blank" rel="noopener" class="social-link">Instagram</a>
           <a href="https://facebook.com/YOUR_PAGE"   target="_blank" rel="noopener" class="social-link">Facebook</a>
         </div>
-        -->
+        --></div>
+
+        <form
+          class="contact-form"
+          action="https://formspree.io/f/xqeoyeyb"
+          method="POST"
+          id="contactForm"
+        >
+          <div class="form-group">
+            <label for="name" data-sv="Namn" data-en="Name">Namn</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              placeholder="Anna Karlsson"
+              data-placeholder-sv="Anna Karlsson"
+              data-placeholder-en="Anna Karlsson"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email" data-sv="E-post" data-en="Email">E-post</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              placeholder="anna@example.com"
+              data-placeholder-sv="anna@example.com"
+              data-placeholder-en="anna@example.com"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="service" data-sv="Tjänst" data-en="Service"
+              >Tjänst</label
+            >
+            <select id="service" name="service">
+              <option value="" data-sv="Välj tjänst…" data-en="Choose service…">
+                Välj tjänst…
+              </option>
+              <option
+                value="pt"
+                data-sv="Personlig Träning"
+                data-en="Personal Training"
+              >
+                Personlig Träning
+              </option>
+              <option
+                value="group"
+                data-sv="Grupptränare"
+                data-en="Group Training"
+              >
+                Grupptränare
+              </option>
+              <option value="massage" data-sv="Massage" data-en="Massage">
+                Massage
+              </option>
+              <option value="diet" data-sv="Kostcoach" data-en="Dietician">
+                Kostcoach
+              </option>
+              <option
+                value="mi"
+                data-sv="Motiverande Samtal"
+                data-en="Motivational Interviewing"
+              >
+                Motiverande Samtal
+              </option>
+              <option value="online" data-sv="Online" data-en="Online">
+                Online
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message" data-sv="Meddelande" data-en="Message"
+              >Meddelande</label
+            >
+            <textarea
+              id="message"
+              name="message"
+              rows="4"
+              placeholder="Berätta lite om dig och vad du vill uppnå…"
+              data-placeholder-sv="Berätta lite om dig och vad du vill uppnå…"
+              data-placeholder-en="Tell me a bit about yourself and what you want to achieve…"
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            data-sv="Skicka"
+            data-en="Send"
+          >
+            Skicka
+          </button>
+
+          <!-- Success/error messages shown by script.js -->
+          <p
+            class="form-success"
+            id="formSuccess"
+            hidden
+            data-sv="Tack! Jag återkommer snart."
+            data-en="Thanks! I'll be in touch soon."
+          >
+            Tack! Jag återkommer snart.
+          </p>
+          <p
+            class="form-error"
+            id="formError"
+            hidden
+            data-sv="Något gick fel. Försök igen."
+            data-en="Something went wrong. Please try again."
+          >
+            Något gick fel. Försök igen.
+          </p>
+        </form>
       </div>
+    </section>
 
-      <form
-        class="contact-form"
-        action="https://formspree.io/f/xqeoyeyb"
-        method="POST"
-        id="contactForm"
-      >
-        <div class="form-group">
-          <label for="name"  data-sv="Namn"   data-en="Name">Namn</label>
-          <input type="text"  id="name"  name="name"  required
-            placeholder="Anna Karlsson"
-            data-placeholder-sv="Anna Karlsson"
-            data-placeholder-en="Anna Karlsson" />
-        </div>
-
-        <div class="form-group">
-          <label for="email" data-sv="E-post" data-en="Email">E-post</label>
-          <input type="email" id="email" name="email" required
-            placeholder="anna@example.com"
-            data-placeholder-sv="anna@example.com"
-            data-placeholder-en="anna@example.com" />
-        </div>
-
-        <div class="form-group">
-          <label for="service" data-sv="Tjänst" data-en="Service">Tjänst</label>
-          <select id="service" name="service">
-            <option value="" data-sv="Välj tjänst…" data-en="Choose service…">Välj tjänst…</option>
-            <option value="pt"    data-sv="Personlig Träning"   data-en="Personal Training">Personlig Träning</option>
-            <option value="group" data-sv="Grupptränare"        data-en="Group Training">Grupptränare</option>
-            <option value="massage" data-sv="Massage"           data-en="Massage">Massage</option>
-            <option value="diet" data-sv="Kostcoach"            data-en="Dietician">Kostcoach</option>
-            <option value="mi"   data-sv="Motiverande Samtal"   data-en="Motivational Interviewing">Motiverande Samtal</option>
-            <option value="online" data-sv="Online"             data-en="Online">Online</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="message" data-sv="Meddelande" data-en="Message">Meddelande</label>
-          <textarea id="message" name="message" rows="4"
-            placeholder="Berätta lite om dig och vad du vill uppnå…"
-            data-placeholder-sv="Berätta lite om dig och vad du vill uppnå…"
-            data-placeholder-en="Tell me a bit about yourself and what you want to achieve…"
-          ></textarea>
-        </div>
-
-        <button type="submit" class="btn btn-primary" data-sv="Skicka" data-en="Send">Skicka</button>
-
-        <!-- Success/error messages shown by script.js -->
-        <p class="form-success" id="formSuccess" hidden
-          data-sv="Tack! Jag återkommer snart."
-          data-en="Thanks! I'll be in touch soon.">
-          Tack! Jag återkommer snart.
-        </p>
-        <p class="form-error" id="formError" hidden
-          data-sv="Något gick fel. Försök igen."
-          data-en="Something went wrong. Please try again.">
-          Något gick fel. Försök igen.
-        </p>
-      </form>
-
-    </div>
-  </section>
-
-
-  <!-- ============================================================
+    <!-- ============================================================
     FOOTER
     — Update year automatically via script.js
     — Add links as needed
   ============================================================ -->
-  <footer class="footer">
-    <div class="container footer-inner">
-      <span class="footer-logo">HälsoPulsen</span>
-      <p class="footer-location" data-sv="Örnsköldsvik, Sverige · Online &amp; på plats" data-en="Örnsköldsvik, Sweden · Online &amp; in person">Örnsköldsvik, Sverige · Online &amp; på plats</p>
-      <p class="footer-copy">© <span id="year"></span> HälsoPulsen</p>
-    </div>
-  </footer>
+    <footer class="footer">
+      <div class="container footer-inner">
+        <span class="footer-logo">HälsoPulsen</span>
+        <p
+          class="footer-location"
+          data-sv="Örnsköldsvik, Sverige · Online &amp; på plats"
+          data-en="Örnsköldsvik, Sweden · Online &amp; in person"
+        >
+          Örnsköldsvik, Sverige · Online &amp; på plats
+        </p>
+        <p class="footer-copy">© <span id="year"></span> HälsoPulsen</p>
+      </div>
+    </footer>
 
-
-  <script src="script.js"></script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
