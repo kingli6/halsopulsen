@@ -423,7 +423,7 @@ section {
 
 /* About photo / placeholder */
 .about-image {
-  flex: 0 0 200px;   /* don't grow, don't shrink, always 200px wide */
+  flex: 0 0 200px;
   width: 200px;
   height: 200px;
   max-width: 200px;
@@ -558,6 +558,14 @@ section {
     align-items: flex-start;
   }
   .about-text p { margin-inline: 0; }
+
+  /* Larger photo on desktop */
+  .about-image {
+    flex: 0 0 280px;
+    width: 280px;
+    height: 280px;
+    max-width: 280px;
+  }
 
   /* Contact: side by side */
   .contact-inner {
