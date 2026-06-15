@@ -795,10 +795,10 @@ section {
 }
 
 .footer-logo-img {
-  height: 72px;
+  height: 110px;
   width: auto;
   display: block;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .footer-location,
