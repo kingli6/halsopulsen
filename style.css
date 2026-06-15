@@ -504,12 +504,27 @@ section {
   color: rgba(255,255,255,0.9) !important;
 }
 
+/* Sub-block structure — creates breathing room between GroupFinder sub-sections */
+.gf-block {
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding-top: var(--space-10);
+  margin-bottom: var(--space-10);
+}
+.gf-block-label {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: var(--space-6);
+}
+
 /* How it works — 3 steps */
 .gf-steps {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  margin-bottom: var(--space-12);
+  gap: var(--space-4);
+  margin-bottom: 0;
 }
 .gf-step {
   background: rgba(255,255,255,0.08);
@@ -539,15 +554,11 @@ section {
 }
 
 /* What are you looking for */
-.gf-sub-title {
-  font-size: var(--size-xl);
-  margin-bottom: var(--space-6);
-}
 .gf-tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
-  margin-bottom: var(--space-12);
+  margin-bottom: 0;
 }
 .gf-tile {
   background: rgba(255,255,255,0.08);
@@ -573,7 +584,7 @@ section {
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: var(--radius-md);
   padding: var(--space-6);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 .gf-flow-step {
   display: flex;
@@ -597,7 +608,7 @@ section {
   text-align: center;
   font-size: var(--size-xs);
   color: rgba(255,255,255,0.5) !important;
-  margin-bottom: var(--space-12);
+  margin-bottom: 0;
 }
 
 /* CTA */
@@ -641,12 +652,7 @@ section {
 ================================================================ */
 .workshop { background: var(--color-bg); }
 
-.workshop-inner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-10);
-  align-items: flex-start;
-}
+.workshop-inner { max-width: 700px; }
 
 .workshop-text { width: 100%; }
 .workshop-text h2 { margin-bottom: var(--space-6); color: var(--color-text); }
@@ -719,27 +725,6 @@ section {
   line-height: 1.6;
 }
 
-/* Decorative visual panel */
-.workshop-visual { display: none; } /* shown on desktop */
-.workshop-visual-inner {
-  background: var(--color-primary-light);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  padding: var(--space-10);
-  text-align: center;
-  height: 100%;
-  min-height: 300px;
-}
-.workshop-visual-inner span { font-size: 4rem; }
-.workshop-visual-inner p {
-  font-size: var(--size-sm);
-  font-weight: 600;
-  color: var(--color-primary);
-}
 
 
 /* ================================================================
@@ -862,11 +847,6 @@ section {
   .gf-flow-step { flex-direction: column; align-items: center; text-align: center; flex: 1; }
   .gf-flow-time { margin-left: 0; margin-top: var(--space-1); }
   .gf-flow-arrow { display: block; }
-
-  /* Workshop: side by side */
-  .workshop-inner { flex-direction: row; }
-  .workshop-text  { flex: 1.4; }
-  .workshop-visual { display: flex; flex: 1; align-items: stretch; }
 
   /* About: side by side */
   .about-inner {
