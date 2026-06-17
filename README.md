@@ -1,4 +1,4 @@
-# HälsoPulsen Website ([https://halsopulsen.se](https://halsopulsen.se)) [https://](https://)
+# [HälsoPulsen Website](https://halsopulsen.se)
 
 Welcome to the official repository for HälsoPulsen! 
 
