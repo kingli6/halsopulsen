@@ -490,46 +490,44 @@ section {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.cert-school-group {
+  margin-bottom: var(--space-5);
+}
+.cert-school-name {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-2);
 }
 .certs-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--space-4);
 }
 .cert-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-primary-light);
-  border-left: 3px solid var(--color-primary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-.cert-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.cert-main strong {
   font-size: var(--size-sm);
   color: var(--color-text);
+  padding-block: var(--space-1);
 }
-.cert-school {
-  font-size: var(--size-xs);
-  color: var(--color-text-muted);
-}
-.cert-link {
-  font-size: var(--size-xs);
+.certs-pdf-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--size-sm);
   font-weight: 600;
   color: var(--color-primary);
-  white-space: nowrap;
   text-decoration: none;
-  flex-shrink: 0;
+  border-bottom: 1.5px solid transparent;
+  transition: border-color var(--transition);
 }
-.cert-link:hover { text-decoration: underline; }
+.certs-pdf-link:hover { border-color: var(--color-primary); }
 
 
 /* ================================================================
