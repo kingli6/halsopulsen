@@ -1,4 +1,4 @@
-# HälsoPulsen Website
+# HälsoPulsen.se Website
 
 Welcome to the official repository for HälsoPulsen! 
 
