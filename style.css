@@ -365,6 +365,42 @@ section {
 
 
 /* ================================================================
+  6b. TRUST STRIP
+================================================================ */
+.trust-strip {
+  background: #fff;
+  border-bottom: 1px solid var(--color-border);
+  padding-block: var(--space-4);
+}
+.trust-strip-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+}
+.trust-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: opacity var(--transition);
+}
+.trust-badge:hover { opacity: 0.75; }
+.trust-icon { font-size: 1rem; }
+.trust-divider {
+  color: var(--color-border);
+  font-size: var(--size-lg);
+  line-height: 1;
+  display: none;
+}
+@media (min-width: 500px) { .trust-divider { display: inline; } }
+
+
+/* ================================================================
   7. SERVICES
 ================================================================ */
 .services { background: var(--color-bg); }
@@ -445,6 +481,53 @@ section {
 .about-text h2 { margin-bottom: var(--space-4); color: var(--color-text); }
 .about-text p  { max-width: 560px; margin-inline: auto; }
 .about-text p + p { margin-top: var(--space-4); }
+
+/* Certifications block */
+.certs { margin-top: var(--space-8); }
+.certs-title {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+}
+.cert-school-group {
+  margin-bottom: var(--space-5);
+}
+.cert-school-name {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-2);
+}
+.certs-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--space-4);
+}
+.cert-item {
+  font-size: var(--size-sm);
+  color: var(--color-text);
+  padding-block: var(--space-1);
+}
+.certs-pdf-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  border-bottom: 1.5px solid transparent;
+  transition: border-color var(--transition);
+}
+.certs-pdf-link:hover { border-color: var(--color-primary); }
 
 
 /* ================================================================
