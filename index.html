@@ -28,7 +28,8 @@
 
     <title>HälsoPulsen</title>
 
-    <link rel="stylesheet" href="style.css?v=2" />
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+    <link rel="stylesheet" href="style.css?v=5" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -52,7 +53,7 @@
             <a href="#pricing" data-sv="Priser" data-en="Pricing">Priser</a>
           </li>
           <li>
-            <a href="#groupfinder">GroupFinder</a>
+            <a href="#groupfinder" data-sv="GroupFinder" data-en="GroupFinder">GroupFinder</a>
           </li>
           <li>
             <a
@@ -100,7 +101,7 @@
     — Main headline, tagline and primary CTA button
     — Replace placeholder text with your own copy
   ============================================================ -->
-    <section class="hero" id="hero">
+    <section class="hero hero--text-only" id="hero">
       <div class="container hero-inner">
         <div class="hero-text">
           <span
@@ -117,10 +118,10 @@
           </h1>
           <p
             class="hero-sub"
-            data-sv="Online och på plats — anpassat efter just dig."
-            data-en="Online and in person — tailored to you."
+            data-sv="Personlig träning, massage, kostcoach och MI-samtal — online och på plats i Örnsköldsvik."
+            data-en="Personal training, massage, nutrition coaching and MI sessions — online and in person in Örnsköldsvik."
           >
-            Online och på plats — anpassat efter just dig.
+            Personlig träning, massage, kostcoach och MI-samtal — online och på plats i Örnsköldsvik.
           </p>
           <div class="hero-cta">
             <a
@@ -131,38 +132,12 @@
               >Boka ett samtal</a
             >
             <a
-              href="#services"
+              href="#pricing"
               class="btn btn-ghost"
               data-sv="Se tjänster"
               data-en="See services"
               >Se tjänster</a
             >
-          </div>
-        </div>
-
-        <!-- ============================================================
-        HERO IMAGE — replace src with your own photo
-        Recommended size: 600×700px, portrait orientation
-      ============================================================ -->
-        <div class="hero-image">
-          <!-- ============================================================
-            HERO PHOTO — add your photo to an images/ folder next to index.html
-            Recommended: portrait, at least 600×700px, JPG or WebP
-            Then uncomment the <img> line below and delete the placeholder div
-          ============================================================ -->
-          <!-- <img src="images/hero.jpg" alt="Hälso Pulsen – hälsocoach" class="hero-photo" /> -->
-          <div class="hero-image-placeholder" aria-hidden="true">
-            <svg
-              viewBox="0 0 200 240"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="100" cy="80" r="48" fill="#C7E6D4" />
-              <path
-                d="M30 240c0-38.66 31.34-70 70-70s70 31.34 70 70"
-                fill="#C7E6D4"
-              />
-            </svg>
           </div>
         </div>
       </div>
@@ -334,7 +309,7 @@
                 <path d="M12 6v6l4 2" />
               </svg>
             </div>
-            <h3 data-sv="Kostcoach" data-en="Dietician">Kostcoach</h3>
+            <h3 data-sv="Kostcoach" data-en="Nutrition Coach">Kostcoach</h3>
             <p
               data-sv="Prestigelös och praktisk kostkunskap. Hjälp med kalorier, näringsanalys och viktmål – utan krångliga recept. Bra råvaror och ett enkelt flöde i vardagsköket."
               data-en="No-nonsense practical nutrition. Help with calories, nutrient analysis and weight goals – without complicated recipes. Good ingredients and a simple everyday kitchen flow."
@@ -448,7 +423,7 @@
         <div class="pricing-grid">
 
           <!-- ── MASSAGE ─────────────────────────────────── -->
-          <article class="pricing-card" data-spots="6">
+          <article class="pricing-card">
             <div class="pricing-card-head">
               <span class="pricing-card-icon" aria-hidden="true">💆</span>
               <h3 data-sv="Klassisk Massage" data-en="Classic Massage">
@@ -588,7 +563,7 @@
                To close the offer: remove class "pricing-card--highlight"
                and remove the .pricing-free-banner div below.
           ──────────────────────────────────────────────── -->
-          <article class="pricing-card pricing-card--highlight">
+          <article class="pricing-card pricing-card--highlight" data-spots="6">
             <div class="pricing-free-banner">
               <span
                 data-sv="🎁 Gratis för de 6 första kunderna"
@@ -704,7 +679,7 @@
           </article>
 
           <!-- ── PERSONLIG TRÄNING ──────────────────────── -->
-          <article class="pricing-card" data-spots="6">
+          <article class="pricing-card">
             <div class="pricing-card-head">
               <span class="pricing-card-icon" aria-hidden="true">💪</span>
               <h3 data-sv="Personlig Träning" data-en="Personal Training">
@@ -828,7 +803,7 @@
           </article>
 
           <!-- ── MI-SAMTAL ──────────────────────────────── -->
-          <article class="pricing-card" data-spots="6">
+          <article class="pricing-card">
             <div class="pricing-card-head">
               <span class="pricing-card-icon" aria-hidden="true">💬</span>
               <h3 data-sv="MI-samtal" data-en="MI Conversation">
@@ -1324,92 +1299,6 @@
           </div>
         </div>
 
-        <!-- FHM facts -->
-        <div class="hs-block">
-          <p
-            class="gf-block-label hs-block-label"
-            data-sv="Rekommendationer — Folkhälsomyndigheten (2021)"
-            data-en="Recommendations — Public Health Agency of Sweden (2021)"
-          >
-            Rekommendationer — Folkhälsomyndigheten (2021)
-          </p>
-          <div class="hs-facts">
-
-            <div class="hs-fact">
-              <span class="hs-fact-num" aria-hidden="true">1</span>
-              <div class="hs-fact-body">
-                <h4
-                  data-sv="All rörelse räknas"
-                  data-en="Every move counts"
-                  >All rörelse räknas</h4
-                >
-                <p
-                  data-sv="Samla rörelser i vardagen och hitta vardagsaktiviteter. Du behöver inte göra allt på en gång — korta pass och promenader räknas lika mycket."
-                  data-en="Accumulate movement throughout the day and find everyday activities. You don't need to do it all at once — short sessions and walks count just as much."
-                  >Samla rörelser i vardagen och hitta vardagsaktiviteter. Du behöver inte göra allt på en gång — korta pass och promenader räknas lika mycket.</p
-                >
-              </div>
-            </div>
-
-            <div class="hs-fact">
-              <span class="hs-fact-num" aria-hidden="true">2</span>
-              <div class="hs-fact-body">
-                <h4
-                  data-sv="150–300 min pulshöjande aktivitet per vecka"
-                  data-en="150–300 min of moderate-intensity activity per week"
-                  >150–300 min pulshöjande aktivitet per vecka</h4
-                >
-                <p
-                  data-sv="Rekommendation för vuxna (18–64 år). Plus muskel- och skelettförstärkande träning minst 2 gånger per vecka. Promenader, cykling och dans räknas — inget gym krävs."
-                  data-en="Recommendation for adults (18–64). Plus muscle- and bone-strengthening activity at least 2 times per week. Walking, cycling and dancing count — no gym needed."
-                  >Rekommendation för vuxna (18–64 år). Plus muskel- och skelettförstärkande träning minst 2 gånger per vecka. Promenader, cykling och dans räknas — inget gym krävs.</p
-                >
-              </div>
-            </div>
-
-            <div class="hs-fact">
-              <span class="hs-fact-num" aria-hidden="true">3</span>
-              <div class="hs-fact-body">
-                <h4
-                  data-sv="Ta rörelsepauser"
-                  data-en="Take movement breaks"
-                  >Ta rörelsepauser</h4
-                >
-                <p
-                  data-sv="Några minuters rörelse varje halvtimme minskar riskerna med långvarigt stillasittande. Resa på sig, sträcka på sig, gå en runda — det räcker."
-                  data-en="A few minutes of movement every half hour reduces the risks of prolonged sitting. Standing up, stretching, taking a short walk — that's enough."
-                  >Några minuters rörelse varje halvtimme minskar riskerna med långvarigt stillasittande. Resa på sig, sträcka på sig, gå en runda — det räcker.</p
-                >
-              </div>
-            </div>
-
-            <div class="hs-fact">
-              <span class="hs-fact-num" aria-hidden="true">4</span>
-              <div class="hs-fact-body">
-                <h4
-                  data-sv="Börja litet — öka gradvis"
-                  data-en="Start small — increase gradually"
-                  >Börja litet — öka gradvis</h4
-                >
-                <p
-                  data-sv="Det är bättre att vara lite fysiskt aktiv än att inte vara aktiv alls. Börja med små mängder och öka gradvis frekvensen, intensiteten och varaktigheten."
-                  data-en="It is better to be a little physically active than not active at all. Start with small amounts and gradually increase frequency, intensity and duration."
-                  >Det är bättre att vara lite fysiskt aktiv än att inte vara aktiv alls. Börja med små mängder och öka gradvis frekvensen, intensiteten och varaktigheten.</p
-                >
-              </div>
-            </div>
-
-          </div>
-          <p
-            class="hs-facts-source"
-            data-sv="Källa: Folkhälsomyndigheten — Riktlinjer för fysisk aktivitet och stillasittande (2021, artikelnummer 21099)"
-            data-en="Source: Public Health Agency of Sweden — Guidelines for physical activity and sedentary behaviour (2021, article no. 21099)"
-          >
-            Källa: Folkhälsomyndigheten — Riktlinjer för fysisk aktivitet och
-            stillasittande (2021, artikelnummer 21099)
-          </p>
-        </div>
-
         <!-- Hälsostart bundle -->
         <div class="hs-bundle">
           <span
@@ -1628,8 +1517,11 @@
           ============================================================ -->
           <img
             src="images/JFprofileImg.webp"
-            alt="Hälso Pulsen – om mig"
+            alt="Hälsocoach och massör — HälsoPulsen"
             class="about-photo"
+            width="200"
+            height="200"
+            loading="lazy"
           />
         </div>
 
@@ -1801,6 +1693,36 @@
           </div>
 
           <div class="form-group">
+            <label for="phone" data-sv="Telefon" data-en="Phone">Telefon</label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              placeholder="070 123 45 67"
+              data-placeholder-sv="070 123 45 67"
+              data-placeholder-en="070 123 45 67"
+            />
+          </div>
+
+          <div class="form-group">
+            <label data-sv="Kontakta mig helst via" data-en="Preferred contact">Kontakta mig helst via</label>
+            <div class="contact-method-group">
+              <label class="contact-method-option">
+                <input type="radio" name="contact_method" value="E-post" checked />
+                <span data-sv="E-post" data-en="Email">E-post</span>
+              </label>
+              <label class="contact-method-option">
+                <input type="radio" name="contact_method" value="SMS" />
+                <span data-sv="SMS" data-en="SMS">SMS</span>
+              </label>
+              <label class="contact-method-option">
+                <input type="radio" name="contact_method" value="Telefon" />
+                <span data-sv="Telefon" data-en="Phone">Telefon</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
             <label for="service" data-sv="Tjänst" data-en="Service"
               >Tjänst</label
             >
@@ -1825,7 +1747,7 @@
               <option value="massage" data-sv="Massage" data-en="Massage">
                 Massage
               </option>
-              <option value="diet" data-sv="Kostcoach" data-en="Dietician">
+              <option value="diet" data-sv="Kostcoach" data-en="Nutrition Coach">
                 Kostcoach
               </option>
               <option
@@ -1841,13 +1763,6 @@
                 data-en="Massage Workshop"
               >
                 Massage Workshop
-              </option>
-              <option
-                value="group"
-                data-sv="Grupptränare / GroupFinder"
-                data-en="Group Training / GroupFinder"
-              >
-                Grupptränare / GroupFinder
               </option>
               <option
                 value="hälsostart"
@@ -1909,8 +1824,8 @@
           </div>
 
           <div class="form-group">
-            <label for="message" data-sv="Meddelande" data-en="Message"
-              >Meddelande</label
+            <label for="message" data-sv="Meddelande (valfritt)" data-en="Message (optional)"
+              >Meddelande (valfritt)</label
             >
             <textarea
               id="message"
@@ -1977,6 +1892,6 @@
       </div>
     </footer>
 
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=4"></script>
   </body>
 </html>
