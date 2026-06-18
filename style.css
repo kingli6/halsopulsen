@@ -149,6 +149,7 @@ p  { color: var(--color-text-muted); line-height: 1.7; }
 /* Section rhythm */
 section {
   padding-block: var(--space-16);
+  scroll-margin-top: 60px;
 }
 
 /* Section headings */
@@ -309,6 +310,22 @@ section {
   padding-block: var(--space-20) var(--space-16);
 }
 
+/* Text-only hero — centered, wider, bigger headline */
+.hero--text-only .hero-inner {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 720px;
+  margin-inline: auto;
+}
+.hero--text-only .hero-text h1 {
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  line-height: 1.1;
+}
+.hero--text-only .hero-cta {
+  justify-content: center;
+}
+
 .hero-inner {
   display: flex;
   flex-direction: column;
@@ -331,7 +348,7 @@ section {
 }
 
 .hero-text h1 { margin-bottom: var(--space-4); color: var(--color-text); }
-.hero-sub  { font-size: var(--size-lg); margin-bottom: var(--space-8); }
+.hero-sub  { font-size: var(--size-lg); margin-bottom: var(--space-8); color: var(--color-text-muted); }
 
 .hero-cta {
   display: flex;
@@ -1087,6 +1104,11 @@ section {
   flex-shrink: 0;
 }
 
+@media (max-width: 380px) {
+  .pricing-row-price { white-space: normal; }
+  .pricing-row-name  { font-size: var(--size-xs); }
+}
+
 /* Market price — struck through */
 .price-market {
   font-size: var(--size-xs);
@@ -1255,6 +1277,38 @@ section {
   font-size: var(--size-sm);
   font-weight: 600;
   color: var(--color-text);
+}
+
+/* Contact method radio pills */
+.contact-method-group {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.contact-method-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+.contact-method-option:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+.contact-method-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 /* Success / error messages */
