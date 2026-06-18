@@ -729,6 +729,94 @@ section {
   border-color: #fff;
 }
 
+/* Three-category cards inside GroupFinder */
+.gf-categories {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+.gf-category-card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gf-category-card--highlight {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.35);
+}
+
+.gf-category-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.gf-category-icon { font-size: 2rem; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+
+.gf-category-name h3 {
+  font-size: var(--size-xl);
+  color: #fff;
+  margin-bottom: var(--space-1);
+}
+
+.gf-category-price {
+  font-size: var(--size-sm);
+  font-weight: 700;
+  color: rgba(255,255,255,0.85) !important;
+  line-height: 1.4;
+}
+
+.gf-category-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.gf-category-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--size-sm);
+  color: rgba(255,255,255,0.75);
+  line-height: 1.5;
+}
+
+.gf-category-features li::before {
+  content: "✓";
+  color: rgba(255,255,255,0.45);
+  flex-shrink: 0;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.gf-difficulty {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.gf-diff-pill {
+  font-size: var(--size-xs);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+@media (min-width: 768px) {
+  .gf-categories { grid-template-columns: repeat(3, 1fr); }
+}
+
 
 /* ================================================================
   8d. MASSAGE WORKSHOP
@@ -888,10 +976,10 @@ section {
 .pricing-card--paused {
   opacity: 0.55;
   filter: grayscale(35%);
-  pointer-events: none; /* disable hover lift */
+  pointer-events: none;
 }
 .pricing-card--paused .pricing-cta {
-  pointer-events: auto; /* keep CTA clickable */
+  pointer-events: auto;
 }
 .pricing-card--paused::before {
   content: "Tillfälligt pausad";
@@ -918,7 +1006,6 @@ section {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) 0;
-  /* negative margin bleeds to card edges */
   margin-bottom: 0;
 }
 
@@ -1070,6 +1157,7 @@ section {
 }
 @media (min-width: 600px) {
   .pricing-policy-sep { display: inline; }
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 
@@ -1165,7 +1253,6 @@ section {
 
 @media (min-width: 600px) {
   .cards { grid-template-columns: repeat(2, 1fr); }
-  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 768px) {
@@ -1230,4 +1317,300 @@ section {
   .hero-cta  { justify-content: flex-start; }
   .hero-text { flex: 1; }
   .hero-image { max-width: 340px; }
+}
+
+
+/* ================================================================
+  HÄLSA & STÖD
+================================================================ */
+.halsa-stod {
+  background: var(--color-primary-light);
+}
+
+.hs-intro {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto var(--space-12);
+}
+
+.hs-badge {
+  display: inline-block;
+  font-size: var(--size-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: rgba(30,107,69,0.1);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-4);
+}
+
+.hs-legal-note {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: var(--space-3);
+}
+
+.hs-block {
+  margin-bottom: var(--space-10);
+}
+
+.hs-block-label {
+  color: var(--color-text-muted) !important;
+  margin-bottom: var(--space-5) !important;
+}
+
+/* Situations grid */
+.hs-situations {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 600px) {
+  .hs-situations { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 900px) {
+  .hs-situations { grid-template-columns: repeat(3, 1fr); }
+}
+
+.hs-situation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+}
+
+.hs-situation-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.hs-situation h4 {
+  font-size: var(--size-base);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.hs-situation p {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* FHM facts list */
+.hs-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.hs-fact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+}
+
+.hs-fact-num {
+  font-size: var(--size-xl);
+  font-weight: 800;
+  color: var(--color-primary);
+  opacity: 0.25;
+  flex-shrink: 0;
+  line-height: 1.2;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.hs-fact-body h4 {
+  font-size: var(--size-base);
+  font-weight: 700;
+  margin-bottom: var(--space-1);
+}
+
+.hs-fact-body p {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.hs-facts-source {
+  font-size: var(--size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: var(--space-3);
+}
+
+/* Hälsostart bundle */
+.hs-bundle {
+  background: var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-10) var(--space-8);
+  text-align: center;
+  margin-bottom: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.hs-bundle-eyebrow {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.65);
+}
+
+.hs-bundle h3 {
+  font-size: var(--size-2xl);
+  color: #fff;
+  margin: 0;
+}
+
+.hs-bundle-desc {
+  color: rgba(255,255,255,0.8);
+  font-size: var(--size-base);
+  max-width: 540px;
+  margin: 0;
+}
+
+.hs-bundle-includes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.hs-bundle-item {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--size-sm);
+  font-weight: 500;
+  color: #fff;
+}
+
+.hs-bundle-item--outcome {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.4);
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.hs-bundle-pricing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.hs-bundle-normal {
+  font-size: var(--size-sm);
+  color: rgba(255,255,255,0.55);
+  text-decoration: line-through;
+}
+
+.hs-bundle-price {
+  font-size: var(--size-4xl);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+/* Contact price quick-reference strip */
+.contact-prices {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.contact-prices-label {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.contact-prices-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.contact-prices-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--size-sm);
+}
+
+.contact-prices-list li span:first-child {
+  color: var(--color-text);
+}
+
+.contact-prices-list li span:last-child {
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.contact-prices-bundle {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+  margin-top: var(--space-1) !important;
+}
+
+.contact-prices-link {
+  font-size: var(--size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.contact-prices-link:hover {
+  color: var(--color-primary);
+}
+
+.contact-prices-note {
+  font-size: var(--size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-bottom: var(--space-3);
+}
+
+
+/* Nature guide note */
+.hs-nature-note {
+  text-align: center;
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  max-width: 560px;
+  margin: 0 auto;
 }
