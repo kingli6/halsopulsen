@@ -811,6 +811,269 @@ section {
 
 
 /* ================================================================
+  8e. PRICING SECTION
+================================================================ */
+.pricing {
+  background: var(--color-surface);
+}
+
+/* Travel note banner */
+.pricing-travel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--color-primary-light);
+  border: 1px solid rgba(30,107,69,0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-10);
+  max-width: 680px;
+}
+.pricing-travel-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+.pricing-travel p {
+  font-size: var(--size-sm);
+  color: var(--color-primary);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Card grid — 1 col mobile, 2 col tablet+ */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-10);
+}
+
+/* Base card */
+.pricing-card {
+  position: relative;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  transition: box-shadow var(--transition), transform var(--transition);
+  overflow: hidden;
+}
+.pricing-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Highlighted card (kost — free offer) */
+.pricing-card--highlight {
+  border-color: var(--color-primary);
+  border-width: 2px;
+  background: #fff;
+}
+
+/* Coming soon card */
+.pricing-card--coming-soon {
+  opacity: 0.6;
+  background: var(--color-bg);
+}
+.pricing-card--coming-soon:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Pausad state ───────────────────────────────────────────────
+   Add class "pricing-card--paused" to any card to temporarily
+   disable it and show a "Tillfälligt pausad" badge.
+   The CTA still links to #contact so visitors can join waitlist.
+──────────────────────────────────────────────────────────────── */
+.pricing-card--paused {
+  opacity: 0.55;
+  filter: grayscale(35%);
+  pointer-events: none; /* disable hover lift */
+}
+.pricing-card--paused .pricing-cta {
+  pointer-events: auto; /* keep CTA clickable */
+}
+.pricing-card--paused::before {
+  content: "Tillfälligt pausad";
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  background: var(--color-text);
+  color: #fff;
+  font-size: var(--size-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+}
+
+/* Free offer banner (top of kost card) */
+.pricing-free-banner {
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) 0;
+  /* negative margin bleeds to card edges */
+  margin-bottom: 0;
+}
+
+/* Card header */
+.pricing-card-head { display: flex; flex-direction: column; gap: var(--space-2); }
+.pricing-card-icon { font-size: 1.75rem; display: block; margin-bottom: var(--space-1); }
+.pricing-card-head h3 { color: var(--color-text); font-size: var(--size-xl); }
+.pricing-card-note {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Price rows */
+.pricing-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex: 1;
+}
+
+.pricing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.pricing-row:last-child { border-bottom: none; }
+
+/* Featured row (highlighted tier) */
+.pricing-row--featured {
+  background: var(--color-primary-light);
+}
+
+/* Row name side */
+.pricing-row-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--size-sm);
+  color: var(--color-text);
+  font-weight: 500;
+  flex: 1;
+}
+
+/* Small badge inside a row (e.g. "Rekommenderad") */
+.pricing-row-badge {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  color: var(--color-primary);
+  background: rgba(30,107,69,0.1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+/* Row price side */
+.pricing-row-price {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Market price — struck through */
+.price-market {
+  font-size: var(--size-xs);
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(107,114,128,0.6);
+}
+
+/* Our price — large green */
+.price-ours {
+  font-size: var(--size-base);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* Free → price label (kost card) */
+.price-free-note {
+  font-size: var(--size-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* First-time / context note below price rows */
+.pricing-first-time-note {
+  font-size: var(--size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  font-style: italic;
+  border-left: 2px solid var(--color-border);
+  padding-left: var(--space-3);
+}
+
+/* Coming soon pill */
+.coming-soon-pill {
+  display: inline-flex;
+  align-self: flex-start;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+}
+
+/* CTA button — stretch to full width at bottom of card */
+.pricing-cta {
+  width: 100%;
+  margin-top: auto;
+}
+
+/* Policy strip */
+.pricing-policy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(30,107,69,0.12);
+}
+.pricing-policy-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--size-xs);
+  font-weight: 500;
+  color: var(--color-primary);
+}
+.pricing-policy-sep {
+  color: rgba(30,107,69,0.3);
+  font-size: var(--size-base);
+  display: none;
+}
+@media (min-width: 600px) {
+  .pricing-policy-sep { display: inline; }
+}
+
+
+/* ================================================================
   9. CONTACT / FORM
 ================================================================ */
 .contact { background: var(--color-bg); }
@@ -902,6 +1165,7 @@ section {
 
 @media (min-width: 600px) {
   .cards { grid-template-columns: repeat(2, 1fr); }
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 768px) {
