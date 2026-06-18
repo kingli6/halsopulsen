@@ -80,6 +80,15 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+@media (max-width: 767px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
+  section, .hero, .trust-strip, .groupfinder, .workshop, .halsa-stod {
+    scroll-snap-align: start;
+  }
+}
+
 body {
   font-family: var(--font-body);
   font-size: var(--size-base);
@@ -1123,6 +1132,56 @@ section {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-full);
 }
+
+/* ================================================================
+  SPOT COUNTER BADGE
+================================================================ */
+.spots-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(30,107,69,0.07);
+  border: 1px solid rgba(30,107,69,0.18);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+}
+
+.spots-badge--low {
+  background: rgba(234,88,12,0.07);
+  border-color: rgba(234,88,12,0.22);
+}
+
+.spots-badge--full {
+  background: rgba(107,114,128,0.07);
+  border-color: var(--color-border);
+}
+
+.spots-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+.spots-dot--open  { background: var(--color-primary); }
+.spots-dot--taken { background: var(--color-border); }
+
+.spots-badge--low  .spots-dot--open { background: #ea580c; }
+.spots-badge--full .spots-dot--open { background: var(--color-text-muted); }
+
+.spots-label {
+  font-size: var(--size-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.spots-badge--low  .spots-label { color: #ea580c; }
+.spots-badge--full .spots-label { color: var(--color-text-muted); }
+
 
 /* CTA button — stretch to full width at bottom of card */
 .pricing-cta {
