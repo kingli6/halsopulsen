@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
       rows: [
         { sv: '30 min',                   en: '30 min',              price: '250 kr' },
         { sv: '60 min',                   en: '60 min',              price: '550 kr' },
-        { sv: '90 min',                   en: '90 min',              price: '750 kr' },
+        { sv: '90 min',                   en: '90 min',              price: '650 kr' },
         { sv: 'Duo-massage (60 min)',      en: 'Duo massage (60 min)', price: { sv: '650 kr/pers', en: '650 kr/person' } },
       ],
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
@@ -68,9 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     pt: {
       title: { sv: 'PT-priser',           en: 'PT prices' },
       rows: [
-        { sv: 'Session (45 min)',          en: 'Session (45 min)',    price: '150 kr' },
-        { sv: 'Hälsoplan (skriftlig)',     en: 'Health plan (written)', price: '200 kr' },
-        { sv: 'Startpaket',               en: 'Starter package',     price: '450 kr' },
+        { sv: 'Enskild session (60 min)',  en: 'Single session (60 min)', price: '150 kr' },
+        { sv: 'Startpaket (plan + 2 sess)', en: 'Starter pack (plan + 2 sess)', price: '450 kr' },
+        { sv: '4-sessionspaket (1x/v)',   en: '4-session pack (1x/wk)', price: '550 kr' },
+        { sv: 'Månadspaket 2x/vecka (8 sess)', en: 'Monthly 2x/week (8 sess)', price: '1 350 kr' },
+        { sv: 'Intensivpaket 3x/vecka (12 sess)', en: 'Intensive 3x/week (12 sess)', price: '1 950 kr' },
       ],
       note: { sv: 'Rabatterat för de 6 första klienterna', en: 'Discounted for the first 6 clients' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
@@ -316,5 +318,68 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPricePanel(serviceSelect.value, currentLang);
     });
   }
+
+
+  /* ================================================================
+    7. SPOT COUNTERS
+    — Reads data-spots="N" on each .pricing-card
+    — Injects a live badge showing remaining discounted spots
+    — To update: change data-spots="N" in the HTML (e.g. to 5, 4…)
+    — At 0 the badge turns gray and says "Inga platser kvar"
+  ================================================================ */
+  document.querySelectorAll('.pricing-card[data-spots]').forEach(card => {
+    const total = 6;
+    const remaining = parseInt(card.dataset.spots, 10);
+    if (isNaN(remaining)) return;
+
+    const badge = document.createElement('div');
+    badge.className = 'spots-badge' + (remaining === 0 ? ' spots-badge--full' : remaining <= 2 ? ' spots-badge--low' : '');
+
+    const dots = Array.from({ length: total }, (_, i) => {
+      const dot = document.createElement('span');
+      dot.className = 'spots-dot' + (i < remaining ? ' spots-dot--open' : ' spots-dot--taken');
+      return dot.outerHTML;
+    }).join('');
+
+    const label = document.createElement('span');
+    label.className = 'spots-label';
+    label.setAttribute('data-sv-remaining', remaining);
+
+    function updateSpotLabel(lang) {
+      if (remaining === 0) {
+        label.textContent = lang === 'sv' ? 'Inga rabattplatser kvar' : 'No discounted spots left';
+      } else if (remaining === 1) {
+        label.textContent = lang === 'sv' ? '1 rabattplats kvar' : '1 discounted spot left';
+      } else {
+        label.textContent = lang === 'sv'
+          ? `${remaining} av ${total} rabattplatser kvar`
+          : `${remaining} of ${total} discounted spots left`;
+      }
+    }
+
+    updateSpotLabel(currentLang);
+    badge.innerHTML = dots;
+    badge.appendChild(label);
+
+    const cta = card.querySelector('.pricing-cta');
+    if (cta) {
+      card.insertBefore(badge, cta);
+    } else {
+      card.appendChild(badge);
+    }
+
+    card._updateSpotLabel = updateSpotLabel;
+  });
+
+  const _origApply = applyLanguage;
+  (function patchApply() {
+    const orig = applyLanguage;
+    applyLanguage = function(lang) {
+      orig(lang);
+      document.querySelectorAll('.pricing-card[data-spots]').forEach(card => {
+        if (card._updateSpotLabel) card._updateSpotLabel(lang);
+      });
+    };
+  })();
 
 });
