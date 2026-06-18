@@ -310,12 +310,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* ================================================================
-    Service dropdown → update price panel live
+    Service dropdown → update price panel live + auto-fill message
   ================================================================ */
+  const MESSAGE_TEMPLATES = {
+    sv: {
+      pt:          'Hej! Jag är intresserad av Personlig Träning.',
+      massage:     'Hej! Jag är intresserad av massage.',
+      diet:        'Hej! Jag är intresserad av kostcoach-tjänsten.',
+      mi:          'Hej! Jag är intresserad av ett motiverande samtal (MI).',
+      workshop:    'Hej! Jag är intresserad av massage-workshopen.',
+      group:       'Hej! Jag är intresserad av GroupFinder.',
+      'hälsostart':'Hej! Jag är intresserad av Hälsostart-paketet.',
+      online:      'Hej! Jag är intresserad av online-sessioner.',
+    },
+    en: {
+      pt:          'Hi! I\'m interested in Personal Training.',
+      massage:     'Hi! I\'m interested in massage.',
+      diet:        'Hi! I\'m interested in the Nutrition Coach service.',
+      mi:          'Hi! I\'m interested in motivational interviewing (MI).',
+      workshop:    'Hi! I\'m interested in the massage workshop.',
+      group:       'Hi! I\'m interested in GroupFinder.',
+      'hälsostart':'Hi! I\'m interested in the Hälsostart Package.',
+      online:      'Hi! I\'m interested in online sessions.',
+    },
+  };
+
   const serviceSelect = document.getElementById('service');
+  const messageField  = document.getElementById('message');
+
   if (serviceSelect) {
     serviceSelect.addEventListener('change', () => {
       renderPricePanel(serviceSelect.value, currentLang);
+
+      if (messageField) {
+        const tpl = (MESSAGE_TEMPLATES[currentLang] || MESSAGE_TEMPLATES.sv)[serviceSelect.value];
+        if (tpl && messageField.value === '') {
+          messageField.value = tpl;
+        } else if (!tpl) {
+          messageField.value = '';
+        }
+      }
     });
   }
 
