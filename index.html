@@ -54,6 +54,9 @@
             >
           </li>
           <li>
+            <a href="#pricing" data-sv="Priser" data-en="Pricing">Priser</a>
+          </li>
+          <li>
             <a href="#groupfinder">GroupFinder</a>
           </li>
           <li>
@@ -401,6 +404,378 @@
             </p>
           </article>
         </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+    PRICING
+    — Launch services: Massage · Workshop · Kost
+    — PT card is marked "Kommer snart" until ready to take bookings
+    — To PAUSE any card temporarily (e.g. fully booked):
+        Add class "pricing-card--paused" to the <article> element.
+        This grays out the card and shows a "Tillfälligt pausad" badge.
+        The contact link still works so people can join a waiting list.
+  ============================================================ -->
+    <section class="pricing" id="pricing">
+      <div class="container">
+        <h2
+          class="section-title"
+          data-sv="Priser"
+          data-en="Pricing"
+        >
+          Priser
+        </h2>
+        <p
+          class="section-sub"
+          data-sv="Rabatterade priser medan jag bygger praktisk erfarenhet inför min certifiering."
+          data-en="Discounted prices while I build hands-on experience toward my certification."
+        >
+          Rabatterade priser medan jag bygger praktisk erfarenhet inför min
+          certifiering.
+        </p>
+
+        <!-- Travel / online note -->
+        <div class="pricing-travel">
+          <span class="pricing-travel-icon" aria-hidden="true">🚗</span>
+          <p
+            data-sv="Resekostnad ingår inom Örnsköldsvik. Utanför: +50 kr/km. Online-sessioner: inget reseavdrag."
+            data-en="Travel included within Örnsköldsvik. Outside: +50 kr/km. Online sessions: no travel surcharge."
+          >
+            Resekostnad ingår inom Örnsköldsvik. Utanför: +50 kr/km.
+            Online-sessioner: inget reseavdrag.
+          </p>
+        </div>
+
+        <div class="pricing-grid">
+
+          <!-- ── MASSAGE ─────────────────────────────────── -->
+          <article class="pricing-card">
+            <div class="pricing-card-head">
+              <span class="pricing-card-icon" aria-hidden="true">💆</span>
+              <h3 data-sv="Klassisk Massage" data-en="Classic Massage">
+                Klassisk Massage
+              </h3>
+              <p
+                class="pricing-card-note"
+                data-sv="Jag kommer till dig med bord och utrustning — du behöver bara egna handdukar om du har."
+                data-en="I come to you with table and equipment — just let me know if you have your own towels."
+              >
+                Jag kommer till dig med bord och utrustning — du behöver bara
+                egna handdukar om du har.
+              </p>
+            </div>
+
+            <div class="pricing-rows">
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Express (15 min · 1–2 kroppsdelar)"
+                    data-en="Express (15 min · 1–2 body parts)"
+                    >Express (15 min · 1–2 kroppsdelar)</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span class="price-market">400 kr</span>
+                  <span class="price-ours">250 kr</span>
+                </div>
+              </div>
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="30 min (1–2 kroppsdelar)"
+                    data-en="30 min (1–2 body parts)"
+                    >30 min (1–2 kroppsdelar)</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span class="price-market">700 kr</span>
+                  <span class="price-ours">450 kr</span>
+                </div>
+              </div>
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span>60 min</span>
+                </div>
+                <div class="pricing-row-price">
+                  <span class="price-market">950 kr</span>
+                  <span class="price-ours">550 kr</span>
+                </div>
+              </div>
+              <div class="pricing-row pricing-row--featured">
+                <div class="pricing-row-name">
+                  <span>90 min</span>
+                  <span
+                    class="pricing-row-badge"
+                    data-sv="Rekommenderad"
+                    data-en="Recommended"
+                    >Rekommenderad</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span class="price-market">1 200 kr</span>
+                  <span class="price-ours">650 kr</span>
+                </div>
+              </div>
+            </div>
+
+            <a
+              href="#contact"
+              class="btn btn-primary pricing-cta"
+              data-sv="Boka massage →"
+              data-en="Book massage →"
+              >Boka massage →</a
+            >
+          </article>
+
+          <!-- ── WORKSHOP ────────────────────────────────── -->
+          <article class="pricing-card">
+            <div class="pricing-card-head">
+              <span class="pricing-card-icon" aria-hidden="true">🤝</span>
+              <h3 data-sv="Massage Workshop" data-en="Massage Workshop">
+                Massage Workshop
+              </h3>
+              <p
+                class="pricing-card-note"
+                data-sv="4–5 sessioner för par — lär er ge varandra klassisk massage."
+                data-en="4–5 sessions for couples — learn to give each other classic massage."
+              >
+                4–5 sessioner för par — lär er ge varandra klassisk massage.
+              </p>
+            </div>
+
+            <div class="pricing-rows">
+              <div class="pricing-row pricing-row--featured">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Hela kursen · per par"
+                    data-en="Full course · per couple"
+                    >Hela kursen · per par</span
+                  >
+                  <span
+                    class="pricing-row-badge"
+                    data-sv="Introerbjudande"
+                    data-en="Intro offer"
+                    >Introerbjudande</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span class="price-market">3 500–4 500 kr</span>
+                  <span class="price-ours">995 kr</span>
+                </div>
+              </div>
+            </div>
+
+            <p
+              class="pricing-first-time-note"
+              data-sv="Jag håller denna workshop för första gången — priset speglar det. Ni får ett genomtänkt och personligt upplägg."
+              data-en="I'm running this workshop for the first time — the price reflects that. You get a thoughtful and personal course structure."
+            >
+              Jag håller denna workshop för första gången — priset speglar det.
+              Ni får ett genomtänkt och personligt upplägg.
+            </p>
+
+            <a
+              href="#workshop"
+              class="btn btn-ghost pricing-cta"
+              data-sv="Läs mer om workshopen →"
+              data-en="Read more about the workshop →"
+              >Läs mer om workshopen →</a
+            >
+          </article>
+
+          <!-- ── KOSTCOACH ─────────────────────────────────
+               First 6 customers get all services free.
+               To close the offer: remove class "pricing-card--highlight"
+               and remove the .pricing-free-banner div below.
+          ──────────────────────────────────────────────── -->
+          <article class="pricing-card pricing-card--highlight">
+            <div class="pricing-free-banner">
+              <span
+                data-sv="🎁 Gratis för de 6 första kunderna"
+                data-en="🎁 Free for the first 6 clients"
+                >🎁 Gratis för de 6 första kunderna</span
+              >
+            </div>
+
+            <div class="pricing-card-head">
+              <span class="pricing-card-icon" aria-hidden="true">🥗</span>
+              <h3 data-sv="Kostcoach" data-en="Nutrition Coach">Kostcoach</h3>
+              <p
+                class="pricing-card-note"
+                data-sv="Utbildning är grundstenen — du lär dig förstå din kost, inte bara följa en plan."
+                data-en="Education is the foundation — you learn to understand your diet, not just follow a plan."
+              >
+                Utbildning är grundstenen — du lär dig förstå din kost, inte
+                bara följa en plan.
+              </p>
+            </div>
+
+            <div class="pricing-rows">
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Kostanalys (du loggar, jag analyserar)"
+                    data-en="Nutrition analysis (you log, I analyse)"
+                    >Kostanalys (du loggar, jag analyserar)</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span
+                    class="price-free-note"
+                    data-sv="Gratis → 150 kr"
+                    data-en="Free → 150 kr"
+                    >Gratis → 150 kr</span
+                  >
+                </div>
+              </div>
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Konsultation + analys (60 min)"
+                    data-en="Consultation + analysis (60 min)"
+                    >Konsultation + analys (60 min)</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span
+                    class="price-free-note"
+                    data-sv="Gratis → 300 kr"
+                    data-en="Free → 300 kr"
+                    >Gratis → 300 kr</span
+                  >
+                </div>
+              </div>
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Detektivanalys (2 veckors matdagbok)"
+                    data-en="Deep analysis (2-week food diary)"
+                    >Detektivanalys (2 veckors matdagbok)</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span
+                    class="price-free-note"
+                    data-sv="Gratis → 250 kr"
+                    data-en="Free → 250 kr"
+                    >Gratis → 250 kr</span
+                  >
+                </div>
+              </div>
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Personlig måltidsplan"
+                    data-en="Personal meal plan"
+                    >Personlig måltidsplan</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span
+                    class="price-free-note"
+                    data-sv="Gratis → 350 kr"
+                    data-en="Free → 350 kr"
+                    >Gratis → 350 kr</span
+                  >
+                </div>
+              </div>
+              <div class="pricing-row">
+                <div class="pricing-row-name">
+                  <span
+                    data-sv="Uppföljning (30 min)"
+                    data-en="Follow-up (30 min)"
+                    >Uppföljning (30 min)</span
+                  >
+                </div>
+                <div class="pricing-row-price">
+                  <span class="price-ours">150 kr</span>
+                </div>
+              </div>
+            </div>
+
+            <a
+              href="#contact"
+              class="btn btn-primary pricing-cta"
+              data-sv="Anmäl intresse →"
+              data-en="Express interest →"
+              >Anmäl intresse →</a
+            >
+          </article>
+
+          <!-- ── PERSONLIG TRÄNING — KOMMER SNART ───────── -->
+          <article class="pricing-card pricing-card--coming-soon">
+            <div class="pricing-card-head">
+              <span class="pricing-card-icon" aria-hidden="true">💪</span>
+              <h3 data-sv="Personlig Träning" data-en="Personal Training">
+                Personlig Träning
+              </h3>
+              <p
+                class="pricing-card-note"
+                data-sv="Hemträning, rörlighet & förebyggande träning — anpassat efter dina mål."
+                data-en="Home workouts, mobility & preventive training — tailored to your goals."
+              >
+                Hemträning, rörlighet &amp; förebyggande träning — anpassat
+                efter dina mål.
+              </p>
+            </div>
+
+            <div class="coming-soon-pill">
+              <span data-sv="Kommer snart" data-en="Coming soon"
+                >Kommer snart</span
+              >
+            </div>
+
+            <p
+              class="pricing-first-time-note"
+              data-sv="Kontakta mig om du vill anmäla intresse redan nu — jag kontaktar dig när bokningar öppnar."
+              data-en="Contact me to register interest now — I'll reach out when bookings open."
+            >
+              Kontakta mig om du vill anmäla intresse redan nu — jag kontaktar
+              dig när bokningar öppnar.
+            </p>
+
+            <a
+              href="#contact"
+              class="btn btn-ghost pricing-cta"
+              data-sv="Anmäl intresse →"
+              data-en="Register interest →"
+              >Anmäl intresse →</a
+            >
+          </article>
+
+        </div>
+        <!-- /pricing-grid -->
+
+        <!-- Policy strip -->
+        <div class="pricing-policy">
+          <div class="pricing-policy-item">
+            <span aria-hidden="true">📱</span>
+            <span
+              data-sv="Betalning via Swish"
+              data-en="Payment via Swish"
+              >Betalning via Swish</span
+            >
+          </div>
+          <span class="pricing-policy-sep" aria-hidden="true">·</span>
+          <div class="pricing-policy-item">
+            <span aria-hidden="true">⏰</span>
+            <span
+              data-sv="Avbokning senast 24 h — annars debiteras 50 % av priset"
+              data-en="Cancel 24 h before — otherwise 50 % is charged"
+              >Avbokning senast 24 h — annars debiteras 50 % av priset</span
+            >
+          </div>
+          <span class="pricing-policy-sep" aria-hidden="true">·</span>
+          <div class="pricing-policy-item">
+            <span aria-hidden="true">🛡️</span>
+            <span
+              data-sv="Ansvarsförsäkrad via Kroppsterapeuternas Yrkesförbund"
+              data-en="Liability insured via Kroppsterapeuternas Yrkesförbund"
+              >Ansvarsförsäkrad via Kroppsterapeuternas Yrkesförbund</span
+            >
+          </div>
+        </div>
+
       </div>
     </section>
 
