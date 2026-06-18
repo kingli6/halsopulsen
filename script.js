@@ -6,6 +6,8 @@
   2. Mobile navigation menu
   3. Contact form submission (Formspree via fetch, no page reload)
   4. Auto-fill current year in footer
+  5. Pricing CTA → pre-select service dropdown
+  6. Dynamic contact price panel (updates when service is selected)
 
   All code is wrapped in DOMContentLoaded so the browser has
   finished building the page before we try to find any elements.
@@ -14,11 +16,154 @@
 document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
+    6. DYNAMIC CONTACT PRICE PANEL
+    — Defined first so applyLanguage() can call it below.
+    — Data object holds per-service price rows in SV + EN.
+    — renderPricePanel(serviceKey, lang) rebuilds the list, note,
+      and label in the contact sidebar on demand.
+  ================================================================ */
+  const SERVICE_PRICES = {
+    '': {
+      title: { sv: 'Snabbreferens',      en: 'Quick reference' },
+      rows: [
+        { sv: 'Massage (60 min)',    en: 'Massage (60 min)',         price: '550 kr' },
+        { sv: 'Massage Workshop',   en: 'Massage Workshop',          price: { sv: '995 kr/par',    en: '995 kr/couple' } },
+        { sv: 'Kostcoach',          en: 'Nutrition Coach',           price: { sv: 'Gratis nu',     en: 'Free now' } },
+        { sv: 'Personlig Träning',  en: 'Personal Training',         price: '150 kr/session' },
+        { sv: 'MI-samtal',          en: 'MI Conversation',           price: '250 kr' },
+      ],
+      bundle: { sv: 'Hälsostart-paketet', en: 'Hälsostart Package', price: '750 kr' },
+      link:  { sv: 'Alla priser ↑',       en: 'All prices ↑' },
+    },
+    massage: {
+      title: { sv: 'Massagepriser',       en: 'Massage prices' },
+      rows: [
+        { sv: '30 min',                   en: '30 min',              price: '250 kr' },
+        { sv: '60 min',                   en: '60 min',              price: '550 kr' },
+        { sv: '90 min',                   en: '90 min',              price: '750 kr' },
+        { sv: 'Duo-massage (60 min)',      en: 'Duo massage (60 min)', price: { sv: '650 kr/pers', en: '650 kr/person' } },
+      ],
+      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
+    },
+    workshop: {
+      title: { sv: 'Workshop-priser',     en: 'Workshop prices' },
+      rows: [
+        { sv: 'Per person',               en: 'Per person',          price: '~600 kr' },
+        { sv: 'Par-pris',                 en: 'Couple price',        price: '995 kr' },
+        { sv: 'Grupp 3–6 pers',           en: 'Group 3–6',          price: { sv: '450 kr/pers', en: '450 kr/person' } },
+      ],
+      note: { sv: '2–3 timmar · inkl. fika & material', en: '2–3 hours · incl. coffee & materials' },
+      link: { sv: 'Läs mer om workshopen ↓', en: 'Read more ↓' },
+      linkHref: '#workshop',
+    },
+    diet: {
+      title: { sv: 'Kostcoach-priser',    en: 'Nutrition Coach prices' },
+      rows: [
+        { sv: 'Kostanalys (60 min)',       en: 'Nutrition analysis (60 min)', price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Marknadspris',             en: 'Market price',               price: '550 kr' },
+      ],
+      note: { sv: 'Erbjudandet gäller de 6 första klienterna', en: 'Offer valid for the first 6 clients' },
+      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
+    },
+    pt: {
+      title: { sv: 'PT-priser',           en: 'PT prices' },
+      rows: [
+        { sv: 'Session (45 min)',          en: 'Session (45 min)',    price: '150 kr' },
+        { sv: 'Hälsoplan (skriftlig)',     en: 'Health plan (written)', price: '200 kr' },
+        { sv: 'Startpaket',               en: 'Starter package',     price: '450 kr' },
+      ],
+      note: { sv: 'Rabatterat för de 6 första klienterna', en: 'Discounted for the first 6 clients' },
+      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
+    },
+    mi: {
+      title: { sv: 'MI-samtal',           en: 'MI Conversation' },
+      rows: [
+        { sv: 'Inledande samtal (60 min)', en: 'Initial session (60 min)', price: '250 kr' },
+        { sv: 'Uppföljning (45 min)',      en: 'Follow-up (45 min)',       price: '200 kr' },
+      ],
+      note: { sv: 'Online, walk & talk, eller på plats', en: 'Online, walk & talk, or in person' },
+      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
+    },
+    'hälsostart': {
+      title: { sv: 'Hälsostart-paketet',  en: 'Hälsostart Package' },
+      rows: [
+        { sv: '💬 MI-samtal (60 min)',     en: '💬 MI session (60 min)',    price: '250 kr' },
+        { sv: '🥗 Kostanalys (60 min)',    en: '🥗 Nutrition analysis (60 min)', price: '550 kr' },
+        { sv: '💪 PT-session (60 min)',    en: '💪 PT session (60 min)',   price: '150 kr' },
+      ],
+      bundle: { sv: 'Paketpris',          en: 'Package price',            price: '750 kr' },
+      note:   { sv: 'Normalt ~950 kr — du sparar 200 kr', en: 'Normally ~950 kr — you save 200 kr' },
+      link:   { sv: 'Alla priser ↑', en: 'All prices ↑' },
+    },
+    group: {
+      title: { sv: 'GroupFinder',         en: 'GroupFinder' },
+      rows: [
+        { sv: 'Öppen träning',            en: 'Open training',  price: { sv: 'Gratis',       en: 'Free' } },
+        { sv: 'Privat grupp',             en: 'Private group',  price: { sv: 'Kontakta mig', en: 'Contact me' } },
+        { sv: 'Företag & Team',           en: 'Business & Team', price: { sv: 'Offert',      en: 'Quote' } },
+      ],
+      link: { sv: 'Se GroupFinder ↓', en: 'See GroupFinder ↓' },
+      linkHref: '#groupfinder',
+    },
+    online: {
+      title: { sv: 'Online-sessioner',    en: 'Online sessions' },
+      rows: [
+        { sv: 'Kostcoach online',         en: 'Nutrition coach online', price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'PT online',                en: 'PT online',              price: '150 kr' },
+        { sv: 'MI-samtal online',         en: 'MI session online',      price: '250 kr' },
+      ],
+      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
+    },
+  };
+
+  function renderPricePanel(serviceKey, lang) {
+    const labelEl = document.getElementById('contactPricesLabel');
+    const listEl  = document.getElementById('contactPricesList');
+    const noteEl  = document.getElementById('contactPricesNote');
+    const linkEl  = document.getElementById('contactPricesLink');
+    if (!labelEl || !listEl) return;
+
+    const L    = lang || 'sv';
+    const data = SERVICE_PRICES[serviceKey] || SERVICE_PRICES[''];
+
+    labelEl.textContent = data.title[L];
+
+    listEl.innerHTML = data.rows.map(row => {
+      const name  = row[L] || (L === 'sv' ? row.sv : row.en);
+      const price = typeof row.price === 'string' ? row.price : row.price[L];
+      return `<li><span>${name}</span><span>${price}</span></li>`;
+    }).join('');
+
+    if (data.bundle) {
+      const bName = typeof data.bundle.sv === 'string'
+        ? (L === 'sv' ? data.bundle.sv : data.bundle.en)
+        : data.bundle[L];
+      listEl.innerHTML += `<li class="contact-prices-bundle"><span>${bName}</span><span>${data.bundle.price}</span></li>`;
+    }
+
+    if (noteEl) {
+      if (data.note) {
+        noteEl.textContent = typeof data.note === 'string' ? data.note : data.note[L];
+        noteEl.hidden = false;
+      } else {
+        noteEl.hidden = true;
+      }
+    }
+
+    if (linkEl) {
+      linkEl.textContent = data.link ? data.link[L] : (L === 'sv' ? 'Alla priser ↑' : 'All prices ↑');
+      linkEl.href        = data.linkHref || '#pricing';
+    }
+  }
+
+
+  /* ================================================================
     1. LANGUAGE TOGGLE
     — Reads data-sv / data-en attributes on elements
     — Persists choice in localStorage so it survives page refresh
     — Skips formSuccess / formError elements (they start hidden and
       have their own text set at submission time)
+    — Re-renders the price panel so it stays in sync
   ================================================================ */
   const langToggleBtn = document.getElementById('langToggle');
   let currentLang = localStorage.getItem('lang') || 'sv';
@@ -48,6 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.documentElement.lang = lang;
+
+    const svcSelect = document.getElementById('service');
+    renderPricePanel(svcSelect ? svcSelect.value : '', lang);
   }
 
   if (langToggleBtn) {
@@ -115,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formSuccess.hidden = false;
           }
           contactForm.reset();
+          renderPricePanel('', currentLang);
         } else {
           throw new Error('Server error');
         }
@@ -139,6 +288,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const yearSpan = document.getElementById('year');
   if (yearSpan) {
     yearSpan.textContent = new Date().getFullYear();
+  }
+
+
+  /* ================================================================
+    5. PRICING CTA → PRE-SELECT SERVICE DROPDOWN + UPDATE PANEL
+    — Any link with data-service="X" pre-selects the dropdown and
+      immediately updates the price panel to match.
+  ================================================================ */
+  document.querySelectorAll('[data-service]').forEach(link => {
+    link.addEventListener('click', () => {
+      const select = document.getElementById('service');
+      if (select && link.dataset.service) {
+        select.value = link.dataset.service;
+        renderPricePanel(link.dataset.service, currentLang);
+      }
+    });
+  });
+
+
+  /* ================================================================
+    Service dropdown → update price panel live
+  ================================================================ */
+  const serviceSelect = document.getElementById('service');
+  if (serviceSelect) {
+    serviceSelect.addEventListener('change', () => {
+      renderPricePanel(serviceSelect.value, currentLang);
+    });
   }
 
 });
