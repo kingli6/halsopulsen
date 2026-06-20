@@ -505,12 +505,32 @@ section {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  transition: box-shadow var(--transition), transform var(--transition);
+  transition: box-shadow var(--transition), transform var(--transition),
+              border-color var(--transition);
   overflow: hidden;
+  cursor: pointer;
 }
 .pricing-card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+}
+
+/* Selected state — set by JS when user clicks a card */
+.pricing-card--selected {
+  border-color: var(--color-primary) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 0 4px rgba(30,107,69,0.12), var(--shadow-md) !important;
+  transform: translateY(-2px);
+}
+
+/* Group label within a card (e.g. "Enstaka" / "Paket") */
+.pricing-group-label {
+  font-size: var(--size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: calc(-1 * var(--space-3));
 }
 
 /* Highlighted card (kost — free offer) */
@@ -598,13 +618,22 @@ section {
 /* Row name side */
 .pricing-row-name {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-1) var(--space-2);
   font-size: var(--size-sm);
   color: var(--color-text);
   font-weight: 500;
   flex: 1;
+}
+
+/* Optional sub-description inside a row */
+.pricing-row-desc {
+  flex-basis: 100%;
+  font-size: var(--size-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 /* Small badge inside a row (e.g. "Rekommenderad") */

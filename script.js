@@ -19,52 +19,56 @@ document.addEventListener('DOMContentLoaded', () => {
   ================================================================ */
   const SERVICE_PRICES = {
     '': {
-      title: { sv: 'Snabbreferens',      en: 'Quick reference' },
+      title: { sv: 'Snabbreferens',        en: 'Quick reference' },
       rows: [
-        { sv: 'Massage (60 min)',        en: 'Massage (60 min)',        price: '550 kr' },
-        { sv: 'Kostcoach',               en: 'Nutrition Coach',         price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'Personlig Träning',       en: 'Personal Training',       price: '150 kr/session' },
-        { sv: 'Samtal & Coaching',       en: 'Talk & Coaching',         price: '250 kr' },
+        { sv: 'Massage (60 min)',           en: 'Massage (60 min)',          price: '550 kr' },
+        { sv: 'Kostcoach',                  en: 'Nutrition Coach',           price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'PT — Fokussession',          en: 'PT — Focus session',        price: '150 kr' },
+        { sv: 'Samtal online (60 min)',      en: 'Coaching online (60 min)',  price: '99 kr' },
       ],
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     massage: {
-      title: { sv: 'Massagepriser',      en: 'Massage prices' },
+      title: { sv: 'Massagepriser',         en: 'Massage prices' },
       rows: [
-        { sv: 'Express (15 min)',         en: 'Express (15 min)',        price: '250 kr' },
-        { sv: '30 min',                   en: '30 min',                  price: '450 kr' },
-        { sv: '60 min',                   en: '60 min',                  price: '550 kr' },
-        { sv: '90 min',                   en: '90 min',                  price: '650 kr' },
+        { sv: 'Express (15 min)',            en: 'Express (15 min)',          price: '250 kr' },
+        { sv: '30 min',                      en: '30 min',                    price: '450 kr' },
+        { sv: '60 min',                      en: '60 min',                    price: '550 kr' },
+        { sv: '90 min',                      en: '90 min',                    price: '650 kr' },
       ],
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     diet: {
-      title: { sv: 'Kostcoach-priser',   en: 'Nutrition Coach prices' },
+      title: { sv: 'Kostcoach-priser',      en: 'Nutrition Coach prices' },
       rows: [
-        { sv: 'Kostanalys',               en: 'Nutrition analysis',      price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'Konsultation + analys',    en: 'Consultation + analysis', price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'Detektivanalys (2 v.)',    en: 'Deep analysis (2 wks)',   price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'Personlig måltidsplan',    en: 'Personal meal plan',      price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'Uppföljning (30 min)',     en: 'Follow-up (30 min)',      price: '150 kr' },
+        { sv: 'Kostanalys',                  en: 'Nutrition analysis',        price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Konsultation + analys',       en: 'Consultation + analysis',   price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Detektivanalys (2 v.)',        en: 'Deep analysis (2 wks)',     price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Personlig måltidsplan',       en: 'Personal meal plan',        price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Uppföljning (30 min)',        en: 'Follow-up (30 min)',        price: '150 kr' },
       ],
       note: { sv: 'Gratis för de 6 första kunderna', en: 'Free for the first 6 clients' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     pt: {
-      title: { sv: 'PT-priser',          en: 'PT prices' },
+      title: { sv: 'PT-priser',             en: 'PT prices' },
       rows: [
-        { sv: 'Enskild session (60 min)', en: 'Single session (60 min)', price: '150 kr' },
-        { sv: 'Hemträningsplan (1 mån)',  en: 'Home workout plan (1 mo)', price: '200 kr' },
-        { sv: 'Startpaket (plan + 2 ggr)', en: 'Starter pack (plan + 2)', price: '450 kr' },
+        { sv: 'Fokussession (60 min)',        en: 'Focus session (60 min)',    price: '150 kr' },
+        { sv: 'Bedömning + Månadsplan',      en: 'Assessment + Monthly plan', price: '200 kr' },
+        { sv: 'Startpaket',                  en: 'Starter pack',              price: '450 kr' },
+        { sv: '5 sessioner',                 en: '5 sessions',                price: '650 kr' },
+        { sv: '10 sessioner',                en: '10 sessions',               price: '1 200 kr' },
       ],
       note: { sv: 'Rabatterat för de 6 första kunderna', en: 'Discounted for the first 6 clients' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     mi: {
-      title: { sv: 'Samtal & Coaching',  en: 'Talk & Coaching' },
+      title: { sv: 'Samtal & Coaching',     en: 'Talk & Coaching' },
       rows: [
-        { sv: 'Inledande samtal (60 min)', en: 'Initial session (60 min)', price: '250 kr' },
-        { sv: 'Uppföljning (45 min)',      en: 'Follow-up (45 min)',       price: '200 kr' },
+        { sv: 'Online (60 min)',             en: 'Online (60 min)',            price: '99 kr' },
+        { sv: 'Walk & talk (60 min)',        en: 'Walk & talk (60 min)',       price: '125 kr' },
+        { sv: 'På plats (60 min)',           en: 'In person (60 min)',         price: '149 kr' },
+        { sv: 'Uppföljning (45 min)',        en: 'Follow-up (45 min)',         price: '175 kr' },
       ],
       note: { sv: 'Inte terapi eller psykologisk behandling', en: 'Not therapy or psychological treatment' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
@@ -258,5 +262,27 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPricePanel(serviceSelect.value, currentLang);
     });
   }
+
+
+  /* ================================================================
+    7. PRICING CARD SELECTION
+    — Clicking anywhere on a card highlights it and pre-selects
+      the matching service in the contact form dropdown.
+  ================================================================ */
+  document.querySelectorAll('.pricing-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.pricing-card').forEach(c => c.classList.remove('pricing-card--selected'));
+      card.classList.add('pricing-card--selected');
+
+      const cta = card.querySelector('[data-service]');
+      if (cta && cta.dataset.service) {
+        const select = document.getElementById('service');
+        if (select) {
+          select.value = cta.dataset.service;
+          renderPricePanel(cta.dataset.service, currentLang);
+        }
+      }
+    });
+  });
 
 });
