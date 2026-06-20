@@ -1,16 +1,12 @@
 /* ================================================================
   HÄLSO PULSEN — script.js
 
-  What this file does:
   1. Language toggle (SV ↔ EN) with localStorage persistence
   2. Mobile navigation menu
   3. Contact form submission (Formspree via fetch, no page reload)
   4. Auto-fill current year in footer
   5. Pricing CTA → pre-select service dropdown
   6. Dynamic contact price panel (updates when service is selected)
-
-  All code is wrapped in DOMContentLoaded so the browser has
-  finished building the page before we try to find any elements.
 ================================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,102 +14,59 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ================================================================
     6. DYNAMIC CONTACT PRICE PANEL
     — Defined first so applyLanguage() can call it below.
-    — Data object holds per-service price rows in SV + EN.
-    — renderPricePanel(serviceKey, lang) rebuilds the list, note,
-      and label in the contact sidebar on demand.
+    — renderPricePanel(serviceKey, lang) rebuilds the list and note
+      in the contact sidebar whenever the selected service changes.
   ================================================================ */
   const SERVICE_PRICES = {
     '': {
       title: { sv: 'Snabbreferens',      en: 'Quick reference' },
       rows: [
-        { sv: 'Massage (60 min)',    en: 'Massage (60 min)',         price: '550 kr' },
-        { sv: 'Massage Workshop',   en: 'Massage Workshop',          price: { sv: '995 kr/par',    en: '995 kr/couple' } },
-        { sv: 'Kostcoach',          en: 'Nutrition Coach',           price: { sv: 'Gratis nu',     en: 'Free now' } },
-        { sv: 'Personlig Träning',  en: 'Personal Training',         price: '150 kr/session' },
-        { sv: 'MI-samtal',          en: 'MI Conversation',           price: '250 kr' },
-      ],
-      bundle: { sv: 'Hälsostart-paketet', en: 'Hälsostart Package', price: '750 kr' },
-      link:  { sv: 'Alla priser ↑',       en: 'All prices ↑' },
-    },
-    massage: {
-      title: { sv: 'Massagepriser',       en: 'Massage prices' },
-      rows: [
-        { sv: '30 min',                   en: '30 min',              price: '250 kr' },
-        { sv: '60 min',                   en: '60 min',              price: '550 kr' },
-        { sv: '90 min',                   en: '90 min',              price: '650 kr' },
-        { sv: 'Duo-massage (60 min)',      en: 'Duo massage (60 min)', price: { sv: '650 kr/pers', en: '650 kr/person' } },
+        { sv: 'Massage (60 min)',        en: 'Massage (60 min)',        price: '550 kr' },
+        { sv: 'Kostcoach',               en: 'Nutrition Coach',         price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Personlig Träning',       en: 'Personal Training',       price: '150 kr/session' },
+        { sv: 'Samtal & Coaching',       en: 'Talk & Coaching',         price: '250 kr' },
       ],
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
-    workshop: {
-      title: { sv: 'Workshop-priser',     en: 'Workshop prices' },
+    massage: {
+      title: { sv: 'Massagepriser',      en: 'Massage prices' },
       rows: [
-        { sv: 'Per person',               en: 'Per person',          price: '~600 kr' },
-        { sv: 'Par-pris',                 en: 'Couple price',        price: '995 kr' },
-        { sv: 'Grupp 3–6 pers',           en: 'Group 3–6',          price: { sv: '450 kr/pers', en: '450 kr/person' } },
+        { sv: 'Express (15 min)',         en: 'Express (15 min)',        price: '250 kr' },
+        { sv: '30 min',                   en: '30 min',                  price: '450 kr' },
+        { sv: '60 min',                   en: '60 min',                  price: '550 kr' },
+        { sv: '90 min',                   en: '90 min',                  price: '650 kr' },
       ],
-      note: { sv: '2–3 timmar · inkl. fika & material', en: '2–3 hours · incl. coffee & materials' },
-      link: { sv: 'Läs mer om workshopen ↓', en: 'Read more ↓' },
-      linkHref: '#workshop',
+      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     diet: {
-      title: { sv: 'Kostcoach-priser',    en: 'Nutrition Coach prices' },
+      title: { sv: 'Kostcoach-priser',   en: 'Nutrition Coach prices' },
       rows: [
-        { sv: 'Kostanalys (60 min)',       en: 'Nutrition analysis (60 min)', price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'Marknadspris',             en: 'Market price',               price: '550 kr' },
+        { sv: 'Kostanalys',               en: 'Nutrition analysis',      price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Konsultation + analys',    en: 'Consultation + analysis', price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Detektivanalys (2 v.)',    en: 'Deep analysis (2 wks)',   price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Personlig måltidsplan',    en: 'Personal meal plan',      price: { sv: 'Gratis nu', en: 'Free now' } },
+        { sv: 'Uppföljning (30 min)',     en: 'Follow-up (30 min)',      price: '150 kr' },
       ],
-      note: { sv: 'Erbjudandet gäller de 6 första klienterna', en: 'Offer valid for the first 6 clients' },
+      note: { sv: 'Gratis för de 6 första kunderna', en: 'Free for the first 6 clients' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     pt: {
-      title: { sv: 'PT-priser',           en: 'PT prices' },
+      title: { sv: 'PT-priser',          en: 'PT prices' },
       rows: [
-        { sv: 'Enskild session (60 min)',  en: 'Single session (60 min)', price: '150 kr' },
-        { sv: 'Startpaket (plan + 2 sess)', en: 'Starter pack (plan + 2 sess)', price: '450 kr' },
-        { sv: '4-sessionspaket (1x/v)',   en: '4-session pack (1x/wk)', price: '550 kr' },
-        { sv: 'Månadspaket 2x/vecka (8 sess)', en: 'Monthly 2x/week (8 sess)', price: '1 350 kr' },
-        { sv: 'Intensivpaket 3x/vecka (12 sess)', en: 'Intensive 3x/week (12 sess)', price: '1 950 kr' },
+        { sv: 'Enskild session (60 min)', en: 'Single session (60 min)', price: '150 kr' },
+        { sv: 'Hemträningsplan (1 mån)',  en: 'Home workout plan (1 mo)', price: '200 kr' },
+        { sv: 'Startpaket (plan + 2 ggr)', en: 'Starter pack (plan + 2)', price: '450 kr' },
       ],
-      note: { sv: 'Rabatterat för de 6 första klienterna', en: 'Discounted for the first 6 clients' },
+      note: { sv: 'Rabatterat för de 6 första kunderna', en: 'Discounted for the first 6 clients' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
     mi: {
-      title: { sv: 'MI-samtal',           en: 'MI Conversation' },
+      title: { sv: 'Samtal & Coaching',  en: 'Talk & Coaching' },
       rows: [
         { sv: 'Inledande samtal (60 min)', en: 'Initial session (60 min)', price: '250 kr' },
         { sv: 'Uppföljning (45 min)',      en: 'Follow-up (45 min)',       price: '200 kr' },
       ],
-      note: { sv: 'Online, walk & talk, eller på plats', en: 'Online, walk & talk, or in person' },
-      link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
-    },
-    'hälsostart': {
-      title: { sv: 'Hälsostart-paketet',  en: 'Hälsostart Package' },
-      rows: [
-        { sv: '💬 MI-samtal (60 min)',     en: '💬 MI session (60 min)',    price: '250 kr' },
-        { sv: '🥗 Kostanalys (60 min)',    en: '🥗 Nutrition analysis (60 min)', price: '550 kr' },
-        { sv: '💪 PT-session (60 min)',    en: '💪 PT session (60 min)',   price: '150 kr' },
-      ],
-      bundle: { sv: 'Paketpris',          en: 'Package price',            price: '750 kr' },
-      note:   { sv: 'Normalt ~950 kr — du sparar 200 kr', en: 'Normally ~950 kr — you save 200 kr' },
-      link:   { sv: 'Alla priser ↑', en: 'All prices ↑' },
-    },
-    group: {
-      title: { sv: 'GroupFinder',         en: 'GroupFinder' },
-      rows: [
-        { sv: 'Öppen träning',            en: 'Open training',  price: { sv: 'Gratis',       en: 'Free' } },
-        { sv: 'Privat grupp',             en: 'Private group',  price: { sv: 'Kontakta mig', en: 'Contact me' } },
-        { sv: 'Företag & Team',           en: 'Business & Team', price: { sv: 'Offert',      en: 'Quote' } },
-      ],
-      link: { sv: 'Se GroupFinder ↓', en: 'See GroupFinder ↓' },
-      linkHref: '#groupfinder',
-    },
-    online: {
-      title: { sv: 'Online-sessioner',    en: 'Online sessions' },
-      rows: [
-        { sv: 'Kostcoach online',         en: 'Nutrition coach online', price: { sv: 'Gratis nu', en: 'Free now' } },
-        { sv: 'PT online',                en: 'PT online',              price: '150 kr' },
-        { sv: 'MI-samtal online',         en: 'MI session online',      price: '250 kr' },
-      ],
+      note: { sv: 'Inte terapi eller psykologisk behandling', en: 'Not therapy or psychological treatment' },
       link: { sv: 'Alla priser ↑', en: 'All prices ↑' },
     },
   };
@@ -136,13 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return `<li><span>${name}</span><span>${price}</span></li>`;
     }).join('');
 
-    if (data.bundle) {
-      const bName = typeof data.bundle.sv === 'string'
-        ? (L === 'sv' ? data.bundle.sv : data.bundle.en)
-        : data.bundle[L];
-      listEl.innerHTML += `<li class="contact-prices-bundle"><span>${bName}</span><span>${data.bundle.price}</span></li>`;
-    }
-
     if (noteEl) {
       if (data.note) {
         noteEl.textContent = typeof data.note === 'string' ? data.note : data.note[L];
@@ -154,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (linkEl) {
       linkEl.textContent = data.link ? data.link[L] : (L === 'sv' ? 'Alla priser ↑' : 'All prices ↑');
-      linkEl.href        = data.linkHref || '#pricing';
+      linkEl.href        = '#pricing';
     }
   }
 
@@ -163,8 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     1. LANGUAGE TOGGLE
     — Reads data-sv / data-en attributes on elements
     — Persists choice in localStorage so it survives page refresh
-    — Skips formSuccess / formError elements (they start hidden and
-      have their own text set at submission time)
     — Re-renders the price panel so it stays in sync
   ================================================================ */
   const langToggleBtn = document.getElementById('langToggle');
@@ -234,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ================================================================
     3. CONTACT FORM — FORMSPREE SUBMISSION
     — Submits via fetch so the user stays on the page
-    — Remember to replace YOUR_FORMSPREE_ID in index.html
   ================================================================ */
   const contactForm = document.getElementById('contactForm');
   const formSuccess = document.getElementById('formSuccess');
@@ -308,112 +251,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-
-  /* ================================================================
-    Service dropdown → update price panel live + auto-fill message
-  ================================================================ */
-  const MESSAGE_TEMPLATES = {
-    sv: {
-      pt:          'Hej! Jag är intresserad av Personlig Träning.',
-      massage:     'Hej! Jag är intresserad av massage.',
-      diet:        'Hej! Jag är intresserad av kostcoach-tjänsten.',
-      mi:          'Hej! Jag är intresserad av ett motiverande samtal (MI).',
-      workshop:    'Hej! Jag är intresserad av massage-workshopen.',
-      group:       'Hej! Jag är intresserad av GroupFinder.',
-      'hälsostart':'Hej! Jag är intresserad av Hälsostart-paketet.',
-      online:      'Hej! Jag är intresserad av online-sessioner.',
-    },
-    en: {
-      pt:          'Hi! I\'m interested in Personal Training.',
-      massage:     'Hi! I\'m interested in massage.',
-      diet:        'Hi! I\'m interested in the Nutrition Coach service.',
-      mi:          'Hi! I\'m interested in motivational interviewing (MI).',
-      workshop:    'Hi! I\'m interested in the massage workshop.',
-      group:       'Hi! I\'m interested in GroupFinder.',
-      'hälsostart':'Hi! I\'m interested in the Hälsostart Package.',
-      online:      'Hi! I\'m interested in online sessions.',
-    },
-  };
-
+  /* Service dropdown → update price panel live */
   const serviceSelect = document.getElementById('service');
-  const messageField  = document.getElementById('message');
-
   if (serviceSelect) {
     serviceSelect.addEventListener('change', () => {
       renderPricePanel(serviceSelect.value, currentLang);
-
-      if (messageField) {
-        const tpl = (MESSAGE_TEMPLATES[currentLang] || MESSAGE_TEMPLATES.sv)[serviceSelect.value];
-        if (tpl && messageField.value === '') {
-          messageField.value = tpl;
-        } else if (!tpl) {
-          messageField.value = '';
-        }
-      }
     });
   }
-
-
-  /* ================================================================
-    7. SPOT COUNTERS
-    — Reads data-spots="N" on each .pricing-card
-    — Injects a live badge showing remaining discounted spots
-    — To update: change data-spots="N" in the HTML (e.g. to 5, 4…)
-    — At 0 the badge turns gray and says "Inga platser kvar"
-  ================================================================ */
-  document.querySelectorAll('.pricing-card[data-spots]').forEach(card => {
-    const total = 6;
-    const remaining = parseInt(card.dataset.spots, 10);
-    if (isNaN(remaining)) return;
-
-    const badge = document.createElement('div');
-    badge.className = 'spots-badge' + (remaining === 0 ? ' spots-badge--full' : remaining <= 2 ? ' spots-badge--low' : '');
-
-    const dots = Array.from({ length: total }, (_, i) => {
-      const dot = document.createElement('span');
-      dot.className = 'spots-dot' + (i < remaining ? ' spots-dot--open' : ' spots-dot--taken');
-      return dot.outerHTML;
-    }).join('');
-
-    const label = document.createElement('span');
-    label.className = 'spots-label';
-    label.setAttribute('data-sv-remaining', remaining);
-
-    function updateSpotLabel(lang) {
-      if (remaining === 0) {
-        label.textContent = lang === 'sv' ? 'Inga rabattplatser kvar' : 'No discounted spots left';
-      } else if (remaining === 1) {
-        label.textContent = lang === 'sv' ? '1 rabattplats kvar' : '1 discounted spot left';
-      } else {
-        label.textContent = lang === 'sv'
-          ? `${remaining} av ${total} rabattplatser kvar`
-          : `${remaining} of ${total} discounted spots left`;
-      }
-    }
-
-    updateSpotLabel(currentLang);
-    badge.innerHTML = dots;
-    badge.appendChild(label);
-
-    const cta = card.querySelector('.pricing-cta');
-    if (cta) {
-      card.insertBefore(badge, cta);
-    } else {
-      card.appendChild(badge);
-    }
-
-    card._updateSpotLabel = updateSpotLabel;
-  });
-
-  const _origApply = applyLanguage;
-  (function patchApply() {
-    const orig = applyLanguage;
-    applyLanguage = function(lang) {
-      orig(lang);
-      document.querySelectorAll('.pricing-card[data-spots]').forEach(card => {
-        if (card._updateSpotLabel) card._updateSpotLabel(lang);
-      });
-    };
-  })();
 
 });
