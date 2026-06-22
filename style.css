@@ -496,7 +496,6 @@ section {
   gap: var(--space-5);
   transition: box-shadow var(--transition), transform var(--transition),
               border-color var(--transition);
-  overflow: hidden;
   cursor: pointer;
 }
 .pricing-card:hover {
