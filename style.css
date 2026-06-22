@@ -496,6 +496,7 @@ section {
   gap: var(--space-5);
   transition: box-shadow var(--transition), transform var(--transition),
               border-color var(--transition);
+  overflow: hidden;
   cursor: pointer;
 }
 .pricing-card:hover {
@@ -847,8 +848,383 @@ section {
 
 
 /* ================================================================
+  8b. HERO ADDITIONS
+================================================================ */
+.hero-deadline {
+  margin-top: var(--space-4);
+  font-size: var(--size-sm);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.btn-whatsapp {
+  background: #25D366;
+}
+.btn-whatsapp:hover {
+  background: #1ebe59;
+  box-shadow: var(--shadow-md);
+}
+
+
+/* ================================================================
+  9b. PROGRESS SECTION
+================================================================ */
+.progress-section {
+  background: var(--color-surface);
+}
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+.progress-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.progress-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.progress-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.progress-card-head h3 {
+  color: var(--color-text);
+  font-size: var(--size-lg);
+}
+
+.progress-icon { font-size: 1.6rem; }
+
+.progress-stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.progress-count {
+  font-size: var(--size-3xl);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+.progress-total {
+  font-size: var(--size-xl);
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+.progress-label {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.progress-bar-wrap {
+  width: 100%;
+  height: 10px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.progress-bar-wrap--sm {
+  height: 6px;
+  margin-top: var(--space-1);
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+  min-width: 0;
+}
+.progress-bar--accent {
+  background: var(--color-accent);
+}
+
+.progress-sub-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.progress-sub-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+}
+.progress-sub-item strong {
+  color: var(--color-primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.progress-sub-item--highlight {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+
+/* ================================================================
+  9c. SERVICES SECTION
+================================================================ */
+.services {
+  background: var(--color-bg);
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+.service-card {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  transition: box-shadow var(--transition), transform var(--transition);
+  overflow: hidden;
+}
+.service-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.service-card--highlight {
+  border-color: var(--color-primary);
+  border-width: 2px;
+}
+
+.service-free-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--size-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-4);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.service-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.service-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: var(--space-1);
+}
+.service-card-head h3 {
+  color: var(--color-text);
+  font-size: var(--size-xl);
+}
+.service-card-note {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.service-details {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+}
+.service-details li {
+  font-size: var(--size-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+  padding-left: var(--space-1);
+}
+.service-detail--note {
+  color: var(--color-primary) !important;
+  font-weight: 500;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3) !important;
+  margin-top: var(--space-1);
+}
+
+
+/* ================================================================
+  9d. JOURNEY SECTION
+================================================================ */
+.journey {
+  background: var(--color-primary-light);
+}
+
+.journey-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+
+.journey-card {
+  background: var(--color-surface);
+  border: 1px solid rgba(30,107,69,0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.journey-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.journey-card-head h3 {
+  color: var(--color-primary);
+  font-size: var(--size-base);
+  font-weight: 700;
+}
+.journey-icon { font-size: 1.4rem; }
+
+.journey-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--space-4);
+}
+.journey-list li {
+  font-size: var(--size-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.journey-period {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-6);
+  max-width: 600px;
+  margin-inline: auto;
+}
+.journey-period-icon { font-size: 1.3rem; flex-shrink: 0; }
+.journey-period p {
+  font-size: var(--size-sm);
+  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+  line-height: 1.4;
+}
+
+
+/* ================================================================
+  9e. CONTACT (simplified)
+================================================================ */
+.contact-inner-simple {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  align-items: center;
+  text-align: center;
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+.contact-text h2 { margin-bottom: var(--space-3); color: var(--color-text); }
+.contact-text p  { max-width: 440px; margin-inline: auto; }
+
+.contact-note {
+  margin-top: var(--space-4);
+  font-size: var(--size-sm);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.contact-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.btn-contact {
+  font-size: var(--size-base);
+  padding: var(--space-4) var(--space-8);
+  min-width: 200px;
+  justify-content: center;
+}
+
+.contact-email {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+  align-items: center;
+}
+.contact-email a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+
+/* ================================================================
+  10b. FOOTER ADDITIONS
+================================================================ */
+.footer-links {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--size-xs);
+  color: rgba(255,255,255,0.4);
+}
+.footer-social-link {
+  font-size: var(--size-xs);
+  color: rgba(255,255,255,0.6);
+  transition: color var(--transition);
+}
+.footer-social-link:hover { color: #fff; }
+
+.footer-deadline {
+  font-size: var(--size-xs);
+  color: rgba(255,255,255,0.5);
+  margin-top: var(--space-2);
+}
+
+
+/* ================================================================
   11. RESPONSIVE
 ================================================================ */
+
+@media (min-width: 600px) {
+  .progress-grid    { grid-template-columns: repeat(2, 1fr); }
+  .services-grid    { grid-template-columns: repeat(2, 1fr); }
+  .journey-grid     { grid-template-columns: repeat(2, 1fr); }
+}
 
 @media (min-width: 768px) {
   h1 { font-size: var(--size-4xl); }
@@ -869,13 +1245,6 @@ section {
     height: 280px;
     max-width: 280px;
   }
-
-  .contact-inner {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-  .contact-intro { flex: 1; }
-  .contact-form  { flex: 1.4; }
 }
 
 @media (min-width: 1024px) {
@@ -887,4 +1256,8 @@ section {
   .hero-cta  { justify-content: flex-start; }
   .hero-text { flex: 1; }
   .hero-image { max-width: 340px; }
+
+  .progress-grid { grid-template-columns: repeat(3, 1fr); }
+  .services-grid { grid-template-columns: repeat(3, 1fr); }
+  .journey-grid  { grid-template-columns: repeat(3, 1fr); }
 }
