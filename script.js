@@ -3,109 +3,10 @@
 
   1. Language toggle (SV ↔ EN) with localStorage persistence
   2. Mobile navigation menu
-  3. Contact form submission (Formspree via fetch, no page reload)
-  4. Auto-fill current year in footer
-  5. Pricing CTA → pre-select service dropdown
-  6. Dynamic contact price panel (updates when service is selected)
-  7. Pricing card selection highlight
+  3. Auto-fill current year in footer
 ================================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-
-  /* ================================================================
-    6. DYNAMIC CONTACT PRICE PANEL
-    — Defined first so applyLanguage() can call it below.
-  ================================================================ */
-  const SERVICE_PRICES = {
-    '': {
-      title: { sv: 'Snabbreferens',        en: 'Quick reference' },
-      rows: [
-        { sv: 'Massage (60 min)',           en: 'Massage (60 min)',          price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Kostcoach',                  en: 'Nutrition Coach',           price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Personlig Träning',          en: 'Personal Training',         price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Samtal & Coaching',          en: 'Talk & Coaching',           price: { sv: 'Gratis', en: 'Free' } },
-      ],
-      note: { sv: 'Gratis under studietiden', en: 'Free during studies' },
-      link: { sv: 'Se alla tjänster ↑', en: 'See all services ↑' },
-    },
-    massage: {
-      title: { sv: 'Klassisk Massage',      en: 'Classic Massage' },
-      rows: [
-        { sv: 'Express (15 min)',            en: 'Express (15 min)',          price: { sv: 'Gratis', en: 'Free' } },
-        { sv: '30 min',                      en: '30 min',                    price: { sv: 'Gratis', en: 'Free' } },
-        { sv: '60 min',                      en: '60 min',                    price: { sv: 'Gratis', en: 'Free' } },
-        { sv: '90 min (rekommenderad)',      en: '90 min (recommended)',      price: { sv: 'Gratis', en: 'Free' } },
-      ],
-      link: { sv: 'Se alla tjänster ↑', en: 'See all services ↑' },
-    },
-    diet: {
-      title: { sv: 'Kostcoach',             en: 'Nutrition Coach' },
-      rows: [
-        { sv: 'Kostanalys',                  en: 'Nutrition analysis',        price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Konsultation + analys',       en: 'Consultation + analysis',   price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Detektivanalys (2 v.)',        en: 'Deep analysis (2 wks)',     price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Personlig måltidsplan',       en: 'Personal meal plan',        price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Uppföljning (30 min)',        en: 'Follow-up (30 min)',        price: { sv: 'Gratis', en: 'Free' } },
-      ],
-      link: { sv: 'Se alla tjänster ↑', en: 'See all services ↑' },
-    },
-    pt: {
-      title: { sv: 'Personlig Träning',     en: 'Personal Training' },
-      rows: [
-        { sv: 'Fokussession (60 min)',        en: 'Focus session (60 min)',    price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Bedömning + Månadsplan',      en: 'Assessment + Monthly plan', price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Startpaket',                  en: 'Starter pack',              price: { sv: 'Gratis', en: 'Free' } },
-        { sv: '5 sessioner',                 en: '5 sessions',                price: { sv: 'Gratis', en: 'Free' } },
-        { sv: '10 sessioner',                en: '10 sessions',               price: { sv: 'Gratis', en: 'Free' } },
-      ],
-      link: { sv: 'Se alla tjänster ↑', en: 'See all services ↑' },
-    },
-    mi: {
-      title: { sv: 'Samtal & Coaching',     en: 'Talk & Coaching' },
-      rows: [
-        { sv: 'Online (60 min)',             en: 'Online (60 min)',            price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Walk & talk (60 min)',        en: 'Walk & talk (60 min)',       price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'På plats (60 min)',           en: 'In person (60 min)',         price: { sv: 'Gratis', en: 'Free' } },
-        { sv: 'Uppföljning (45 min)',        en: 'Follow-up (45 min)',         price: { sv: 'Gratis', en: 'Free' } },
-      ],
-      note: { sv: 'Inte terapi eller psykologisk behandling', en: 'Not therapy or psychological treatment' },
-      link: { sv: 'Se alla tjänster ↑', en: 'See all services ↑' },
-    },
-  };
-
-  function renderPricePanel(serviceKey, lang) {
-    const labelEl = document.getElementById('contactPricesLabel');
-    const listEl  = document.getElementById('contactPricesList');
-    const noteEl  = document.getElementById('contactPricesNote');
-    const linkEl  = document.getElementById('contactPricesLink');
-    if (!labelEl || !listEl) return;
-
-    const L    = lang || 'sv';
-    const data = SERVICE_PRICES[serviceKey] || SERVICE_PRICES[''];
-
-    labelEl.textContent = data.title[L];
-
-    listEl.innerHTML = data.rows.map(row => {
-      const name  = row[L] || (L === 'sv' ? row.sv : row.en);
-      const price = typeof row.price === 'string' ? row.price : row.price[L];
-      return `<li><span>${name}</span><span>${price}</span></li>`;
-    }).join('');
-
-    if (noteEl) {
-      if (data.note) {
-        noteEl.textContent = typeof data.note === 'string' ? data.note : data.note[L];
-        noteEl.hidden = false;
-      } else {
-        noteEl.hidden = true;
-      }
-    }
-
-    if (linkEl) {
-      linkEl.textContent = data.link ? data.link[L] : (L === 'sv' ? 'Alla priser ↑' : 'All prices ↑');
-      linkEl.href        = '#pricing';
-    }
-  }
-
 
   /* ================================================================
     1. LANGUAGE TOGGLE
@@ -118,19 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('lang', lang);
 
     document.querySelectorAll('[data-sv][data-en]').forEach(el => {
-      if (el.id !== 'formSuccess' && el.id !== 'formError') {
-        el.textContent = lang === 'sv' ? el.dataset.sv : el.dataset.en;
-      }
-    });
-
-    document.querySelectorAll('[data-placeholder-sv][data-placeholder-en]').forEach(el => {
-      el.placeholder = lang === 'sv'
-        ? el.getAttribute('data-placeholder-sv')
-        : el.getAttribute('data-placeholder-en');
-    });
-
-    document.querySelectorAll('select option[data-sv][data-en]').forEach(opt => {
-      opt.textContent = lang === 'sv' ? opt.dataset.sv : opt.dataset.en;
+      el.textContent = lang === 'sv' ? el.dataset.sv : el.dataset.en;
     });
 
     if (langToggleBtn) {
@@ -138,9 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.documentElement.lang = lang;
-
-    const svcSelect = document.getElementById('service');
-    renderPricePanel(svcSelect ? svcSelect.value : '', lang);
   }
 
   if (langToggleBtn) {
@@ -174,102 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   /* ================================================================
-    3. CONTACT FORM — FORMSPREE SUBMISSION
-  ================================================================ */
-  const contactForm = document.getElementById('contactForm');
-  const formSuccess = document.getElementById('formSuccess');
-  const formError   = document.getElementById('formError');
-
-  if (contactForm) {
-    contactForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const submitBtn = contactForm.querySelector('[type="submit"]');
-      if (submitBtn) submitBtn.disabled = true;
-
-      if (formSuccess) formSuccess.hidden = true;
-      if (formError)   formError.hidden   = true;
-
-      try {
-        const response = await fetch(contactForm.action, {
-          method:  'POST',
-          body:    new FormData(contactForm),
-          headers: { 'Accept': 'application/json' }
-        });
-
-        if (response.ok) {
-          if (formSuccess) {
-            formSuccess.textContent = currentLang === 'sv'
-              ? formSuccess.dataset.sv
-              : formSuccess.dataset.en;
-            formSuccess.hidden = false;
-          }
-          contactForm.reset();
-          renderPricePanel('', currentLang);
-        } else {
-          throw new Error('Server error');
-        }
-      } catch {
-        if (formError) {
-          formError.textContent = currentLang === 'sv'
-            ? formError.dataset.sv
-            : formError.dataset.en;
-          formError.hidden = false;
-        }
-      } finally {
-        if (submitBtn) submitBtn.disabled = false;
-      }
-    });
-  }
-
-
-  /* ================================================================
-    4. FOOTER YEAR
+    3. FOOTER YEAR
   ================================================================ */
   const yearSpan = document.getElementById('year');
   if (yearSpan) {
     yearSpan.textContent = new Date().getFullYear();
   }
-
-
-  /* ================================================================
-    5. PRICING CTA → PRE-SELECT SERVICE DROPDOWN + UPDATE PANEL
-  ================================================================ */
-  document.querySelectorAll('[data-service]').forEach(link => {
-    link.addEventListener('click', () => {
-      const select = document.getElementById('service');
-      if (select && link.dataset.service) {
-        select.value = link.dataset.service;
-        renderPricePanel(link.dataset.service, currentLang);
-      }
-    });
-  });
-
-  const serviceSelect = document.getElementById('service');
-  if (serviceSelect) {
-    serviceSelect.addEventListener('change', () => {
-      renderPricePanel(serviceSelect.value, currentLang);
-    });
-  }
-
-
-  /* ================================================================
-    7. PRICING CARD SELECTION
-  ================================================================ */
-  document.querySelectorAll('.pricing-card').forEach(card => {
-    card.addEventListener('click', () => {
-      document.querySelectorAll('.pricing-card').forEach(c => c.classList.remove('pricing-card--selected'));
-      card.classList.add('pricing-card--selected');
-
-      const cta = card.querySelector('[data-service]');
-      if (cta && cta.dataset.service) {
-        const select = document.getElementById('service');
-        if (select) {
-          select.value = cta.dataset.service;
-          renderPricePanel(cta.dataset.service, currentLang);
-        }
-      }
-    });
-  });
 
 });
