@@ -7,6 +7,7 @@
   4. Auto-fill current year in footer
   5. Pricing CTA → pre-select service dropdown
   6. Dynamic contact price panel (updates when service is selected)
+  7. Pricing card selection highlight
 ================================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,8 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ================================================================
     6. DYNAMIC CONTACT PRICE PANEL
     — Defined first so applyLanguage() can call it below.
-    — renderPricePanel(serviceKey, lang) rebuilds the list and note
-      in the contact sidebar whenever the selected service changes.
   ================================================================ */
   const SERVICE_PRICES = {
     '': {
@@ -111,9 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
     1. LANGUAGE TOGGLE
-    — Reads data-sv / data-en attributes on elements
-    — Persists choice in localStorage so it survives page refresh
-    — Re-renders the price panel so it stays in sync
   ================================================================ */
   const langToggleBtn = document.getElementById('langToggle');
   let currentLang = localStorage.getItem('lang') || 'sv';
@@ -159,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
     2. MOBILE NAVIGATION MENU
-    — Toggles the .open class on the nav links list
   ================================================================ */
   const hamburger = document.getElementById('hamburger');
   const navLinks  = document.getElementById('navLinks');
@@ -181,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
     3. CONTACT FORM — FORMSPREE SUBMISSION
-    — Submits via fetch so the user stays on the page
   ================================================================ */
   const contactForm = document.getElementById('contactForm');
   const formSuccess = document.getElementById('formSuccess');
@@ -232,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
     4. FOOTER YEAR
-    — Keeps the copyright year current automatically
   ================================================================ */
   const yearSpan = document.getElementById('year');
   if (yearSpan) {
@@ -242,8 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
     5. PRICING CTA → PRE-SELECT SERVICE DROPDOWN + UPDATE PANEL
-    — Any link with data-service="X" pre-selects the dropdown and
-      immediately updates the price panel to match.
   ================================================================ */
   document.querySelectorAll('[data-service]').forEach(link => {
     link.addEventListener('click', () => {
@@ -255,7 +246,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Service dropdown → update price panel live */
   const serviceSelect = document.getElementById('service');
   if (serviceSelect) {
     serviceSelect.addEventListener('change', () => {
@@ -266,8 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ================================================================
     7. PRICING CARD SELECTION
-    — Clicking anywhere on a card highlights it and pre-selects
-      the matching service in the contact form dropdown.
   ================================================================ */
   document.querySelectorAll('.pricing-card').forEach(card => {
     card.addEventListener('click', () => {
