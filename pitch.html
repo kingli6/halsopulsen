@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>GroupFinder — Pitch</title>
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --green:        #1E6B45;
+        --green-light:  #E8F5EE;
+        --green-dark:   #14472E;
+        --accent:       #4CAF7D;
+        --bg:           #F9F8F5;
+        --surface:      #FFFFFF;
+        --border:       #E5E7EB;
+        --text:         #1C1C1C;
+        --muted:        #6B7280;
+        --font:         'Inter', system-ui, sans-serif;
+        --radius:       12px;
+        --radius-full:  9999px;
+        --shadow:       0 4px 20px rgba(0,0,0,0.08);
+      }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        font-family: var(--font);
+        font-size: 1rem;
+        line-height: 1.65;
+        color: var(--text);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      img { display: block; max-width: 100%; }
+      a   { color: inherit; text-decoration: none; }
+      ul  { list-style: none; }
+
+      .container {
+        width: 100%;
+        max-width: 860px;
+        margin-inline: auto;
+        padding-inline: 1.25rem;
+      }
+
+      /* ── TOP BAR ── */
+      .topbar {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .topbar-logo {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--green);
+        letter-spacing: -0.02em;
+      }
+      .topbar-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-full);
+        padding: 0.2rem 0.75rem;
+      }
+      .topbar-back {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-full);
+        padding: 0.3rem 0.9rem;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      .topbar-back:hover { color: var(--green); border-color: var(--green); }
+
+      /* ── COVER ── */
+      .cover {
+        background: linear-gradient(150deg, var(--green-dark) 0%, var(--green) 100%);
+        color: #fff;
+        padding: 5rem 1.25rem 4rem;
+        text-align: center;
+      }
+      .cover-label {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.7);
+        background: rgba(255,255,255,0.12);
+        border-radius: var(--radius-full);
+        padding: 0.25rem 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .cover h1 {
+        font-size: clamp(2rem, 6vw, 3.5rem);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        margin-bottom: 1.25rem;
+        color: #fff;
+      }
+      .cover-sub {
+        font-size: 1.125rem;
+        color: rgba(255,255,255,0.8);
+        max-width: 540px;
+        margin-inline: auto;
+        line-height: 1.6;
+      }
+
+      /* ── SECTION WRAPPER ── */
+      .pitch-section {
+        padding-block: 4rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .pitch-section:last-of-type { border-bottom: none; }
+
+      .pitch-section--alt {
+        background: var(--surface);
+      }
+
+      .section-eyebrow {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--green);
+        margin-bottom: 0.75rem;
+      }
+      .section-heading {
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        line-height: 1.2;
+        color: var(--text);
+        margin-bottom: 1.25rem;
+      }
+      .section-body {
+        color: var(--muted);
+        line-height: 1.75;
+        max-width: 640px;
+      }
+      .section-body + .section-body { margin-top: 1rem; }
+
+      /* ── STAT CARDS ── */
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
+        margin-top: 2.5rem;
+      }
+      .stat-card {
+        background: var(--green-light);
+        border: 1px solid rgba(30,107,69,0.15);
+        border-radius: var(--radius);
+        padding: 1.25rem 1rem;
+        text-align: center;
+      }
+      .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--green);
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 0.4rem;
+      }
+      .stat-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      /* ── FLOW DIAGRAM ── */
+      .flow {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-top: 2.5rem;
+      }
+      .flow-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.25rem;
+        padding: 1.25rem 0;
+        position: relative;
+      }
+      .flow-step:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 1.35rem;
+        top: calc(1.25rem + 2.7rem);
+        bottom: 0;
+        width: 2px;
+        background: var(--border);
+      }
+      .flow-dot {
+        flex-shrink: 0;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        background: var(--green);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+      }
+      .flow-content h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+      }
+      .flow-content p {
+        font-size: 0.875rem;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      /* ── BENEFIT CARDS ── */
+      .benefit-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-top: 2.5rem;
+      }
+      @media (min-width: 600px) {
+        .benefit-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      .benefit-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+      }
+      .benefit-card-icon {
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+      }
+      .benefit-card h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.4rem;
+      }
+      .benefit-card p {
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      /* ── SAUCE ITEMS ── */
+      .sauce-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-top: 2.5rem;
+      }
+      .sauce-item {
+        display: flex;
+        gap: 1.25rem;
+        align-items: flex-start;
+      }
+      .sauce-icon {
+        flex-shrink: 0;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: var(--radius);
+        background: var(--green-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+      }
+      .sauce-item h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+      }
+      .sauce-item p {
+        font-size: 0.875rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .sauce-item cite {
+        display: block;
+        margin-top: 0.4rem;
+        font-size: 0.75rem;
+        font-style: italic;
+        color: rgba(107,114,128,0.7);
+      }
+
+      /* ── ASK SECTION ── */
+      .ask-box {
+        background: linear-gradient(135deg, var(--green-dark), var(--green));
+        border-radius: var(--radius);
+        padding: 2.5rem 2rem;
+        color: #fff;
+        text-align: center;
+        margin-top: 0;
+      }
+      .ask-box h2 {
+        font-size: clamp(1.4rem, 4vw, 2rem);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: #fff;
+        margin-bottom: 1rem;
+      }
+      .ask-box p {
+        color: rgba(255,255,255,0.8);
+        max-width: 500px;
+        margin-inline: auto;
+        margin-bottom: 1.75rem;
+        font-size: 0.95rem;
+      }
+      .ask-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+      }
+      .ask-item {
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: var(--radius-full);
+        padding: 0.4rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #fff;
+        letter-spacing: 0.02em;
+      }
+      .ask-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #fff;
+        color: var(--green);
+        font-weight: 700;
+        font-size: 0.95rem;
+        border-radius: var(--radius-full);
+        padding: 0.85rem 2rem;
+        transition: opacity 0.15s, transform 0.15s;
+      }
+      .ask-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+      /* ── FOOTER ── */
+      .pitch-footer {
+        background: var(--text);
+        color: rgba(255,255,255,0.4);
+        text-align: center;
+        padding: 2rem 1.25rem;
+        font-size: 0.75rem;
+      }
+      .pitch-footer a {
+        color: rgba(255,255,255,0.6);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <span class="topbar-logo">HälsoPulsen</span>
+      <span class="topbar-badge">Investerarpitch · Konfidentiellt</span>
+      <a href="/" class="topbar-back">← Till sajten</a>
+    </div>
+
+    <!-- COVER -->
+    <div class="cover">
+      <span class="cover-label">Konceptpitch · BizMaker 2026</span>
+      <h1>GroupFinder</h1>
+      <p class="cover-sub">
+        En plattform som gör kvalitativ hälsocoaching tre till fem gånger billigare —
+        genom att fylla grupper istället för att boka enstaka sessioner.
+      </p>
+    </div>
+
+
+    <!-- 1. PROBLEM -->
+    <section class="pitch-section">
+      <div class="container">
+        <p class="section-eyebrow">01 · Problemet</p>
+        <h2 class="section-heading">Hälsocoaching är för dyrt och för ensamt.</h2>
+        <p class="section-body">
+          En session med personlig tränare kostar 400–900 kr i Sverige. De flesta råd om träning,
+          kost och välmående är avsedda för individer — och priset speglar det. Resultatet:
+          de som behöver det mest har inte råd, och de som har råd slutar ändå efter ett par veckor
+          för att det inte finns någon som håller dem ansvariga.
+        </p>
+        <p class="section-body">
+          Coaches och PT:s på sin sida kämpar med att fylla sin kalender,
+          tjänar ojämnt och når bara en handfull människor per dag.
+        </p>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-number">3×</div>
+            <div class="stat-label">Mer sannolikt att fortsätta träna i grupp jämfört med ensam</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">78%</div>
+            <div class="stat-label">Av svenskar uppger att priset är den viktigaste barriären mot PT</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">60%</div>
+            <div class="stat-label">Av frilanscoacher tjänar under 20 000 kr/mån trots full kalender</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 2. VISION -->
+    <section class="pitch-section pitch-section--alt">
+      <div class="container">
+        <p class="section-eyebrow">02 · Visionen</p>
+        <h2 class="section-heading">Vad om coaching fungerade som Spotify — fast för rörelse?</h2>
+        <p class="section-body">
+          GroupFinder är en plattform där hälsocoacher skapar gruppaktiviteter —
+          utomhuspass, online-föreläsningar, kostworkshops, promenadsamtal — och
+          klienter hittar och bokar platser i dessa grupper med några klick.
+        </p>
+        <p class="section-body">
+          Coachen fyller fem platser istället för en. Klienten betalar en femtedel.
+          Gruppen håller varandra ansvariga. Alla vinner.
+        </p>
+
+        <div class="benefit-grid">
+          <div class="benefit-card">
+            <div class="benefit-card-icon">👩‍🏫</div>
+            <h3>För coachen</h3>
+            <p>Stabil, förutsägbar inkomst. Färre säljtimmar. Fler klienter nådda per timme.</p>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-card-icon">🧑‍🤝‍🧑</div>
+            <h3>För klienten</h3>
+            <p>Professionell coaching till en bråkdel av priset — plus ett inbyggt socialt nätverk.</p>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-card-icon">🏙️</div>
+            <h3>För samhället</h3>
+            <p>Mer rörelse, bättre kost, starkare gemenskap — särskilt i mindre städer som Övik.</p>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-card-icon">📈</div>
+            <h3>För plattformen</h3>
+            <p>Transaktionsbaserad modell: 15 % av varje bokad session. Inga månadsavgifter för coaches i early access.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 3. HOW IT WORKS -->
+    <section class="pitch-section">
+      <div class="container">
+        <p class="section-eyebrow">03 · Så fungerar det</p>
+        <h2 class="section-heading">Tre steg. En loop.</h2>
+
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-dot">1</div>
+            <div class="flow-content">
+              <h3>Coachen skapar ett grupppass</h3>
+              <p>Titel, datum, plats (eller online), max antal platser, pris per person. Klart på tre minuter.</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">2</div>
+            <div class="flow-content">
+              <h3>Plattformen matchar och sprider</h3>
+              <p>
+                Klienter i närheten ser passet i flödet, filtrerat på kategori (träning, kost, samtal),
+                tid och format. Bokning sker direkt i appen — betalning via Swish eller kort.
+              </p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">3</div>
+            <div class="flow-content">
+              <h3>Gruppen samlas — loopen börjar</h3>
+              <p>
+                Deltagare som gillar coachen återbokar, bjuder in vänner och lämnar recensioner.
+                Coachen ser beläggning i realtid och vet när nästa pass är värt att lägga in.
+              </p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">✓</div>
+            <div class="flow-content">
+              <h3>Nätverkseffekten kickar in</h3>
+              <p>
+                Fler coaches → fler pass → fler klienter → fler omdömen → fler coaches.
+                Lokalt nätverk i varje stad skapar en vallgrav mot nationella aktörer.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 4. SECRET SAUCE -->
+    <section class="pitch-section pitch-section--alt">
+      <div class="container">
+        <p class="section-eyebrow">04 · Hemliga ingrediensen</p>
+        <h2 class="section-heading">Det finns vetenskap bakom detta — och globala bevis.</h2>
+
+        <div class="sauce-list">
+          <div class="sauce-item">
+            <div class="sauce-icon">🧠</div>
+            <div>
+              <h3>Social facilitering gör dig starkare</h3>
+              <p>
+                Forskning visar att vi presterar 15–20 % bättre när andra ser oss — ett fenomen
+                som kallas social facilitering. Gruppen är alltså inte bara trevligare; den är
+                biologiskt överlägsen.
+              </p>
+              <cite>Källa: Triplett, 1898; Worringham &amp; Messick, 1983</cite>
+            </div>
+          </div>
+
+          <div class="sauce-item">
+            <div class="sauce-icon">🤝</div>
+            <div>
+              <h3>Ansvarsskyldighet är nyckeln till att hålla ut</h3>
+              <p>
+                American Society of Training &amp; Development fann att sannolikheten att uppnå
+                ett mål stiger till 95 % om du har ett specifikt åtagande gentemot en annan person.
+                Det är vad en grupp ger — varje gång.
+              </p>
+              <cite>Källa: ASTD, 2010</cite>
+            </div>
+          </div>
+
+          <div class="sauce-item">
+            <div class="sauce-icon">🌍</div>
+            <div>
+              <h3>Konceptet fungerar — globalt</h3>
+              <p>
+                ClassPass (USA) nådde 10 miljoner bokningar på 3 år med en liknande loop.
+                Mindbody omsätter 500 MUSD/år enbart på grupp-bokningssystem.
+                Skillnaden: de riktar sig mot studioägare. Vi riktar oss mot
+                enskilda coaches — ett marknadssegment som är 10× större och nästan orört.
+              </p>
+            </div>
+          </div>
+
+          <div class="sauce-item">
+            <div class="sauce-icon">📍</div>
+            <div>
+              <h3>Lokalt first — skalbart sedan</h3>
+              <p>
+                Vi börjar i Örnsköldsvik. Liten stad, hög gemenskap, kort till beslutsfattare.
+                Varje stad vi adderar är ett nytt slutet ekosystem med sina egna coaches och klienter.
+                Stadsmodellen skalar utan att kärnan ruttnar.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 5. ASK -->
+    <section class="pitch-section">
+      <div class="container">
+        <p class="section-eyebrow">05 · Vad vi söker</p>
+        <h2 class="section-heading">Vi är redo att bygga MVP.</h2>
+        <p class="section-body" style="margin-bottom: 2.5rem;">
+          HälsoPulsen är proof-of-concept: en enskild coach som testar prissättning, köpbeteende
+          och service-mix i en liten stad. Nästa steg är en enkel bokning-och-matchnings-MVP
+          för att validera att grupper faktiskt fylls. För det söker vi rätt partners.
+        </p>
+
+        <div class="ask-box">
+          <h2>Vi letar efter</h2>
+          <p>En eller flera partners som vill vara med från dag ett — och forma hur produkten ser ut.</p>
+          <div class="ask-items">
+            <span class="ask-item">💰 Seed-investering (250–500 k)</span>
+            <span class="ask-item">🛠️ Teknisk medgrundare / dev-partner</span>
+            <span class="ask-item">🤝 Affärsutvecklings-stöd (BizMaker)</span>
+            <span class="ask-item">🏋️ Pilotcoaches i Övik</span>
+          </div>
+          <a href="mailto:halsopulsen@gmail.com" class="ask-cta">
+            Ta kontakt → halsopulsen@gmail.com
+          </a>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- FOOTER -->
+    <footer class="pitch-footer">
+      <p>© 2026 HälsoPulsen · <a href="/">halsopulsen.se</a> · Konfidentiellt — ej för vidaredistribution</p>
+      <p style="margin-top: 0.5rem;">Frågor eller intresse? Hör av dig direkt: <a href="mailto:halsopulsen@gmail.com">halsopulsen@gmail.com</a></p>
+    </footer>
+
+  </body>
+</html>
