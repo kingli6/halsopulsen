@@ -1,0 +1,1806 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Gratis träningsverktyg – intervall-timer med ljud, set/rep-tracker och Starting Strength 8-veckors program." />
+  <meta name="robots" content="noindex, follow" />
+  <title>Träningsverktyg – Timer, Tracker & Starting Strength | HälsoPulsen</title>
+  <meta property="og:title" content="Träningsverktyg – HälsoPulsen" />
+  <meta property="og:description" content="Intervall-timer med ljud, set/rep-tracker och Starting Strength 8-veckors program — gratis." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── PAGE HERO ── */
+    .workout-hero {
+      background: linear-gradient(160deg, var(--color-primary-light) 0%, var(--color-bg) 60%);
+      padding: var(--space-16) 0 var(--space-10);
+      text-align: center;
+    }
+    .workout-hero h1 { color: var(--color-text); margin-bottom: var(--space-3); }
+    .workout-hero p  { font-size: var(--size-lg); max-width: 480px; margin: 0 auto; }
+
+    /* ── SECTION TABS ── */
+    .tool-tabs {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: var(--space-8);
+    }
+    .tool-tab {
+      padding: var(--space-2) var(--space-5);
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--color-border);
+      font-size: var(--size-sm);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+      background: var(--color-surface);
+    }
+    .tool-tab:hover, .tool-tab.active {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+
+    .tool-section { display: none; }
+    .tool-section.active { display: block; }
+
+    /* ── WIDGET CARD ── */
+    .widget-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+    }
+    .widget-title {
+      font-size: var(--size-sm);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-5);
+    }
+
+    /* ── TIMER – BUILDER ── */
+    .timer-sequence { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+
+    .block-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3) var(--space-4);
+      position: relative;
+    }
+    .block-row.work { border-left: 4px solid var(--color-primary); }
+    .block-row.rest { border-left: 4px solid var(--color-accent); }
+
+    .block-label-input {
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-weight: 600;
+      font-size: var(--size-sm);
+      color: var(--color-text);
+      width: 80px;
+      padding: 0;
+    }
+    .block-label-input:focus { outline: 1px solid var(--color-border); border-radius: 4px; }
+
+    .block-dur-ctrl {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-left: auto;
+    }
+    .block-dur-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+      background: var(--color-border);
+      font-size: var(--size-sm);
+      font-weight: 700;
+      transition: background var(--transition);
+    }
+    .block-dur-btn:hover { background: var(--color-primary); color: #fff; }
+
+    .block-dur-display {
+      font-size: var(--size-base);
+      font-weight: 700;
+      color: var(--color-primary);
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .block-remove {
+      color: var(--color-text-muted);
+      font-size: var(--size-lg);
+      line-height: 1;
+      padding: 0 var(--space-2);
+      transition: color var(--transition);
+    }
+    .block-remove:hover { color: #dc2626; }
+
+    .timer-add-row {
+      display: flex;
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+    .btn-add-work { background: var(--color-primary-light); color: var(--color-primary); border: 1.5px solid var(--color-primary); font-weight: 600; font-size: var(--size-sm); padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); transition: all var(--transition); }
+    .btn-add-rest { background: rgba(76,175,125,0.1); color: var(--color-accent); border: 1.5px solid var(--color-accent); font-weight: 600; font-size: var(--size-sm); padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); transition: all var(--transition); }
+    .btn-add-work:hover { background: var(--color-primary); color: #fff; }
+    .btn-add-rest:hover { background: var(--color-accent); color: #fff; }
+
+    .timer-start-wrap { margin-top: var(--space-5); }
+    .btn-timer-start  { width: 100%; font-size: var(--size-base); }
+
+    .timer-settings-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-5);
+      align-items: flex-start;
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--color-border);
+      margin-top: var(--space-2);
+    }
+    .timer-settings-group { display: flex; flex-direction: column; gap: var(--space-2); }
+    .timer-settings-label { font-size: var(--size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+
+    .rounds-ctrl {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .rounds-btn {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      font-size: var(--size-lg);
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .rounds-btn:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .rounds-val { font-size: var(--size-xl); font-weight: 700; color: var(--color-primary); min-width: 30px; text-align: center; }
+
+    .signal-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+    .signal-select {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--color-border);
+      font: inherit;
+      font-size: var(--size-sm);
+      color: var(--color-text);
+      background: var(--color-surface);
+    }
+    .signal-checks { display: flex; flex-direction: column; gap: var(--space-1); }
+    .signal-check-label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--size-sm); color: var(--color-text); cursor: pointer; }
+    .signal-test-btn { font-size: var(--size-xs); padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); border: 1.5px solid var(--color-border); color: var(--color-text-muted); transition: all var(--transition); }
+    .signal-test-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+    /* ── TIMER – RUNNING DISPLAY ── */
+    #timerDisplay {
+      text-align: center;
+    }
+    .timer-run-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-4);
+      font-size: var(--size-sm);
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+    .timer-run-block-name {
+      font-size: var(--size-xl);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-primary);
+      margin-bottom: var(--space-3);
+    }
+    .timer-run-block-name.rest-mode { color: var(--color-accent); }
+
+    .timer-countdown {
+      font-size: 5rem;
+      font-weight: 700;
+      color: var(--color-text);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-4);
+      font-variant-numeric: tabular-nums;
+    }
+    .timer-countdown.warning { color: #dc2626; }
+
+    .timer-run-bar-wrap {
+      width: 100%;
+      height: 12px;
+      background: var(--color-border);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-bottom: var(--space-6);
+    }
+    .timer-run-bar {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: var(--radius-full);
+      transition: width 0.9s linear;
+    }
+    .timer-run-bar.rest-mode { background: var(--color-accent); }
+
+    .timer-run-controls {
+      display: flex;
+      gap: var(--space-3);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .timer-ctrl-btn {
+      padding: var(--space-3) var(--space-6);
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: var(--size-sm);
+      border: 1.5px solid var(--color-border);
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+    }
+    .timer-ctrl-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .timer-ctrl-btn.primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .timer-ctrl-btn.primary:hover { background: #165836; }
+
+    .timer-done-msg {
+      text-align: center;
+      padding: var(--space-8);
+    }
+    .timer-done-msg .done-emoji { font-size: 3rem; margin-bottom: var(--space-4); display: block; }
+    .timer-done-msg h3 { font-size: var(--size-2xl); color: var(--color-primary); margin-bottom: var(--space-6); }
+
+    .empty-blocks-msg {
+      text-align: center;
+      color: var(--color-text-muted);
+      font-size: var(--size-sm);
+      padding: var(--space-4);
+      background: var(--color-bg);
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--color-border);
+    }
+
+    /* ── SET/REP TRACKER ── */
+    .tracker-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+    .tracker-box {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+      text-align: center;
+    }
+    .tracker-box-label { font-size: var(--size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: var(--space-2); }
+    .tracker-val { font-size: 3.5rem; font-weight: 700; color: var(--color-primary); line-height: 1; }
+    .tracker-total { font-size: var(--size-xl); color: var(--color-text-muted); font-weight: 400; }
+
+    .tracker-config-row {
+      display: flex;
+      gap: var(--space-5);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-5);
+      padding: var(--space-4);
+      background: var(--color-bg);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+    }
+    .tracker-config-group { display: flex; flex-direction: column; gap: var(--space-1); }
+    .tracker-config-label { font-size: var(--size-xs); font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .tracker-config-ctrl { display: flex; align-items: center; gap: var(--space-2); }
+    .tracker-cfg-btn {
+      width: 30px; height: 30px;
+      border-radius: var(--radius-sm);
+      background: var(--color-border);
+      font-weight: 700;
+      font-size: var(--size-base);
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition);
+    }
+    .tracker-cfg-btn:hover { background: var(--color-primary); color: #fff; }
+    .tracker-cfg-val { font-size: var(--size-lg); font-weight: 700; color: var(--color-primary); min-width: 28px; text-align: center; }
+
+    .tracker-actions {
+      display: flex;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+    .btn-tracker-done {
+      flex: 1;
+      padding: var(--space-4);
+      background: var(--color-primary);
+      color: #fff;
+      border-radius: var(--radius-md);
+      font-size: var(--size-lg);
+      font-weight: 700;
+      text-align: center;
+      transition: all var(--transition);
+      min-height: 60px;
+    }
+    .btn-tracker-done:hover { background: #165836; box-shadow: var(--shadow-md); }
+    .btn-tracker-done:disabled { background: var(--color-border); color: var(--color-text-muted); cursor: not-allowed; }
+
+    .btn-tracker-undo {
+      padding: var(--space-4) var(--space-5);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: var(--size-sm);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+      min-height: 60px;
+    }
+    .btn-tracker-undo:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+    .btn-tracker-undo:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-tracker-reset-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      margin-top: var(--space-4);
+    }
+    .btn-tracker-reset {
+      padding: var(--space-3) var(--space-5);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-full);
+      font-size: var(--size-xs);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      user-select: none;
+    }
+    .btn-tracker-reset:active { border-color: #dc2626; color: #dc2626; }
+    .reset-hold-bar {
+      position: absolute;
+      left: 0; bottom: 0; top: 0;
+      width: 0%;
+      background: rgba(220,38,38,0.15);
+      transition: none;
+      border-radius: var(--radius-full) 0 0 var(--radius-full);
+    }
+    /* z-index keeps the label text above the hold-progress bar */
+    .reset-label { position: relative; }
+    .reset-hint { font-size: var(--size-xs); color: var(--color-text-muted); font-style: italic; }
+
+    .tracker-complete-banner {
+      text-align: center;
+      padding: var(--space-5);
+      background: var(--color-primary-light);
+      border: 1px solid rgba(30,107,69,0.2);
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      color: var(--color-primary);
+      font-size: var(--size-lg);
+      display: none;
+    }
+
+    /* ── STARTING STRENGTH ── */
+    .ss-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+    .ss-input-group { display: flex; flex-direction: column; gap: var(--space-2); }
+    .ss-input-label {
+      font-size: var(--size-sm);
+      font-weight: 600;
+      color: var(--color-text);
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+    }
+    .ss-input-label small { font-weight: 400; color: var(--color-text-muted); }
+    .ss-input {
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-3) var(--space-4);
+      font: inherit;
+      font-size: var(--size-base);
+      font-weight: 600;
+      color: var(--color-primary);
+      width: 100%;
+    }
+    .ss-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(30,107,69,0.12); }
+
+    .ss-input-unit {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .ss-input-unit .ss-input { padding-right: 3rem; }
+    .ss-input-unit-label {
+      position: absolute;
+      right: var(--space-3);
+      font-size: var(--size-sm);
+      font-weight: 700;
+      color: var(--color-text-muted);
+      pointer-events: none;
+    }
+
+    /* ── STARTING STRENGTH — LANGUAGE TOGGLE ── */
+    .ss-card-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+    .ss-card-header-row .widget-title { margin-bottom: 0; }
+    .ss-lang-toggle-wrap {
+      display: flex;
+      gap: 2px;
+      background: var(--color-border);
+      border-radius: var(--radius-full);
+      padding: 2px;
+      flex-shrink: 0;
+    }
+    .ss-lang-btn {
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: var(--size-xs);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+    }
+    .ss-lang-btn.active { background: var(--color-primary); color: #fff; }
+
+    .ss-1rm-banner {
+      background: var(--color-primary-light);
+      border: 1px solid rgba(30,107,69,0.2);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      margin-bottom: var(--space-5);
+      display: flex;
+      gap: var(--space-3);
+      align-items: flex-start;
+    }
+    .ss-1rm-banner-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+    .ss-1rm-banner-text { font-size: var(--size-sm); color: var(--color-text); line-height: 1.5; }
+    .ss-1rm-banner-text strong { color: var(--color-primary); }
+
+    .ss-start-type {
+      display: flex;
+      gap: var(--space-3);
+      margin-bottom: var(--space-2);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .ss-start-type label { font-size: var(--size-sm); font-weight: 600; color: var(--color-text); }
+    .ss-type-btn {
+      padding: var(--space-2) var(--space-5);
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--color-border);
+      font-size: var(--size-sm);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+    }
+    .ss-type-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .ss-type-hint { font-size: var(--size-xs); color: var(--color-text-muted); margin-bottom: var(--space-5); }
+
+    /* ── SS: page navigation ── */
+    .ss-page-banner {
+      background: linear-gradient(135deg, var(--color-primary) 0%, #1a7a4f 100%);
+      border-radius: var(--radius-md);
+      padding: var(--space-5) var(--space-6);
+      margin-bottom: var(--space-5);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .ss-page-banner-text { flex: 1; }
+    .ss-page-banner-week {
+      font-size: var(--size-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.75;
+      margin-bottom: var(--space-1);
+    }
+    .ss-page-banner-title {
+      font-size: var(--size-lg);
+      font-weight: 700;
+      margin-bottom: var(--space-1);
+    }
+    .ss-page-banner-sub {
+      font-size: var(--size-sm);
+      opacity: 0.85;
+    }
+    .ss-page-dots {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .ss-page-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      transition: background var(--transition);
+    }
+    .ss-page-dot.active { background: #fff; }
+
+    .ss-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
+    }
+    .ss-pag-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-5);
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--color-border);
+      font-size: var(--size-sm);
+      font-weight: 600;
+      color: var(--color-text);
+      background: var(--color-surface);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .ss-pag-btn:hover:not(:disabled) { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .ss-pag-btn:disabled { opacity: 0.35; cursor: default; }
+    .ss-pag-info { font-size: var(--size-sm); font-weight: 600; color: var(--color-text-muted); }
+
+    /* ── SS: session cards grid ── */
+    .ss-sessions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-4);
+    }
+    .ss-session-card {
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--color-surface);
+      display: flex;
+      flex-direction: column;
+    }
+    .ss-session-card-head {
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+    .ss-session-num {
+      font-size: var(--size-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+    }
+    .ss-session-day {
+      font-size: var(--size-xs);
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
+    .ss-session-type-badge {
+      font-size: var(--size-xs);
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+    }
+    .ss-badge-a { background: rgba(30,107,69,0.12); color: var(--color-primary); }
+    .ss-badge-b { background: rgba(76,175,125,0.15); color: #1a7a4f; }
+
+    .ss-card-exercise {
+      border-bottom: 1px solid var(--color-border);
+      padding: var(--space-3) var(--space-4);
+    }
+    .ss-card-exercise:last-child { border-bottom: none; }
+    .ss-card-ex-name {
+      font-size: var(--size-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-2);
+    }
+    .ss-card-sets { display: flex; flex-direction: column; gap: 3px; }
+    .ss-card-set-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: var(--size-xs);
+      color: var(--color-text-muted);
+      padding: 2px 0;
+    }
+    .ss-card-set-row.working {
+      color: var(--color-primary);
+      font-weight: 700;
+      font-size: var(--size-sm);
+      background: rgba(30,107,69,0.06);
+      border-radius: var(--radius-sm);
+      padding: 4px var(--space-2);
+      margin: 2px 0;
+    }
+    .ss-card-set-label { font-weight: 600; }
+    .ss-card-set-weight { font-weight: 700; }
+    .ss-card-set-row.working .ss-card-set-weight { font-size: 1rem; }
+
+    /* ── SS: explanation section ── */
+    .ss-explain-section {
+      margin-top: var(--space-10);
+      padding-top: var(--space-8);
+      border-top: 1px solid var(--color-border);
+    }
+    .ss-explain-title {
+      font-size: var(--size-lg);
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: var(--space-2);
+    }
+    .ss-explain-sub {
+      font-size: var(--size-sm);
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-6);
+    }
+    .ss-explain-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .ss-explain-card {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+    }
+    .ss-explain-card-icon { font-size: 1.5rem; margin-bottom: var(--space-2); }
+    .ss-explain-card-title { font-size: var(--size-sm); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-2); }
+    .ss-explain-card-body { font-size: var(--size-sm); color: var(--color-text-muted); line-height: 1.6; }
+    .ss-explain-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--size-sm);
+      margin-top: var(--space-4);
+    }
+    .ss-explain-table th {
+      background: var(--color-primary);
+      color: #fff;
+      padding: var(--space-3) var(--space-4);
+      text-align: left;
+      font-weight: 700;
+    }
+    .ss-explain-table th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+    .ss-explain-table th:last-child { border-radius: 0 var(--radius-sm) 0 0; }
+    .ss-explain-table td {
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+    .ss-explain-table tr:last-child td { border-bottom: none; }
+    .ss-explain-table tr:nth-child(even) td { background: var(--color-bg); }
+
+    /* ── SS: 5th input (Power Clean) centred on its own row ── */
+    .ss-input-full {
+      grid-column: 1 / -1;
+      max-width: calc(50% - var(--space-2));
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (min-width: 600px) {
+      .timer-countdown { font-size: 7rem; }
+      .tracker-val { font-size: 4.5rem; }
+    }
+    @media (max-width: 700px) {
+      .ss-sessions-grid { grid-template-columns: 1fr; }
+      .ss-explain-grid { grid-template-columns: 1fr; }
+      .ss-input-full { max-width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .ss-inputs { grid-template-columns: 1fr; }
+      .ss-input-full { max-width: 100%; }
+      .tracker-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <header class="nav-wrapper">
+    <nav class="nav container">
+      <a href="/" class="nav-logo">HälsoPulsen</a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="/#services">Tjänster</a></li>
+        <li><a href="/#journey">Min resa</a></li>
+        <li><a href="/#about">Om mig</a></li>
+        <li><a href="/#contact">Kontakt</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <div class="workout-hero">
+    <div class="container">
+      <span class="hero-label">Träningsverktyg</span>
+      <h1>Timer · Tracker · Program</h1>
+      <p>Intervall-timer med ljud, set/rep-tracker och Starting Strength-planering — allt på ett ställe.</p>
+    </div>
+  </div>
+
+  <!-- TOOL TABS -->
+  <section style="background: var(--color-surface); padding: var(--space-8) 0;">
+    <div class="container">
+      <div class="tool-tabs">
+        <button class="tool-tab active" onclick="switchTab('timer', this)">⏱ Intervall-timer</button>
+        <button class="tool-tab" onclick="switchTab('tracker', this)">📊 Set &amp; Rep-tracker</button>
+        <button class="tool-tab" onclick="switchTab('ss', this)">💪 Starting Strength</button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════
+           TIMER
+      ══════════════════════════════════════════════════ -->
+      <div id="tab-timer" class="tool-section active">
+
+        <!-- BUILDER -->
+        <div class="widget-card" id="timerBuilder">
+          <div class="widget-title">Bygg din sekvens</div>
+
+          <div class="timer-sequence" id="timerSequence"></div>
+
+          <div id="emptyMsg" class="empty-blocks-msg" style="display:none;">
+            Lägg till ett block för att börja.
+          </div>
+
+          <div class="timer-add-row">
+            <button class="btn-add-work" onclick="addBlock('work')">+ Arbete</button>
+            <button class="btn-add-rest" onclick="addBlock('rest')">+ Vila</button>
+          </div>
+
+          <div class="timer-settings-row">
+            <!-- Rounds -->
+            <div class="timer-settings-group">
+              <span class="timer-settings-label">Rundor (loopar sekvensen)</span>
+              <div class="rounds-ctrl">
+                <button class="rounds-btn" onclick="changeRounds(-1)">−</button>
+                <span class="rounds-val" id="roundsVal">3</span>
+                <button class="rounds-btn" onclick="changeRounds(1)">+</button>
+              </div>
+            </div>
+
+            <!-- Signal -->
+            <div class="timer-settings-group">
+              <span class="timer-settings-label">Signal</span>
+              <div class="signal-row">
+                <select class="signal-select" id="signalSound">
+                  <option value="beep">🔊 Pip</option>
+                  <option value="double">🔔 Dubbel-pip</option>
+                  <option value="bell">🎵 Klocka</option>
+                </select>
+                <button class="signal-test-btn" onclick="testSound()">Testa</button>
+              </div>
+              <div class="signal-checks">
+                <label class="signal-check-label">
+                  <input type="checkbox" id="sigWork" checked />
+                  Spela när <strong>arbete</strong> slutar
+                </label>
+                <label class="signal-check-label">
+                  <input type="checkbox" id="sigRest" checked />
+                  Spela när <strong>vila</strong> slutar
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="timer-start-wrap">
+            <button class="btn btn-primary btn-timer-start" onclick="startTimer()" id="startTimerBtn">▶ Starta</button>
+          </div>
+        </div>
+
+        <!-- RUNNING DISPLAY -->
+        <div class="widget-card" id="timerDisplay" style="display:none;">
+          <div id="timerRunning">
+            <div class="timer-run-meta">
+              <span id="timerRoundLabel">Runda 1/3</span>
+              <span id="timerBlockLabel">Block 1/2</span>
+            </div>
+            <div class="timer-run-block-name" id="timerBlockName">ARBETE</div>
+            <div class="timer-countdown" id="timerCountdown">0:40</div>
+            <div class="timer-run-bar-wrap">
+              <div class="timer-run-bar" id="timerProgressBar" style="width:0%"></div>
+            </div>
+            <div class="timer-run-controls">
+              <button class="timer-ctrl-btn primary" onclick="pauseResumeTimer()" id="pauseBtn">⏸ Paus</button>
+              <button class="timer-ctrl-btn" onclick="skipBlock()">⏭ Hoppa</button>
+              <button class="timer-ctrl-btn" onclick="resetTimer()">↺ Avbryt</button>
+            </div>
+          </div>
+
+          <div class="timer-done-msg" id="timerDone" style="display:none;">
+            <span class="done-emoji">✅</span>
+            <h3>Klart! Bra jobbat!</h3>
+            <button class="btn btn-primary" onclick="resetTimer()">Börja om</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════════════════════════════════════════
+           SET / REP TRACKER
+      ══════════════════════════════════════════════════ -->
+      <div id="tab-tracker" class="tool-section">
+        <div class="widget-card">
+          <div class="widget-title">Konfigurera</div>
+          <div class="tracker-config-row">
+            <div class="tracker-config-group">
+              <span class="tracker-config-label">Antal set</span>
+              <div class="tracker-config-ctrl">
+                <button class="tracker-cfg-btn" onclick="cfgChange('sets',-1)">−</button>
+                <span class="tracker-cfg-val" id="cfgSets">3</span>
+                <button class="tracker-cfg-btn" onclick="cfgChange('sets',1)">+</button>
+              </div>
+            </div>
+            <div class="tracker-config-group">
+              <span class="tracker-config-label">Reps per set</span>
+              <div class="tracker-config-ctrl">
+                <button class="tracker-cfg-btn" onclick="cfgChange('reps',-1)">−</button>
+                <span class="tracker-cfg-val" id="cfgReps">5</span>
+                <button class="tracker-cfg-btn" onclick="cfgChange('reps',1)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-title">Nuvarande position</div>
+
+          <div class="tracker-grid">
+            <div class="tracker-box">
+              <div class="tracker-box-label">Set</div>
+              <div><span class="tracker-val" id="trSet">1</span><span class="tracker-total" id="trSetTotal">/3</span></div>
+            </div>
+            <div class="tracker-box">
+              <div class="tracker-box-label">Rep</div>
+              <div><span class="tracker-val" id="trRep">1</span><span class="tracker-total" id="trRepTotal">/5</span></div>
+            </div>
+          </div>
+
+          <div class="tracker-complete-banner" id="trackerCompleteBanner">
+            🎉 Alla set klara!
+          </div>
+
+          <div class="tracker-actions">
+            <button class="btn-tracker-done" id="btnTrackerDone" onclick="trackerNext()">
+              Rep klar ✓
+            </button>
+            <button class="btn-tracker-undo" id="btnTrackerUndo" onclick="trackerUndo()" disabled>
+              ↩ Ångra
+            </button>
+          </div>
+
+          <div class="btn-tracker-reset-wrap">
+            <button
+              class="btn-tracker-reset"
+              id="btnReset"
+              onmousedown="startReset()"
+              onmouseup="cancelReset()"
+              onmouseleave="cancelReset()"
+              ontouchstart="startReset(event)"
+              ontouchend="cancelReset()"
+            >
+              <div class="reset-hold-bar" id="resetBar"></div>
+              <span class="reset-label">Håll inne för att nollställa</span>
+            </button>
+            <span class="reset-hint">Håll inne 2 sekunder för att bekräfta</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════
+           STARTING STRENGTH
+      ══════════════════════════════════════════════════ -->
+      <div id="tab-ss" class="tool-section">
+
+        <!-- Input card -->
+        <div class="widget-card">
+          <div class="ss-card-header-row">
+            <div class="widget-title">💪 Starting Strength — Novice Program</div>
+            <div class="ss-lang-toggle-wrap">
+              <button class="ss-lang-btn active" id="ssLangSv" onclick="setSsLang('sv')">SV</button>
+              <button class="ss-lang-btn" id="ssLangEn" onclick="setSsLang('en')">EN</button>
+            </div>
+          </div>
+
+          <!-- How to use banner -->
+          <div class="ss-1rm-banner">
+            <div class="ss-1rm-banner-icon">💡</div>
+            <div class="ss-1rm-banner-text" data-i18n="bannerText"></div>
+          </div>
+
+          <!-- Lift inputs -->
+          <div class="ss-inputs">
+            <div class="ss-input-group">
+              <label class="ss-input-label">🏋️ <span data-i18n="thSquat">Knäböj</span> <small data-i18n="labelFiveRep">— 5-repvikt</small></label>
+              <div class="ss-input-unit">
+                <input type="number" class="ss-input" id="ssSquat" value="50" min="20" step="2.5" oninput="renderSS()" />
+                <span class="ss-input-unit-label">kg</span>
+              </div>
+            </div>
+            <div class="ss-input-group">
+              <label class="ss-input-label">🤲 <span data-i18n="thBench">Bänkpress</span> <small data-i18n="labelFiveRep">— 5-repvikt</small></label>
+              <div class="ss-input-unit">
+                <input type="number" class="ss-input" id="ssBench" value="40" min="20" step="2.5" oninput="renderSS()" />
+                <span class="ss-input-unit-label">kg</span>
+              </div>
+            </div>
+            <div class="ss-input-group">
+              <label class="ss-input-label">🔼 <span data-i18n="thPress">Press</span> <small data-i18n="labelFiveRep">— 5-repvikt</small></label>
+              <div class="ss-input-unit">
+                <input type="number" class="ss-input" id="ssPress" value="30" min="20" step="2.5" oninput="renderSS()" />
+                <span class="ss-input-unit-label">kg</span>
+              </div>
+            </div>
+            <div class="ss-input-group">
+              <label class="ss-input-label">⬆️ <span data-i18n="thDeadlift">Marklyft</span> <small data-i18n="labelFiveRep">— 5-repvikt</small></label>
+              <div class="ss-input-unit">
+                <input type="number" class="ss-input" id="ssDeadlift" value="60" min="20" step="2.5" oninput="renderSS()" />
+                <span class="ss-input-unit-label">kg</span>
+              </div>
+            </div>
+            <div class="ss-input-group ss-input-full">
+              <label class="ss-input-label">⚡ <span data-i18n="thPowerClean">Power Clean</span> <small data-i18n="labelThreeRep">— 3-repvikt</small></label>
+              <div class="ss-input-unit">
+                <input type="number" class="ss-input" id="ssPowerClean" value="40" min="20" step="2.5" oninput="renderSS()" />
+                <span class="ss-input-unit-label">kg</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Start with A or B -->
+          <div class="ss-start-type">
+            <label data-i18n="nextWorkout">Nästa pass:</label>
+            <button class="ss-type-btn active" id="btnTypeA" onclick="setSSType('A')" data-i18n="workoutA">Pass A</button>
+            <button class="ss-type-btn" id="btnTypeB" onclick="setSSType('B')" data-i18n="workoutB">Pass B</button>
+          </div>
+          <p class="ss-type-hint" data-i18n="typeHint"></p>
+        </div>
+
+        <!-- Session cards with pagination -->
+        <div class="widget-card">
+          <!-- Motivational page banner -->
+          <div class="ss-page-banner" id="ssPageBanner">
+            <div class="ss-page-banner-text">
+              <div class="ss-page-banner-week" id="ssPageWeek"></div>
+              <div class="ss-page-banner-title" id="ssPageTitle"></div>
+              <div class="ss-page-banner-sub" id="ssPageSub"></div>
+            </div>
+            <div class="ss-page-dots" id="ssPageDots"></div>
+          </div>
+
+          <!-- 3 session cards -->
+          <div class="ss-sessions-grid" id="ssSessionsGrid"></div>
+
+          <!-- Prev / Next -->
+          <div class="ss-pagination">
+            <button class="ss-pag-btn" id="ssPrev" onclick="ssChangePage(-1)" data-i18n="prevWeek">← Föregående vecka</button>
+            <span class="ss-pag-info" id="ssPagInfo"></span>
+            <button class="ss-pag-btn" id="ssNext" onclick="ssChangePage(1)" data-i18n="nextWeek">Nästa vecka →</button>
+          </div>
+        </div>
+
+        <!-- Explanation section -->
+        <div class="ss-explain-section">
+          <div class="ss-explain-title" data-i18n="explainTitle">Hur Starting Strength fungerar</div>
+          <div class="ss-explain-sub" data-i18n="explainSub"></div>
+
+          <div class="ss-explain-grid">
+            <div class="ss-explain-card">
+              <div class="ss-explain-card-icon">🔄</div>
+              <div class="ss-explain-card-title" data-i18n="card1Title">A/B-roterationen</div>
+              <div class="ss-explain-card-body" data-i18n="card1Body"></div>
+            </div>
+            <div class="ss-explain-card">
+              <div class="ss-explain-card-icon">📈</div>
+              <div class="ss-explain-card-title" data-i18n="card2Title">Linjär progression</div>
+              <div class="ss-explain-card-body" data-i18n="card2Body"></div>
+            </div>
+            <div class="ss-explain-card">
+              <div class="ss-explain-card-icon">🔥</div>
+              <div class="ss-explain-card-title" data-i18n="card3Title">Uppvärmningsset</div>
+              <div class="ss-explain-card-body" data-i18n="card3Body"></div>
+            </div>
+            <div class="ss-explain-card">
+              <div class="ss-explain-card-icon">🏋️</div>
+              <div class="ss-explain-card-title" data-i18n="card4Title">Passen</div>
+              <div class="ss-explain-card-body" data-i18n="card4Body"></div>
+            </div>
+            <div class="ss-explain-card">
+              <div class="ss-explain-card-icon">⚠️</div>
+              <div class="ss-explain-card-title" data-i18n="card5Title">När du missar reps (stagnation)</div>
+              <div class="ss-explain-card-body" data-i18n="card5Body"></div>
+            </div>
+            <div class="ss-explain-card">
+              <div class="ss-explain-card-icon">📏</div>
+              <div class="ss-explain-card-title" data-i18n="card6Title">Vila mellan set</div>
+              <div class="ss-explain-card-body" data-i18n="card6Body"></div>
+            </div>
+          </div>
+
+          <table class="ss-explain-table">
+            <thead>
+              <tr>
+                <th data-i18n="thExercise">Övning</th>
+                <th data-i18n="thSetsReps">Set × Reps</th>
+                <th data-i18n="thProgression">Progression</th>
+                <th data-i18n="thAppearsIn">Ingår i</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="thSquat">🏋️ Knäböj</td>
+                <td>3 × 5</td>
+                <td data-i18n="squat3x5prog">+2,5 kg varje pass</td>
+                <td data-i18n="everySession">Varje pass</td>
+              </tr>
+              <tr>
+                <td data-i18n="thBench">🤲 Bänkpress</td>
+                <td>3 × 5</td>
+                <td data-i18n="other25prog">+2,5 kg per tillfälle</td>
+                <td data-i18n="workoutAOnly">Bara Pass A</td>
+              </tr>
+              <tr>
+                <td data-i18n="thPress">🔼 Press</td>
+                <td>3 × 5</td>
+                <td data-i18n="other25prog">+2,5 kg per tillfälle</td>
+                <td data-i18n="workoutBOnly">Bara Pass B</td>
+              </tr>
+              <tr>
+                <td data-i18n="thDeadlift">⬆️ Marklyft</td>
+                <td>1 × 5</td>
+                <td data-i18n="dl5prog">+5 kg per tillfälle</td>
+                <td data-i18n="workoutAOnly">Bara Pass A</td>
+              </tr>
+              <tr>
+                <td data-i18n="thPowerClean">⚡ Power Clean</td>
+                <td>5 × 3</td>
+                <td data-i18n="other25prog">+2,5 kg per tillfälle</td>
+                <td data-i18n="workoutBOnly">Bara Pass B</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="margin-top: var(--space-16);">
+    <div class="container footer-inner">
+      <img src="images/logo-transparent.png" alt="HälsoPulsen" class="footer-logo-img" />
+      <p class="footer-copy">© <span id="year"></span> HälsoPulsen · Jonathan Fisher</p>
+      <a href="/" class="footer-pitch-link">← Tillbaka till startsidan</a>
+    </div>
+  </footer>
+
+  <script>
+  /* ═══════════════════════════════════════════════════════
+     UTILITIES
+  ═══════════════════════════════════════════════════════ */
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Mobile nav
+  const hamburger = document.getElementById('hamburger');
+  const navLinks  = document.getElementById('navLinks');
+  if (hamburger && navLinks) {
+    hamburger.addEventListener('click', () => {
+      const open = navLinks.classList.toggle('open');
+      hamburger.setAttribute('aria-expanded', open);
+    });
+    // Close mobile menu when any nav link is clicked
+    navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      hamburger.setAttribute('aria-expanded', 'false');
+    }));
+  }
+
+  // Tab switching — el is the button that was clicked (passed via onclick="switchTab(..., this)")
+  function switchTab(name, el) {
+    document.querySelectorAll('.tool-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    if (el) el.classList.add('active');
+  }
+
+  // fmt: converts total seconds → "M:SS" string (e.g. 90 → "1:30")
+  function fmt(s) {
+    const m = Math.floor(Math.max(0, s) / 60);
+    const sec = Math.max(0, s) % 60;
+    return m + ':' + String(sec).padStart(2, '0');
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     AUDIO
+  ═══════════════════════════════════════════════════════ */
+  let audioCtx = null;
+  function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function tone(freq, startSec, durSec, vol) {
+    const ctx = getCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + startSec);
+    gain.gain.setValueAtTime(vol || 0.45, ctx.currentTime + startSec);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startSec + durSec);
+    osc.start(ctx.currentTime + startSec);
+    osc.stop(ctx.currentTime + startSec + durSec + 0.05);
+  }
+
+  function playSound(type) {
+    try {
+      if (type === 'beep') {
+        tone(880, 0, 0.25);
+      } else if (type === 'double') {
+        tone(660, 0,    0.12);
+        tone(660, 0.18, 0.12);
+      } else if (type === 'bell') {
+        tone(523, 0,    0.5, 0.3);
+        tone(784, 0.05, 0.7, 0.25);
+        tone(1047,0.1,  0.9, 0.15);
+      }
+    } catch(e) { /* AudioContext blocked */ }
+  }
+
+  function playDone() {
+    try {
+      tone(523, 0,   0.15);
+      tone(659, 0.2, 0.15);
+      tone(784, 0.4, 0.4, 0.5);
+    } catch(e) {}
+  }
+
+  function testSound() {
+    playSound(document.getElementById('signalSound').value);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     TIMER STATE
+  ═══════════════════════════════════════════════════════ */
+  // Single source of truth for the timer.
+  // status lifecycle: idle → running ⇄ paused → done → idle (via resetTimer)
+  let timerState = {
+    blocks: [
+      { id: 1, type: 'work', label: 'Arbete', duration: 40 },
+      { id: 2, type: 'rest', label: 'Vila',   duration: 20 },
+    ],
+    nextId: 3,
+    rounds: 3,
+    // runtime fields (only meaningful while status !== 'idle')
+    status: 'idle',     // idle | running | paused | done
+    round: 1,
+    blockIdx: 0,
+    timeLeft: 0,
+    blockDuration: 0,
+    intervalId: null,
+  };
+
+  function getSignal() {
+    return {
+      sound: document.getElementById('signalSound').value,
+      onWork: document.getElementById('sigWork').checked,
+      onRest: document.getElementById('sigRest').checked,
+    };
+  }
+
+  /* ── Block management ── */
+  function addBlock(type) {
+    const defaultDur = type === 'work' ? 40 : 20;
+    const label      = type === 'work' ? 'Arbete' : 'Vila';
+    timerState.blocks.push({ id: timerState.nextId++, type, label, duration: defaultDur });
+    renderBlocks();
+  }
+
+  function removeBlock(id) {
+    timerState.blocks = timerState.blocks.filter(b => b.id !== id);
+    renderBlocks();
+  }
+
+  function adjustDuration(id, delta) {
+    const b = timerState.blocks.find(b => b.id === id);
+    if (!b) return;
+    b.duration = Math.max(5, b.duration + delta);
+    renderBlocks();
+  }
+
+  function updateLabel(id, val) {
+    const b = timerState.blocks.find(b => b.id === id);
+    if (b) b.label = val;
+  }
+
+  function changeRounds(delta) {
+    timerState.rounds = Math.max(1, timerState.rounds + delta);
+    document.getElementById('roundsVal').textContent = timerState.rounds;
+  }
+
+  // Escape user-typed text before injecting into innerHTML to prevent XSS
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // renderBlocks: re-draws the editable block list from timerState.blocks
+  function renderBlocks() {
+    const seq = document.getElementById('timerSequence');
+    const empty = document.getElementById('emptyMsg');
+    if (timerState.blocks.length === 0) {
+      seq.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    seq.innerHTML = timerState.blocks.map(b => `
+      <div class="block-row ${b.type}" data-id="${b.id}">
+        <span style="font-size:1.1rem;">${b.type === 'work' ? '💪' : '😴'}</span>
+        <input class="block-label-input" value="${esc(b.label)}" onchange="updateLabel(${b.id}, this.value)" />
+        <div class="block-dur-ctrl">
+          <button class="block-dur-btn" onclick="adjustDuration(${b.id}, -5)">−5s</button>
+          <span class="block-dur-display">${fmt(b.duration)}</span>
+          <button class="block-dur-btn" onclick="adjustDuration(${b.id}, 5)">+5s</button>
+        </div>
+        <button class="block-remove" onclick="removeBlock(${b.id})" title="Ta bort">✕</button>
+      </div>
+    `).join('');
+  }
+
+  /* ── Timer control ── */
+  function startTimer() {
+    if (timerState.blocks.length === 0) {
+      alert('Lägg till minst ett block för att starta.');
+      return;
+    }
+    timerState.status   = 'running';
+    timerState.round    = 1;
+    timerState.blockIdx = 0;
+    timerState.timeLeft = timerState.blocks[0].duration;
+    timerState.blockDuration = timerState.blocks[0].duration;
+
+    document.getElementById('timerBuilder').style.display  = 'none';
+    document.getElementById('timerDisplay').style.display  = 'block';
+    document.getElementById('timerDone').style.display     = 'none';
+    document.getElementById('timerRunning').style.display  = 'block';
+
+    updateTimerDisplay();
+    timerState.intervalId = setInterval(tick, 1000);
+  }
+
+  function tick() {
+    if (timerState.status !== 'running') return;
+    timerState.timeLeft--;
+
+    if (timerState.timeLeft < 0) {
+      blockFinished();
+    } else {
+      updateTimerDisplay();
+    }
+  }
+
+  function blockFinished() {
+    const block = timerState.blocks[timerState.blockIdx];
+    const sig   = getSignal();
+
+    // Signal on natural end
+    if (block.type === 'work' && sig.onWork) playSound(sig.sound);
+    else if (block.type === 'rest' && sig.onRest) playSound(sig.sound);
+
+    // Advance
+    timerState.blockIdx++;
+    if (timerState.blockIdx >= timerState.blocks.length) {
+      timerState.blockIdx = 0;
+      timerState.round++;
+      if (timerState.round > timerState.rounds) {
+        timerDone();
+        return;
+      }
+    }
+
+    const next = timerState.blocks[timerState.blockIdx];
+    timerState.timeLeft      = next.duration;
+    timerState.blockDuration = next.duration;
+    updateTimerDisplay();
+  }
+
+  function timerDone() {
+    clearInterval(timerState.intervalId);
+    timerState.status = 'done';
+    document.getElementById('timerRunning').style.display = 'none';
+    document.getElementById('timerDone').style.display    = 'block';
+    playDone();
+  }
+
+  function pauseResumeTimer() {
+    if (timerState.status === 'running') {
+      timerState.status = 'paused';
+      clearInterval(timerState.intervalId);
+      document.getElementById('pauseBtn').textContent = '▶ Fortsätt';
+    } else if (timerState.status === 'paused') {
+      timerState.status = 'running';
+      timerState.intervalId = setInterval(tick, 1000);
+      document.getElementById('pauseBtn').textContent = '⏸ Paus';
+    }
+  }
+
+  function skipBlock() {
+    if (timerState.status === 'idle' || timerState.status === 'done') return;
+    timerState.timeLeft = 0;
+    blockFinished();
+  }
+
+  function resetTimer() {
+    clearInterval(timerState.intervalId);
+    timerState.status = 'idle';
+    document.getElementById('timerDisplay').style.display  = 'none';
+    document.getElementById('timerBuilder').style.display  = 'block';
+    document.getElementById('pauseBtn').textContent = '⏸ Paus';
+  }
+
+  function updateTimerDisplay() {
+    const block    = timerState.blocks[timerState.blockIdx];
+    const isRest   = block && block.type === 'rest';
+    const name     = block ? block.label.toUpperCase() : '';
+    const elapsed  = (timerState.blockDuration - timerState.timeLeft);
+    const progress = timerState.blockDuration > 0 ? (elapsed / timerState.blockDuration) * 100 : 0;
+
+    document.getElementById('timerBlockName').textContent  = name;
+    document.getElementById('timerBlockName').className    = 'timer-run-block-name' + (isRest ? ' rest-mode' : '');
+    document.getElementById('timerCountdown').textContent  = fmt(timerState.timeLeft);
+    document.getElementById('timerCountdown').className    = 'timer-countdown' + (timerState.timeLeft <= 3 && timerState.timeLeft > 0 ? ' warning' : '');
+    document.getElementById('timerProgressBar').style.width= progress + '%';
+    document.getElementById('timerProgressBar').className  = 'timer-run-bar' + (isRest ? ' rest-mode' : '');
+    document.getElementById('timerRoundLabel').textContent = 'Runda ' + timerState.round + '/' + timerState.rounds;
+    document.getElementById('timerBlockLabel').textContent = 'Block ' + (timerState.blockIdx + 1) + '/' + timerState.blocks.length;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     SET / REP TRACKER
+  ═══════════════════════════════════════════════════════ */
+  let tracker = {
+    totalSets: 3,
+    totalReps: 5,
+    currentSet: 1,
+    currentRep: 1,
+    history: [],
+  };
+
+  function cfgChange(field, delta) {
+    if (field === 'sets') {
+      tracker.totalSets = Math.max(1, tracker.totalSets + delta);
+      document.getElementById('cfgSets').textContent = tracker.totalSets;
+    } else {
+      tracker.totalReps = Math.max(1, tracker.totalReps + delta);
+      document.getElementById('cfgReps').textContent = tracker.totalReps;
+    }
+    trackerReset();
+  }
+
+  function trackerNext() {
+    if (tracker.currentSet > tracker.totalSets) return;
+    tracker.history.push({ set: tracker.currentSet, rep: tracker.currentRep });
+
+    tracker.currentRep++;
+    if (tracker.currentRep > tracker.totalReps) {
+      tracker.currentRep = 1;
+      tracker.currentSet++;
+    }
+    renderTracker();
+  }
+
+  function trackerUndo() {
+    if (tracker.history.length === 0) return;
+    const prev = tracker.history.pop();
+    tracker.currentSet = prev.set;
+    tracker.currentRep = prev.rep;
+    renderTracker();
+  }
+
+  function trackerReset() {
+    tracker.currentSet = 1;
+    tracker.currentRep = 1;
+    tracker.history = [];
+    renderTracker();
+  }
+
+  function renderTracker() {
+    const done = tracker.currentSet > tracker.totalSets;
+    document.getElementById('trSet').textContent      = done ? '✓' : tracker.currentSet;
+    document.getElementById('trRep').textContent      = done ? '✓' : tracker.currentRep;
+    document.getElementById('trSetTotal').textContent  = '/' + tracker.totalSets;
+    document.getElementById('trRepTotal').textContent  = '/' + tracker.totalReps;
+    document.getElementById('btnTrackerDone').disabled = done;
+    document.getElementById('btnTrackerUndo').disabled = tracker.history.length === 0;
+    document.getElementById('trackerCompleteBanner').style.display = done ? 'block' : 'none';
+  }
+
+  // Hold to reset
+  let resetInterval = null;
+  let resetProgress = 0;
+
+  function startReset(e) {
+    if (e) e.preventDefault();
+    resetProgress = 0;
+    resetInterval = setInterval(() => {
+      resetProgress += 5;
+      document.getElementById('resetBar').style.width = resetProgress + '%';
+      if (resetProgress >= 100) {
+        cancelReset();
+        trackerReset();
+      }
+    }, 100); // 2 seconds total = 100% / 5% per 100ms
+  }
+
+  function cancelReset() {
+    clearInterval(resetInterval);
+    resetInterval = null;
+    resetProgress = 0;
+    const bar = document.getElementById('resetBar');
+    if (bar) bar.style.width = '0%';
+  }
+
+  renderBlocks();
+  renderTracker();
+
+  /* ═══════════════════════════════════════════════════════
+     STARTING STRENGTH CALCULATOR
+  ═══════════════════════════════════════════════════════ */
+  let ssStartType = 'A';
+  let ssPage = 0;
+  let ssLang = 'sv'; // default language
+  const SS_PAGE_SIZE   = 3;
+  const SS_TOTAL_PAGES = 8; // 24 sessions = 8 weeks
+
+  /* ── Bilingual string table ── */
+  const SS_STRINGS = {
+    sv: {
+      bannerText:    'Ange den <strong>tyngsta vikten du klarar 5 rena reps</strong> för varje övning. Aldrig gjort dessa lyft förut? <strong>Börja med bara stången (20 kg)</strong> och arbeta dig uppåt — precis som Rippetoe rekommenderar. Dina uppvärmningsset beräknas automatiskt.',
+      labelFiveRep:  '— 5-repvikt',
+      labelThreeRep: '— 3-repvikt',
+      nextWorkout:   'Nästa pass:',
+      workoutA:      'Pass A',
+      workoutB:      'Pass B',
+      typeHint:      'Ny på programmet? Börja med <strong>Pass A</strong>. Annars väljer du vilket som är näst i tur.',
+      prevWeek:      '← Föregående vecka',
+      nextWeek:      'Nästa vecka →',
+      explainTitle:  'Hur Starting Strength fungerar',
+      explainSub:    'Mark Rippetoes nybörjarprogram — det mest beprövade skivstångsprogrammet för nybörjare som skrivits.',
+      card1Title:    'A/B-roterationen',
+      card1Body:     'Träna 3 dagar i veckan (Mån / Ons / Fre). Passen alternerar mellan Pass A och B. Knäböj ingår i varje pass. Marklyft ingår i alla A-pass; Power Clean i alla B-pass.',
+      card2Title:    'Linjär progression',
+      card2Body:     'Lägg till vikt varje pass. Knäböj, Bänkpress, Press och Power Clean ökar med 2,5 kg per tillfälle. Marklyft ökar med 5 kg per pass. Den här framstegstakten är bara möjlig som nybörjare — utnyttja den fullt ut.',
+      card3Title:    'Uppvärmningsset',
+      card3Body:     'Varje övning börjar med lättare uppvärmningsset för att förbereda lederna och öva rörelseformen. Den <strong>markerade raden</strong> är ditt arbetsset — vikten som faktiskt gör dig starkare. Hoppa aldrig över uppvärmningen.',
+      card4Title:    'Passen',
+      card4Body:     '<strong>Pass A:</strong> Knäböj 3×5 · Bänkpress 3×5 · Marklyft 1×5<br><br><strong>Pass B:</strong> Knäböj 3×5 · Press 3×5 · Power Clean 5×3<br><br>Gör set och reps exakt som skrivet. Lägg inte till eller byt ut övningar.',
+      card5Title:    'När du missar reps (stagnation)',
+      card5Body:     'Klarade inte alla reps? <strong>Upprepa samma vikt</strong> nästa pass. Missar du samma vikt 3 gånger i rad? <strong>Sänk det lyftet med 10%</strong> och arbeta dig upp igen. Det är normalt — det händer alla till slut.',
+      card6Title:    'Vila mellan set',
+      card6Body:     'Vila <strong>3–5 minuter</strong> mellan arbetsset. Det här är inte konditionsträning — ditt nervsystem behöver tid att återhämta sig för att du ska kunna lyfta tungt igen. Använd intervall-timern på den här sidan för att hålla koll.',
+      thExercise:    'Övning',
+      thSetsReps:    'Set × Reps',
+      thProgression: 'Progression',
+      thAppearsIn:   'Ingår i',
+      thSquat:       '🏋️ Knäböj',
+      thBench:       '🤲 Bänkpress',
+      thPress:       '🔼 Press',
+      thDeadlift:    '⬆️ Marklyft',
+      thPowerClean:  '⚡ Power Clean',
+      squat3x5prog:  '+2,5 kg varje pass',
+      other25prog:   '+2,5 kg per tillfälle',
+      dl5prog:       '+5 kg per tillfälle',
+      everySession:  'Varje pass',
+      workoutAOnly:  'Bara Pass A',
+      workoutBOnly:  'Bara Pass B',
+      trainingDay:   'Träningsdag',
+      sessionPrefix: 'Pass',
+      workoutPrefix: 'Pass',
+      weekOf:        (p, t) => `Vecka ${p + 1} av ${t}`,
+    },
+    en: {
+      bannerText:    'Enter the <strong>heaviest weight you can lift for 5 clean reps</strong> for each exercise. Never done these lifts before? <strong>Start with just the bar (20 kg)</strong> and work up from there — that\'s exactly what Rippetoe recommends. Your warm-up sets are calculated automatically.',
+      labelFiveRep:  '— 5-rep weight',
+      labelThreeRep: '— 3-rep weight',
+      nextWorkout:   'Next workout:',
+      workoutA:      'Workout A',
+      workoutB:      'Workout B',
+      typeHint:      'Starting fresh? Begin with <strong>Workout A</strong>. Returning? Select whichever comes next in the rotation.',
+      prevWeek:      '← Previous week',
+      nextWeek:      'Next week →',
+      explainTitle:  'How Starting Strength Works',
+      explainSub:    'Mark Rippetoe\'s novice program — the most proven beginner barbell program ever written.',
+      card1Title:    'The A/B Rotation',
+      card1Body:     'Train 3 days a week (Mon / Wed / Fri). Sessions alternate between Workout A and B. The squat appears every session. Deadlift is in every A session; Power Clean is in every B session.',
+      card2Title:    'Linear Progression',
+      card2Body:     'Add weight every single session. Squat, Bench, Press &amp; Power Clean go up 2.5 kg each appearance. Deadlift goes up 5 kg per session. This rate of progress is only possible as a beginner — take full advantage of it.',
+      card3Title:    'Warm-up Sets',
+      card3Body:     'Each exercise starts with lighter warm-up sets to prepare joints and practice the movement. The <strong>highlighted row</strong> is your working set — the weight that actually makes you stronger. Never skip warm-ups.',
+      card4Title:    'The Workouts',
+      card4Body:     '<strong>Workout A:</strong> Squat 3×5 · Bench Press 3×5 · Deadlift 1×5<br><br><strong>Workout B:</strong> Squat 3×5 · Overhead Press 3×5 · Power Clean 5×3<br><br>Do the sets and reps exactly as written. Don\'t add or swap exercises.',
+      card5Title:    'When You Miss Reps (Stalling)',
+      card5Body:     'Couldn\'t complete all reps? <strong>Repeat the same weight</strong> next session. Fail the same weight 3 times in a row? <strong>Reset that lift by 10%</strong> and work back up. This is normal — it happens to everyone eventually.',
+      card6Title:    'Rest Between Sets',
+      card6Body:     'Rest <strong>3–5 minutes</strong> between working sets. This is not cardio — your nervous system needs time to recover so you can lift heavy again. Use the interval timer on this page to track it.',
+      thExercise:    'Exercise',
+      thSetsReps:    'Sets × Reps',
+      thProgression: 'Progression',
+      thAppearsIn:   'Appears in',
+      thSquat:       '🏋️ Squat',
+      thBench:       '🤲 Bench Press',
+      thPress:       '🔼 Overhead Press',
+      thDeadlift:    '⬆️ Deadlift',
+      thPowerClean:  '⚡ Power Clean',
+      squat3x5prog:  '+2.5 kg every session',
+      other25prog:   '+2.5 kg each appearance',
+      dl5prog:       '+5 kg each appearance',
+      everySession:  'Every session',
+      workoutAOnly:  'Workout A only',
+      workoutBOnly:  'Workout B only',
+      trainingDay:   'Training Day',
+      sessionPrefix: 'Session',
+      workoutPrefix: 'Workout',
+      weekOf:        (p, t) => `Week ${p + 1} of ${t}`,
+    },
+  };
+
+  const SS_PAGES_SV = [
+    { week: 'Vecka 1', title: 'Din resa börjar 🚀',         sub: 'Kom tre gånger den här veckan och du är redan före de flesta.' },
+    { week: 'Vecka 2', title: 'Bygger fart 💪',             sub: 'Du kom tillbaka. Det är det svåraste — och du gör det.' },
+    { week: 'Vecka 3', title: 'Blir starkare 🔥',           sub: 'Stången känns lättare än förra veckan. Det är inte din fantasi.' },
+    { week: 'Vecka 4', title: 'En månad inne 🏆',           sub: 'De flesta slutar innan de når hit. Du gjorde inte det. Fortsätt.' },
+    { week: 'Vecka 5', title: 'Nya personliga rekord 📈',   sub: 'Varje lyft är ett PR. Din kropp anpassar sig snabbare än du tror.' },
+    { week: 'Vecka 6', title: 'Gräver djupt 💎',            sub: 'Framstegen kan kännas långsammare nu. Håll linjen — de kommer fortfarande.' },
+    { week: 'Vecka 7', title: 'Nästan framme 🔑',           sub: 'Åtta veckor av konsekvent lyftande är en grund som de flesta aldrig bygger.' },
+    { week: 'Vecka 8', title: 'Två månader stark 🌟',       sub: 'Du har slutfört nybörjarprogrammet. Dina siffror bevisar det. Vad händer härnäst?' },
+  ];
+
+  const SS_PAGES_EN = [
+    { week: 'Week 1', title: 'Your journey begins 🚀',      sub: 'Show up three times this week and you\'re already ahead of most people.' },
+    { week: 'Week 2', title: 'Building momentum 💪',         sub: 'You came back. That\'s the hardest part — and you\'re doing it.' },
+    { week: 'Week 3', title: 'Getting stronger 🔥',          sub: 'The bar feels lighter than last week. That\'s not your imagination.' },
+    { week: 'Week 4', title: 'One month in 🏆',              sub: 'Most people quit before getting here. You didn\'t. Keep going.' },
+    { week: 'Week 5', title: 'New personal records 📈',      sub: 'Every lift is a PR. Your body is adapting faster than you realise.' },
+    { week: 'Week 6', title: 'Digging deep 💎',              sub: 'Progress may feel slower now. Hold the line — the gains are still coming.' },
+    { week: 'Week 7', title: 'Almost there 🔑',              sub: 'Eight weeks of consistent lifting is a foundation most people never build.' },
+    { week: 'Week 8', title: 'Two months strong 🌟',         sub: 'You\'ve completed the novice program. Your numbers prove it. What\'s next?' },
+  ];
+
+  // Mon / Wed / Fri × 8 weeks = 24 sessions
+  const SS_DAYS_SV = [
+    'Måndag','Onsdag','Fredag','Måndag','Onsdag','Fredag',
+    'Måndag','Onsdag','Fredag','Måndag','Onsdag','Fredag',
+    'Måndag','Onsdag','Fredag','Måndag','Onsdag','Fredag',
+    'Måndag','Onsdag','Fredag','Måndag','Onsdag','Fredag',
+  ];
+  const SS_DAYS_EN = [
+    'Monday','Wednesday','Friday','Monday','Wednesday','Friday',
+    'Monday','Wednesday','Friday','Monday','Wednesday','Friday',
+    'Monday','Wednesday','Friday','Monday','Wednesday','Friday',
+    'Monday','Wednesday','Friday','Monday','Wednesday','Friday',
+  ];
+
+  const EX_NAMES_SV = {
+    squat:      { icon: '🏋️', name: 'Knäböj' },
+    bench:      { icon: '🤲', name: 'Bänkpress' },
+    press:      { icon: '🔼', name: 'Press' },
+    deadlift:   { icon: '⬆️', name: 'Marklyft' },
+    powerclean: { icon: '⚡', name: 'Power Clean' },
+  };
+  const EX_NAMES_EN = {
+    squat:      { icon: '🏋️', name: 'Squat' },
+    bench:      { icon: '🤲', name: 'Bench Press' },
+    press:      { icon: '🔼', name: 'Overhead Press' },
+    deadlift:   { icon: '⬆️', name: 'Deadlift' },
+    powerclean: { icon: '⚡', name: 'Power Clean' },
+  };
+
+  // Update all data-i18n elements in the SS tab and re-render
+  function setSsLang(lang) {
+    ssLang = lang;
+    document.getElementById('ssLangSv').classList.toggle('active', lang === 'sv');
+    document.getElementById('ssLangEn').classList.toggle('active', lang === 'en');
+    document.querySelectorAll('#tab-ss [data-i18n]').forEach(el => {
+      const val = SS_STRINGS[lang][el.dataset.i18n];
+      if (val !== undefined) el.innerHTML = val;
+    });
+    renderSS();
+  }
+
+  function setSSType(type) {
+    ssStartType = type;
+    document.getElementById('btnTypeA').classList.toggle('active', type === 'A');
+    document.getElementById('btnTypeB').classList.toggle('active', type === 'B');
+    renderSS();
+  }
+
+  function ssChangePage(dir) {
+    ssPage = Math.max(0, Math.min(SS_TOTAL_PAGES - 1, ssPage + dir));
+    renderSS();
+  }
+
+  // Round to nearest 2.5 kg
+  function r25(x) { return Math.round(x / 2.5) * 2.5; }
+
+  // Format kg — whole number if clean, otherwise 1 decimal
+  function fmtKg(kg) {
+    return (kg % 1 === 0 ? kg : kg.toFixed(1)) + ' kg';
+  }
+
+  // Warm-up sets per exercise (weights in kg, bar = 20 kg)
+  function getWarmupsKg(exercise, W) {
+    const bar = 20;
+    if (exercise === 'squat') return [
+      { label: '2×5', weight: bar },
+      { label: '1×5', weight: r25(W * 0.40) },
+      { label: '1×3', weight: r25(W * 0.60) },
+      { label: '1×2', weight: r25(W * 0.80) },
+      { label: '3×5', weight: W, working: true },
+    ];
+    if (exercise === 'bench') return [
+      { label: '2×5', weight: bar },
+      { label: '1×5', weight: r25(W * 0.50) },
+      { label: '1×3', weight: r25(W * 0.70) },
+      { label: '1×2', weight: r25(W * 0.90) },
+      { label: '3×5', weight: W, working: true },
+    ];
+    if (exercise === 'press') return [
+      { label: '2×5', weight: bar },
+      { label: '1×5', weight: r25(W * 0.55) },
+      { label: '1×3', weight: r25(W * 0.70) },
+      { label: '1×2', weight: r25(W * 0.85) },
+      { label: '3×5', weight: W, working: true },
+    ];
+    if (exercise === 'deadlift') return [
+      { label: '2×5', weight: r25(W * 0.40) },
+      { label: '1×3', weight: r25(W * 0.60) },
+      { label: '1×2', weight: r25(W * 0.85) },
+      { label: '1×5', weight: W, working: true },
+    ];
+    if (exercise === 'powerclean') return [
+      { label: '2×5', weight: bar },
+      { label: '1×5', weight: r25(W * 0.55) },
+      { label: '1×3', weight: r25(W * 0.70) },
+      { label: '1×2', weight: r25(W * 0.85) },
+      { label: '5×3', weight: W, working: true },
+    ];
+    return [];
+  }
+
+  // Generate sessions — Workout A: Squat + Bench + Deadlift
+  //                     Workout B: Squat + Press + Power Clean
+  function getSessionsKg(sqW, bnW, prW, dlW, pcW, startType, count) {
+    const sessions = [];
+    let type = startType;
+    let sq = sqW, bn = bnW, pr = prW, dl = dlW, pc = pcW;
+    for (let i = 0; i < count; i++) {
+      if (type === 'A') {
+        sessions.push({ num: i + 1, type, squat: sq, bench: bn, deadlift: dl });
+        sq = r25(sq + 2.5); bn = r25(bn + 2.5); dl = r25(dl + 5);
+      } else {
+        sessions.push({ num: i + 1, type, squat: sq, press: pr, powerclean: pc });
+        sq = r25(sq + 2.5); pr = r25(pr + 2.5); pc = r25(pc + 2.5);
+      }
+      type = type === 'A' ? 'B' : 'A';
+    }
+    return sessions;
+  }
+
+  function renderSessionCard(sess) {
+    const isA     = sess.type === 'A';
+    const s       = SS_STRINGS[ssLang];
+    const days    = ssLang === 'sv' ? SS_DAYS_SV : SS_DAYS_EN;
+    const exNames = ssLang === 'sv' ? EX_NAMES_SV : EX_NAMES_EN;
+    const day     = days[sess.num - 1] || s.trainingDay;
+    const exercises = isA
+      ? [{ key: 'squat', W: sess.squat }, { key: 'bench', W: sess.bench }, { key: 'deadlift', W: sess.deadlift }]
+      : [{ key: 'squat', W: sess.squat }, { key: 'press', W: sess.press }, { key: 'powerclean', W: sess.powerclean }];
+
+    let html = `<div class="ss-session-card">
+      <div class="ss-session-card-head">
+        <div>
+          <div class="ss-session-num">${s.sessionPrefix} ${sess.num}</div>
+          <div class="ss-session-day">${day}</div>
+        </div>
+        <span class="ss-session-type-badge ${isA ? 'ss-badge-a' : 'ss-badge-b'}">${s.workoutPrefix} ${sess.type}</span>
+      </div>`;
+    for (const ex of exercises) {
+      const sets = getWarmupsKg(ex.key, ex.W);
+      const info = exNames[ex.key];
+      html += `<div class="ss-card-exercise">
+        <div class="ss-card-ex-name">${info.icon} ${info.name}</div>
+        <div class="ss-card-sets">`;
+      for (const set of sets) {
+        html += `<div class="ss-card-set-row${set.working ? ' working' : ''}">
+          <span class="ss-card-set-label">${set.label}</span>
+          <span class="ss-card-set-weight">${fmtKg(set.weight)}</span>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
+  // renderSS: reads input weights, generates all sessions, renders the current page
+  function renderSS() {
+    const sqW = parseFloat(document.getElementById('ssSquat').value)      || 20;
+    const bnW = parseFloat(document.getElementById('ssBench').value)      || 20;
+    const prW = parseFloat(document.getElementById('ssPress').value)      || 20;
+    const dlW = parseFloat(document.getElementById('ssDeadlift').value)   || 20;
+    const pcW = parseFloat(document.getElementById('ssPowerClean').value) || 20;
+
+    const totalSessions = SS_TOTAL_PAGES * SS_PAGE_SIZE;
+    const sessions = getSessionsKg(sqW, bnW, prW, dlW, pcW, ssStartType, totalSessions);
+
+    ssPage = Math.max(0, Math.min(SS_TOTAL_PAGES - 1, ssPage));
+    const pageSessions = sessions.slice(ssPage * SS_PAGE_SIZE, ssPage * SS_PAGE_SIZE + SS_PAGE_SIZE);
+
+    const pages = ssLang === 'sv' ? SS_PAGES_SV : SS_PAGES_EN;
+    const pb = pages[ssPage];
+    document.getElementById('ssPageWeek').textContent  = pb.week;
+    document.getElementById('ssPageTitle').textContent = pb.title;
+    document.getElementById('ssPageSub').textContent   = pb.sub;
+
+    document.getElementById('ssPageDots').innerHTML = pages
+      .map((_, i) => `<div class="ss-page-dot${i === ssPage ? ' active' : ''}"></div>`).join('');
+
+    document.getElementById('ssSessionsGrid').innerHTML = pageSessions.map(renderSessionCard).join('');
+
+    document.getElementById('ssPrev').disabled    = ssPage === 0;
+    document.getElementById('ssNext').disabled    = ssPage === SS_TOTAL_PAGES - 1;
+    document.getElementById('ssPagInfo').textContent = SS_STRINGS[ssLang].weekOf(ssPage, SS_TOTAL_PAGES);
+  }
+
+  // Init — apply Swedish strings to all data-i18n elements and render
+  setSsLang('sv');
+  </script>
+</body>
+</html>
