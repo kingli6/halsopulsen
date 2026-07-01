@@ -3,7 +3,7 @@
 Welcome to the official repository for HälsoPulsen! 
 
 ## Project Overview
-This website is built using HTML and CSS to promote health coaching, personal training, and massage workshops.
+This website is built using HTML CSS, Javascript and Replit to promote health coaching, personal training, and massage workshops.
 
 ## Useful Info
 * Main Color: Health Green 
