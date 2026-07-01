@@ -21,13 +21,19 @@
     <meta property="og:image" content="https://halsopulsen.se/images/stockimage1.webp" />
 
     <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
-    <link rel="stylesheet" href="style.css?v=7" />
+    <link rel="stylesheet" href="style.css?v=8" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Apply saved language before first paint to avoid flash -->
+    <script>try{document.documentElement.lang=localStorage.getItem('lang')||'sv'}catch(e){}</script>
   </head>
 
   <body>
+    <!-- Skip to main content (accessibility) -->
+    <a href="#main-content" class="skip-link">Hoppa till innehåll</a>
+
     <!-- NAVIGATION -->
     <header class="nav-wrapper">
       <nav class="nav container">
@@ -49,6 +55,9 @@
         </div>
       </nav>
     </header>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content" tabindex="-1">
 
     <!-- HERO -->
     <section class="hero" id="hero">
@@ -124,91 +133,6 @@
         </span>
       </div>
     </div>
-
-    <!-- PROGRESS TRACKERS -->
-    <section class="progress-section" id="progress">
-      <div class="container">
-        <h2 class="section-title" data-sv="Hur långt har jag kommit?" data-en="How far have I come?">Hur långt har jag kommit?</h2>
-        <p class="section-sub" data-sv="Platser fylls på — följ min resa i realtid." data-en="Spots are filling up — follow my journey in real time.">Platser fylls på — följ min resa i realtid.</p>
-
-        <div class="progress-grid">
-
-          <!-- MASSAGE -->
-          <div class="progress-card">
-            <div class="progress-card-head">
-              <span class="progress-icon" aria-hidden="true">💆</span>
-              <h3 data-sv="Massage" data-en="Massage">Massage</h3>
-            </div>
-            <div class="progress-stat">
-              <span class="progress-count">0<span class="progress-total">/5</span></span>
-              <span class="progress-label" data-sv="klienter" data-en="clients">klienter</span>
-            </div>
-            <div class="progress-bar-wrap" aria-label="0 av 5 klienter">
-              <div class="progress-bar" style="width: 0%"></div>
-            </div>
-            <div class="progress-sub-stats">
-              <div class="progress-sub-item">
-                <span data-sv="Sessioner (journalförd)" data-en="Sessions (journalled)">Sessioner (journalförd)</span>
-                <strong>0/15</strong>
-              </div>
-              <div class="progress-sub-item progress-sub-item--highlight">
-                <span data-sv="Praktikmasssager (signatur)" data-en="Practice massages (signature)">Praktikmasssager (signatur)</span>
-                <strong>15/35</strong>
-              </div>
-              <div class="progress-bar-wrap progress-bar-wrap--sm" aria-label="15 av 35 praktikmasssager">
-                <div class="progress-bar progress-bar--accent" style="width: 43%"></div>
-              </div>
-            </div>
-            <a href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20en%20gratis%20massage." class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-sv="Boka massage →" data-en="Book massage →">Boka massage →</a>
-          </div>
-
-          <!-- KOSTCOACH -->
-          <div class="progress-card">
-            <div class="progress-card-head">
-              <span class="progress-icon" aria-hidden="true">🥗</span>
-              <h3 data-sv="Kostcoach" data-en="Nutrition Coach">Kostcoach</h3>
-            </div>
-            <div class="progress-stat">
-              <span class="progress-count">0<span class="progress-total">/3</span></span>
-              <span class="progress-label" data-sv="klienter" data-en="clients">klienter</span>
-            </div>
-            <div class="progress-bar-wrap" aria-label="0 av 3 klienter">
-              <div class="progress-bar" style="width: 0%"></div>
-            </div>
-            <div class="progress-sub-stats">
-              <div class="progress-sub-item">
-                <span data-sv="Möten totalt" data-en="Total meetings">Möten totalt</span>
-                <strong>0/12</strong>
-              </div>
-            </div>
-            <a href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20gratis%20kostcoaching." class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-sv="Boka kostcoach →" data-en="Book nutrition →">Boka kostcoach →</a>
-          </div>
-
-          <!-- PT -->
-          <div class="progress-card">
-            <div class="progress-card-head">
-              <span class="progress-icon" aria-hidden="true">💪</span>
-              <h3 data-sv="Personlig Träning" data-en="Personal Training">Personlig Träning</h3>
-            </div>
-            <div class="progress-stat">
-              <span class="progress-count">0<span class="progress-total">/4</span></span>
-              <span class="progress-label" data-sv="klienter" data-en="clients">klienter</span>
-            </div>
-            <div class="progress-bar-wrap" aria-label="0 av 4 klienter">
-              <div class="progress-bar" style="width: 0%"></div>
-            </div>
-            <div class="progress-sub-stats">
-              <div class="progress-sub-item">
-                <span data-sv="Träffar totalt" data-en="Total sessions">Träffar totalt</span>
-                <strong>0/16</strong>
-              </div>
-            </div>
-            <a href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20gratis%20personlig%20träning." class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-sv="Boka PT →" data-en="Book PT →">Boka PT →</a>
-          </div>
-
-        </div>
-      </div>
-    </section>
 
     <!-- SERVICES -->
     <section class="services" id="services">
@@ -337,7 +261,7 @@
             <ul class="journey-list">
               <li data-sv="✅ 5 klienter, 3 sessioner vardera (journalförd)" data-en="✅ 5 clients, 3 sessions each (journalled)">✅ 5 klienter, 3 sessioner vardera (journalförd)</li>
               <li data-sv="✅ Totalt 15 journalförda sessioner" data-en="✅ 15 journalled sessions in total">✅ Totalt 15 journalförda sessioner</li>
-              <li data-sv="✅ 35 praktikmasssager (räcker med din signatur)" data-en="✅ 35 practice massages (your signature is enough)">✅ 35 praktikmasssager (räcker med din signatur)</li>
+              <li data-sv="✅ 35 praktikmassager (räcker med din signatur)" data-en="✅ 35 practice massages (your signature is enough)">✅ 35 praktikmassager (räcker med din signatur)</li>
             </ul>
           </div>
 
@@ -378,11 +302,123 @@
       </div>
     </section>
 
+    <!-- PROGRESS TRACKERS -->
+    <section class="progress-section" id="progress">
+      <div class="container">
+        <h2 class="section-title" data-sv="Hur långt har jag kommit?" data-en="How far have I come?">Hur långt har jag kommit?</h2>
+        <p class="section-sub" data-sv="Platser fylls på — följ min resa i realtid." data-en="Spots are filling up — follow my journey in real time.">Platser fylls på — följ min resa i realtid.</p>
+
+        <div class="progress-grid">
+
+          <!-- MASSAGE -->
+          <div class="progress-card">
+            <div class="progress-card-head">
+              <span class="progress-icon" aria-hidden="true">💆</span>
+              <h3 data-sv="Massage" data-en="Massage">Massage</h3>
+            </div>
+            <div class="progress-stat">
+              <span class="progress-count"><span id="prog-massage-clients">0</span><span class="progress-total" id="prog-massage-clients-total">/5</span></span>
+              <span class="progress-label" data-sv="klienter" data-en="clients">klienter</span>
+            </div>
+            <div class="progress-bar-wrap" id="prog-massage-bar-wrap" aria-label="0 av 5 klienter">
+              <div class="progress-bar" id="prog-massage-bar" style="width: 0%"></div>
+            </div>
+            <div class="progress-sub-stats">
+              <div class="progress-sub-item">
+                <span data-sv="Sessioner (journalförd)" data-en="Sessions (journalled)">Sessioner (journalförd)</span>
+                <strong id="prog-massage-sessions">0/15</strong>
+              </div>
+              <div class="progress-sub-item progress-sub-item--highlight">
+                <span data-sv="Praktikmassager (signatur)" data-en="Practice massages (signature)">Praktikmassager (signatur)</span>
+                <strong id="prog-massage-practice">15/35</strong>
+              </div>
+              <div class="progress-bar-wrap progress-bar-wrap--sm" id="prog-massage-practice-bar-wrap" aria-label="15 av 35 praktikmassager">
+                <div class="progress-bar progress-bar--accent" id="prog-massage-practice-bar" style="width: 43%"></div>
+              </div>
+            </div>
+            <a href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20en%20gratis%20massage." class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-sv="Boka massage →" data-en="Book massage →">Boka massage →</a>
+          </div>
+
+          <!-- KOSTCOACH -->
+          <div class="progress-card">
+            <div class="progress-card-head">
+              <span class="progress-icon" aria-hidden="true">🥗</span>
+              <h3 data-sv="Kostcoach" data-en="Nutrition Coach">Kostcoach</h3>
+            </div>
+            <div class="progress-stat">
+              <span class="progress-count"><span id="prog-nutrition-clients">0</span><span class="progress-total" id="prog-nutrition-clients-total">/3</span></span>
+              <span class="progress-label" data-sv="klienter" data-en="clients">klienter</span>
+            </div>
+            <div class="progress-bar-wrap" id="prog-nutrition-bar-wrap" aria-label="0 av 3 klienter">
+              <div class="progress-bar" id="prog-nutrition-bar" style="width: 0%"></div>
+            </div>
+            <div class="progress-sub-stats">
+              <div class="progress-sub-item">
+                <span data-sv="Möten totalt" data-en="Total meetings">Möten totalt</span>
+                <strong id="prog-nutrition-meetings">0/12</strong>
+              </div>
+            </div>
+            <a href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20gratis%20kostcoaching." class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-sv="Boka kostcoach →" data-en="Book nutrition →">Boka kostcoach →</a>
+          </div>
+
+          <!-- PT -->
+          <div class="progress-card">
+            <div class="progress-card-head">
+              <span class="progress-icon" aria-hidden="true">💪</span>
+              <h3 data-sv="Personlig Träning" data-en="Personal Training">Personlig Träning</h3>
+            </div>
+            <div class="progress-stat">
+              <span class="progress-count"><span id="prog-pt-clients">0</span><span class="progress-total" id="prog-pt-clients-total">/4</span></span>
+              <span class="progress-label" data-sv="klienter" data-en="clients">klienter</span>
+            </div>
+            <div class="progress-bar-wrap" id="prog-pt-bar-wrap" aria-label="0 av 4 klienter">
+              <div class="progress-bar" id="prog-pt-bar" style="width: 0%"></div>
+            </div>
+            <div class="progress-sub-stats">
+              <div class="progress-sub-item">
+                <span data-sv="Träffar totalt" data-en="Total sessions">Träffar totalt</span>
+                <strong id="prog-pt-sessions">0/16</strong>
+              </div>
+            </div>
+            <a href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20gratis%20personlig%20träning." class="btn btn-primary" target="_blank" rel="noopener noreferrer" data-sv="Boka PT →" data-en="Book PT →">Boka PT →</a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTIMONIALS (hidden until TESTIMONIALS array in script.js has entries) -->
+    <section class="testimonials" id="testimonials" hidden>
+      <div class="container">
+        <h2 class="section-title" data-sv="Vad säger klienterna?" data-en="What do clients say?">Vad säger klienterna?</h2>
+        <div class="testimonials-grid" id="testimonialsGrid"></div>
+      </div>
+    </section>
+
+    <!-- TOOLS TEASER -->
+    <section class="tools-teaser">
+      <div class="container">
+        <div class="tools-teaser-inner">
+          <div class="tools-teaser-text">
+            <span class="hero-label" style="margin-bottom:var(--space-2);display:inline-block;">Gratis verktyg</span>
+            <h2 data-sv="Träna smartare — oavsett om vi tränar ihop eller inte" data-en="Train smarter — whether we work together or not">Träna smartare — oavsett om vi tränar ihop eller inte</h2>
+            <p data-sv="Intervall-timer med ljud, träningslogg och ett komplett Starting Strength-program. Spara dina pass, markera dem som klara och ladda om direkt till träningsloggen." data-en="Interval timer with sound, workout log, and a full Starting Strength programme. Save your sessions, mark them done, and load them straight into the tracker.">Intervall-timer med ljud, träningslogg och ett komplett Starting Strength-program. Spara dina pass, markera dem som klara och ladda om direkt till träningsloggen.</p>
+            <a href="/workout.html" class="btn btn-primary" style="margin-top:var(--space-5);display:inline-flex;" data-sv="Öppna träningsverktyg →" data-en="Open workout tools →">Öppna träningsverktyg →</a>
+          </div>
+          <div class="tools-teaser-icons" aria-hidden="true">
+            <span>⏱</span>
+            <span>📊</span>
+            <span>💪</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ABOUT -->
     <section class="about" id="about">
       <div class="container about-inner">
         <div class="about-image">
-          <img src="images/JFprofileImg.webp" alt="Jonathan Fisher – HälsoPulsen" class="about-photo" />
+          <img src="images/JFprofileImg.webp" alt="Jonathan Fisher – HälsoPulsen" class="about-photo" loading="lazy" />
         </div>
 
         <div class="about-text">
@@ -439,10 +475,10 @@
         <div class="contact-text">
           <h2 data-sv="Hör av dig" data-en="Get in touch">Hör av dig</h2>
           <p
-            data-sv="Enklast är att skicka ett meddelande på WhatsApp — jag svarar så snart jag kan. Du kan också hitta mig på Instagram om du vill se mer av vad jag gör."
-            data-en="The easiest way is to send me a message on WhatsApp — I'll reply as soon as I can. You can also find me on Instagram if you want to see more of what I do."
+            data-sv="Enklast är att skicka ett meddelande på WhatsApp — jag svarar så snart jag kan. Du hittar mig också på LinkedIn."
+            data-en="The easiest way is to send me a message on WhatsApp — I'll reply as soon as I can. You can also find me on LinkedIn."
           >
-            Enklast är att skicka ett meddelande på WhatsApp — jag svarar så snart jag kan. Du kan också hitta mig på Instagram om du vill se mer av vad jag gör.
+            Enklast är att skicka ett meddelande på WhatsApp — jag svarar så snart jag kan. Du hittar mig också på LinkedIn.
           </p>
           <p class="contact-note" data-sv="📍 Örnsköldsvik · Tjänster tillgängliga aug–dec 2026" data-en="📍 Örnsköldsvik · Services available Aug–Dec 2026">📍 Örnsköldsvik · Tjänster tillgängliga aug–dec 2026</p>
         </div>
@@ -458,14 +494,52 @@
             >💬 WhatsApp</a
           >
           <a
-            href="https://www.instagram.com/jonathanfisher617/"
+            href="https://www.linkedin.com/in/j07isher/"
             class="btn btn-ghost btn-contact"
             target="_blank"
             rel="noopener noreferrer"
-            data-sv="📸 Instagram"
-            data-en="📸 Instagram"
-            >📸 Instagram</a
+            data-sv="💼 LinkedIn"
+            data-en="💼 LinkedIn"
+            >💼 LinkedIn</a
           >
+        </div>
+
+        <div class="contact-form-wrap">
+          <p class="contact-form-label" data-sv="Eller skicka ett meddelande direkt:" data-en="Or send a message directly:">Eller skicka ett meddelande direkt:</p>
+          <form
+            class="contact-form"
+            action="https://formsubmit.co/halsopulsen@gmail.com"
+            method="POST"
+          >
+            <input type="hidden" name="_subject" value="Ny kontakt via HälsoPulsen" />
+            <input type="hidden" name="_captcha" value="false" />
+            <input type="hidden" name="_next" value="https://halsopulsen.se/?sent=1" />
+            <div class="form-group">
+              <label for="contact-name" data-sv="Namn" data-en="Name">Namn</label>
+              <input
+                type="text"
+                id="contact-name"
+                name="name"
+                required
+                data-sv-placeholder="Ditt namn"
+                data-en-placeholder="Your name"
+                placeholder="Ditt namn"
+              />
+            </div>
+            <div class="form-group">
+              <label for="contact-message" data-sv="Meddelande" data-en="Message">Meddelande</label>
+              <textarea
+                id="contact-message"
+                name="message"
+                rows="4"
+                required
+                data-sv-placeholder="Hej Jonathan, jag är intresserad av..."
+                data-en-placeholder="Hi Jonathan, I'm interested in..."
+                placeholder="Hej Jonathan, jag är intresserad av..."
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" data-sv="Skicka →" data-en="Send →">Skicka →</button>
+          </form>
         </div>
 
         <p class="contact-email">
@@ -475,22 +549,24 @@
       </div>
     </section>
 
+    </main><!-- /#main-content -->
+
     <!-- FOOTER -->
     <footer class="footer">
       <div class="container footer-inner">
-        <img src="images/logo-transparent.png" alt="HälsoPulsen" class="footer-logo-img" />
+        <img src="images/logo-transparent.png" alt="HälsoPulsen" class="footer-logo-img" loading="lazy" />
         <p class="footer-location" data-sv="Örnsköldsvik, Sverige · Online &amp; på plats" data-en="Örnsköldsvik, Sweden · Online &amp; in person">Örnsköldsvik, Sverige · Online &amp; på plats</p>
         <p class="footer-copy">© <span id="year"></span> HälsoPulsen · Jonathan Fisher</p>
         <div class="footer-links">
-          <a href="https://www.instagram.com/jonathanfisher617/" target="_blank" rel="noopener noreferrer" class="footer-social-link">Instagram</a>
+          <a href="https://www.linkedin.com/in/j07isher/" target="_blank" rel="noopener noreferrer" class="footer-social-link">LinkedIn</a>
           <span aria-hidden="true">·</span>
           <a href="https://wa.me/46760672218" target="_blank" rel="noopener noreferrer" class="footer-social-link">WhatsApp</a>
         </div>
         <p class="footer-deadline" data-sv="🗓️ Gratis sessioner: 19 aug – ca 22 dec 2026" data-en="🗓️ Free sessions: 19 Aug – approx. 22 Dec 2026">🗓️ Gratis sessioner: 19 aug – ca 22 dec 2026</p>
-        <a href="/pitch.html" class="footer-pitch-link" data-sv="Om plattformen bakom →" data-en="About the platform →">Om plattformen bakom →</a>
+
       </div>
     </footer>
 
-    <script src="script.js?v=6"></script>
+    <script src="script.js?v=7"></script>
   </body>
 </html>
