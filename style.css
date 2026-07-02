@@ -11,8 +11,10 @@
   6. Hero
   6b. Trust Strip
   7. About
-  8. Pricing
-  9. Contact / Form
+  8. Services
+  9. Journey
+  9b. Progress
+  9c. Contact
   10. Footer
   11. Responsive (500px, 600px, 768px, 1024px)
 ================================================================ */
@@ -68,6 +70,28 @@
   --shadow-sm:   0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
   --shadow-md:   0 4px 12px rgba(0,0,0,0.08);
   --transition:  0.2s ease;
+}
+
+
+/* ================================================================
+  1b. SKIP LINK (accessibility)
+================================================================ */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  z-index: 9999;
+  background: var(--color-primary);
+  color: #fff;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--size-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: var(--space-4);
 }
 
 
@@ -453,341 +477,138 @@ section {
 
 
 /* ================================================================
-  8. PRICING
+  9a. TOOLS TEASER
 ================================================================ */
-.pricing {
-  background: var(--color-surface);
-}
-
-.pricing-travel {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  background: var(--color-primary-light);
-  border: 1px solid rgba(30,107,69,0.15);
-  border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
-  margin-bottom: var(--space-10);
-  max-width: 680px;
-}
-.pricing-travel-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
-.pricing-travel p {
-  font-size: var(--size-sm);
-  color: var(--color-primary);
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-.pricing-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-5);
-  margin-bottom: var(--space-10);
-}
-
-.pricing-card {
-  position: relative;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  transition: box-shadow var(--transition), transform var(--transition),
-              border-color var(--transition);
-  overflow: hidden;
-  cursor: pointer;
-}
-.pricing-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.pricing-card--selected {
-  border-color: var(--color-primary) !important;
-  border-width: 2px !important;
-  box-shadow: 0 0 0 4px rgba(30,107,69,0.12), var(--shadow-md) !important;
-  transform: translateY(-2px);
-}
-
-.pricing-group-label {
-  font-size: var(--size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  margin-bottom: calc(-1 * var(--space-3));
-}
-
-.pricing-card--highlight {
-  border-color: var(--color-primary);
-  border-width: 2px;
-  background: #fff;
-}
-
-.pricing-card--paused {
-  opacity: 0.55;
-  filter: grayscale(35%);
-  pointer-events: none;
-}
-.pricing-card--paused .pricing-cta {
-  pointer-events: auto;
-}
-.pricing-card--paused::before {
-  content: "Tillfälligt pausad";
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
+.tools-teaser {
   background: var(--color-text);
-  color: #fff;
-  font-size: var(--size-xs);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
+  padding: var(--space-14) 0;
 }
 
-.pricing-free-banner {
-  background: var(--color-primary);
-  color: #fff;
-  font-size: var(--size-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-align: center;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) 0;
-  margin-bottom: 0;
-}
-
-.pricing-card-head { display: flex; flex-direction: column; gap: var(--space-2); }
-.pricing-card-icon { font-size: 1.75rem; display: block; margin-bottom: var(--space-1); }
-.pricing-card-head h3 { color: var(--color-text); font-size: var(--size-xl); }
-.pricing-card-note {
-  font-size: var(--size-sm);
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
-.pricing-rows {
+.tools-teaser-inner {
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  align-items: center;
+  gap: var(--space-10);
+}
+
+.tools-teaser-text {
   flex: 1;
 }
 
-.pricing-row {
+.tools-teaser-text h2 {
+  font-size: clamp(var(--size-xl), 3vw, var(--size-3xl));
+  color: #fff;
+  margin-bottom: var(--space-4);
+  line-height: 1.2;
+}
+
+.tools-teaser-text p {
+  color: rgba(255,255,255,0.65);
+  font-size: var(--size-base);
+  line-height: 1.75;
+  max-width: 520px;
+}
+
+.tools-teaser-text .hero-label {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8);
+  border: none;
+}
+
+.tools-teaser-icons {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-.pricing-row:last-child { border-bottom: none; }
-
-.pricing-row--featured {
-  background: var(--color-primary-light);
-}
-
-.pricing-row-name {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  font-size: var(--size-sm);
-  color: var(--color-text);
-  font-weight: 500;
-  flex: 1;
-}
-
-.pricing-row-desc {
-  flex-basis: 100%;
-  font-size: var(--size-xs);
-  font-weight: 400;
-  color: var(--color-text-muted);
-  line-height: 1.4;
-}
-
-.pricing-row-badge {
-  font-size: var(--size-xs);
-  font-weight: 700;
-  color: var(--color-primary);
-  background: rgba(30,107,69,0.1);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-full);
-  white-space: nowrap;
-}
-
-.pricing-row-price {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
+  gap: var(--space-4);
   flex-shrink: 0;
 }
 
-.price-market {
-  font-size: var(--size-xs);
-  color: var(--color-text-muted);
-  text-decoration: line-through;
-  text-decoration-color: rgba(107,114,128,0.6);
+.tools-teaser-icons span {
+  font-size: 3rem;
+  opacity: 0.75;
 }
 
-.price-ours {
-  font-size: var(--size-base);
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.price-free-note {
-  font-size: var(--size-sm);
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.pricing-first-time-note {
-  font-size: var(--size-xs);
-  color: var(--color-text-muted);
-  line-height: 1.6;
-  font-style: italic;
-  border-left: 2px solid var(--color-border);
-  padding-left: var(--space-3);
-}
-
-.pricing-cta {
-  width: 100%;
-  margin-top: auto;
-}
-
-.pricing-policy {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-5) var(--space-6);
-  background: var(--color-primary-light);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(30,107,69,0.12);
-}
-.pricing-policy-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--size-xs);
-  font-weight: 500;
-  color: var(--color-primary);
-}
-.pricing-policy-sep {
-  color: rgba(30,107,69,0.3);
-  font-size: var(--size-base);
-  display: none;
-}
-@media (min-width: 600px) {
-  .pricing-policy-sep { display: inline; }
-  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 640px) {
+  .tools-teaser-inner { flex-direction: column; align-items: flex-start; }
+  .tools-teaser-icons { display: none; }
 }
 
 
 /* ================================================================
-  9. CONTACT / FORM
+  9b. TESTIMONIALS
 ================================================================ */
-.contact { background: var(--color-bg); }
-
-.contact-inner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-10);
+.testimonials {
+  background: var(--color-surface);
 }
 
-.contact-intro h2 { margin-bottom: var(--space-3); color: var(--color-text); }
-.contact-intro p  { max-width: 420px; }
-
-.social-links { display: flex; gap: var(--space-3); margin-top: var(--space-5); flex-wrap: wrap; }
-.social-link {
-  font-size: var(--size-sm);
-  font-weight: 600;
-  color: var(--color-primary);
-  border: 1.5px solid var(--color-primary);
-  border-radius: var(--radius-full);
-  padding: var(--space-2) var(--space-5);
-  transition: background var(--transition), color var(--transition);
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
 }
-.social-link:hover { background: var(--color-primary); color: #fff; }
 
-.contact-prices {
-  margin-top: var(--space-6);
-  padding: var(--space-5);
-  background: var(--color-primary-light);
-  border-radius: var(--radius-md);
+@media (min-width: 600px) {
+  .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .testimonials-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.testimonial-card {
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
-}
-
-.contact-prices-label {
-  font-size: var(--size-xs);
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.contact-prices-list {
-  list-style: none;
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  gap: var(--space-4);
+  margin: 0;
 }
 
-.contact-prices-list li {
+.testimonial-quote {
+  font-size: var(--size-base);
+  color: var(--color-text);
+  line-height: 1.7;
+  font-style: italic;
+}
+
+.testimonial-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-3);
-  font-size: var(--size-sm);
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.contact-prices-list li span:first-child {
+.testimonial-name {
+  font-size: var(--size-sm);
+  font-weight: 700;
   color: var(--color-text);
 }
 
-.contact-prices-list li span:last-child {
-  font-weight: 700;
-  color: var(--color-primary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.contact-prices-bundle {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-2);
-  margin-top: var(--space-1) !important;
-}
-
-.contact-prices-link {
+.testimonial-service {
   font-size: var(--size-xs);
   font-weight: 600;
-  color: var(--color-text-muted);
-  text-decoration: none;
-  transition: color var(--transition);
-}
-.contact-prices-link:hover { color: var(--color-primary); }
-
-.contact-prices-note {
-  font-size: var(--size-xs);
-  color: var(--color-text-muted);
-  font-style: italic;
-  margin-bottom: var(--space-3);
+  color: var(--color-primary);
 }
 
-.contact-form { display: flex; flex-direction: column; gap: var(--space-5); }
+
+/* ================================================================
+  9c. CONTACT
+================================================================ */
+.contact { background: var(--color-bg); }
+
+.contact-form-wrap {
+  width: 100%;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-6);
+}
+
+.contact-form-label {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.contact-form { display: flex; flex-direction: column; gap: var(--space-5); text-align: left; }
 
 .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
 .form-group label {
@@ -795,17 +616,7 @@ section {
   font-weight: 600;
   color: var(--color-text);
 }
-
-.form-success {
-  color: var(--color-primary);
-  font-weight: 500;
-  font-size: var(--size-sm);
-}
-.form-error {
-  color: #dc2626;
-  font-weight: 500;
-  font-size: var(--size-sm);
-}
+.contact-form .btn { align-self: flex-start; }
 
 
 /* ================================================================

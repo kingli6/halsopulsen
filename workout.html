@@ -715,7 +715,6 @@
     /* ── RESPONSIVE ── */
     @media (min-width: 600px) {
       .timer-countdown { font-size: 7rem; }
-      .tracker-val { font-size: 4.5rem; }
     }
     @media (max-width: 700px) {
       .ss-sessions-grid { grid-template-columns: 1fr; }
@@ -725,7 +724,253 @@
     @media (max-width: 480px) {
       .ss-inputs { grid-template-columns: 1fr; }
       .ss-input-full { max-width: 100%; }
-      .tracker-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── GET READY COUNTDOWN ── */
+    .timer-get-ready {
+      text-align: center;
+      padding: var(--space-12) 0;
+    }
+    .timer-get-ready-label {
+      font-size: var(--size-sm);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-4);
+    }
+    .timer-get-ready-count {
+      font-size: 8rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── TRACKER v2 — multi-exercise ── */
+    .exercise-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+    .exercise-item {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+    }
+    .exercise-item-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+    .exercise-name-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: var(--size-base);
+      font-weight: 700;
+      color: var(--color-text);
+      padding: 0;
+      min-width: 0;
+      border-bottom: 2px solid transparent;
+      transition: border-color var(--transition);
+    }
+    .exercise-name-input::placeholder { color: var(--color-text-muted); font-weight: 400; font-size: var(--size-sm); }
+    .exercise-name-input:focus { outline: none; border-bottom-color: var(--color-primary); }
+    .exercise-remove-btn {
+      color: var(--color-text-muted);
+      font-size: 1.1rem;
+      line-height: 1;
+      flex-shrink: 0;
+      padding: var(--space-1);
+      transition: color var(--transition);
+    }
+    .exercise-remove-btn:hover { color: #dc2626; }
+
+    .exercise-config {
+      display: flex;
+      gap: var(--space-6);
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .exercise-cfg-group { display: flex; flex-direction: column; gap: var(--space-1); }
+    .exercise-cfg-label {
+      font-size: var(--size-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+    }
+    .exercise-cfg-ctrl { display: flex; align-items: center; gap: var(--space-2); }
+    .exercise-cfg-btn {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-sm);
+      background: var(--color-border);
+      font-weight: 700;
+      font-size: var(--size-sm);
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition);
+    }
+    .exercise-cfg-btn:hover { background: var(--color-primary); color: #fff; }
+    .exercise-cfg-val { font-size: var(--size-lg); font-weight: 700; color: var(--color-primary); min-width: 24px; text-align: center; }
+
+    .exercise-sets-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-2);
+    }
+    .set-dot {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: 2px solid var(--color-border);
+      background: var(--color-surface);
+      font-size: var(--size-sm);
+      font-weight: 700;
+      color: var(--color-text-muted);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .set-dot.done { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .set-dot:hover:not(.done) { border-color: var(--color-primary); color: var(--color-primary); }
+
+    .exercise-progress-label {
+      font-size: var(--size-xs);
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+    .exercise-progress-label.complete { color: var(--color-primary); }
+
+    .btn-add-exercise {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: var(--size-sm);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+      margin-bottom: var(--space-5);
+    }
+    .btn-add-exercise:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+    .tracker-done-banner {
+      text-align: center;
+      padding: var(--space-5);
+      background: var(--color-primary-light);
+      border: 1px solid rgba(30,107,69,0.2);
+      border-radius: var(--radius-md);
+      display: none;
+    }
+    .tracker-done-banner.visible { display: block; }
+    .tracker-done-banner-emoji { font-size: 2rem; margin-bottom: var(--space-2); }
+    .tracker-done-banner-text { font-weight: 700; color: var(--color-primary); font-size: var(--size-lg); }
+
+    /* ── SS: session completion ── */
+    .ss-session-card.session-done { opacity: 0.5; }
+    .ss-session-card.session-done .ss-session-card-head { background: #f3f4f6; }
+    .ss-session-card.session-current { border-color: var(--color-primary); border-width: 2px; }
+    .ss-session-card.session-current .ss-session-card-head { background: var(--color-primary-light); }
+    .ss-badge-done {
+      font-size: var(--size-xs); font-weight: 700;
+      padding: 2px 8px; border-radius: var(--radius-full);
+      background: rgba(30,107,69,0.12); color: var(--color-primary);
+    }
+    .ss-badge-current {
+      font-size: var(--size-xs); font-weight: 700;
+      padding: 2px 8px; border-radius: var(--radius-full);
+      background: var(--color-primary); color: #fff;
+    }
+    .ss-card-actions {
+      padding: var(--space-3) var(--space-4);
+      border-top: 1px solid var(--color-border);
+      background: var(--color-bg);
+      display: flex;
+      gap: var(--space-2);
+    }
+    .ss-mark-done-btn {
+      flex: 1;
+      padding: var(--space-2);
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--color-border);
+      font-size: var(--size-xs);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+    }
+    .ss-mark-done-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .ss-mark-done-btn.is-done { background: var(--color-primary-light); color: var(--color-primary); border-color: var(--color-primary); }
+    .ss-load-tracker-btn {
+      flex: 1;
+      padding: var(--space-2);
+      border-radius: var(--radius-full);
+      background: var(--color-primary);
+      color: #fff;
+      font-size: var(--size-xs);
+      font-weight: 600;
+      transition: all var(--transition);
+    }
+    .ss-load-tracker-btn:hover { background: #165836; }
+    .ss-current-info {
+      background: var(--color-primary-light);
+      border: 1px solid rgba(30,107,69,0.2);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-4);
+      font-size: var(--size-sm);
+      color: var(--color-primary);
+      font-weight: 600;
+      display: none;
+    }
+    .ss-current-info.visible { display: block; }
+    .ss-widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+    .ss-widget-header .widget-title { margin-bottom: 0; }
+    .ss-print-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--color-border);
+      font-size: var(--size-xs);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .ss-print-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .pc-sub-note {
+      margin-top: var(--space-2);
+      font-size: var(--size-xs);
+      color: var(--color-text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      .nav-wrapper, .workout-hero, .tool-tabs, #tab-timer, #tab-tracker,
+      .ss-1rm-banner, .ss-start-type, .ss-type-hint, .ss-pagination,
+      .ss-lang-toggle-wrap, .ss-page-banner, .ss-explain-section,
+      .ss-card-actions, .footer, .ss-print-btn, .ss-current-info,
+      #tab-ss > .widget-card:first-child { display: none !important; }
+      #tab-ss { display: block !important; }
+      .ss-sessions-grid { grid-template-columns: repeat(3, 1fr) !important; }
+      .ss-session-card { page-break-inside: avoid; opacity: 1 !important; }
+      body { background: white; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -754,7 +999,7 @@
     <div class="container">
       <span class="hero-label">Träningsverktyg</span>
       <h1>Timer · Tracker · Program</h1>
-      <p>Intervall-timer med ljud, set/rep-tracker och Starting Strength-planering — allt på ett ställe.</p>
+      <p>Intervall-timer med ljud, träningslogg och Starting Strength — spåra dina pass, allt på ett ställe.</p>
     </div>
   </div>
 
@@ -763,7 +1008,7 @@
     <div class="container">
       <div class="tool-tabs">
         <button class="tool-tab active" onclick="switchTab('timer', this)">⏱ Intervall-timer</button>
-        <button class="tool-tab" onclick="switchTab('tracker', this)">📊 Set &amp; Rep-tracker</button>
+        <button class="tool-tab" onclick="switchTab('tracker', this)">📊 Träningslogg</button>
         <button class="tool-tab" onclick="switchTab('ss', this)">💪 Starting Strength</button>
       </div>
 
@@ -829,6 +1074,13 @@
 
         <!-- RUNNING DISPLAY -->
         <div class="widget-card" id="timerDisplay" style="display:none;">
+
+          <!-- GET READY countdown -->
+          <div class="timer-get-ready" id="timerGetReady" style="display:none;">
+            <div class="timer-get-ready-label">Gör dig redo</div>
+            <div class="timer-get-ready-count" id="timerGetReadyCount">3</div>
+          </div>
+
           <div id="timerRunning">
             <div class="timer-run-meta">
               <span id="timerRoundLabel">Runda 1/3</span>
@@ -856,56 +1108,20 @@
       </div>
 
       <!-- ══════════════════════════════════════════════════
-           SET / REP TRACKER
+           TRÄNINGSLOGG (Set / Rep Tracker v2)
       ══════════════════════════════════════════════════ -->
       <div id="tab-tracker" class="tool-section">
         <div class="widget-card">
-          <div class="widget-title">Konfigurera</div>
-          <div class="tracker-config-row">
-            <div class="tracker-config-group">
-              <span class="tracker-config-label">Antal set</span>
-              <div class="tracker-config-ctrl">
-                <button class="tracker-cfg-btn" onclick="cfgChange('sets',-1)">−</button>
-                <span class="tracker-cfg-val" id="cfgSets">3</span>
-                <button class="tracker-cfg-btn" onclick="cfgChange('sets',1)">+</button>
-              </div>
-            </div>
-            <div class="tracker-config-group">
-              <span class="tracker-config-label">Reps per set</span>
-              <div class="tracker-config-ctrl">
-                <button class="tracker-cfg-btn" onclick="cfgChange('reps',-1)">−</button>
-                <span class="tracker-cfg-val" id="cfgReps">5</span>
-                <button class="tracker-cfg-btn" onclick="cfgChange('reps',1)">+</button>
-              </div>
-            </div>
-          </div>
-        </div>
+          <div class="widget-title">Dagens träning</div>
 
-        <div class="widget-card">
-          <div class="widget-title">Nuvarande position</div>
+          <!-- Exercise list rendered by JS -->
+          <div class="exercise-list" id="exerciseList"></div>
 
-          <div class="tracker-grid">
-            <div class="tracker-box">
-              <div class="tracker-box-label">Set</div>
-              <div><span class="tracker-val" id="trSet">1</span><span class="tracker-total" id="trSetTotal">/3</span></div>
-            </div>
-            <div class="tracker-box">
-              <div class="tracker-box-label">Rep</div>
-              <div><span class="tracker-val" id="trRep">1</span><span class="tracker-total" id="trRepTotal">/5</span></div>
-            </div>
-          </div>
+          <button class="btn-add-exercise" onclick="addExercise()">+ Lägg till övning</button>
 
-          <div class="tracker-complete-banner" id="trackerCompleteBanner">
-            🎉 Alla set klara!
-          </div>
-
-          <div class="tracker-actions">
-            <button class="btn-tracker-done" id="btnTrackerDone" onclick="trackerNext()">
-              Rep klar ✓
-            </button>
-            <button class="btn-tracker-undo" id="btnTrackerUndo" onclick="trackerUndo()" disabled>
-              ↩ Ångra
-            </button>
+          <div class="tracker-done-banner" id="trackerDoneBanner">
+            <div class="tracker-done-banner-emoji">🎉</div>
+            <div class="tracker-done-banner-text">Alla övningar klara — bra jobbat!</div>
           </div>
 
           <div class="btn-tracker-reset-wrap">
@@ -919,7 +1135,7 @@
               ontouchend="cancelReset()"
             >
               <div class="reset-hold-bar" id="resetBar"></div>
-              <span class="reset-label">Håll inne för att nollställa</span>
+              <span class="reset-label">Håll inne för att nollställa alla set</span>
             </button>
             <span class="reset-hint">Håll inne 2 sekunder för att bekräfta</span>
           </div>
@@ -978,11 +1194,12 @@
               </div>
             </div>
             <div class="ss-input-group ss-input-full">
-              <label class="ss-input-label">⚡ <span data-i18n="thPowerClean">Power Clean</span> <small data-i18n="labelThreeRep">— 3-repvikt</small></label>
+              <label class="ss-input-label">⚡ <span data-i18n="thPowerClean">Power Clean</span>* <small data-i18n="labelThreeRep">— 3-repvikt</small></label>
               <div class="ss-input-unit">
                 <input type="number" class="ss-input" id="ssPowerClean" value="40" min="20" step="2.5" oninput="renderSS()" />
                 <span class="ss-input-unit-label">kg</span>
               </div>
+              <p class="pc-sub-note">* Svårt att utföra? Byt ut mot <strong>Skivstångsrodd (Barbell Row) 3×5</strong> — riktar samma muskelgrupper med lägre tekniktröskel.</p>
             </div>
           </div>
 
@@ -997,6 +1214,14 @@
 
         <!-- Session cards with pagination -->
         <div class="widget-card">
+          <div class="ss-widget-header">
+            <div class="widget-title">Sessioner</div>
+            <button class="ss-print-btn" onclick="window.print()">🖨️ Skriv ut vecka</button>
+          </div>
+
+          <!-- Current session info bar -->
+          <div class="ss-current-info" id="ssCurrentInfo"></div>
+
           <!-- Motivational page banner -->
           <div class="ss-page-banner" id="ssPageBanner">
             <div class="ss-page-banner-text">
@@ -1120,6 +1345,12 @@
   ═══════════════════════════════════════════════════════ */
   document.getElementById('year').textContent = new Date().getFullYear();
 
+  /* ─── localStorage helper ─── */
+  const STORE = {
+    save: (k, v) => { try { localStorage.setItem('hp_' + k, JSON.stringify(v)); } catch(e) {} },
+    load: (k, d) => { try { const v = localStorage.getItem('hp_' + k); return v !== null ? JSON.parse(v) : d; } catch(e) { return d; } },
+  };
+
   // Mobile nav
   const hamburger = document.getElementById('hamburger');
   const navLinks  = document.getElementById('navLinks');
@@ -1206,21 +1437,25 @@
   ═══════════════════════════════════════════════════════ */
   // Single source of truth for the timer.
   // status lifecycle: idle → running ⇄ paused → done → idle (via resetTimer)
+  const _savedTimer = STORE.load('timer', null);
   let timerState = {
-    blocks: [
+    blocks: _savedTimer ? _savedTimer.blocks : [
       { id: 1, type: 'work', label: 'Arbete', duration: 40 },
       { id: 2, type: 'rest', label: 'Vila',   duration: 20 },
     ],
-    nextId: 3,
-    rounds: 3,
-    // runtime fields (only meaningful while status !== 'idle')
-    status: 'idle',     // idle | running | paused | done
+    nextId: _savedTimer ? _savedTimer.nextId : 3,
+    rounds: _savedTimer ? _savedTimer.rounds : 3,
+    status: 'idle',
     round: 1,
     blockIdx: 0,
     timeLeft: 0,
     blockDuration: 0,
     intervalId: null,
   };
+
+  function saveTimerState() {
+    STORE.save('timer', { blocks: timerState.blocks, nextId: timerState.nextId, rounds: timerState.rounds });
+  }
 
   function getSignal() {
     return {
@@ -1235,29 +1470,30 @@
     const defaultDur = type === 'work' ? 40 : 20;
     const label      = type === 'work' ? 'Arbete' : 'Vila';
     timerState.blocks.push({ id: timerState.nextId++, type, label, duration: defaultDur });
-    renderBlocks();
+    saveTimerState(); renderBlocks();
   }
 
   function removeBlock(id) {
     timerState.blocks = timerState.blocks.filter(b => b.id !== id);
-    renderBlocks();
+    saveTimerState(); renderBlocks();
   }
 
   function adjustDuration(id, delta) {
     const b = timerState.blocks.find(b => b.id === id);
     if (!b) return;
     b.duration = Math.max(5, b.duration + delta);
-    renderBlocks();
+    saveTimerState(); renderBlocks();
   }
 
   function updateLabel(id, val) {
     const b = timerState.blocks.find(b => b.id === id);
-    if (b) b.label = val;
+    if (b) { b.label = val; saveTimerState(); }
   }
 
   function changeRounds(delta) {
     timerState.rounds = Math.max(1, timerState.rounds + delta);
     document.getElementById('roundsVal').textContent = timerState.rounds;
+    saveTimerState();
   }
 
   // Escape user-typed text before injecting into innerHTML to prevent XSS
@@ -1300,19 +1536,37 @@
       alert('Lägg till minst ett block för att starta.');
       return;
     }
-    timerState.status   = 'running';
-    timerState.round    = 1;
-    timerState.blockIdx = 0;
-    timerState.timeLeft = timerState.blocks[0].duration;
-    timerState.blockDuration = timerState.blocks[0].duration;
+    // Unlock AudioContext immediately on user gesture
+    getCtx();
 
-    document.getElementById('timerBuilder').style.display  = 'none';
-    document.getElementById('timerDisplay').style.display  = 'block';
-    document.getElementById('timerDone').style.display     = 'none';
-    document.getElementById('timerRunning').style.display  = 'block';
+    document.getElementById('timerBuilder').style.display   = 'none';
+    document.getElementById('timerDisplay').style.display   = 'block';
+    document.getElementById('timerDone').style.display      = 'none';
+    document.getElementById('timerRunning').style.display   = 'none';
+    document.getElementById('timerGetReady').style.display  = 'block';
 
-    updateTimerDisplay();
-    timerState.intervalId = setInterval(tick, 1000);
+    let count = 3;
+    document.getElementById('timerGetReadyCount').textContent = count;
+
+    const preInterval = setInterval(() => {
+      count--;
+      if (count <= 0) {
+        clearInterval(preInterval);
+        document.getElementById('timerGetReady').style.display  = 'none';
+        document.getElementById('timerRunning').style.display   = 'block';
+
+        timerState.status        = 'running';
+        timerState.round         = 1;
+        timerState.blockIdx      = 0;
+        timerState.timeLeft      = timerState.blocks[0].duration;
+        timerState.blockDuration = timerState.blocks[0].duration;
+
+        updateTimerDisplay();
+        timerState.intervalId = setInterval(tick, 1000);
+      } else {
+        document.getElementById('timerGetReadyCount').textContent = count;
+      }
+    }, 1000);
   }
 
   function tick() {
@@ -1403,63 +1657,132 @@
   }
 
   /* ═══════════════════════════════════════════════════════
-     SET / REP TRACKER
+     TRÄNINGSLOGG — multi-exercise tracker
   ═══════════════════════════════════════════════════════ */
-  let tracker = {
-    totalSets: 3,
-    totalReps: 5,
-    currentSet: 1,
-    currentRep: 1,
-    history: [],
-  };
+  let trackerExercises = STORE.load('tracker_ex', [
+    { id: 1, name: '', sets: 3, reps: 5, doneSets: [] },
+  ]);
+  let trackerNextId = trackerExercises.length
+    ? Math.max(...trackerExercises.map(e => e.id)) + 1
+    : 1;
 
-  function cfgChange(field, delta) {
-    if (field === 'sets') {
-      tracker.totalSets = Math.max(1, tracker.totalSets + delta);
-      document.getElementById('cfgSets').textContent = tracker.totalSets;
-    } else {
-      tracker.totalReps = Math.max(1, tracker.totalReps + delta);
-      document.getElementById('cfgReps').textContent = tracker.totalReps;
-    }
-    trackerReset();
+  function saveTracker() {
+    STORE.save('tracker_ex', trackerExercises);
   }
 
-  function trackerNext() {
-    if (tracker.currentSet > tracker.totalSets) return;
-    tracker.history.push({ set: tracker.currentSet, rep: tracker.currentRep });
-
-    tracker.currentRep++;
-    if (tracker.currentRep > tracker.totalReps) {
-      tracker.currentRep = 1;
-      tracker.currentSet++;
-    }
+  function addExercise(name, sets, reps) {
+    trackerExercises.push({
+      id: trackerNextId++,
+      name: name || '',
+      sets: sets || 3,
+      reps: reps || 5,
+      doneSets: [],
+    });
+    saveTracker();
     renderTracker();
   }
 
-  function trackerUndo() {
-    if (tracker.history.length === 0) return;
-    const prev = tracker.history.pop();
-    tracker.currentSet = prev.set;
-    tracker.currentRep = prev.rep;
+  function removeExercise(id) {
+    trackerExercises = trackerExercises.filter(e => e.id !== id);
+    saveTracker();
     renderTracker();
   }
 
-  function trackerReset() {
-    tracker.currentSet = 1;
-    tracker.currentRep = 1;
-    tracker.history = [];
+  function cfgExercise(id, field, delta) {
+    const ex = trackerExercises.find(e => e.id === id);
+    if (!ex) return;
+    ex[field] = Math.max(1, ex[field] + delta);
+    ex.doneSets = ex.doneSets.filter(s => s < ex.sets);
+    saveTracker();
+    renderTracker();
+  }
+
+  function updateExerciseName(id, name) {
+    const ex = trackerExercises.find(e => e.id === id);
+    if (ex) { ex.name = name; saveTracker(); }
+  }
+
+  function toggleSet(id, setIdx) {
+    const ex = trackerExercises.find(e => e.id === id);
+    if (!ex) return;
+    const i = ex.doneSets.indexOf(setIdx);
+    if (i >= 0) ex.doneSets.splice(i, 1);
+    else         ex.doneSets.push(setIdx);
+    saveTracker();
     renderTracker();
   }
 
   function renderTracker() {
-    const done = tracker.currentSet > tracker.totalSets;
-    document.getElementById('trSet').textContent      = done ? '✓' : tracker.currentSet;
-    document.getElementById('trRep').textContent      = done ? '✓' : tracker.currentRep;
-    document.getElementById('trSetTotal').textContent  = '/' + tracker.totalSets;
-    document.getElementById('trRepTotal').textContent  = '/' + tracker.totalReps;
-    document.getElementById('btnTrackerDone').disabled = done;
-    document.getElementById('btnTrackerUndo').disabled = tracker.history.length === 0;
-    document.getElementById('trackerCompleteBanner').style.display = done ? 'block' : 'none';
+    const list = document.getElementById('exerciseList');
+    if (!list) return;
+
+    if (trackerExercises.length === 0) {
+      list.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);padding:var(--space-6) 0;font-size:var(--size-sm);">Tryck på "+ Lägg till övning" för att börja.</p>';
+      document.getElementById('trackerDoneBanner').classList.remove('visible');
+      return;
+    }
+
+    list.innerHTML = trackerExercises.map(ex => {
+      const doneSets = ex.doneSets || [];
+      const allDone  = doneSets.length >= ex.sets;
+
+      let dots = '';
+      for (let i = 0; i < ex.sets; i++) {
+        const done = doneSets.includes(i);
+        dots += `<button class="set-dot${done ? ' done' : ''}" onclick="toggleSet(${ex.id},${i})" title="Set ${i + 1}">${done ? '✓' : i + 1}</button>`;
+      }
+
+      return `
+        <div class="exercise-item">
+          <div class="exercise-item-header">
+            <input class="exercise-name-input" type="text"
+              placeholder="Övning (t.ex. Knäböj 85 kg)"
+              value="${esc(ex.name)}"
+              onchange="updateExerciseName(${ex.id}, this.value)" />
+            <button class="exercise-remove-btn" onclick="removeExercise(${ex.id})" title="Ta bort">✕</button>
+          </div>
+          <div class="exercise-config">
+            <div class="exercise-cfg-group">
+              <span class="exercise-cfg-label">Set</span>
+              <div class="exercise-cfg-ctrl">
+                <button class="exercise-cfg-btn" onclick="cfgExercise(${ex.id},'sets',-1)">−</button>
+                <span class="exercise-cfg-val">${ex.sets}</span>
+                <button class="exercise-cfg-btn" onclick="cfgExercise(${ex.id},'sets',1)">+</button>
+              </div>
+            </div>
+            <div class="exercise-cfg-group">
+              <span class="exercise-cfg-label">Reps/set</span>
+              <div class="exercise-cfg-ctrl">
+                <button class="exercise-cfg-btn" onclick="cfgExercise(${ex.id},'reps',-1)">−</button>
+                <span class="exercise-cfg-val">${ex.reps}</span>
+                <button class="exercise-cfg-btn" onclick="cfgExercise(${ex.id},'reps',1)">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="exercise-sets-row">${dots}</div>
+          <div class="exercise-progress-label${allDone ? ' complete' : ''}">
+            ${allDone ? '✓ Klar!' : doneSets.length === 0 ? `0 / ${ex.sets} set` : `${doneSets.length} / ${ex.sets} set`}
+          </div>
+        </div>`;
+    }).join('');
+
+    const allComplete = trackerExercises.length > 0
+      && trackerExercises.every(ex => (ex.doneSets || []).length >= ex.sets);
+    document.getElementById('trackerDoneBanner').classList.toggle('visible', allComplete);
+  }
+
+  /* Load a session from SS into the tracker and switch tabs */
+  function loadSessionToTracker(exercises) {
+    trackerExercises = exercises.map(ex => ({
+      id: trackerNextId++,
+      name: ex.name,
+      sets: ex.sets,
+      reps: ex.reps,
+      doneSets: [],
+    }));
+    saveTracker();
+    renderTracker();
+    switchTab('tracker', document.querySelector('.tool-tab[onclick*="tracker"]'));
   }
 
   // Hold to reset
@@ -1474,9 +1797,11 @@
       document.getElementById('resetBar').style.width = resetProgress + '%';
       if (resetProgress >= 100) {
         cancelReset();
-        trackerReset();
+        trackerExercises.forEach(ex => ex.doneSets = []);
+        saveTracker();
+        renderTracker();
       }
-    }, 100); // 2 seconds total = 100% / 5% per 100ms
+    }, 100);
   }
 
   function cancelReset() {
@@ -1493,11 +1818,28 @@
   /* ═══════════════════════════════════════════════════════
      STARTING STRENGTH CALCULATOR
   ═══════════════════════════════════════════════════════ */
-  let ssStartType = 'A';
-  let ssPage = 0;
-  let ssLang = 'sv'; // default language
+  let ssStartType = STORE.load('ss_start', 'A');
+  let ssPage      = 0; // will be set by initSS
+  let ssLang      = 'sv';
+  let ssCompleted = STORE.load('ss_done', []); // array of completed session nums (1-24)
+  let ssAutoNavigated = false;
   const SS_PAGE_SIZE   = 3;
-  const SS_TOTAL_PAGES = 8; // 24 sessions = 8 weeks
+  const SS_TOTAL_PAGES = 8;
+
+  function ssGetCurrentSession() {
+    for (let i = 1; i <= SS_TOTAL_PAGES * SS_PAGE_SIZE; i++) {
+      if (!ssCompleted.includes(i)) return i;
+    }
+    return null; // all done
+  }
+
+  function toggleSessionDone(num) {
+    const idx = ssCompleted.indexOf(num);
+    if (idx >= 0) ssCompleted.splice(idx, 1);
+    else          ssCompleted.push(num);
+    STORE.save('ss_done', ssCompleted);
+    renderSS();
+  }
 
   /* ── Bilingual string table ── */
   const SS_STRINGS = {
@@ -1656,6 +1998,7 @@
 
   function setSSType(type) {
     ssStartType = type;
+    STORE.save('ss_start', type);
     document.getElementById('btnTypeA').classList.toggle('active', type === 'A');
     document.getElementById('btnTypeB').classList.toggle('active', type === 'B');
     renderSS();
@@ -1733,7 +2076,7 @@
     return sessions;
   }
 
-  function renderSessionCard(sess) {
+  function renderSessionCard(sess, isDone, isCurrent) {
     const isA     = sess.type === 'A';
     const s       = SS_STRINGS[ssLang];
     const days    = ssLang === 'sv' ? SS_DAYS_SV : SS_DAYS_EN;
@@ -1743,14 +2086,22 @@
       ? [{ key: 'squat', W: sess.squat }, { key: 'bench', W: sess.bench }, { key: 'deadlift', W: sess.deadlift }]
       : [{ key: 'squat', W: sess.squat }, { key: 'press', W: sess.press }, { key: 'powerclean', W: sess.powerclean }];
 
-    let html = `<div class="ss-session-card">
+    const statusClass = isDone ? ' session-done' : isCurrent ? ' session-current' : '';
+    const badgeHtml   = isDone
+      ? `<span class="ss-badge-done">✓ Klar</span>`
+      : isCurrent
+        ? `<span class="ss-badge-current">Nuvarande</span>`
+        : `<span class="ss-session-type-badge ${isA ? 'ss-badge-a' : 'ss-badge-b'}">${s.workoutPrefix} ${sess.type}</span>`;
+
+    let html = `<div class="ss-session-card${statusClass}">
       <div class="ss-session-card-head">
         <div>
-          <div class="ss-session-num">${s.sessionPrefix} ${sess.num}</div>
-          <div class="ss-session-day">${day}</div>
+          <div class="ss-session-num">${s.sessionPrefix} ${sess.num} · ${day}</div>
+          <div class="ss-session-day">${s.workoutPrefix} ${sess.type}</div>
         </div>
-        <span class="ss-session-type-badge ${isA ? 'ss-badge-a' : 'ss-badge-b'}">${s.workoutPrefix} ${sess.type}</span>
+        ${badgeHtml}
       </div>`;
+
     for (const ex of exercises) {
       const sets = getWarmupsKg(ex.key, ex.W);
       const info = exNames[ex.key];
@@ -1765,11 +2116,29 @@
       }
       html += `</div></div>`;
     }
+
+    // Build tracker payload for "Load to tracker" button
+    const trackerPayload = JSON.stringify(exercises.map(ex => {
+      const sets  = getWarmupsKg(ex.key, ex.W);
+      const ws    = sets.find(s => s.working);
+      const info  = exNames[ex.key];
+      const reps  = ex.key === 'powerclean' ? 3 : 5;
+      const nSets = ex.key === 'deadlift' ? 1 : ex.key === 'powerclean' ? 5 : 3;
+      return { name: `${info.icon} ${info.name} — ${fmtKg(ws ? ws.weight : ex.W)}`, sets: nSets, reps };
+    })).replace(/"/g, '&quot;');
+
+    html += `<div class="ss-card-actions">
+      <button class="ss-mark-done-btn${isDone ? ' is-done' : ''}" onclick="toggleSessionDone(${sess.num})">
+        ${isDone ? '↩ Markera som ej klar' : '✓ Markera klar'}
+      </button>
+      ${!isDone ? `<button class="ss-load-tracker-btn" onclick="loadSessionToTracker(JSON.parse(this.dataset.ex))" data-ex="${trackerPayload}">Tracka pass →</button>` : ''}
+    </div>`;
+
     html += `</div>`;
     return html;
   }
 
-  // renderSS: reads input weights, generates all sessions, renders the current page
+  // renderSS: reads input weights, saves inputs, generates sessions, renders current page
   function renderSS() {
     const sqW = parseFloat(document.getElementById('ssSquat').value)      || 20;
     const bnW = parseFloat(document.getElementById('ssBench').value)      || 20;
@@ -1777,11 +2146,33 @@
     const dlW = parseFloat(document.getElementById('ssDeadlift').value)   || 20;
     const pcW = parseFloat(document.getElementById('ssPowerClean').value) || 20;
 
+    STORE.save('ss_inputs', { sqW, bnW, prW, dlW, pcW });
+
     const totalSessions = SS_TOTAL_PAGES * SS_PAGE_SIZE;
     const sessions = getSessionsKg(sqW, bnW, prW, dlW, pcW, ssStartType, totalSessions);
 
+    // Auto-navigate to current session's week on first render
+    const currentSessNum = ssGetCurrentSession();
+    if (!ssAutoNavigated) {
+      ssAutoNavigated = true;
+      if (currentSessNum) {
+        ssPage = Math.floor((currentSessNum - 1) / SS_PAGE_SIZE);
+      }
+    }
+
     ssPage = Math.max(0, Math.min(SS_TOTAL_PAGES - 1, ssPage));
     const pageSessions = sessions.slice(ssPage * SS_PAGE_SIZE, ssPage * SS_PAGE_SIZE + SS_PAGE_SIZE);
+
+    // Current info banner
+    const infoEl = document.getElementById('ssCurrentInfo');
+    if (currentSessNum) {
+      const currentWeek = Math.floor((currentSessNum - 1) / SS_PAGE_SIZE) + 1;
+      infoEl.textContent = `📍 Du är på pass ${currentSessNum} (vecka ${currentWeek})`;
+      infoEl.classList.add('visible');
+    } else {
+      infoEl.textContent = '🏆 Du har klarat alla 24 pass! Bra jobbat.';
+      infoEl.classList.add('visible');
+    }
 
     const pages = ssLang === 'sv' ? SS_PAGES_SV : SS_PAGES_EN;
     const pb = pages[ssPage];
@@ -1792,15 +2183,34 @@
     document.getElementById('ssPageDots').innerHTML = pages
       .map((_, i) => `<div class="ss-page-dot${i === ssPage ? ' active' : ''}"></div>`).join('');
 
-    document.getElementById('ssSessionsGrid').innerHTML = pageSessions.map(renderSessionCard).join('');
+    document.getElementById('ssSessionsGrid').innerHTML = pageSessions.map(sess => {
+      const isDone    = ssCompleted.includes(sess.num);
+      const isCurrent = sess.num === currentSessNum;
+      return renderSessionCard(sess, isDone, isCurrent);
+    }).join('');
 
-    document.getElementById('ssPrev').disabled    = ssPage === 0;
-    document.getElementById('ssNext').disabled    = ssPage === SS_TOTAL_PAGES - 1;
+    document.getElementById('ssPrev').disabled       = ssPage === 0;
+    document.getElementById('ssNext').disabled       = ssPage === SS_TOTAL_PAGES - 1;
     document.getElementById('ssPagInfo').textContent = SS_STRINGS[ssLang].weekOf(ssPage, SS_TOTAL_PAGES);
   }
 
-  // Init — apply Swedish strings to all data-i18n elements and render
-  setSsLang('sv');
+  // Init — restore saved inputs, apply language, render
+  function initSS() {
+    const saved = STORE.load('ss_inputs', null);
+    if (saved) {
+      document.getElementById('ssSquat').value      = saved.sqW;
+      document.getElementById('ssBench').value      = saved.bnW;
+      document.getElementById('ssPress').value      = saved.prW;
+      document.getElementById('ssDeadlift').value   = saved.dlW;
+      document.getElementById('ssPowerClean').value = saved.pcW;
+    }
+    // Restore start type button state
+    document.getElementById('btnTypeA').classList.toggle('active', ssStartType === 'A');
+    document.getElementById('btnTypeB').classList.toggle('active', ssStartType === 'B');
+    setSsLang('sv');
+  }
+
+  initSS();
   </script>
 </body>
 </html>
