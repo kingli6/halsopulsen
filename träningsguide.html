@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="sv">
 <head>
+  <script>try{document.documentElement.lang=localStorage.getItem('lang')||'sv'}catch(e){}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Träningsguide från HälsoPulsen – lär dig träna smartare. Typer av träning, hur mycket du bör röra dig, upplägg och övningar." />
@@ -9,7 +10,7 @@
   <meta property="og:description" content="Lär dig träna smartare – typer av träning, Folkhälsomyndighetens rekommendationer, splits och övningsvideor." />
   <meta property="og:type" content="website" />
   <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=9" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -30,6 +31,7 @@
         <li><a href="/workout.html">⏱ Träningsverktyg</a></li>
       </ul>
       <div class="nav-actions">
+        <button class="lang-toggle" id="langToggle" aria-label="Switch language">EN</button>
         <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
@@ -44,11 +46,12 @@
       <h1>Träningsguide</h1>
       <p>Lär dig träna smartare — varför det spelar roll, hur det ska kännas och vad du ska göra.</p>
       <nav class="guide-quick-nav" aria-label="Snabbnavigation">
-        <a href="#varfor">❤️ Varför träna?</a>
-        <a href="#aterhamtning">😴 Återhämtning</a>
-        <a href="#trana-ratt">💡 Träna rätt</a>
-        <a href="#splits">📅 Upplägg</a>
-        <a href="#ovningar">🎥 Övningar</a>
+        <a href="#varfor" data-sv="❤️ Kropp & hälsa" data-en="❤️ Body & Health">❤️ Kropp & hälsa</a>
+        <a href="#aterhamtning" data-sv="😴 Återhämtning" data-en="😴 Recovery">😴 Återhämtning</a>
+        <a href="#trana-ratt" data-sv="💡 Teknik & intensitet" data-en="💡 Technique & Intensity">💡 Teknik & intensitet</a>
+        <a href="#splits" data-sv="📅 Upplägg" data-en="📅 Structure">📅 Upplägg</a>
+        <a href="#ovningar" data-sv="🎥 Övningar" data-en="🎥 Exercises">🎥 Övningar</a>
+        <a href="#resurser" data-sv="🌐 Fler resurser" data-en="🌐 More Resources">🌐 Fler resurser</a>
       </nav>
     </div>
   </div>
@@ -58,8 +61,8 @@
   ══════════════════════════════════════════ -->
   <section id="varfor" class="guide-section">
     <div class="container">
-      <h2 class="guide-section-title">Varför träna?</h2>
-      <p class="guide-section-sub">Regelbunden fysisk aktivitet är en av de mest välstuderade hälsointerventionerna som finns — effekterna är långtgående och väl dokumenterade.</p>
+      <h2 class="guide-section-title" data-sv="Kropp & hälsa" data-en="Body & Health">Kropp & hälsa</h2>
+      <p class="guide-section-sub" data-sv="Regelbunden fysisk aktivitet är en av de mest välstuderade hälsointerventionerna som finns — effekterna är långtgående och väl dokumenterade." data-en="Regular physical activity is one of the most well-researched health interventions there is — with far-reaching, well-documented effects.">Regelbunden fysisk aktivitet är en av de mest välstuderade hälsointerventionerna som finns — effekterna är långtgående och väl dokumenterade.</p>
 
       <div class="why-stats-grid">
         <div class="why-stat-card">
@@ -90,8 +93,8 @@
 
       <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-10) 0 var(--space-8);" />
 
-      <h3 style="font-size:var(--size-xl);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2);">Vad de flesta aldrig tränar</h3>
-      <p class="guide-section-sub" style="margin-bottom:0;">Styrka och kondition får all uppmärksamhet. Men kroppen behöver mer än så för att fungera väl och hålla länge.</p>
+      <h3 style="font-size:var(--size-xl);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2);" data-sv="Det som ofta glöms bort" data-en="What's Often Overlooked">Det som ofta glöms bort</h3>
+      <p class="guide-section-sub" style="margin-bottom:0;" data-sv="Styrka och kondition får all uppmärksamhet. Men kroppen behöver mer än så för att fungera väl och hålla länge." data-en="Strength and cardio get all the attention. But the body needs more than that to function well and stay injury-free long-term.">Styrka och kondition får all uppmärksamhet. Men kroppen behöver mer än så för att fungera väl och hålla länge.</p>
 
       <div class="forgotten-grid">
         <div class="forgotten-card">
@@ -126,8 +129,8 @@
   <div class="guide-image-break">
     <div class="guide-image-break-text">
       <blockquote>
-        "Det bästa träningsprogrammet är det du faktiskt genomför."
-        <cite>— Ett grundläggande sanningskorn inom träningsvetenskap</cite>
+        <span data-sv="&quot;Det bästa träningsprogrammet är det du faktiskt genomför.&quot;" data-en="&quot;The best training programme is the one you actually follow through on.&quot;">"Det bästa träningsprogrammet är det du faktiskt genomför."</span>
+        <cite data-sv="— Ett grundläggande sanningskorn inom träningsvetenskap" data-en="— A fundamental truth in exercise science">— Ett grundläggande sanningskorn inom träningsvetenskap</cite>
       </blockquote>
     </div>
   </div>
@@ -137,79 +140,79 @@
   ══════════════════════════════════════════ -->
   <section id="aterhamtning" class="guide-section guide-section--alt">
     <div class="container">
-      <h2 class="guide-section-title">Vila och återhämtning</h2>
-      <p class="guide-section-sub">Det är under vilan som kroppen faktiskt blir starkare. Träningen är stimulansen — återhämtningen är resultatet.</p>
+      <h2 class="guide-section-title" data-sv="Vila och återhämtning" data-en="Rest & Recovery">Vila och återhämtning</h2>
+      <p class="guide-section-sub" data-sv="Det är under vilan som kroppen faktiskt blir starkare. Träningen är stimulansen — återhämtningen är resultatet." data-en="Your body actually gets stronger during rest. Training is the stimulus — recovery is where results happen.">Det är under vilan som kroppen faktiskt blir starkare. Träningen är stimulansen — återhämtningen är resultatet.</p>
 
       <div class="recovery-scale">
         <div class="recovery-scale-row recovery--light">
-          <div class="recovery-level"><span class="recovery-dot recovery-dot--light"></span>Lätt</div>
-          <div class="recovery-examples">Stretching, promenad, yoga, lätt rörelsearbete</div>
-          <div class="recovery-time">6 h – halvdag</div>
+          <div class="recovery-level"><span class="recovery-dot recovery-dot--light"></span><span data-sv="Lätt" data-en="Light">Lätt</span></div>
+          <div class="recovery-examples" data-sv="Stretching, promenad, yoga, lätt rörelsearbete" data-en="Stretching, walking, yoga, light movement work">Stretching, promenad, yoga, lätt rörelsearbete</div>
+          <div class="recovery-time" data-sv="6 h – halvdag" data-en="6 h – half a day">6 h – halvdag</div>
         </div>
         <div class="recovery-scale-row recovery--medium">
-          <div class="recovery-level"><span class="recovery-dot recovery-dot--medium"></span>Medel</div>
-          <div class="recovery-examples">Vanligt gympass, måttlig konditionsträning, simning</div>
-          <div class="recovery-time">~1 dag</div>
+          <div class="recovery-level"><span class="recovery-dot recovery-dot--medium"></span><span data-sv="Medel" data-en="Moderate">Medel</span></div>
+          <div class="recovery-examples" data-sv="Vanligt gympass, måttlig konditionsträning, simning" data-en="Regular gym session, moderate cardio, swimming">Vanligt gympass, måttlig konditionsträning, simning</div>
+          <div class="recovery-time" data-sv="~1 dag" data-en="~1 day">~1 dag</div>
         </div>
         <div class="recovery-scale-row recovery--hard">
-          <div class="recovery-level"><span class="recovery-dot recovery-dot--hard"></span>Medel–hård</div>
-          <div class="recovery-examples">Tunga komplex, intensiva intervaller, hög volym</div>
-          <div class="recovery-time">1–2 dagar</div>
+          <div class="recovery-level"><span class="recovery-dot recovery-dot--hard"></span><span data-sv="Medel–hård" data-en="Moderate–Hard">Medel–hård</span></div>
+          <div class="recovery-examples" data-sv="Tunga komplex, intensiva intervaller, hög volym" data-en="Heavy compounds, intense intervals, high volume">Tunga komplex, intensiva intervaller, hög volym</div>
+          <div class="recovery-time" data-sv="1–2 dagar" data-en="1–2 days">1–2 dagar</div>
         </div>
         <div class="recovery-scale-row recovery--extreme">
-          <div class="recovery-level"><span class="recovery-dot recovery-dot--extreme"></span>Hård–extrem</div>
-          <div class="recovery-examples">Maxlyft, tävling, extremt hög volym</div>
-          <div class="recovery-time">3 dagar – 1 vecka</div>
+          <div class="recovery-level"><span class="recovery-dot recovery-dot--extreme"></span><span data-sv="Hård–extrem" data-en="Hard–Extreme">Hård–extrem</span></div>
+          <div class="recovery-examples" data-sv="Maxlyft, tävling, extremt hög volym" data-en="Max lifts, competition, extremely high volume">Maxlyft, tävling, extremt hög volym</div>
+          <div class="recovery-time" data-sv="3 dagar – 1 vecka" data-en="3 days – 1 week">3 dagar – 1 vecka</div>
         </div>
       </div>
 
       <div class="tip-box">
-        <div class="tip-box-label">💬 Lyssna på kroppen</div>
-        <p>Tyngd i musklerna, irritabilitet, nedsatt prestation och dålig sömn är tydliga tecken på otillräcklig återhämtning. Kroppen kommunicerar hela tiden — du behöver bara lära dig att lyssna.</p>
+        <div class="tip-box-label" data-sv="💬 Lyssna på kroppen" data-en="💬 Listen to your body">💬 Lyssna på kroppen</div>
+        <p data-sv="Tyngd i musklerna, irritabilitet, nedsatt prestation och dålig sömn är tydliga tecken på otillräcklig återhämtning. Kroppen kommunicerar hela tiden — du behöver bara lära dig att lyssna." data-en="Heaviness in the muscles, irritability, reduced performance and poor sleep are clear signs of inadequate recovery. The body communicates constantly — you just need to learn to listen.">Tyngd i musklerna, irritabilitet, nedsatt prestation och dålig sömn är tydliga tecken på otillräcklig återhämtning. Kroppen kommunicerar hela tiden — du behöver bara lära dig att lyssna.</p>
       </div>
 
-      <h3 class="recovery-methods-title">Bästa återhämtningsmetoderna</h3>
+      <h3 class="recovery-methods-title" data-sv="Bästa återhämtningsmetoderna" data-en="Best Recovery Methods">Bästa återhämtningsmetoderna</h3>
       <div class="recovery-methods-grid">
         <div class="recovery-method-card recovery-method--top">
           <div class="rm-icon">😴</div>
           <div class="rm-content">
-            <div class="rm-title">Sömn — viktigast av allt</div>
-            <p class="rm-body">Tillväxthormon frisätts primärt under djupsömn. Muskler repareras, nervsystemet återställs. Ingen annan återhämtningsmetod kan ersätta sömn.</p>
+            <div class="rm-title" data-sv="Sömn — viktigast av allt" data-en="Sleep — the most important of all">Sömn — viktigast av allt</div>
+            <p class="rm-body" data-sv="Tillväxthormon frisätts primärt under djupsömn. Muskler repareras, nervsystemet återställs. Ingen annan återhämtningsmetod kan ersätta sömn." data-en="Growth hormone is primarily released during deep sleep. Muscles repair, the nervous system resets. No other recovery method can replace sleep.">Tillväxthormon frisätts primärt under djupsömn. Muskler repareras, nervsystemet återställs. Ingen annan återhämtningsmetod kan ersätta sömn.</p>
           </div>
         </div>
         <div class="recovery-method-card">
           <div class="rm-icon">🧘</div>
           <div class="rm-content">
-            <div class="rm-title">Lugn rörelse & rörelsearbete</div>
-            <p class="rm-body">Aktiv återhämtning — lätt promenad, SOMA Move, yoga eller rörelseövningar ökar blodflödet utan att belasta systemet ytterligare. Ofta bättre än total vila.</p>
+            <div class="rm-title" data-sv="Lugn rörelse & rörelsearbete" data-en="Light Movement & Movement Work">Lugn rörelse & rörelsearbete</div>
+            <p class="rm-body" data-sv="Aktiv återhämtning — lätt promenad, SOMA Move, yoga eller rörelseövningar ökar blodflödet utan att belasta systemet ytterligare. Ofta bättre än total vila." data-en="Active recovery — light walking, SOMA Move, yoga or movement exercises increase blood flow without stressing the system further. Often better than total rest.">Aktiv återhämtning — lätt promenad, SOMA Move, yoga eller rörelseövningar ökar blodflödet utan att belasta systemet ytterligare. Ofta bättre än total vila.</p>
           </div>
         </div>
         <div class="recovery-method-card">
           <div class="rm-icon">💆</div>
           <div class="rm-content">
-            <div class="rm-title">Massage</div>
-            <p class="rm-body">Lugnar det centrala nervsystemet direkt. Minskar kortisol, aktiverar parasympatisk aktivitet och påskyndar muskelåterhämtningen på ett sätt som inte kan ersättas av annat. Se nedan.</p>
+            <div class="rm-title" data-sv="Massage" data-en="Massage">Massage</div>
+            <p class="rm-body" data-sv="Lugnar det centrala nervsystemet direkt. Minskar kortisol, aktiverar parasympatisk aktivitet och påskyndar muskelåterhämtningen på ett sätt som inte kan ersättas av annat. Se nedan." data-en="Calms the central nervous system directly. Reduces cortisol, activates parasympathetic activity and accelerates muscle recovery in a way nothing else can replace. See below.">Lugnar det centrala nervsystemet direkt. Minskar kortisol, aktiverar parasympatisk aktivitet och påskyndar muskelåterhämtningen på ett sätt som inte kan ersättas av annat. Se nedan.</p>
           </div>
         </div>
         <div class="recovery-method-card">
           <div class="rm-icon">🧖</div>
           <div class="rm-content">
-            <div class="rm-title">Bastu</div>
-            <p class="rm-body">Värme ökar blodcirkulationen, minskar muskelspänning och aktiverar parasympatiska nervsystemet — kroppens "vila och återhämta"-läge.</p>
+            <div class="rm-title" data-sv="Bastu" data-en="Sauna">Bastu</div>
+            <p class="rm-body" data-sv="Värme ökar blodcirkulationen, minskar muskelspänning och aktiverar parasympatiska nervsystemet — kroppens &quot;vila och återhämta&quot;-läge." data-en="Heat increases circulation, reduces muscle tension and activates the parasympathetic nervous system — the body's &quot;rest and recover&quot; mode.">Värme ökar blodcirkulationen, minskar muskelspänning och aktiverar parasympatiska nervsystemet — kroppens "vila och återhämta"-läge.</p>
           </div>
         </div>
         <div class="recovery-method-card">
           <div class="rm-icon">🧊</div>
           <div class="rm-content">
-            <div class="rm-title">Värme/kyla-kontrast</div>
-            <p class="rm-body">Växling mellan varmt och kallt (bastu + kalldusch, isbad) stimulerar cirkulationen kraftigt och minskar träningsvärk och inflammation.</p>
+            <div class="rm-title" data-sv="Värme/kyla-kontrast" data-en="Heat/Cold Contrast">Värme/kyla-kontrast</div>
+            <p class="rm-body" data-sv="Växling mellan varmt och kallt (bastu + kalldusch, isbad) stimulerar cirkulationen kraftigt och minskar träningsvärk och inflammation." data-en="Alternating between hot and cold (sauna + cold shower, ice bath) strongly stimulates circulation and reduces muscle soreness and inflammation.">Växling mellan varmt och kallt (bastu + kalldusch, isbad) stimulerar cirkulationen kraftigt och minskar träningsvärk och inflammation.</p>
           </div>
         </div>
         <div class="recovery-method-card">
           <div class="rm-icon">🥗</div>
           <div class="rm-content">
-            <div class="rm-title">Näring & hydrering</div>
-            <p class="rm-body">Protein för muskeluppbyggnad, kolhydrater för att återfylla glykogen, vatten för cellulära processer. Ät gärna inom 2 timmar efter avslutat pass.</p>
+            <div class="rm-title" data-sv="Näring & hydrering" data-en="Nutrition & Hydration">Näring & hydrering</div>
+            <p class="rm-body" data-sv="Protein för muskeluppbyggnad, kolhydrater för att återfylla glykogen, vatten för cellulära processer. Ät gärna inom 2 timmar efter avslutat pass." data-en="Protein for muscle building, carbohydrates to replenish glycogen, water for cellular processes. Try to eat within 2 hours of finishing your session.">Protein för muskeluppbyggnad, kolhydrater för att återfylla glykogen, vatten för cellulära processer. Ät gärna inom 2 timmar efter avslutat pass.</p>
           </div>
         </div>
       </div>
@@ -217,10 +220,10 @@
       <div class="massage-promo">
         <div class="massage-promo-icon">💆</div>
         <div class="massage-promo-body">
-          <div class="massage-promo-label">Återhämtning & nervsystem</div>
-          <h3 class="massage-promo-title">Massage — CNS-återhämtning på djupet</h3>
-          <p>Massage lugnar det centrala nervsystemet direkt — precis det som behövs efter hård träning eller en stressig vecka. Det sänker kortisol, aktiverar parasympatisk aktivitet och påskyndar muskelåterhämtningen på ett sätt som bastu och kyla inte fullt ut kan ersätta.</p>
-          <a href="/#contact" class="massage-promo-btn">📅 Boka massagebehandling</a>
+          <div class="massage-promo-label" data-sv="Återhämtning & nervsystem" data-en="Recovery & Nervous System">Återhämtning & nervsystem</div>
+          <h3 class="massage-promo-title" data-sv="Massage — CNS-återhämtning på djupet" data-en="Massage — Deep CNS Recovery">Massage — CNS-återhämtning på djupet</h3>
+          <p data-sv="Massage lugnar det centrala nervsystemet direkt — precis det som behövs efter hård träning eller en stressig vecka. Det sänker kortisol, aktiverar parasympatisk aktivitet och påskyndar muskelåterhämtningen på ett sätt som bastu och kyla inte fullt ut kan ersätta." data-en="Massage calms the central nervous system directly — exactly what's needed after hard training or a stressful week. It lowers cortisol, activates parasympathetic activity and accelerates muscle recovery in a way that sauna and cold alone cannot fully replace.">Massage lugnar det centrala nervsystemet direkt — precis det som behövs efter hård träning eller en stressig vecka. Det sänker kortisol, aktiverar parasympatisk aktivitet och påskyndar muskelåterhämtningen på ett sätt som bastu och kyla inte fullt ut kan ersätta.</p>
+          <a href="/#contact" class="massage-promo-btn" data-sv="📅 Boka massagebehandling" data-en="📅 Book a massage session">📅 Boka massagebehandling</a>
         </div>
       </div>
     </div>
@@ -231,22 +234,22 @@
   ══════════════════════════════════════════ -->
   <section id="trana-ratt" class="guide-section">
     <div class="container">
-      <h2 class="guide-section-title">Träna rätt — inte bara träna</h2>
-      <p class="guide-section-sub">Dina muskler räknar inga reps. De svarar på spänning, kontroll och ansträngning.</p>
+      <h2 class="guide-section-title" data-sv="Teknik & intensitet" data-en="Technique & Intensity">Teknik & intensitet</h2>
+      <p class="guide-section-sub" data-sv="Dina muskler räknar inga reps. De svarar på spänning, kontroll och ansträngning." data-en="Your muscles don't count reps. They respond to tension, control and effort.">Dina muskler räknar inga reps. De svarar på spänning, kontroll och ansträngning.</p>
 
       <div class="tut-box">
-        <div class="tut-box-label">💡 Principen som förändrar allt</div>
-        <h3 class="tut-box-title">Räkna inte repsen — gör repsen räkna</h3>
-        <p>Det klassiska "3 set × 12 reps" är inte fel — men det fungerar bara om du gör det rätt. 12 snabba reps utan kontroll ger minimalt med stimulans. Samma 12 reps med kontrollerad excentrisk fas ger runt 48 sekunder under spänning — och det är den tid under spänning som bygger muskeln.</p>
+        <div class="tut-box-label" data-sv="💡 Principen som förändrar allt" data-en="💡 The principle that changes everything">💡 Principen som förändrar allt</div>
+        <h3 class="tut-box-title" data-sv="Tid under spänning — det som faktiskt bygger muskeln" data-en="Time under tension — what actually builds muscle">Tid under spänning — det som faktiskt bygger muskeln</h3>
+        <p data-sv="Det klassiska &quot;3 set × 12 reps&quot; är inte fel — men det fungerar bara om du gör det rätt. 12 snabba reps utan kontroll ger minimalt med stimulans. Samma 12 reps med kontrollerad excentrisk fas ger runt 48 sekunder under spänning — och det är den tid under spänning som bygger muskeln." data-en="The classic &quot;3 sets × 12 reps&quot; isn't wrong — but it only works if you do it right. 12 quick reps without control gives minimal stimulus. Those same 12 reps with a controlled eccentric phase produces around 48 seconds under tension — and that time under tension is what actually builds the muscle.">Det klassiska "3 set × 12 reps" är inte fel — men det fungerar bara om du gör det rätt. 12 snabba reps utan kontroll ger minimalt med stimulans. Samma 12 reps med kontrollerad excentrisk fas ger runt 48 sekunder under spänning — och det är den tid under spänning som bygger muskeln.</p>
         <div class="tut-formula">
           <div class="tut-step">
             <span class="tut-num">2–3 sek</span>
-            <span class="tut-label">Ner (excentrisk)</span>
+            <span class="tut-label" data-sv="Ner (excentrisk)" data-en="Down (eccentric)">Ner (excentrisk)</span>
           </div>
           <span class="tut-plus">+</span>
           <div class="tut-step">
             <span class="tut-num">1 sek</span>
-            <span class="tut-label">Upp (koncentrisk)</span>
+            <span class="tut-label" data-sv="Upp (koncentrisk)" data-en="Up (concentric)">Upp (koncentrisk)</span>
           </div>
           <span class="tut-plus">×</span>
           <div class="tut-step">
@@ -254,11 +257,11 @@
             <span class="tut-label">≈ 48 sek TUT</span>
           </div>
         </div>
-        <p class="tut-rule"><strong>Viktigaste regeln:</strong> Om vikten blir för tung mot slutet — minska aldrig rörelseomfånget. Avbryt setet eller sänk vikten. De reps som leder fram till utmattning är de viktigaste. Du kan bygga muskler i nästan vilket repsantal som helst — 5 till 30 reps — så länge ansträngningen är tillräckligt hög och du tränar nära failure.</p>
+        <p class="tut-rule" data-sv="Viktigaste regeln: Om vikten blir för tung mot slutet — minska aldrig rörelseomfånget. Avbryt setet eller sänk vikten. De reps som leder fram till utmattning är de viktigaste. Du kan bygga muskler i nästan vilket repsantal som helst — 5 till 30 reps — så länge ansträngningen är tillräckligt hög och du tränar nära failure." data-en="Most important rule: If the weight gets too heavy towards the end — never reduce your range of motion. Stop the set or lower the weight. The reps that lead up to failure are the most important ones. You can build muscle in almost any rep range — 5 to 30 reps — as long as the effort is high enough and you train close to failure."><strong>Viktigaste regeln:</strong> Om vikten blir för tung mot slutet — minska aldrig rörelseomfånget. Avbryt setet eller sänk vikten. De reps som leder fram till utmattning är de viktigaste. Du kan bygga muskler i nästan vilket repsantal som helst — 5 till 30 reps — så länge ansträngningen är tillräckligt hög och du tränar nära failure.</p>
       </div>
 
-      <h3 style="font-size:var(--size-xl);font-weight:700;color:var(--color-text);margin:var(--space-10) 0 var(--space-2);">Välj intensitet efter ditt mål</h3>
-      <p style="font-size:var(--size-sm);color:var(--color-text-muted);margin-bottom:var(--space-6);">Klicka för att se vad varje träningszon gör med kroppen — och hur det ska kännas.</p>
+      <h3 style="font-size:var(--size-xl);font-weight:700;color:var(--color-text);margin:var(--space-10) 0 var(--space-2);" data-sv="Välj intensitet efter ditt mål" data-en="Choose intensity based on your goal">Välj intensitet efter ditt mål</h3>
+      <p style="font-size:var(--size-sm);color:var(--color-text-muted);margin-bottom:var(--space-6);" data-sv="Klicka för att se vad varje träningszon gör med kroppen — och hur det ska kännas." data-en="Click to see what each training zone does to your body — and how it should feel.">Klicka för att se vad varje träningszon gör med kroppen — och hur det ska kännas.</p>
 
       <div class="accordion">
 
@@ -267,11 +270,11 @@
             <div class="accordion-header-left">
               <span class="accordion-icon">🪨</span>
               <div>
-                <div class="accordion-title">Maxstyrka</div>
-                <div class="accordion-subtitle">85–100% av 1RM &nbsp;·&nbsp; 1–5 reps &nbsp;·&nbsp; 3–5 set &nbsp;·&nbsp; 3–5 min vila</div>
+                <div class="accordion-title" data-sv="Maxstyrka" data-en="Max Strength">Maxstyrka</div>
+                <div class="accordion-subtitle" data-sv="85–100% av 1RM · 1–5 reps · 3–5 set · 3–5 min vila" data-en="85–100% of 1RM · 1–5 reps · 3–5 sets · 3–5 min rest">85–100% av 1RM &nbsp;·&nbsp; 1–5 reps &nbsp;·&nbsp; 3–5 set &nbsp;·&nbsp; 3–5 min vila</div>
               </div>
             </div>
-            <span class="accordion-badge">Kräver teknik & erfarenhet</span>
+            <span class="accordion-badge" data-sv="Kräver teknik & erfarenhet" data-en="Requires technique & experience">Kräver teknik & erfarenhet</span>
             <span class="accordion-chevron">▼</span>
           </div>
           <div class="accordion-body">
@@ -279,7 +282,7 @@
               <p><strong>Vad det gör:</strong> Rekryterar maximalt antal muskelfibrer i ett lyft. Det är centrala nervsystemet (CNS) som tränas lika mycket som muskeln — hjärnan lär sig att aktivera fler fibrer simultant.</p>
               <p><strong>När du bör träna det:</strong> När du vill bli starkare utan att nödvändigtvis bli större. Komplement till hypertrofiträning för mer erfarna utövare. Kräver god teknik under högt tryck.</p>
               <div class="feel-quote">
-                <div class="feel-quote-label">🎯 Så här ska det kännas</div>
+                <div class="feel-quote-label" data-sv="🎯 Så här ska det kännas" data-en="🎯 This is how it should feel">🎯 Så här ska det kännas</div>
                 <p>"Det bränner inte på samma sätt — det är en ren neurologisk utmattning. Det kräver totalt fokus. Efter ett set ska du känna dig trött i hela systemet, inte bara lokalt i en muskel."</p>
               </div>
             </div>
@@ -291,11 +294,11 @@
             <div class="accordion-header-left">
               <span class="accordion-icon">📈</span>
               <div>
-                <div class="accordion-title">Styrka — Progressiv överbelastning</div>
-                <div class="accordion-subtitle">75–85% av 1RM &nbsp;·&nbsp; 4–6 reps &nbsp;·&nbsp; 3–5 set &nbsp;·&nbsp; 2–3 min vila</div>
+                <div class="accordion-title" data-sv="Styrka — Progressiv överbelastning" data-en="Strength — Progressive Overload">Styrka — Progressiv överbelastning</div>
+                <div class="accordion-subtitle" data-sv="75–85% av 1RM · 4–6 reps · 3–5 set · 2–3 min vila" data-en="75–85% of 1RM · 4–6 reps · 3–5 sets · 2–3 min rest">75–85% av 1RM &nbsp;·&nbsp; 4–6 reps &nbsp;·&nbsp; 3–5 set &nbsp;·&nbsp; 2–3 min vila</div>
               </div>
             </div>
-            <span class="accordion-badge">Perfekt för nybörjare</span>
+            <span class="accordion-badge" data-sv="Perfekt för nybörjare" data-en="Perfect for beginners">Perfekt för nybörjare</span>
             <span class="accordion-chevron">▼</span>
           </div>
           <div class="accordion-body">
@@ -303,8 +306,8 @@
               <p><strong>Vad det gör:</strong> Bron mellan hypertrofi och maxstyrka. Du blir starkare och bygger muskler parallellt. Grunden är progressiv överbelastning — gradvis öka vikten, reps eller set över tid.</p>
               <p><strong>När du bör träna det:</strong> De flesta nybörjare gör bäst att börja här. Starting Strength och Madcow 5×5 (se nedan) är byggda helt på detta rep-spann.</p>
               <div class="tip-box">
-                <div class="tip-box-label">💡 Grundregel</div>
-                <p>Träna alltid den <strong>större muskelgruppen först</strong>. Knäböj före bencurl. Bänkpress före triceps. Du är starkast och mest fokuserad i början av passet.</p>
+                <div class="tip-box-label" data-sv="💡 Grundregel" data-en="💡 Basic Rule">💡 Grundregel</div>
+                <p data-sv="Träna alltid den större muskelgruppen först. Knäböj före bencurl. Bänkpress före triceps. Du är starkast och mest fokuserad i början av passet." data-en="Always train the larger muscle group first. Squats before leg curls. Bench press before triceps. You are strongest and most focused at the start of the session.">Träna alltid den <strong>större muskelgruppen först</strong>. Knäböj före bencurl. Bänkpress före triceps. Du är starkast och mest fokuserad i början av passet.</p>
               </div>
             </div>
           </div>
@@ -315,11 +318,11 @@
             <div class="accordion-header-left">
               <span class="accordion-icon">💪</span>
               <div>
-                <div class="accordion-title">Hypertrofi — Muskeltillväxt</div>
-                <div class="accordion-subtitle">60–80% av 1RM &nbsp;·&nbsp; 8–12 reps &nbsp;·&nbsp; 3–5 set &nbsp;·&nbsp; 60–90 sek vila</div>
+                <div class="accordion-title" data-sv="Hypertrofi — Muskeltillväxt" data-en="Hypertrophy — Muscle Growth">Hypertrofi — Muskeltillväxt</div>
+                <div class="accordion-subtitle" data-sv="60–80% av 1RM · 8–12 reps · 3–5 set · 60–90 sek vila" data-en="60–80% of 1RM · 8–12 reps · 3–5 sets · 60–90 sec rest">60–80% av 1RM &nbsp;·&nbsp; 8–12 reps &nbsp;·&nbsp; 3–5 set &nbsp;·&nbsp; 60–90 sek vila</div>
               </div>
             </div>
-            <span class="accordion-badge">Vanligast på gym</span>
+            <span class="accordion-badge" data-sv="Vanligast på gym" data-en="Most common at the gym">Vanligast på gym</span>
             <span class="accordion-chevron">▼</span>
           </div>
           <div class="accordion-body">
@@ -327,7 +330,7 @@
               <p><strong>Vad det gör:</strong> Ökar muskelfibrernas storlek och volym. Kombinerar mekanisk spänning (vikten) med metabol stress (pumpen). Det är här TUT spelar störst roll — den kontrollerade excentriska fasen är det som skiljer ett effektivt set från ett bortkastat.</p>
               <p><strong>När du bör träna det:</strong> När du vill se resultat i spegeln och bygga uthållig styrka. Passar de flesta som tränar på gym. Rätt teknik och ansträngning är viktigare än maximal vikt.</p>
               <div class="feel-quote">
-                <div class="feel-quote-label">🎯 Så här ska det kännas</div>
+                <div class="feel-quote-label" data-sv="🎯 Så här ska det kännas" data-en="🎯 This is how it should feel">🎯 Så här ska det kännas</div>
                 <p>"Jaga den där djupa, svällande känslan i muskeln — det vi kallar 'pump'. Det ska bränna och strama ordentligt mot slutet av setet, men du ska fortfarande ha kontroll. Mot rep 10–11 ska det vara riktigt tungt — men du ska klara det med fullt rörelseomfång."</p>
               </div>
             </div>
@@ -339,8 +342,8 @@
             <div class="accordion-header-left">
               <span class="accordion-icon">🔥</span>
               <div>
-                <div class="accordion-title">Muskeluthållighet</div>
-                <div class="accordion-subtitle">&lt;65% av 1RM &nbsp;·&nbsp; 15–30+ reps &nbsp;·&nbsp; 2–3 set &nbsp;·&nbsp; 30–60 sek vila</div>
+                <div class="accordion-title" data-sv="Muskeluthållighet" data-en="Muscular Endurance">Muskeluthållighet</div>
+                <div class="accordion-subtitle" data-sv="&lt;65% av 1RM · 15–30+ reps · 2–3 set · 30–60 sek vila" data-en="&lt;65% of 1RM · 15–30+ reps · 2–3 sets · 30–60 sec rest">&lt;65% av 1RM &nbsp;·&nbsp; 15–30+ reps &nbsp;·&nbsp; 2–3 set &nbsp;·&nbsp; 30–60 sek vila</div>
               </div>
             </div>
             <span class="accordion-chevron">▼</span>
@@ -350,7 +353,7 @@
               <p><strong>Vad det gör:</strong> Tränar muskelns förmåga att arbeta länge utan att ge upp. Producerar mjölksyra (laktat) som ger den brinnande känslan. Tränar de uthålliga muskelfibrerna mer än de andra zonerna.</p>
               <p><strong>När du bör träna det:</strong> Vid uthållighetsidrott, hemmaträning med kroppsvikt, eller som komplement till tyngre styrketräning. Tips: långsamma excentriska reps på 25+ repsset är bortkastat — vikten är för lätt för att ge tillräcklig spänning nedåt.</p>
               <div class="feel-quote">
-                <div class="feel-quote-label">🎯 Så här ska det kännas</div>
+                <div class="feel-quote-label" data-sv="🎯 Så här ska det kännas" data-en="🎯 This is how it should feel">🎯 Så här ska det kännas</div>
                 <p>En intensiv, utbredd brinnande känsla som sprider sig i muskeln. Det sticker och värker men du kan fortsätta ett tag till. Det är mjölksyran som samlas — helt normalt och ofarligt. Mentalt krävande lika mycket som fysiskt.</p>
               </div>
             </div>
@@ -362,8 +365,8 @@
             <div class="accordion-header-left">
               <span class="accordion-icon">🎚️</span>
               <div>
-                <div class="accordion-title">Mät din ansträngning — RPE & RIR</div>
-                <div class="accordion-subtitle">Hur vet du att du tränar i rätt intensitet?</div>
+                <div class="accordion-title" data-sv="Mät din ansträngning — RPE & RIR" data-en="Measure your effort — RPE & RIR">Mät din ansträngning — RPE & RIR</div>
+                <div class="accordion-subtitle" data-sv="Hur vet du att du tränar i rätt intensitet?" data-en="How do you know you're training at the right intensity?">Hur vet du att du tränar i rätt intensitet?</div>
               </div>
             </div>
             <span class="accordion-chevron">▼</span>
@@ -373,8 +376,8 @@
               <p><strong>RPE (Rate of Perceived Exertion)</strong> — en skala 1–10 där 10 är absolut maxinsats. RPE 8 innebär att du har 2 reps kvar i tanken.</p>
               <p><strong>RIR (Reps in Reserve)</strong> — hur många reps till hade du tekniskt klarat? RIR 2 = du hade orkat 2 reps till. Sikta på <strong>RIR 1–3</strong> för bäst resultat — du utmanar muskeln ordentligt utan att offra tekniken.</p>
               <div class="tip-box">
-                <div class="tip-box-label">🔬 Forskning visar</div>
-                <p>Träning nära failure (RIR 0–3) ger störst muskelstimulans — oavsett om du kör 8 reps eller 20 reps. Hur hårt du anstränger dig spelar större roll än exakt vilket repsantal du väljer.</p>
+                <div class="tip-box-label" data-sv="🔬 Forskning visar" data-en="🔬 Research shows">🔬 Forskning visar</div>
+                <p data-sv="Träning nära failure (RIR 0–3) ger störst muskelstimulans — oavsett om du kör 8 reps eller 20 reps. Hur hårt du anstränger dig spelar större roll än exakt vilket repsantal du väljer." data-en="Training close to failure (RIR 0–3) produces the greatest muscle stimulus — whether you're doing 8 reps or 20 reps. How hard you push matters more than the exact rep count you choose.">Träning nära failure (RIR 0–3) ger störst muskelstimulans — oavsett om du kör 8 reps eller 20 reps. Hur hårt du anstränger dig spelar större roll än exakt vilket repsantal du väljer.</p>
               </div>
             </div>
           </div>
@@ -386,10 +389,10 @@
         <div class="norway-box-inner">
           <div class="norway-flag">🇳🇴</div>
           <div class="norway-content">
-            <div class="norway-label">Norsk forskning</div>
-            <h3 class="norway-title">Mer frekvens, inte alltid mer tyngd</h3>
-            <p>Norska tyngdlyftare tränade 6 dagar i veckan med måttlig vikt och fick mer styrka och muskelmassa än de som körde tung träning 3 dagar i veckan med samma totala volym. Slutsatsen: att fördela träningen på fler tillfällen i veckan kan ge bättre resultat än att köra färre, tyngre pass.</p>
-            <p>Det är logiken bakom programmen nedan — alla bygger på frekvent belastning av samma rörelsemönster med gradvis ökad vikt.</p>
+            <div class="norway-label" data-sv="Norsk forskning" data-en="Norwegian Research">Norsk forskning</div>
+            <h3 class="norway-title" data-sv="Mer frekvens, inte alltid mer tyngd" data-en="More Frequency, Not Always More Weight">Mer frekvens, inte alltid mer tyngd</h3>
+            <p data-sv="Norska tyngdlyftare tränade 6 dagar i veckan med måttlig vikt och fick mer styrka och muskelmassa än de som körde tung träning 3 dagar i veckan med samma totala volym. Slutsatsen: att fördela träningen på fler tillfällen i veckan kan ge bättre resultat än att köra färre, tyngre pass." data-en="Norwegian weightlifters who trained 6 days a week at moderate weight gained more strength and muscle mass than those doing heavy training 3 days a week with the same total volume. The takeaway: spreading training across more sessions per week can outperform fewer, heavier ones.">Norska tyngdlyftare tränade 6 dagar i veckan med måttlig vikt och fick mer styrka och muskelmassa än de som körde tung träning 3 dagar i veckan med samma totala volym. Slutsatsen: att fördela träningen på fler tillfällen i veckan kan ge bättre resultat än att köra färre, tyngre pass.</p>
+            <p data-sv="Det är logiken bakom programmen nedan — alla bygger på frekvent belastning av samma rörelsemönster med gradvis ökad vikt." data-en="That's the logic behind the programmes below — all built on frequent loading of the same movement patterns with progressively increasing weight.">Det är logiken bakom programmen nedan — alla bygger på frekvent belastning av samma rörelsemönster med gradvis ökad vikt.</p>
           </div>
         </div>
       </div>
@@ -397,21 +400,21 @@
       <div class="program-links-grid">
         <a href="/workout.html" class="program-link-card">
           <div class="plc-icon">🧮</div>
-          <div class="plc-title">Starting Strength</div>
-          <div class="plc-body">Kalkylator för progression i knäböj, bänkpress och marklyft — finns i Träningsverktyget.</div>
-          <div class="plc-tag">Träningsverktyget →</div>
+          <div class="plc-title" data-sv="Starting Strength" data-en="Starting Strength">Starting Strength</div>
+          <div class="plc-body" data-sv="Kalkylator för progression i knäböj, bänkpress och marklyft — finns i Träningsverktyget." data-en="Calculator for progression in squat, bench press and deadlift — available in the Training Tools.">Kalkylator för progression i knäböj, bänkpress och marklyft — finns i Träningsverktyget.</div>
+          <div class="plc-tag" data-sv="Träningsverktyget →" data-en="Training Tools →">Träningsverktyget →</div>
         </a>
-        <a href="https://madcow.5x5.com" target="_blank" rel="noopener noreferrer" class="program-link-card">
+        <a href="https://www.getfitness.se/madcow-5x5/" target="_blank" rel="noopener noreferrer" class="program-link-card">
           <div class="plc-icon">5×5</div>
-          <div class="plc-title">Madcow 5×5</div>
-          <div class="plc-body">Intermediärt styrkeprogram med linjär periodisering, byggt på Bill Starrs klassiska upplägg.</div>
-          <div class="plc-tag">Externt program ↗</div>
+          <div class="plc-title" data-sv="Madcow 5×5" data-en="Madcow 5×5">Madcow 5×5</div>
+          <div class="plc-body" data-sv="Intermediärt styrkeprogram med linjär periodisering, byggt på Bill Starrs klassiska upplägg." data-en="Intermediate strength programme with linear periodisation, built on Bill Starr's classic template.">Intermediärt styrkeprogram med linjär periodisering, byggt på Bill Starrs klassiska upplägg.</div>
+          <div class="plc-tag" data-sv="Externt program ↗" data-en="External programme ↗">Externt program ↗</div>
         </a>
-        <a href="https://www.t-nation.com/workouts/german-volume-training/" target="_blank" rel="noopener noreferrer" class="program-link-card">
+        <a href="https://styrkeprogram.se/gvt.php" target="_blank" rel="noopener noreferrer" class="program-link-card">
           <div class="plc-icon">GVT</div>
-          <div class="plc-title">German Volume Training</div>
-          <div class="plc-body">10 set × 10 reps per övning. Extrem volym för hypertrofi — beprövad metod, inte för nybörjare.</div>
-          <div class="plc-tag">Externt program ↗</div>
+          <div class="plc-title" data-sv="German Volume Training" data-en="German Volume Training">German Volume Training</div>
+          <div class="plc-body" data-sv="10 set × 10 reps per övning. Extrem volym för hypertrofi — beprövad metod, inte för nybörjare." data-en="10 sets × 10 reps per exercise. Extreme volume for hypertrophy — proven method, not for beginners.">10 set × 10 reps per övning. Extrem volym för hypertrofi — beprövad metod, inte för nybörjare.</div>
+          <div class="plc-tag" data-sv="Externt program ↗" data-en="External programme ↗">Externt program ↗</div>
         </a>
       </div>
 
@@ -423,20 +426,20 @@
   ══════════════════════════════════════════ -->
   <section id="splits" class="guide-section">
     <div class="container">
-      <h2 class="guide-section-title">Hur ska du lägga upp din träningsvecka?</h2>
-      <p class="guide-section-sub">Det finns inget "rätt svar" — det bästa upplägget är det du kan hålla i längden. Här är de vanligaste alternativen.</p>
+      <h2 class="guide-section-title" data-sv="Hur ska du lägga upp din träningsvecka?" data-en="How Should You Structure Your Training Week?">Hur ska du lägga upp din träningsvecka?</h2>
+      <p class="guide-section-sub" data-sv="Det finns inget &quot;rätt svar&quot; — det bästa upplägget är det du kan hålla i längden. Här är de vanligaste alternativen." data-en="There's no &quot;right answer&quot; — the best structure is the one you can stick to long-term. Here are the most common options.">Det finns inget "rätt svar" — det bästa upplägget är det du kan hålla i längden. Här är de vanligaste alternativen.</p>
 
       <div class="tip-box" style="margin-bottom:var(--space-6);">
-        <div class="tip-box-label">💡 Viktig insikt</div>
-        <p>Oavsett split — <strong>träna alltid den större muskelgruppen först</strong> i ett pass. Knäböj före bencurl. Bänkpress före triceps. Du har mest kraft och fokus i början av passet, och de stora övningarna kräver mest av dig.</p>
+        <div class="tip-box-label" data-sv="💡 Viktig insikt" data-en="💡 Key Insight">💡 Viktig insikt</div>
+        <p data-sv="Oavsett split — träna alltid den större muskelgruppen först i ett pass. Knäböj före bencurl. Bänkpress före triceps. Du har mest kraft och fokus i början av passet, och de stora övningarna kräver mest av dig." data-en="Regardless of split — always train the larger muscle group first in a session. Squats before leg curls. Bench press before triceps. You have the most strength and focus at the start of the session, and the big exercises demand the most from you.">Oavsett split — <strong>träna alltid den större muskelgruppen först</strong> i ett pass. Knäböj före bencurl. Bänkpress före triceps. Du har mest kraft och fokus i början av passet, och de stora övningarna kräver mest av dig.</p>
       </div>
 
       <div class="split-tabs-wrap">
         <div class="split-tabs">
-          <button class="split-tab active" onclick="switchSplit('helkropp', this)">🌍 Helkropp</button>
-          <button class="split-tab" onclick="switchSplit('ppl', this)" data-split="ppl">🔄 Push / Pull / Legs</button>
-          <button class="split-tab" onclick="switchSplit('upper-lower', this)">↕️ Överkropp / Underkropp</button>
-          <button class="split-tab" onclick="switchSplit('bro', this)">🏆 En muskel / dag</button>
+          <button class="split-tab active" onclick="switchSplit('helkropp', this)" data-sv="🌍 Helkropp" data-en="🌍 Full Body">🌍 Helkropp</button>
+          <button class="split-tab" onclick="switchSplit('ppl', this)" data-split="ppl" data-sv="🔄 Push / Pull / Legs" data-en="🔄 Push / Pull / Legs">🔄 Push / Pull / Legs</button>
+          <button class="split-tab" onclick="switchSplit('upper-lower', this)" data-sv="↕️ Överkropp / Underkropp" data-en="↕️ Upper / Lower">↕️ Överkropp / Underkropp</button>
+          <button class="split-tab" onclick="switchSplit('bro', this)" data-sv="🏆 En muskel / dag" data-en="🏆 One muscle / day">🏆 En muskel / dag</button>
         </div>
 
         <!-- HELKROPP -->
@@ -450,12 +453,12 @@
             <div class="split-day rest-day"><span class="split-day-name">Lör</span><span class="split-day-label">Vila</span></div>
             <div class="split-day rest-day"><span class="split-day-name">Sön</span><span class="split-day-label">Vila</span></div>
           </div>
-          <div class="split-description">
+          <div class="split-description" data-sv="Perfekt för nybörjare och för dig med begränsad tid. Varje pass tränar hela kroppen med 1–2 övningar per muskelgrupp. Du träffar varje muskel tre gånger per vecka — vilket är utmärkt för nybörjartillväxt. Exempel: knäböj, bänkpress, marklyft, axelpress, rodd." data-en="Perfect for beginners and those with limited time. Each session trains the whole body with 1–2 exercises per muscle group. You hit each muscle three times a week — excellent for beginner gains. Examples: squat, bench press, deadlift, overhead press, row.">
             <strong>Perfekt för nybörjare och för dig med begränsad tid.</strong> Varje pass tränar hela kroppen med 1–2 övningar per muskelgrupp. Du träffar varje muskel tre gånger per vecka — vilket är utmärkt för nybörjartillväxt. Exempel: knäböj, bänkpress, marklyft, axelpress, rodd.
           </div>
           <div class="tip-box">
-            <div class="tip-box-label">📖 Starting Strength</div>
-            <p>Starting Strength-programmet (som finns i Träningsverktyget) är ett klassiskt helkroppsprogram och ett av de mest beprövade nybörjarprogrammen som finns.</p>
+            <div class="tip-box-label" data-sv="📖 Starting Strength" data-en="📖 Starting Strength">📖 Starting Strength</div>
+            <p data-sv="Starting Strength-programmet (som finns i Träningsverktyget) är ett klassiskt helkroppsprogram och ett av de mest beprövade nybörjarprogrammen som finns." data-en="The Starting Strength programme (available in Training Tools) is a classic full-body programme and one of the most well-proven beginner programmes out there.">Starting Strength-programmet (som finns i Träningsverktyget) är ett klassiskt helkroppsprogram och ett av de mest beprövade nybörjarprogrammen som finns.</p>
           </div>
         </div>
 
@@ -470,12 +473,12 @@
             <div class="split-day rest-day"><span class="split-day-name">Lör</span><span class="split-day-label">Vila</span></div>
             <div class="split-day rest-day"><span class="split-day-name">Sön</span><span class="split-day-label">Vila</span></div>
           </div>
-          <div class="split-description">
+          <div class="split-description" data-sv="Athlean-X's rekommenderade PPL-schema med två vilodagar i rad — ett smart upplägg som ger ordentlig återhämtning. Pull = rygg + biceps. Push = bröst + axlar + triceps. Ben = hela underkroppen + mage. Mönstret upprepas — nästa vecka börjar du med Pull igen på måndag." data-en="Athlean-X's recommended PPL schedule with two rest days in a row — a smart structure that allows for proper recovery. Pull = back + biceps. Push = chest + shoulders + triceps. Legs = full lower body + core. The pattern repeats — next week you start with Pull again on Monday.">
             <strong>Athlean-X's rekommenderade PPL-schema med två vilodagar i rad</strong> — ett smart upplägg som ger ordentlig återhämtning. <em>Pull</em> = rygg + biceps. <em>Push</em> = bröst + axlar + triceps. <em>Ben</em> = hela underkroppen + mage. Mönstret upprepas — nästa vecka börjar du med Pull igen på måndag.
           </div>
           <div class="tip-box">
-            <div class="tip-box-label">💡 Varför Pull–Vila–Vila–Push?</div>
-            <p>De två vilodagarna i rad efter Pull ger musklerna extra tid att återhämta sig. Push på torsdag och Ben på fredag fungerar eftersom benen inte belastats i Push-passet. Det är ett genomtänkt schema som fungerar bättre än det klassiska Mån-Tis-Ons-upprepat.</p>
+            <div class="tip-box-label" data-sv="💡 Varför Pull–Vila–Vila–Push?" data-en="💡 Why Pull–Rest–Rest–Push?">💡 Varför Pull–Vila–Vila–Push?</div>
+            <p data-sv="De två vilodagarna i rad efter Pull ger musklerna extra tid att återhämta sig. Push på torsdag och Ben på fredag fungerar eftersom benen inte belastats i Push-passet. Det är ett genomtänkt schema som fungerar bättre än det klassiska Mån-Tis-Ons-upprepat." data-en="The two rest days in a row after Pull give the muscles extra time to recover. Push on Thursday and Legs on Friday works because the legs weren't loaded in the Push session. It's a well-thought-out schedule that outperforms the classic Mon–Tue–Wed repeated structure.">De två vilodagarna i rad efter Pull ger musklerna extra tid att återhämta sig. Push på torsdag och Ben på fredag fungerar eftersom benen inte belastats i Push-passet. Det är ett genomtänkt schema som fungerar bättre än det klassiska Mån-Tis-Ons-upprepat.</p>
           </div>
         </div>
 
@@ -490,7 +493,7 @@
             <div class="split-day rest-day"><span class="split-day-name">Lör</span><span class="split-day-label">Vila</span></div>
             <div class="split-day rest-day"><span class="split-day-name">Sön</span><span class="split-day-label">Vila</span></div>
           </div>
-          <div class="split-description">
+          <div class="split-description" data-sv="Bra balans för lite mer erfarna träningspersoner. Träffar varje muskelgrupp 2 gånger per vecka med ordentlig vila emellan. Överkroppsdag: bröst, rygg, axlar, armar. Underkroppsdag: knäböj, marklyft, bencurl, vader, mage." data-en="Great balance for slightly more experienced trainees. Hits each muscle group twice a week with proper rest in between. Upper body day: chest, back, shoulders, arms. Lower body day: squat, deadlift, leg curl, calves, core.">
             <strong>Bra balans för lite mer erfarna träningspersoner.</strong> Träffar varje muskelgrupp 2 gånger per vecka med ordentlig vila emellan. Överkroppsdag: bröst, rygg, axlar, armar. Underkroppsdag: knäböj, marklyft, bencurl, vader, mage.
           </div>
         </div>
@@ -506,12 +509,12 @@
             <div class="split-day rest-day"><span class="split-day-name">Lör</span><span class="split-day-label">Vila</span></div>
             <div class="split-day rest-day"><span class="split-day-name">Sön</span><span class="split-day-label">Vila</span></div>
           </div>
-          <div class="split-description">
+          <div class="split-description" data-sv="Den klassiska &quot;bro split&quot; — en muskelgrupp per dag. Ger möjlighet att köra hög volym per muskelgrupp och kan vara motiverande. Nackdelen är att varje muskel bara träffas en gång per vecka — forskning tyder på att 2 gånger per vecka kan vara bättre för hypertrofi. Fungerar bäst för erfarna som behöver det höga volymet." data-en="The classic &quot;bro split&quot; — one muscle group per day. Allows high volume per muscle group and can be very motivating. The downside is each muscle is only hit once a week — research suggests twice a week may be better for hypertrophy. Works best for experienced trainees who need the high volume.">
             <strong>Den klassiska "bro split" — en muskelgrupp per dag.</strong> Ger möjlighet att köra hög volym per muskelgrupp och kan vara motiverande. Nackdelen är att varje muskel bara träffas en gång per vecka — forskning tyder på att 2 gånger per vecka kan vara bättre för hypertrofi. Fungerar bäst för erfarna som behöver det höga volymet.
           </div>
           <div class="tip-box">
-            <div class="tip-box-label">🤔 Är det rätt för dig?</div>
-            <p>Är du nybörjare? Välj hellre helkropp eller överkropp/underkropp först. Bro split kräver att du vet tillräckligt om övningar för att fylla ett helt pass per muskelgrupp på ett vettigt sätt.</p>
+            <div class="tip-box-label" data-sv="🤔 Är det rätt för dig?" data-en="🤔 Is it right for you?">🤔 Är det rätt för dig?</div>
+            <p data-sv="Är du nybörjare? Välj hellre helkropp eller överkropp/underkropp först. Bro split kräver att du vet tillräckligt om övningar för att fylla ett helt pass per muskelgrupp på ett vettigt sätt." data-en="Are you a beginner? Better to start with full body or upper/lower first. Bro split requires knowing enough about exercises to fill a whole session per muscle group in a meaningful way.">Är du nybörjare? Välj hellre helkropp eller överkropp/underkropp först. Bro split kräver att du vet tillräckligt om övningar för att fylla ett helt pass per muskelgrupp på ett vettigt sätt.</p>
           </div>
         </div>
       </div>
@@ -523,18 +526,41 @@
   ══════════════════════════════════════════ -->
   <section id="ovningar" class="guide-section guide-section--alt">
     <div class="container">
-      <h2 class="guide-section-title">Övningar per muskelgrupp</h2>
-      <p class="guide-section-sub">Videor från Jeff Cavaliere (Athlean-X) — en av de mest rigorösa och anatomiskt korrekta tränare på internet.</p>
+      <h2 class="guide-section-title" data-sv="Övningar per muskelgrupp" data-en="Exercises by Muscle Group">Övningar per muskelgrupp</h2>
+      <p class="guide-section-sub" data-sv="Vet du inte var du ska börja — eller vill du göra bästa möjliga nytta av din tid på gymmet? Börja med helkroppsvideon om du är ny. Vill du fokusera på en specifik muskelgrupp, hoppa direkt dit. Vill du ha ett färdigt program — kolla PPL-sektionen längre ner." data-en="Not sure where to start — or want to make the most of your time at the gym? Start with the full-body video if you're new. Want to focus on a specific muscle group, jump straight there. Want a complete programme — check the PPL section below.">Vet du inte var du ska börja — eller vill du göra bästa möjliga nytta av din tid på gymmet? Börja med helkroppsvideon om du är ny. Vill du fokusera på en specifik muskelgrupp, hoppa direkt dit. Vill du ha ett färdigt program — kolla PPL-sektionen längre ner.</p>
 
       <div class="video-section-intro">
         <div class="video-section-intro-icon">🎓</div>
         <div>
-          <h3>Om Jeff Cavaliere & Athlean-X</h3>
-          <p>Jeff är licensierad fysioterapeut och styrke- och konditionskonsult. Det som skiljer honom från de flesta fitness-YouTubers är att han alltid förklarar <em>varför</em> — anatomi, biomekanik, vanliga misstag. Han är en anatominörd i positiv bemärkelse. Det finns massor av andra bra guider på nätet, men Athlean-X är ett utmärkt startpunkt för att förstå rörelserna ordentligt.</p>
+          <h3 data-sv="Om Jeff Cavaliere & Athlean-X" data-en="About Jeff Cavaliere & Athlean-X">Om Jeff Cavaliere & Athlean-X</h3>
+          <p data-sv="Jeff är licensierad fysioterapeut och styrke- och konditionskonsult. Det som skiljer honom från de flesta fitness-YouTubers är att han alltid förklarar varför — anatomi, biomekanik och vanliga misstag. Athlean-X är ett utmärkt ställe att förstå rörelserna ordentligt, oavsett om du är nybörjare eller mer erfaren." data-en="Jeff is a licensed physical therapist and strength and conditioning consultant. What sets him apart is that he always explains the why — anatomy, biomechanics, and common mistakes. Athlean-X is an excellent place to understand exercises properly, whether you're a beginner or more experienced.">Jeff är licensierad fysioterapeut och styrke- och konditionskonsult. Det som skiljer honom från de flesta fitness-YouTubers är att han alltid förklarar varför — anatomi, biomekanik och vanliga misstag. Athlean-X är ett utmärkt ställe att förstå rörelserna ordentligt, oavsett om du är nybörjare eller mer erfaren.</p>
         </div>
       </div>
 
       <div class="video-grid">
+
+        <!-- TOTAL BODY — first for easy entry point -->
+        <div class="video-card" style="border-color:var(--color-primary);">
+          <div class="video-thumb">
+            <a href="https://youtu.be/R6gZoAzAhCg" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/R6gZoAzAhCg/hqdefault.jpg" alt="Träna hela kroppen" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" style="color:#1a7a4f;" data-sv="🌍 Helkropp — börja här" data-en="🌍 Full Body — start here">🌍 Helkropp — börja här</div>
+            <div class="video-title" data-sv="Träna hela kroppen — effektivt på kortare tid" data-en="Train the Whole Body — efficiently in less time">Träna hela kroppen — effektivt på kortare tid</div>
+            <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Perfekt startpunkt om du är ny — eller för de dagar då du inte hinner med ett fullt pass. En effektiv helkroppssession som täcker det viktigaste. Lägg till egna anteckningar efter att du sett videon." data-en="The perfect starting point if you're new — or for days when you don't have time for a full session. An efficient full-body workout that covers all the essentials. Add your own notes after watching.">Perfekt startpunkt om du är ny — eller för de dagar då du inte hinner med ett fullt pass. En effektiv helkroppssession som täcker det viktigaste. Lägg till egna anteckningar efter att du sett videon.</p>
+            </div>
+          </div>
+        </div>
 
         <!-- SHOULDERS -->
         <div class="video-card">
@@ -547,20 +573,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">💪 Axlar</div>
-            <div class="video-title">Bästa axelövningarna</div>
+            <div class="video-muscle-tag" data-sv="💪 Axlar" data-en="💪 Shoulders">💪 Axlar</div>
+            <div class="video-title" data-sv="Bästa axelövningarna" data-en="Best Shoulder Exercises">Bästa axelövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Lateral raises (sidolyft) — den viktigaste för bredden</li>
-                <li>Overhead press — grundövning för hela axeln</li>
-                <li>Face pulls — för bakre deltoideus & rotatorkuffen</li>
-                <li>Rear delt fly — ofta negligerad, viktig för balans</li>
+                <li data-sv="Lateral raises (sidolyft) — den viktigaste för bredden" data-en="Lateral raises — the most important for width">Lateral raises (sidolyft) — den viktigaste för bredden</li>
+                <li data-sv="Overhead press — grundövning för hela axeln" data-en="Overhead press — the foundation for the whole shoulder">Overhead press — grundövning för hela axeln</li>
+                <li data-sv="Face pulls — för bakre deltoideus & rotatorkuffen" data-en="Face pulls — for rear delts & rotator cuff">Face pulls — för bakre deltoideus & rotatorkuffen</li>
+                <li data-sv="Rear delt fly — ofta negligerad, viktig för balans" data-en="Rear delt fly — often neglected, critical for balance">Rear delt fly — ofta negligerad, viktig för balans</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -576,20 +602,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">🔙 Rygg</div>
-            <div class="video-title">Bästa rygövningarna</div>
+            <div class="video-muscle-tag" data-sv="🔙 Rygg" data-en="🔙 Back">🔙 Rygg</div>
+            <div class="video-title" data-sv="Bästa ryggövningarna" data-en="Best Back Exercises">Bästa ryggövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Pull-ups / Chin-ups — kung av ryggens dragövningar</li>
-                <li>Barbell row — grundövning för tjockleken</li>
-                <li>Seated cable row — kontrollerad dragövning</li>
-                <li>Lat pulldown — bra alternativ om pull-ups är svårt</li>
+                <li data-sv="Pull-ups / Chin-ups — kung av ryggens dragövningar" data-en="Pull-ups / Chin-ups — king of all pulling exercises">Pull-ups / Chin-ups — kung av ryggens dragövningar</li>
+                <li data-sv="Barbell row — grundövning för tjockleken" data-en="Barbell row — the foundation for thickness">Barbell row — grundövning för tjockleken</li>
+                <li data-sv="Seated cable row — kontrollerad dragövning" data-en="Seated cable row — controlled pulling movement">Seated cable row — kontrollerad dragövning</li>
+                <li data-sv="Lat pulldown — bra alternativ om pull-ups är svårt" data-en="Lat pulldown — great alternative if pull-ups are too hard">Lat pulldown — bra alternativ om pull-ups är svårt</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -605,20 +631,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">🫀 Bröst</div>
-            <div class="video-title">Bästa bröstövningarna</div>
+            <div class="video-muscle-tag" data-sv="🫀 Bröst" data-en="🫀 Chest">🫀 Bröst</div>
+            <div class="video-title" data-sv="Bästa bröstövningarna" data-en="Best Chest Exercises">Bästa bröstövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Incline dumbbell press — tränar övre bröstmuskeln</li>
-                <li>Flat barbell bench press — klassisk grundövning</li>
-                <li>Cable crossover — flyövning med konstant spänning</li>
-                <li>Dips — effektiv kroppsviktsövning för bröst + triceps</li>
+                <li data-sv="Incline dumbbell press — tränar övre bröstmuskeln" data-en="Incline dumbbell press — targets the upper chest">Incline dumbbell press — tränar övre bröstmuskeln</li>
+                <li data-sv="Flat barbell bench press — klassisk grundövning" data-en="Flat barbell bench press — the classic foundation">Flat barbell bench press — klassisk grundövning</li>
+                <li data-sv="Cable crossover — flyövning med konstant spänning" data-en="Cable crossover — fly movement with constant tension">Cable crossover — flyövning med konstant spänning</li>
+                <li data-sv="Dips — effektiv kroppsviktsövning för bröst + triceps" data-en="Dips — effective bodyweight exercise for chest + triceps">Dips — effektiv kroppsviktsövning för bröst + triceps</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -634,20 +660,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">💪 Biceps</div>
-            <div class="video-title">Bästa bicepsövningarna</div>
+            <div class="video-muscle-tag" data-sv="💪 Biceps" data-en="💪 Biceps">💪 Biceps</div>
+            <div class="video-title" data-sv="Bästa bicepsövningarna" data-en="Best Bicep Exercises">Bästa bicepsövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Barbell curl — mest belastning, grundövning</li>
-                <li>Incline dumbbell curl — stretch i botten, maximal aktivering</li>
-                <li>Hammer curl — tränar brachialis (ger armen tjocklek)</li>
-                <li>Cable curl — konstant spänning genom hela rörelsen</li>
+                <li data-sv="Barbell curl — mest belastning, grundövning" data-en="Barbell curl — maximum load, foundational">Barbell curl — mest belastning, grundövning</li>
+                <li data-sv="Incline dumbbell curl — stretch i botten, maximal aktivering" data-en="Incline dumbbell curl — stretch at the bottom, maximum activation">Incline dumbbell curl — stretch i botten, maximal aktivering</li>
+                <li data-sv="Hammer curl — tränar brachialis (ger armen tjocklek)" data-en="Hammer curl — trains the brachialis (adds arm thickness)">Hammer curl — tränar brachialis (ger armen tjocklek)</li>
+                <li data-sv="Cable curl — konstant spänning genom hela rörelsen" data-en="Cable curl — constant tension throughout the full range">Cable curl — konstant spänning genom hela rörelsen</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -663,20 +689,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">💪 Triceps</div>
-            <div class="video-title">Bästa tricepsövningarna</div>
+            <div class="video-muscle-tag" data-sv="💪 Triceps" data-en="💪 Triceps">💪 Triceps</div>
+            <div class="video-title" data-sv="Bästa tricepsövningarna" data-en="Best Tricep Exercises">Bästa tricepsövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Skull crushers (EZ-bar) — lång huvud, mest volym</li>
-                <li>Tricep pushdown (kabel) — klassisk isolationsövning</li>
-                <li>Close-grip bench press — tung grundövning</li>
-                <li>Overhead tricep extension — stretch i lång huvud</li>
+                <li data-sv="Skull crushers (EZ-bar) — lång huvud, mest volym" data-en="Skull crushers (EZ-bar) — long head, maximum volume">Skull crushers (EZ-bar) — lång huvud, mest volym</li>
+                <li data-sv="Tricep pushdown (kabel) — klassisk isolationsövning" data-en="Tricep pushdown (cable) — classic isolation exercise">Tricep pushdown (kabel) — klassisk isolationsövning</li>
+                <li data-sv="Close-grip bench press — tung grundövning" data-en="Close-grip bench press — heavy compound movement">Close-grip bench press — tung grundövning</li>
+                <li data-sv="Overhead tricep extension — stretch i lång huvud" data-en="Overhead tricep extension — stretch on the long head">Overhead tricep extension — stretch i lång huvud</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -692,20 +718,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">🤜 Underarmar</div>
-            <div class="video-title">Bästa underarmsövningarna</div>
+            <div class="video-muscle-tag" data-sv="🤜 Underarmar" data-en="🤜 Forearms">🤜 Underarmar</div>
+            <div class="video-title" data-sv="Bästa underarmsövningarna" data-en="Best Forearm Exercises">Bästa underarmsövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Wrist curls — baksida underarm</li>
-                <li>Reverse curls — framsida & brachioradialis</li>
-                <li>Farmer walks — greppstyrka & helkropp</li>
-                <li>Dead hangs — passiv greppstyrka</li>
+                <li data-sv="Wrist curls — baksida underarm" data-en="Wrist curls — back of the forearm">Wrist curls — baksida underarm</li>
+                <li data-sv="Reverse curls — framsida & brachioradialis" data-en="Reverse curls — front side & brachioradialis">Reverse curls — framsida & brachioradialis</li>
+                <li data-sv="Farmer walks — greppstyrka & helkropp" data-en="Farmer walks — grip strength & full body">Farmer walks — greppstyrka & helkropp</li>
+                <li data-sv="Dead hangs — passiv greppstyrka" data-en="Dead hangs — passive grip strength">Dead hangs — passiv greppstyrka</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -721,21 +747,21 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">🦵 Ben</div>
-            <div class="video-title">Bästa benövningarna</div>
+            <div class="video-muscle-tag" data-sv="🦵 Ben" data-en="🦵 Legs">🦵 Ben</div>
+            <div class="video-title" data-sv="Bästa benövningarna" data-en="Best Leg Exercises">Bästa benövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Knäböj (Squat) — kung av alla övningar</li>
-                <li>Romanian deadlift — hamstrings & gluteus</li>
-                <li>Bulgarian split squat — enbensstyrka & balans</li>
-                <li>Leg curl — isolerar hamstrings</li>
-                <li>Leg extension — isolerar quadriceps</li>
+                <li data-sv="Knäböj (Squat) — kung av alla övningar" data-en="Squat — king of all exercises">Knäböj (Squat) — kung av alla övningar</li>
+                <li data-sv="Romanian deadlift — hamstrings & gluteus" data-en="Romanian deadlift — hamstrings & glutes">Romanian deadlift — hamstrings & gluteus</li>
+                <li data-sv="Bulgarian split squat — enbensstyrka & balans" data-en="Bulgarian split squat — single-leg strength & balance">Bulgarian split squat — enbensstyrka & balans</li>
+                <li data-sv="Leg curl — isolerar hamstrings" data-en="Leg curl — isolates the hamstrings">Leg curl — isolerar hamstrings</li>
+                <li data-sv="Leg extension — isolerar quadriceps" data-en="Leg extension — isolates the quadriceps">Leg extension — isolerar quadriceps</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -751,43 +777,20 @@
             </a>
           </div>
           <div class="video-body">
-            <div class="video-muscle-tag">🎯 Mage / Core</div>
-            <div class="video-title">Bästa mageövningarna</div>
+            <div class="video-muscle-tag" data-sv="🎯 Mage / Core" data-en="🎯 Abs / Core">🎯 Mage / Core</div>
+            <div class="video-title" data-sv="Bästa mageövningarna" data-en="Best Core Exercises">Bästa mageövningarna</div>
             <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
           </div>
           <div class="video-expand-body">
             <div class="video-expand-inner">
               <ul class="video-exercise-list">
-                <li>Ab wheel rollout — svår men extremt effektiv</li>
-                <li>Hanging leg raises — nedre magen</li>
-                <li>Cable crunch — belastad flektion</li>
-                <li>Plank — stabilitet & hållning</li>
+                <li data-sv="Ab wheel rollout — svår men extremt effektiv" data-en="Ab wheel rollout — tough but extremely effective">Ab wheel rollout — svår men extremt effektiv</li>
+                <li data-sv="Hanging leg raises — nedre magen" data-en="Hanging leg raises — lower abs">Hanging leg raises — nedre magen</li>
+                <li data-sv="Cable crunch — belastad flektion" data-en="Cable crunch — loaded flexion">Cable crunch — belastad flektion</li>
+                <li data-sv="Plank — stabilitet & hållning" data-en="Plank — stability & posture">Plank — stabilitet & hållning</li>
               </ul>
-              <p class="video-exercise-note">Lägg gärna till dina egna anteckningar från videon här.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- TOTAL BODY (lack of time) -->
-        <div class="video-card" style="border-color:var(--color-primary);">
-          <div class="video-thumb">
-            <a href="https://youtu.be/R6gZoAzAhCg" target="_blank" rel="noopener noreferrer">
-              <img src="https://img.youtube.com/vi/R6gZoAzAhCg/hqdefault.jpg" alt="Helkroppsträning när du har ont om tid" loading="lazy" />
-              <div class="video-play-btn">
-                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
-              </div>
-            </a>
-          </div>
-          <div class="video-body">
-            <div class="video-muscle-tag" style="color:#1a7a4f;">⚡ Helkropp · Tidsspar</div>
-            <div class="video-title">Träna hela kroppen — när du har ont om tid</div>
-            <div class="video-meta">Athlean-X · Jeff Cavaliere</div>
-            <button class="video-expand-btn">▼ Visa anteckningar</button>
-          </div>
-          <div class="video-expand-body">
-            <div class="video-expand-inner">
-              <p class="video-exercise-note">Perfekt för de dagar då du inte hinner med ett fullt pass. En effektiv helkroppssession på kortare tid. Lägg till dina egna anteckningar efter att du sett videon.</p>
+              <p class="video-exercise-note" data-sv="Lägg gärna till dina egna anteckningar från videon här." data-en="Add your own notes from the video here.">Lägg gärna till dina egna anteckningar från videon här.</p>
             </div>
           </div>
         </div>
@@ -883,13 +886,268 @@
   </section>
 
   <!-- ══════════════════════════════════════════
+       SECTION 8: FLER RESURSER & INSPIRATION
+  ══════════════════════════════════════════ -->
+  <section id="resurser" class="guide-section guide-section--alt">
+    <div class="container">
+      <h2 class="guide-section-title" data-sv="Fler resurser & inspiration" data-en="More Resources & Inspiration">Fler resurser & inspiration</h2>
+      <p class="guide-section-sub" data-sv="Kanaler och videor jag återkommer till — hemmaträning, flödesrörelse, knähälsa, mobilitet, stretching och lite dans." data-en="Channels and videos I keep coming back to — home workouts, movement flow, knee health, mobility, stretching, and a bit of dance.">Kanaler och videor jag återkommer till — hemmaträning, flödesrörelse, knähälsa, mobilitet, stretching och lite dans.</p>
+
+      <!-- Hemmaträning -->
+      <h3 class="resource-category-title" data-sv="🏠 Hemmaträning" data-en="🏠 Home Training">🏠 Hemmaträning</h3>
+      <div class="resource-link-grid">
+        <a href="https://www.fitnessblender.com/videos?exclusive[]=0" target="_blank" rel="noopener noreferrer" class="resource-link-card">
+          <div class="rlc-icon">🏋️</div>
+          <div class="rlc-body">
+            <div class="rlc-title" data-sv="Fitness Blender" data-en="Fitness Blender">Fitness Blender</div>
+            <p class="rlc-desc" data-sv="Hundratals gratis träningsvideor för hemmaträning. Filtrera på typ, längd och svårighetsgrad — välj alltid &quot;free&quot; i filtret. Perfekt om du vill träna hemma utan utrustning." data-en="Hundreds of free workout videos for home training. Filter by type, length and difficulty — always select &quot;free&quot; in the filter. Perfect if you want to train at home without equipment.">Hundratals gratis träningsvideor för hemmaträning. Filtrera på typ, längd och svårighetsgrad — välj alltid "free" i filtret. Perfekt om du vill träna hemma utan utrustning.</p>
+          </div>
+          <div class="rlc-tag" data-sv="Utforska videor ↗" data-en="Browse videos ↗">Utforska videor ↗</div>
+        </a>
+        <a href="https://nordicwellness.se/traning/wellness-online/" target="_blank" rel="noopener noreferrer" class="resource-link-card">
+          <div class="rlc-icon">🌿</div>
+          <div class="rlc-body">
+            <div class="rlc-title" data-sv="Nordic Wellness Online" data-en="Nordic Wellness Online">Nordic Wellness Online</div>
+            <p class="rlc-desc" data-sv="Nordic Wellness har ett stort bibliotek av gratis onlinevideor — yoga, kondition, styrka och mer. Bra kvalitet och bred variation. Kräver inget konto för att titta." data-en="Nordic Wellness has a large library of free online videos — yoga, cardio, strength and more. Good quality and wide variety. No account needed to watch.">Nordic Wellness har ett stort bibliotek av gratis onlinevideor — yoga, kondition, styrka och mer. Bra kvalitet och bred variation. Kräver inget konto för att titta.</p>
+          </div>
+          <div class="rlc-tag" data-sv="Se videor ↗" data-en="Watch videos ↗">Se videor ↗</div>
+        </a>
+      </div>
+
+      <!-- Rörelse & flöde -->
+      <h3 class="resource-category-title" data-sv="🌊 Rörelse & flöde" data-en="🌊 Movement & Flow">🌊 Rörelse & flöde</h3>
+      <div class="video-grid">
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtu.be/uExPDF71QRc" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/uExPDF71QRc/hqdefault.jpg" alt="SOMA Move" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="🌊 Rörelse" data-en="🌊 Movement">🌊 Rörelse</div>
+            <div class="video-title" data-sv="SOMA Move — aktiv rörelse för hela systemet" data-en="SOMA Move — active movement for the whole system">SOMA Move — aktiv rörelse för hela systemet</div>
+            <div class="video-meta">SOMA Move · YouTube</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Inte traditionell stretching — mer som ett flödande rörelsearbete som låter kroppen vakna utan att belasta den. Jag använder det som aktiv återhämtning. Sök på SOMA Move på YouTube så hittar du massor av liknande videor." data-en="Not traditional stretching — more like flowing movement that lets the body wake up without strain. I use it as active recovery. Search SOMA Move on YouTube to find plenty more videos in the same style.">Inte traditionell stretching — mer som ett flödande rörelsearbete som låter kroppen vakna utan att belasta den. Jag använder det som aktiv återhämtning. Sök på SOMA Move på YouTube så hittar du massor av liknande videor.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtube.com/shorts/b28fMqmZQXo" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/b28fMqmZQXo/hqdefault.jpg" alt="Daglig rutin mot svullnad och inflammation" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="🌊 Rörelse & återhämtning" data-en="🌊 Movement & Recovery">🌊 Rörelse & återhämtning</div>
+            <div class="video-title" data-sv="Daglig rutin — minska svullnad & inflammation" data-en="Daily Routine — Reduce Bloating & Inflammation">Daglig rutin — minska svullnad & inflammation</div>
+            <div class="video-meta">Functional Fitness · YouTube Shorts</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Rutin från en kanal för functional fitness — fungerar lika bra för alla åldrar. Originalrubriken: &quot;I Do This Perfect Routine Daily to Reduce Bloating &amp; Inflammation&quot;. Perfekt som daglig rörelserutin eller aktiv återhämtning." data-en="Routine from a functional fitness channel — works just as well for all ages. Original title: &quot;I Do This Perfect Routine Daily to Reduce Bloating &amp; Inflammation&quot;. Great as a daily movement routine or active recovery.">Rutin från en kanal för functional fitness — fungerar lika bra för alla åldrar. Originalrubriken: "I Do This Perfect Routine Daily to Reduce Bloating &amp; Inflammation". Perfekt som daglig rörelserutin eller aktiv återhämtning.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtu.be/CheYP6zStSw" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/CheYP6zStSw/hqdefault.jpg" alt="Dans — rörelse som är ren glädje" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="💃 Dans & glädje" data-en="💃 Dance & Joy">💃 Dans & glädje</div>
+            <div class="video-title" data-sv="Dans — rör dig, känn glädjen" data-en="Dance — move, feel the joy">Dans — rör dig, känn glädjen</div>
+            <div class="video-meta">YouTube</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Träning behöver inte vara seriös. Det här är ren glädje — en påminnelse om att rörelse kan vara rolig i sig självt." data-en="Training doesn't have to be serious. This one is pure joy — a reminder that movement can be fun in itself.">Träning behöver inte vara seriös. Det här är ren glädje — en påminnelse om att rörelse kan vara rolig i sig självt.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Knähälsa & explosivitet -->
+      <h3 class="resource-category-title" data-sv="⚡ Knähälsa & explosivitet" data-en="⚡ Knee Health & Explosivity">⚡ Knähälsa & explosivitet</h3>
+      <div class="video-grid">
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://www.facebook.com/share/r/1F4Am6umWv/" target="_blank" rel="noopener noreferrer" class="video-fb-link">
+              <div class="video-fb-placeholder">
+                <span>🦵</span>
+                <span class="video-fb-text" data-sv="Öppna på Facebook" data-en="Open on Facebook">Öppna på Facebook</span>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="⚡ Knähälsa & explosivitet" data-en="⚡ Knee Health & Explosivity">⚡ Knähälsa & explosivitet</div>
+            <div class="video-title" data-sv="Hironori Nakajima — knähälsa & explosivitet" data-en="Hironori Nakajima — knee health & explosivity">Hironori Nakajima — knähälsa & explosivitet</div>
+            <div class="video-meta">Hironori Nakajima · Facebook</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Min nuvarande källa för specifik hjälp — knähälsa och explosivitet. Detaljerade och välförklarade övningar för dig som vill ta sin rörlighet och atletik till nästa nivå." data-en="My go-to for specific targeted help — knee health and explosivity. Detailed, well-explained exercises for anyone who wants to take their mobility and athleticism to the next level.">Min nuvarande källa för specifik hjälp — knähälsa och explosivitet. Detaljerade och välförklarade övningar för dig som vill ta sin rörlighet och atletik till nästa nivå.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://www.facebook.com/reel/1361976822521520" target="_blank" rel="noopener noreferrer" class="video-fb-link">
+              <div class="video-fb-placeholder">
+                <span>⚡</span>
+                <span class="video-fb-text" data-sv="Öppna på Facebook" data-en="Open on Facebook">Öppna på Facebook</span>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="⚡ Knähälsa" data-en="⚡ Knee Health">⚡ Knähälsa</div>
+            <div class="video-title" data-sv="Mobilitet — svettas du inom 5 minuter?" data-en="Mobility — will you break a sweat in 5 minutes?">Mobilitet — svettas du inom 5 minuter?</div>
+            <div class="video-meta">Hironori Nakajima · Facebook</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Om du inte svettas inom 5 minuter bjuder jag på en gratis massagebehandling 😄 Mer intensiv än den ser ut — prova!" data-en="If you don't break a sweat within 5 minutes, I'll give you a free massage session 😄 More intense than it looks — give it a try!">Om du inte svettas inom 5 minuter bjuder jag på en gratis massagebehandling 😄 Mer intensiv än den ser ut — prova!</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mobilitet -->
+      <h3 class="resource-category-title" data-sv="🔄 Mobilitet" data-en="🔄 Mobility">🔄 Mobilitet</h3>
+      <div class="video-grid">
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtu.be/X0TY8Ah89LE" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/X0TY8Ah89LE/hqdefault.jpg" alt="Mobilitet och rörlighet" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="🔄 Mobilitet" data-en="🔄 Mobility">🔄 Mobilitet</div>
+            <div class="video-title" data-sv="Mobilitet & rörlighet — ett riktigt bra pass" data-en="Mobility & Movement — a genuinely great session">Mobilitet & rörlighet — ett riktigt bra pass</div>
+            <div class="video-meta">YouTube</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="En välrundad mobilitetsrutin som täcker hela kroppen. Lägg till egna anteckningar efter att du provat den." data-en="A well-rounded mobility routine that covers the whole body. Add your own notes after you've tried it.">En välrundad mobilitetsrutin som täcker hela kroppen. Lägg till egna anteckningar efter att du provat den.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtu.be/rRqbCorYi9s" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/rRqbCorYi9s/hqdefault.jpg" alt="LeoMoves — helkropp och core" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="💪 Helkropp & core" data-en="💪 Full Body & Core">💪 Helkropp & core</div>
+            <div class="video-title" data-sv="LeoMoves — dynamisk helkropp med core i fokus" data-en="LeoMoves — dynamic full body with a core focus">LeoMoves — dynamisk helkropp med core i fokus</div>
+            <div class="video-meta">LeoMoves · YouTube</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Dynamisk helkroppsträning med tydlig core-aktivering och funktionell rörlighet — tränar styrka, balans och koordination på samma gång. Intensiteten byggs upp gradvis, så ta det lugnt de första passen tills rörelsekedjan sitter." data-en="Dynamic full-body training with clear core activation and functional mobility — builds strength, balance and coordination simultaneously. Intensity builds gradually, so take it easy the first few sessions until the movement patterns click.">Dynamisk helkroppsträning med tydlig core-aktivering och funktionell rörlighet — tränar styrka, balans och koordination på samma gång. Intensiteten byggs upp gradvis, så ta det lugnt de första passen tills rörelsekedjan sitter.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Stretching & flexibilitet -->
+      <h3 class="resource-category-title" data-sv="🧘 Stretching & flexibilitet" data-en="🧘 Stretching & Flexibility">🧘 Stretching & flexibilitet</h3>
+      <div class="video-grid">
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtu.be/ZD8EY72QID0" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/ZD8EY72QID0/hqdefault.jpg" alt="Stretching och flexibilitet" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="🧘 Stretching" data-en="🧘 Stretching">🧘 Stretching</div>
+            <div class="video-title" data-sv="Stretching — bli flexibel om du tränar utan att stretcha" data-en="Stretching — become flexible if you train without stretching">Stretching — bli flexibel om du tränar utan att stretcha</div>
+            <div class="video-meta">YouTube</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Tränar du utan att stretcha kommer det till slut ta igen dig. Den här personen gör flexibilitet enkelt och tillgängligt för alla." data-en="If you train without stretching, it will eventually catch up with you. This person makes flexibility simple and accessible for everyone.">Tränar du utan att stretcha kommer det till slut ta igen dig. Den här personen gör flexibilitet enkelt och tillgängligt för alla.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="video-thumb">
+            <a href="https://youtube.com/shorts/__ftSVxZ05Y" target="_blank" rel="noopener noreferrer">
+              <img src="https://img.youtube.com/vi/__ftSVxZ05Y/hqdefault.jpg" alt="MovementByDavid — nå tårna på några minuter" loading="lazy" />
+              <div class="video-play-btn">
+                <svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+              </div>
+            </a>
+          </div>
+          <div class="video-body">
+            <div class="video-muscle-tag" data-sv="🤸 Flexibilitet" data-en="🤸 Flexibility">🤸 Flexibilitet</div>
+            <div class="video-title" data-sv="MovementByDavid — nå tårna på bara några minuter" data-en="MovementByDavid — touch your toes in just a few minutes">MovementByDavid — nå tårna på bara några minuter</div>
+            <div class="video-meta">MovementByDavid · YouTube Shorts</div>
+            <button class="video-expand-btn" data-sv="▼ Visa anteckningar" data-en="▼ Show notes">▼ Visa anteckningar</button>
+          </div>
+          <div class="video-expand-body">
+            <div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="David är bevis på att man kan vara både stark och smidig. Det här klippet visar hur han på bara ett par minuter hjälper dig nå längre ner än du kände att du kunde. Testa det direkt." data-en="David is living proof that you can be both strong and flexible. This clip shows how in just a couple of minutes he can help you reach further than you thought possible. Try it right now.">David är bevis på att man kan vara både stark och smidig. Det här klippet visar hur han på bara ett par minuter hjälper dig nå längre ner än du kände att du kunde. Testa det direkt.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
        CTA
   ══════════════════════════════════════════ -->
   <section class="guide-cta">
     <div class="container">
-      <h2>Har du frågor — eller vill träna med mig?</h2>
-      <p>Hittade du något bra på nätet som saknas här? Har du frågor om din träning? Hör av dig — jag läser allt och svarar.</p>
-      <a href="mailto:jonathan@halsopulsen.se?subject=Träningsguiden" class="btn-cta">
+      <h2 data-sv="Har du frågor — eller vill träna med mig?" data-en="Questions — or want to train with me?">Har du frågor — eller vill träna med mig?</h2>
+      <p data-sv="Hittade du något bra på nätet som saknas här? Har du frågor om din träning? Hör av dig — jag läser allt och svarar." data-en="Found something great online that's missing here? Have questions about your training? Get in touch — I read everything and reply.">Hittade du något bra på nätet som saknas här? Har du frågor om din träning? Hör av dig — jag läser allt och svarar.</p>
+      <a href="mailto:jonathan@halsopulsen.se?subject=Träningsguiden" class="btn-cta" data-sv="✉️ Skicka ett mejl" data-en="✉️ Send an email">
         ✉️ Skicka ett mejl
       </a>
     </div>
@@ -900,7 +1158,7 @@
     <div class="container footer-inner">
       <img src="images/logo-transparent.png" alt="HälsoPulsen" class="footer-logo-img" />
       <p class="footer-copy">© <span id="guideYear"></span> HälsoPulsen · Jonathan Fisher</p>
-      <a href="/" class="footer-pitch-link">← Tillbaka till startsidan</a>
+      <a href="/" class="footer-pitch-link" data-sv="← Tillbaka till startsidan" data-en="← Back to home page">← Tillbaka till startsidan</a>
     </div>
   </footer>
 
