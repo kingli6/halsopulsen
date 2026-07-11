@@ -475,13 +475,31 @@ section {
 }
 .certs-pdf-link:hover { border-color: var(--color-primary); }
 
+.about-extras {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.about-extra-card {
+  display: flex;
+  gap: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+.about-extra-icon { font-size: 1.6rem; flex-shrink: 0; line-height: 1; padding-top: 2px; }
+.about-extra-title { font-size: var(--size-sm); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-1); }
+.about-extra-text { font-size: var(--size-sm); color: var(--color-text-muted); line-height: 1.6; margin: 0; }
+
 
 /* ================================================================
   9a. TOOLS TEASER
 ================================================================ */
 .tools-teaser {
   background: var(--color-text);
-  padding: var(--space-14) 0;
+  padding: var(--space-12) 0;
 }
 
 .tools-teaser-inner {
