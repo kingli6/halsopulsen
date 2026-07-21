@@ -10,18 +10,29 @@ let allCompetitions = [];
 let allParticipants = [];
 
 // ── Auth ──────────────────────────────────────────────────────────
+const ADMIN_HASH = '54cb9702a7cec251a5b3d5d300af10b62e2a28ffeb53072d3aa768d98561e408';
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function verifyPassword(password) {
+  // Try server endpoint first (works when deployed with Node backend)
   try {
     const res = await fetch('/api/admin/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password })
     });
-    const json = await res.json();
-    return json.ok;
-  } catch {
-    return false;
-  }
+    if (res.ok) {
+      const json = await res.json();
+      return json.ok;
+    }
+  } catch {}
+  // Fallback: client-side hash check (works on GitHub Pages / static hosting)
+  const hash = await sha256(password);
+  return hash === ADMIN_HASH;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
