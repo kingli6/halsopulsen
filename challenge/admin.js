@@ -18,7 +18,10 @@ async function sha256(str) {
 }
 
 async function verifyPassword(password) {
-  // Try server endpoint first (works when deployed with Node backend)
+  // Fallback: client-side hash check (always works, GitHub Pages + Replit)
+  const hash = await sha256(password);
+  if (hash === ADMIN_HASH) return true;
+  // Also try server endpoint (only available on Replit/deployed backend)
   try {
     const res = await fetch('/api/admin/verify', {
       method: 'POST',
@@ -27,12 +30,10 @@ async function verifyPassword(password) {
     });
     if (res.ok) {
       const json = await res.json();
-      return json.ok;
+      return json.ok === true;
     }
   } catch {}
-  // Fallback: client-side hash check (works on GitHub Pages / static hosting)
-  const hash = await sha256(password);
-  return hash === ADMIN_HASH;
+  return false;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
