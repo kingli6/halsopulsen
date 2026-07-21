@@ -1,0 +1,16 @@
+{
+  "name": "halsopulsen",
+  "version": "1.0.0",
+  "description": "HälsoPulsen website + challenge app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "express": "^4.19.2",
+    "openai": "^4.67.1",
+    "ws": "^8.21.1"
+  }
+}
