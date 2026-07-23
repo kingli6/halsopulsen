@@ -475,31 +475,12 @@ section {
 }
 .certs-pdf-link:hover { border-color: var(--color-primary); }
 
-.about-extras {
-  margin-top: var(--space-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-.about-extra-card {
-  display: flex;
-  gap: var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-}
-.about-extra-icon { font-size: 1.6rem; flex-shrink: 0; line-height: 1; padding-top: 2px; }
-.about-extra-title { font-size: var(--size-sm); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-1); }
-.about-extra-text { font-size: var(--size-sm); color: var(--color-text-muted); line-height: 1.6; margin: 0; }
-
-
 /* ================================================================
   9a. TOOLS TEASER
 ================================================================ */
 .tools-teaser {
   background: var(--color-text);
-  padding: var(--space-12) 0;
+  padding: var(--space-14) 0;
 }
 
 .tools-teaser-inner {
@@ -608,7 +589,90 @@ section {
 
 
 /* ================================================================
-  9c. CONTACT
+  9c. CHALLENGE TEASER
+================================================================ */
+.challenge-teaser {
+  background: var(--color-primary-light);
+  padding: var(--space-14) 0;
+  border-top: 1px solid rgba(30,107,69,0.12);
+  border-bottom: 1px solid rgba(30,107,69,0.12);
+}
+
+.challenge-teaser-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.challenge-teaser-text h2 {
+  font-size: clamp(var(--size-xl), 3vw, var(--size-3xl));
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  line-height: 1.25;
+}
+
+.challenge-teaser-text p {
+  color: var(--color-text-muted);
+  font-size: var(--size-base);
+  line-height: 1.75;
+  margin-bottom: 0;
+}
+
+.challenge-teaser-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.challenge-teaser-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.challenge-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid rgba(30,107,69,0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.challenge-feature-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.challenge-feature strong {
+  display: block;
+  font-size: var(--size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.challenge-feature p {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .challenge-teaser-inner {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+}
+
+
+/* ================================================================
+  9d. CONTACT
 ================================================================ */
 .contact { background: var(--color-bg); }
 
@@ -692,6 +756,18 @@ section {
 .btn-whatsapp:hover {
   background: #1ebe59;
   box-shadow: var(--shadow-md);
+}
+
+.service-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.service-card-actions .btn {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
 }
 
 
