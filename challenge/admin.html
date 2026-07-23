@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — HälsoPulsen Challenges</title>
+  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<header class="nav-wrapper">
+  <nav class="nav container">
+    <a href="/" class="nav-logo">Hälso<span>Pulsen</span></a>
+    <ul class="nav-links">
+      <li><a href="/challenge/">← Back to challenge</a></li>
+    </ul>
+  </nav>
+</header>
+
+<!-- PASSWORD GATE -->
+<div id="adminGate" class="admin-gate">
+  <div class="admin-gate-card">
+    <div class="admin-gate-icon">🔐</div>
+    <h1 class="admin-gate-title">Admin Panel</h1>
+    <p class="admin-gate-sub">Enter your admin password to manage challenges</p>
+    <div class="form-group">
+      <input type="password" class="form-input" id="adminPassword" placeholder="Password" />
+    </div>
+    <div id="loginError" class="alert alert-error" style="display:none;">Wrong password</div>
+    <button class="btn btn-primary" style="width:100%;" id="loginBtn">Sign in →</button>
+  </div>
+</div>
+
+<!-- ADMIN CONTENT -->
+<div id="adminContent" class="admin-content">
+  <div class="container" style="padding-top:2rem;padding-bottom:4rem;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;">Challenge Admin</h1>
+        <p style="color:var(--color-text-muted);font-size:0.875rem;">Manage competitions, participants, and commentary</p>
+      </div>
+      <a href="/challenge/" class="btn btn-outline btn-sm">View live challenge ↗</a>
+    </div>
+
+    <!-- TABS -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="competitions">🏆 Competitions</button>
+      <button class="admin-tab" data-tab="participants">👥 Participants</button>
+      <button class="admin-tab" data-tab="commentary">🎙️ AI Commentary</button>
+      <button class="admin-tab" data-tab="chat">💬 Chat</button>
+    </div>
+
+    <!-- ── COMPETITIONS ── -->
+    <div class="admin-panel active" id="panel-competitions">
+
+      <div class="admin-card">
+        <div class="admin-card-title">➕ Create New Competition</div>
+        <div class="form-group">
+          <label class="form-label">Competition Name</label>
+          <input type="text" class="form-input" id="compName" placeholder="e.g. Dead Hang Challenge — August 2026" />
+        </div>
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">Activity Type</label>
+            <input type="text" class="form-input" id="compActivity" placeholder="Dead Hang" value="Dead Hang" />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Unit</label>
+            <select class="form-select" id="compUnit">
+              <option value="seconds">Seconds (time)</option>
+              <option value="reps">Reps (count)</option>
+              <option value="km">Kilometres</option>
+              <option value="meters">Metres</option>
+              <option value="minutes">Minutes</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:0.75rem;">
+          <div class="form-col">
+            <label class="form-label">Duration (days)</label>
+            <input type="number" class="form-input" id="compDuration" value="30" min="7" max="365" />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-input" id="compStartDate" />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Higher = better?</label>
+            <select class="form-select" id="compHigher">
+              <option value="true">Yes (longer hang, more reps)</option>
+              <option value="false">No (faster time, fewer km)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:0.75rem;">
+          <label class="form-label">Description <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
+          <textarea class="form-textarea" id="compDesc" placeholder="Challenge rules, tips, prizes..."></textarea>
+        </div>
+        <div id="compAlert" style="display:none;" class="alert"></div>
+        <button class="btn btn-primary" id="createCompBtn" style="margin-top:0.5rem;">Create competition</button>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">📋 All Competitions</div>
+        <div id="competitionsList"><p style="color:var(--color-text-muted);font-size:0.875rem;">Loading...</p></div>
+      </div>
+    </div>
+
+    <!-- ── PARTICIPANTS ── -->
+    <div class="admin-panel" id="panel-participants">
+
+      <div class="admin-card">
+        <div class="admin-card-title">➕ Add Participant</div>
+        <div class="form-group">
+          <label class="form-label">Competition</label>
+          <select class="form-select" id="partCompetition"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-input" id="partName" placeholder="First name or full name" />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Gender</label>
+            <select class="form-select" id="partGender">
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+        <div id="partAlert" style="display:none;margin-top:0.75rem;" class="alert"></div>
+        <button class="btn btn-primary" id="addPartBtn" style="margin-top:0.75rem;">Generate link</button>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">🔗 Participant Links</div>
+        <div class="form-group">
+          <label class="form-label">Filter by competition</label>
+          <select class="form-select" id="partFilterComp"></select>
+        </div>
+        <div class="participant-list" id="participantList">
+          <p style="color:var(--color-text-muted);font-size:0.875rem;">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AI COMMENTARY ── -->
+    <div class="admin-panel" id="panel-commentary">
+      <div class="admin-card">
+        <div class="admin-card-title">🎙️ Generate Commentary</div>
+        <p style="color:var(--color-text-muted);font-size:0.875rem;margin-bottom:1rem;">
+          AI will analyse the current standings and write an exciting sports-style recap.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Competition</label>
+          <select class="form-select" id="commCompetition"></select>
+        </div>
+        <div id="commAlert" style="display:none;" class="alert"></div>
+        <button class="btn btn-primary" id="generateCommBtn">Generate this week's commentary ✨</button>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">📜 Commentary History</div>
+        <div id="commentaryHistory"><p style="color:var(--color-text-muted);font-size:0.875rem;">Loading...</p></div>
+      </div>
+    </div>
+
+    <!-- ── CHAT ── -->
+    <div class="admin-panel" id="panel-chat">
+      <div class="admin-card">
+        <div class="admin-card-title">💬 Manage Chat Messages</div>
+        <div class="form-group">
+          <label class="form-label">Competition</label>
+          <select class="form-select" id="chatFilterComp"></select>
+        </div>
+        <div id="adminChatList"><p style="color:var(--color-text-muted);font-size:0.875rem;">Loading...</p></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /adminContent -->
+
+<footer class="footer">
+  <p>HälsoPulsen Admin · <a href="/challenge/">Back to challenge</a></p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js?v=2"></script>
+<script src="admin.js?v=2"></script>
+</body>
+</html>

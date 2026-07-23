@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Challenges — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<header class="nav-wrapper">
+  <nav class="nav container">
+    <a href="/" class="nav-logo">Hälso<span>Pulsen</span></a>
+    <ul class="nav-links">
+      <li><a href="/" >Home</a></li>
+      <li><a href="/challenge/" class="active">Challenges</a></li>
+    </ul>
+    <a href="/challenge/admin.html" class="nav-admin-link">⚙ Admin</a>
+  </nav>
+</header>
+
+<!-- LOADING STATE -->
+<div id="loadingState" style="text-align:center;padding:6rem 1rem;color:#6B7280;">
+  <div style="font-size:2rem;margin-bottom:1rem;">⏳</div>
+  <div style="font-weight:600;">Loading challenge...</div>
+</div>
+
+<!-- NO COMPETITION STATE -->
+<div id="noCompetition" style="display:none;">
+  <div class="empty-state" style="padding:6rem 1rem;">
+    <div class="empty-state-icon">🏆</div>
+    <div class="empty-state-title">No active challenge yet</div>
+    <p>Check back soon — a new challenge is coming your way!</p>
+  </div>
+</div>
+
+<!-- MAIN CONTENT (shown when competition loaded) -->
+<div id="mainContent" style="display:none;">
+
+  <!-- COMPETITION HERO -->
+  <section class="competition-hero">
+    <div class="container">
+      <div class="hero-badge">🏆 <span id="heroActivityType">Challenge</span></div>
+      <h1 class="hero-title" id="heroTitle">Loading...</h1>
+      <div class="hero-meta">
+        <span>📅 <span id="heroDateRange">—</span></span>
+        <span>🔥 <span id="heroDayInfo">Day — of —</span></span>
+        <span>👥 <span id="heroParticipants">— participants</span></span>
+      </div>
+      <div class="days-progress">
+        <div class="days-progress-label">
+          <span>Progress</span>
+          <span id="heroProgressPct">0%</span>
+        </div>
+        <div class="days-progress-bar">
+          <div class="days-progress-fill" id="heroProgressFill" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="welcomeChip" style="display:none;" class="welcome-chip">
+        👋 Welcome back, <strong id="myName" style="margin-left:0.25rem;"></strong>!
+      </div>
+    </div>
+  </section>
+
+  <!-- LOG TODAY (shown when participant has a token) -->
+  <div id="logSection" style="display:none;">
+    <div class="container">
+      <div class="log-btn-wrapper">
+        <button class="log-btn-big" id="logTodayBtn">
+          ⏱ Log Today's Hang
+        </button>
+        <p class="already-logged-msg" id="alreadyLoggedMsg" style="display:none;">
+          ✅ You've already logged today — <strong id="todayValueDisplay"></strong>. Come back tomorrow!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI COMMENTARY -->
+  <section class="section" id="commentarySection">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">📻 Live Commentary</h2>
+      </div>
+      <div class="commentary-card">
+        <div class="commentary-meta">
+          <div class="commentary-live">
+            <div class="commentary-live-dot"></div>
+            AI Commentator
+          </div>
+          <div class="commentary-week-badge" id="commentaryWeekBadge">Week —</div>
+        </div>
+        <div id="commentaryContent">
+          <div class="commentary-empty">🎙️ No commentary yet — check back after the first week!</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">🏅 Leaderboard</h2>
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-tab active" data-filter="all">All</button>
+          <button class="filter-tab" data-filter="male">Male</button>
+          <button class="filter-tab" data-filter="female">Female</button>
+        </div>
+      </div>
+      <div class="leaderboard" id="leaderboard">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- PERSONAL STATS (shown only to participant) -->
+  <section class="section" id="personalSection" style="display:none;">
+    <div class="container">
+      <div class="personal-section">
+        <h2 class="personal-title">📊 Your Progress, <span id="personalName"></span></h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-value" id="statBest">—</div>
+            <div class="stat-card-label">Personal Best</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-value" id="statAvg">—</div>
+            <div class="stat-card-label">Average</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-value" id="statDays">—</div>
+            <div class="stat-card-label">Days Logged</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-value" id="statRank">—</div>
+            <div class="stat-card-label">Overall Rank</div>
+          </div>
+          <div class="stat-card" id="statGenderRankCard" style="display:none;">
+            <div class="stat-card-value" id="statGenderRank">—</div>
+            <div class="stat-card-label" id="statGenderRankLabel">Gender Rank</div>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <div class="bar-chart" id="personalChart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">💬 Community Chat</h2>
+      </div>
+      <div class="chat-card">
+        <!-- Pinned tips -->
+        <div id="pinnedSection" style="display:none;" class="pinned-tips">
+          <div class="pinned-label">📌 Pinned Tips</div>
+          <div id="pinnedList"></div>
+        </div>
+        <!-- Messages -->
+        <div class="messages-feed" id="messagesFeed">
+          <div class="no-messages">Be the first to say something! 👋</div>
+        </div>
+        <!-- Form -->
+        <form class="chat-form" id="chatForm">
+          <div class="chat-form-row">
+            <input
+              type="text"
+              class="chat-name-input"
+              id="chatName"
+              placeholder="Your name"
+              maxlength="30"
+            />
+            <input
+              type="text"
+              class="chat-input"
+              id="chatMessage"
+              placeholder="Write a message..."
+              maxlength="300"
+              autocomplete="off"
+            />
+            <button type="submit" class="chat-send-btn">Send</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /mainContent -->
+
+<!-- LOG ENTRY MODAL -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal">
+    <h2 class="modal-title">⏱ Log Your Hang</h2>
+    <p class="modal-sub" id="logModalSub">Day <strong id="logDayNum">—</strong> · How long did you hang?</p>
+
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <div class="time-inputs">
+        <div class="time-input-wrap">
+          <label>MIN</label>
+          <input type="number" class="time-num-input" id="timeMinutes" min="0" max="59" value="0" />
+        </div>
+        <div class="time-colon">:</div>
+        <div class="time-input-wrap">
+          <label>SEC</label>
+          <input type="number" class="time-num-input" id="timeSeconds" min="0" max="59" value="0" />
+        </div>
+      </div>
+      <div class="time-preview" id="timePreview">0 seconds</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Note <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
+      <textarea class="form-textarea" id="logNote" placeholder="How did it feel? Any tips for others?"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="logModalCancel">Cancel</button>
+      <button class="btn btn-primary" id="logModalSubmit">Save entry ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p>HälsoPulsen Challenges · <a href="/">Back to main site</a></p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
