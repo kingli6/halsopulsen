@@ -70,6 +70,51 @@
       margin-bottom: var(--space-5);
     }
 
+    /* ── TAB DESCRIPTION ── */
+    .tab-description {
+      font-size: var(--size-sm);
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      margin-bottom: var(--space-5);
+      padding-bottom: var(--space-5);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .tab-description strong { color: var(--color-text); font-weight: 600; }
+
+    /* ── TIMER PRESETS ── */
+    .timer-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-5);
+    }
+    .preset-label {
+      font-size: var(--size-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      width: 100%;
+      margin-bottom: var(--space-1);
+    }
+    .preset-chip {
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--color-border);
+      background: var(--color-bg);
+      font-size: var(--size-xs);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      letter-spacing: 0.02em;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .preset-chip:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: var(--color-primary-light);
+    }
+
     /* ── TIMER – BUILDER ── */
     .timer-sequence { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
 
@@ -101,11 +146,11 @@
     .block-dur-ctrl {
       display: flex;
       align-items: center;
-      gap: var(--space-2);
+      gap: var(--space-1);
       margin-left: auto;
     }
     .block-dur-btn {
-      width: 28px; height: 28px;
+      width: 32px; height: 28px;
       display: flex; align-items: center; justify-content: center;
       border-radius: var(--radius-sm);
       background: var(--color-border);
@@ -114,6 +159,21 @@
       transition: background var(--transition);
     }
     .block-dur-btn:hover { background: var(--color-primary); color: #fff; }
+    .block-dur-btn.fine {
+      width: 24px;
+      font-size: 0.65rem;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+    }
+    .block-dur-btn.fine:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .block-dur-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--color-border);
+      margin: 0 var(--space-1);
+      flex-shrink: 0;
+    }
 
     .block-dur-display {
       font-size: var(--size-base);
@@ -1024,6 +1084,21 @@
         <div class="widget-card" id="timerBuilder">
           <div class="widget-title">Bygg din sekvens</div>
 
+          <p class="tab-description">
+            Sätt ihop <strong>arbets-</strong> och <strong>viloblock</strong>, välj antal rundor och tryck starta — timern räknar ned med ljud.
+            Välj ett preset nedan eller bygg din egen sekvens från grunden. Blockens sekunder justeras i ±5s-steg eller ±1s för precision.
+          </p>
+
+          <!-- PRESETS -->
+          <div class="timer-presets">
+            <div class="preset-label">Snabbval</div>
+            <button class="preset-chip" onclick="loadPreset('478')">🫁 4-7-8 Andning</button>
+            <button class="preset-chip" onclick="loadPreset('box')">📦 Box Breathing</button>
+            <button class="preset-chip" onclick="loadPreset('tabata')">⚡ Tabata</button>
+            <button class="preset-chip" onclick="loadPreset('hiit')">🔥 HIIT 40/20</button>
+            <button class="preset-chip" onclick="loadPreset('amrap')">⏱ AMRAP-vila</button>
+          </div>
+
           <div class="timer-sequence" id="timerSequence"></div>
 
           <div id="emptyMsg" class="empty-blocks-msg" style="display:none;">
@@ -1116,6 +1191,11 @@
       <div id="tab-tracker" class="tool-section">
         <div class="widget-card">
           <div class="widget-title">Dagens träning</div>
+
+          <p class="tab-description">
+            Lägg till <strong>övningar</strong>, ange antal set och reps och klicka i varje set när det är klart.
+            Passet sparas automatiskt — håll inne nollställ-knappen i botten för att rensa allt.
+          </p>
 
           <!-- Exercise list rendered by JS -->
           <div class="exercise-list" id="exerciseList"></div>
@@ -1484,7 +1564,7 @@
   function adjustDuration(id, delta) {
     const b = timerState.blocks.find(b => b.id === id);
     if (!b) return;
-    b.duration = Math.max(5, b.duration + delta);
+    b.duration = Math.max(1, b.duration + delta);
     saveTimerState(); renderBlocks();
   }
 
@@ -1497,6 +1577,60 @@
     timerState.rounds = Math.max(1, timerState.rounds + delta);
     document.getElementById('roundsVal').textContent = timerState.rounds;
     saveTimerState();
+  }
+
+  /* ── Presets ── */
+  const PRESETS = {
+    '478': {
+      rounds: 4,
+      blocks: [
+        { type: 'work', label: 'Andas in',  duration: 4 },
+        { type: 'rest', label: 'Håll',       duration: 7 },
+        { type: 'rest', label: 'Andas ut',  duration: 8 },
+      ],
+    },
+    'box': {
+      rounds: 4,
+      blocks: [
+        { type: 'work', label: 'Andas in',  duration: 4 },
+        { type: 'rest', label: 'Håll',       duration: 4 },
+        { type: 'rest', label: 'Andas ut',  duration: 4 },
+        { type: 'rest', label: 'Håll',       duration: 4 },
+      ],
+    },
+    'tabata': {
+      rounds: 8,
+      blocks: [
+        { type: 'work', label: 'Arbete', duration: 20 },
+        { type: 'rest', label: 'Vila',   duration: 10 },
+      ],
+    },
+    'hiit': {
+      rounds: 6,
+      blocks: [
+        { type: 'work', label: 'Arbete', duration: 40 },
+        { type: 'rest', label: 'Vila',   duration: 20 },
+      ],
+    },
+    'amrap': {
+      rounds: 5,
+      blocks: [
+        { type: 'work', label: 'Arbete', duration: 60 },
+        { type: 'rest', label: 'Vila',   duration: 30 },
+      ],
+    },
+  };
+
+  function loadPreset(key) {
+    const preset = PRESETS[key];
+    if (!preset) return;
+    let nextId = 1;
+    timerState.blocks = preset.blocks.map(b => ({ ...b, id: nextId++ }));
+    timerState.nextId = nextId;
+    timerState.rounds = preset.rounds;
+    document.getElementById('roundsVal').textContent = timerState.rounds;
+    saveTimerState();
+    renderBlocks();
   }
 
   // Escape user-typed text before injecting into innerHTML to prevent XSS
@@ -1524,9 +1658,11 @@
         <span style="font-size:1.1rem;">${b.type === 'work' ? '💪' : '😴'}</span>
         <input class="block-label-input" value="${esc(b.label)}" onchange="updateLabel(${b.id}, this.value)" />
         <div class="block-dur-ctrl">
-          <button class="block-dur-btn" onclick="adjustDuration(${b.id}, -5)">−5s</button>
+          <button class="block-dur-btn" onclick="adjustDuration(${b.id}, -5)" title="−5 sekunder">−5s</button>
+          <button class="block-dur-btn fine" onclick="adjustDuration(${b.id}, -1)" title="−1 sekund">−1</button>
           <span class="block-dur-display">${fmt(b.duration)}</span>
-          <button class="block-dur-btn" onclick="adjustDuration(${b.id}, 5)">+5s</button>
+          <button class="block-dur-btn fine" onclick="adjustDuration(${b.id}, 1)" title="+1 sekund">+1</button>
+          <button class="block-dur-btn" onclick="adjustDuration(${b.id}, 5)" title="+5 sekunder">+5s</button>
         </div>
         <button class="block-remove" onclick="removeBlock(${b.id})" title="Ta bort">✕</button>
       </div>
