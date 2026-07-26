@@ -29,7 +29,7 @@ function toggleSection(id, btn) {
 }
 
 /* ── LeoMoves filter ── */
-const _leoFilters = { niva: 'all', tid: 'all' };
+const _leoFilters = { niva: 'all', tid: 'all', fokus: 'all' };
 
 function setLeoFilter(type, value, btn) {
   _leoFilters[type] = value;
@@ -44,13 +44,15 @@ function _applyLeoFilter() {
   cards.forEach(card => {
     const niva      = card.dataset.niva;
     const tid       = parseInt(card.dataset.tid);
+    const fokus     = card.dataset.fokus;
     const filterTid = _leoFilters.tid;
     const showNiva  = _leoFilters.niva === 'all' || niva === _leoFilters.niva;
+    const showFokus = _leoFilters.fokus === 'all' || fokus === _leoFilters.fokus;
     let showTid;
     if (filterTid === 'all')     showTid = true;
     else if (filterTid === '40') showTid = tid >= 40;
     else                         showTid = tid <= parseInt(filterTid);
-    const show = showNiva && showTid;
+    const show = showNiva && showTid && showFokus;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
   });
