@@ -8,14 +8,17 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_PUBLISHABLE_KEY,
-  { realtime: { transport: ws } }
-);
+const SUPABASE_READY = !!(process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY);
+const supabase = SUPABASE_READY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, { realtime: { transport: ws } })
+  : null;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const OPENAI_READY = !!process.env.OPENAI_API_KEY;
+const openai = OPENAI_READY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'halsopulsen2026';
+
+if (!SUPABASE_READY) console.warn('⚠  SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY not set — challenge features disabled.');
+if (!OPENAI_READY)  console.warn('⚠  OPENAI_API_KEY not set — AI commentary disabled.');
 
 // ── Admin: verify password ───────────────────────────────────────
 app.post('/api/admin/verify', (req, res) => {
@@ -25,6 +28,9 @@ app.post('/api/admin/verify', (req, res) => {
 
 // ── Generate AI commentary ───────────────────────────────────────
 app.post('/api/commentary', async (req, res) => {
+  if (!SUPABASE_READY || !OPENAI_READY) {
+    return res.status(503).json({ ok: false, error: 'Server not fully configured (missing secrets).' });
+  }
   try {
     const { competitionId, password } = req.body;
     if (password !== ADMIN_PASSWORD) {
