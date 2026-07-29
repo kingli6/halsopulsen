@@ -755,6 +755,111 @@
 .section-chevron.rotated { transform: rotate(90deg); }
 .section-collapsible.hidden { display: none; }
 
+/* ── SECTION SHARE BUTTON ── */
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.section-header-actions .section-chevron {
+  border-left: 1.5px solid var(--color-border);
+  padding-left: 0.75rem;
+}
+.section-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1.5px solid var(--color-primary);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.section-share-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+.section-share-btn:active { transform: scale(0.96); }
+.section-share-btn.copied {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
+/* ── SHARE TOAST ── */
+#shareToast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(2rem);
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  border-radius: 30px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+}
+#shareToast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── HERO META STRIP ── */
+.hero-meta-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.hero-meta-dot { opacity: 0.4; }
+
+/* ── LEO BIO NOTE ── */
+.leo-bio-note {
+  font-size: var(--size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+  line-height: 1.6;
+}
+.leo-bio-note strong { color: var(--color-text); }
+
+/* ── LEO FILTER MOBILE OVERFLOW ── */
+.leo-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .leo-filter-group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .leo-filter-group::-webkit-scrollbar { display: none; }
+  .leo-filter-bar { overflow: hidden; }
+  .leo-chip { white-space: nowrap; flex-shrink: 0; }
+}
+
 /* ── PLAYLIST LINKS ── */
 .playlist-links { font-size: var(--size-sm); color: var(--color-text-muted); margin-bottom: var(--space-5); }
 .playlist-links a { color: var(--color-primary); font-weight: 600; text-decoration: none; }
