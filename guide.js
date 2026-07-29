@@ -51,7 +51,7 @@ function _applyLeoFilter() {
     let showTid;
     if (filterTid === 'all')     showTid = true;
     else if (filterTid === '40') showTid = tid >= 40;
-    else                         showTid = tid <= parseInt(filterTid);
+    else                         showTid = tid === parseInt(filterTid);
     const show = showNiva && showTid && showFokus;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
@@ -89,6 +89,65 @@ document.querySelectorAll('.video-expand-btn').forEach(btn => {
       : (lang === 'en' ? '▼ Show notes' : '▼ Visa anteckningar');
   });
 });
+
+/* ── Share section ── */
+function shareSection(hash) {
+  const url = window.location.origin + window.location.pathname + '#' + hash;
+  navigator.clipboard.writeText(url).then(() => {
+    // Flash the button
+    const btn = document.querySelector(`.section-share-btn[onclick*="'${hash}'"]`);
+    if (btn) {
+      const span = btn.querySelector('span');
+      const origText = span ? span.textContent : '';
+      btn.classList.add('copied');
+      if (span) span.textContent = document.documentElement.lang === 'en' ? 'Copied!' : 'Kopierat!';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        if (span) span.textContent = origText;
+      }, 2000);
+    }
+    // Show toast
+    let toast = document.getElementById('shareToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'shareToast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = document.documentElement.lang === 'en' ? '🔗 Link copied!' : '🔗 Länk kopierad!';
+    toast.classList.add('visible');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.classList.remove('visible'), 2500);
+  });
+}
+
+/* ── Auto-open section from URL hash ── */
+(function () {
+  const hashMap = {
+    'leomoves':  'leo-content',
+    'ovningar':  'athlean-content',
+    'ppl-program': 'ppl-content',
+  };
+  function openFromHash() {
+    const hash = window.location.hash.slice(1);
+    const contentId = hashMap[hash];
+    if (!contentId) return;
+    const content = document.getElementById(contentId);
+    if (!content || !content.classList.contains('hidden')) return;
+    // Find its toggle button
+    const toggle = content.closest('.container')?.querySelector('.section-header-toggle');
+    content.classList.remove('hidden');
+    if (toggle) {
+      const chevron = toggle.querySelector('.section-chevron');
+      if (chevron) chevron.classList.add('rotated');
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', openFromHash);
+  } else {
+    openFromHash();
+  }
+  window.addEventListener('hashchange', openFromHash);
+})();
 
 /* ── Smooth scroll for quick-nav ── */
 document.querySelectorAll('.guide-quick-nav a').forEach(a => {
