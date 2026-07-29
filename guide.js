@@ -49,9 +49,15 @@ function _applyLeoFilter() {
     const showNiva  = _leoFilters.niva === 'all' || niva === _leoFilters.niva;
     const showFokus = _leoFilters.fokus === 'all' || fokus === _leoFilters.fokus;
     let showTid;
-    if (filterTid === 'all')     showTid = true;
-    else if (filterTid === '40') showTid = tid >= 40;
-    else                         showTid = tid === parseInt(filterTid);
+    if (filterTid === 'all') {
+      showTid = true;
+    } else {
+      const t = parseInt(filterTid);
+      if (t <= 5)       showTid = tid <= 9;          // ~5 min  → ≤ 9 min
+      else if (t <= 10) showTid = tid >= 10 && tid <= 19; // ~10 min → 10–19 min
+      else if (t <= 20) showTid = tid >= 20 && tid <= 29; // ~20 min → 20–29 min
+      else              showTid = tid >= 30;          // ~40 min → 30+ min
+    }
     const show = showNiva && showTid && showFokus;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
