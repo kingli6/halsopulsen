@@ -935,38 +935,49 @@
     <div class="container">
 
       <div class="section-header-toggle" onclick="toggleSection('leo-content', this)">
-        <h2 class="guide-section-title">🏠 Träna hemma — med LeoMoves</h2>
+        <h2 class="guide-section-title" data-sv="🏠 Träna hemma — med LeoMoves" data-en="🏠 Train at Home — with LeoMoves">🏠 Träna hemma — med LeoMoves</h2>
         <span class="section-chevron">›</span>
       </div>
-      <p class="guide-section-sub">Noggrant utvalda videor från LeoMoves-kanalen — hemmaträning utan utrustning. Filtrera på nivå och tid och klicka direkt till följ-med-delen. Fler nivåer tillkommer allt eftersom.</p>
+      <p class="guide-section-sub" data-sv="Noggrant utvalda videor från LeoMoves-kanalen — hemmaträning utan utrustning. Filtrera på nivå och tid och klicka direkt till följ-med-delen. Fler nivåer tillkommer allt eftersom." data-en="Carefully selected videos from the LeoMoves channel — home workouts without equipment. Filter by level and time and click straight to the follow-along part. More levels added over time.">Noggrant utvalda videor från LeoMoves-kanalen — hemmaträning utan utrustning. Filtrera på nivå och tid och klicka direkt till följ-med-delen. Fler nivåer tillkommer allt eftersom.</p>
 
       <div id="leo-content" class="section-collapsible hidden">
 
-        <div class="leo-bio">
+        <div class="leo-bio" data-sv="&lt;strong&gt;LeoMoves&lt;/strong&gt; tränar funktionell rörlighet och kroppsvikt med fokus på att göra rörelse tillgänglig för alla. Hans videor är välförklarade, följer med i realtid och kräver noll utrustning — ett bra val om du vill börja träna hemma." data-en="&lt;strong&gt;LeoMoves&lt;/strong&gt; trains functional mobility and bodyweight with a focus on making movement accessible for everyone. His videos are well-explained, follow along in real time and require zero equipment — a great choice if you want to start training at home.">
           <strong>LeoMoves</strong> tränar funktionell rörlighet och kroppsvikt med fokus på att göra rörelse tillgänglig för alla. Hans videor är välförklarade, följer med i realtid och kräver noll utrustning — ett bra val om du vill börja träna hemma.
         </div>
 
         <div class="leo-filter-bar">
           <div class="leo-filter-group">
-            <span class="leo-filter-label">Nivå</span>
-            <button class="leo-chip active" data-filter-type="niva" data-filter-value="all" onclick="setLeoFilter('niva','all',this)">Alla</button>
-            <button class="leo-chip" data-filter-type="niva" data-filter-value="1" onclick="setLeoFilter('niva','1',this)">Nybörjare</button>
-            <button class="leo-chip" data-filter-type="niva" data-filter-value="12" onclick="setLeoFilter('niva','12',this)">Nybörjare+</button>
-            <button class="leo-chip" data-filter-type="niva" data-filter-value="2" onclick="setLeoFilter('niva','2',this)">Mellannivå</button>
+            <span class="leo-filter-label" data-sv="Nivå" data-en="Level">Nivå</span>
+            <button class="leo-chip active" data-filter-type="niva" data-filter-value="all" onclick="setLeoFilter('niva','all',this)" data-sv="Alla" data-en="All">Alla</button>
+            <button class="leo-chip" data-filter-type="niva" data-filter-value="1" onclick="setLeoFilter('niva','1',this)" data-sv="Nybörjare" data-en="Beginner">Nybörjare</button>
+            <button class="leo-chip" data-filter-type="niva" data-filter-value="12" onclick="setLeoFilter('niva','12',this)" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</button>
+            <button class="leo-chip" data-filter-type="niva" data-filter-value="2" onclick="setLeoFilter('niva','2',this)" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</button>
+            <button class="leo-chip" data-filter-type="niva" data-filter-value="3" onclick="setLeoFilter('niva','3',this)" data-sv="Mellannivå+" data-en="Intermediate+">Mellannivå+</button>
           </div>
           <div class="leo-filter-group">
-            <span class="leo-filter-label">Tid</span>
-            <button class="leo-chip active" data-filter-type="tid" data-filter-value="all" onclick="setLeoFilter('tid','all',this)">Alla</button>
-            <button class="leo-chip" data-filter-type="tid" data-filter-value="5" onclick="setLeoFilter('tid','5',this)">Under 5 min</button>
-            <button class="leo-chip" data-filter-type="tid" data-filter-value="10" onclick="setLeoFilter('tid','10',this)">Under 10 min</button>
-            <button class="leo-chip" data-filter-type="tid" data-filter-value="20" onclick="setLeoFilter('tid','20',this)">Under 20 min</button>
-            <button class="leo-chip" data-filter-type="tid" data-filter-value="40" onclick="setLeoFilter('tid','40',this)">40+ min</button>
+            <span class="leo-filter-label" data-sv="Tid" data-en="Time">Tid</span>
+            <button class="leo-chip active" data-filter-type="tid" data-filter-value="all" onclick="setLeoFilter('tid','all',this)" data-sv="Alla" data-en="All">Alla</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="5" onclick="setLeoFilter('tid','5',this)" data-sv="Under 5 min" data-en="Under 5 min">Under 5 min</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="10" onclick="setLeoFilter('tid','10',this)" data-sv="Under 10 min" data-en="Under 10 min">Under 10 min</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="20" onclick="setLeoFilter('tid','20',this)" data-sv="Under 20 min" data-en="Under 20 min">Under 20 min</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="39" onclick="setLeoFilter('tid','39',this)" data-sv="Under 40 min" data-en="Under 40 min">Under 40 min</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="40" onclick="setLeoFilter('tid','40',this)" data-sv="40+ min" data-en="40+ min">40+ min</button>
+          </div>
+          <div class="leo-filter-group">
+            <span class="leo-filter-label" data-sv="Fokus" data-en="Focus">Fokus</span>
+            <button class="leo-chip active" data-filter-type="fokus" data-filter-value="all" onclick="setLeoFilter('fokus','all',this)" data-sv="Alla" data-en="All">Alla</button>
+            <button class="leo-chip" data-filter-type="fokus" data-filter-value="fullbody" onclick="setLeoFilter('fokus','fullbody',this)" data-sv="Helkropp" data-en="Full Body">Helkropp</button>
+            <button class="leo-chip" data-filter-type="fokus" data-filter-value="abs" onclick="setLeoFilter('fokus','abs',this)" data-sv="Mage &amp; core" data-en="Abs &amp; Core">Mage &amp; core</button>
+            <button class="leo-chip" data-filter-type="fokus" data-filter-value="mobility" onclick="setLeoFilter('fokus','mobility',this)" data-sv="Aktiv rörlighet" data-en="Active Mobility">Aktiv rörlighet</button>
+            <button class="leo-chip" data-filter-type="fokus" data-filter-value="recovery" onclick="setLeoFilter('fokus','recovery',this)" data-sv="Återhämtning" data-en="Recovery">Återhämtning</button>
+            <button class="leo-chip" data-filter-type="fokus" data-filter-value="wrists" onclick="setLeoFilter('fokus','wrists',this)" data-sv="Handleder" data-en="Wrists">Handleder</button>
           </div>
         </div>
 
         <div class="video-grid" id="leoGrid">
 
-          <div class="video-card" data-niva="1" data-tid="10">
+          <div class="video-card" data-niva="1" data-tid="10" data-fokus="wrists">
             <div class="video-thumb">
               <a href="https://youtu.be/R2Je6t8UtPc" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/R2Je6t8UtPc/hqdefault.jpg" alt="Handledsrutin för nybörjare" loading="lazy" />
@@ -974,18 +985,18 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">🤲 Handleder & rörlighet</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Undvik handledsskador — följ-med rutin</div>
-              <div class="video-meta">LeoMoves · ~10 min</div>
+              <div class="video-muscle-tag" data-sv="🤲 Handleder &amp; rörlighet" data-en="🤲 Wrists &amp; Mobility">🤲 Handleder & rörlighet</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <div class="video-title" data-sv="Undvik handledsskador — följ-med rutin" data-en="Avoid Wrist Pain — Follow-Along Routine">Undvik handledsskador — följ-med rutin</div>
+              <div class="video-meta" data-sv="LeoMoves · ~10 min" data-en="LeoMoves · ~10 min">LeoMoves · ~10 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Rörlighetsrutin för handleder. Bra om du sitter mycket, ska börja med armhävningar eller har haft ont i handlederna.</p>
+              <p class="video-exercise-note" data-sv="Rörlighetsrutin för handleder. Bra om du sitter mycket, ska börja med armhävningar eller har haft ont i handlederna." data-en="Wrist mobility routine. Good if you sit a lot, are starting with push-ups, or have had wrist pain.">Rörlighetsrutin för handleder. Bra om du sitter mycket, ska börja med armhävningar eller har haft ont i handlederna.</p>
             </div></div>
           </div>
 
-          <div class="video-card" data-niva="1" data-tid="10">
+          <div class="video-card" data-niva="1" data-tid="10" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/poQu64aXIKw?t=572" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/poQu64aXIKw/hqdefault.jpg" alt="Enklaste sättet att börja röra på sig" loading="lazy" />
@@ -993,19 +1004,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <span class="leo-ts-badge">▶ Följ med startar 9:30</span>
-              <div class="video-title">Enklaste sättet att börja röra på sig — 4 övningar</div>
-              <div class="video-meta">LeoMoves · Ingen utrustning · Under 10 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <span class="leo-ts-badge" data-sv="▶ Följ med startar 9:30" data-en="▶ Follow-along starts 9:30">▶ Följ med startar 9:30</span>
+              <div class="video-title" data-sv="Enklaste sättet att börja röra på sig — 4 övningar" data-en="Easiest Way to Start Moving — 4 Exercises">Enklaste sättet att börja röra på sig — 4 övningar</div>
+              <div class="video-meta" data-sv="LeoMoves · Ingen utrustning · Under 10 min" data-en="LeoMoves · No equipment · Under 10 min">LeoMoves · Ingen utrustning · Under 10 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Länken hoppar direkt till följ-med-delen (9:30). Vill du höra förklaringen — starta från början.</p>
+              <p class="video-exercise-note" data-sv="Länken hoppar direkt till följ-med-delen (9:30). Vill du höra förklaringen — starta från början." data-en="The link jumps straight to the follow-along (9:30). Want to hear the explanation — start from the beginning.">Länken hoppar direkt till följ-med-delen (9:30). Vill du höra förklaringen — starta från början.</p>
             </div></div>
           </div>
 
-          <div class="video-card" data-niva="1" data-tid="20">
+          <div class="video-card" data-niva="1" data-tid="20" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/dBCOTvgGRqs" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/dBCOTvgGRqs/hqdefault.jpg" alt="Gör det här i 30 dagar" loading="lazy" />
@@ -1013,18 +1024,18 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Gör det här i 30 dagar — din kropp tackar dig</div>
-              <div class="video-meta">LeoMoves · Förklaring · ~15 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <div class="video-title" data-sv="Gör det här i 30 dagar — din kropp tackar dig" data-en="Do This for 30 Days — Your Body Will Thank You">Gör det här i 30 dagar — din kropp tackar dig</div>
+              <div class="video-meta" data-sv="LeoMoves · Förklaring · ~15 min" data-en="LeoMoves · Explanation · ~15 min">LeoMoves · Förklaring · ~15 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Förklaring av 4 grundövningar utan direkt följ-med-del. Titta för att förstå hur du bygger upp träningen, öva sedan på egen hand.</p>
+              <p class="video-exercise-note" data-sv="Förklaring av 4 grundövningar utan direkt följ-med-del. Titta för att förstå hur du bygger upp träningen, öva sedan på egen hand." data-en="Explanation of 4 basic exercises without a direct follow-along. Watch to understand how to build your training, then practise on your own.">Förklaring av 4 grundövningar utan direkt följ-med-del. Titta för att förstå hur du bygger upp träningen, öva sedan på egen hand.</p>
             </div></div>
           </div>
 
-          <div class="video-card" data-niva="1" data-tid="5">
+          <div class="video-card" data-niva="1" data-tid="5" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/oHLp7_9zk0Y?t=467" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/oHLp7_9zk0Y/hqdefault.jpg" alt="4 övningar — kort träningspass" loading="lazy" />
@@ -1032,19 +1043,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <span class="leo-ts-badge">▶ Följ med startar 7:47</span>
-              <div class="video-title">De bästa kroppsviktsövningarna — 4 övningar, kort pass</div>
-              <div class="video-meta">LeoMoves · Ingen utrustning · Under 5 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <span class="leo-ts-badge" data-sv="▶ Följ med startar 7:47" data-en="▶ Follow-along starts 7:47">▶ Följ med startar 7:47</span>
+              <div class="video-title" data-sv="De bästa kroppsviktsövningarna — 4 övningar, kort pass" data-en="Best Bodyweight Exercises — 4 Exercises, Short Workout">De bästa kroppsviktsövningarna — 4 övningar, kort pass</div>
+              <div class="video-meta" data-sv="LeoMoves · Ingen utrustning · Under 5 min" data-en="LeoMoves · No equipment · Under 5 min">LeoMoves · Ingen utrustning · Under 5 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Länken hoppar direkt till följ-med-delen (7:47). Perfekt för ett kort och effektivt pass.</p>
+              <p class="video-exercise-note" data-sv="Länken hoppar direkt till följ-med-delen (7:47). Perfekt för ett kort och effektivt pass." data-en="The link jumps straight to the follow-along (7:47). Perfect for a short, effective workout.">Länken hoppar direkt till följ-med-delen (7:47). Perfekt för ett kort och effektivt pass.</p>
             </div></div>
           </div>
 
-          <div class="video-card" data-niva="2" data-tid="20">
+          <div class="video-card" data-niva="2" data-tid="20" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/OYdPOLLyu8c" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/OYdPOLLyu8c/hqdefault.jpg" alt="Transformerar mina föräldrar" loading="lazy" />
@@ -1052,18 +1063,18 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Mellannivå</span>
-              <div class="video-title">Transformerar mina föräldrar med kroppsviktsutmaning</div>
-              <div class="video-meta">LeoMoves · Ingen utrustning · Under 20 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="Transformerar mina föräldrar med kroppsviktsutmaning" data-en="Transforming My Parents with a Bodyweight Challenge">Transformerar mina föräldrar med kroppsviktsutmaning</div>
+              <div class="video-meta" data-sv="LeoMoves · Ingen utrustning · Under 20 min" data-en="LeoMoves · No equipment · Under 20 min">LeoMoves · Ingen utrustning · Under 20 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Lite mer utmanande än de rena nybörjarvideorna — bra nästa steg när grundövningarna känns stabila.</p>
+              <p class="video-exercise-note" data-sv="Lite mer utmanande än de rena nybörjarvideorna — bra nästa steg när grundövningarna känns stabila." data-en="A bit more challenging than the pure beginner videos — a good next step when the basics feel solid.">Lite mer utmanande än de rena nybörjarvideorna — bra nästa steg när grundövningarna känns stabila.</p>
             </div></div>
           </div>
 
-          <div class="video-card" data-niva="12" data-tid="5">
+          <div class="video-card" data-niva="12" data-tid="5" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/Zs9lsmI5N7c?t=470" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/Zs9lsmI5N7c/hqdefault.jpg" alt="Enklaste sättet att komma igång" loading="lazy" />
@@ -1071,19 +1082,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare+</span>
-              <span class="leo-ts-badge">▶ Följ med startar 7:50</span>
-              <div class="video-title">Enklaste sättet att komma igång — 4 övningar</div>
-              <div class="video-meta">LeoMoves · Ingen utrustning · Under 5 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <span class="leo-ts-badge" data-sv="▶ Följ med startar 7:50" data-en="▶ Follow-along starts 7:50">▶ Följ med startar 7:50</span>
+              <div class="video-title" data-sv="Enklaste sättet att komma igång — 4 övningar" data-en="Easiest Way to Get Started — 4 Exercises">Enklaste sättet att komma igång — 4 övningar</div>
+              <div class="video-meta" data-sv="LeoMoves · Ingen utrustning · Under 5 min" data-en="LeoMoves · No equipment · Under 5 min">LeoMoves · Ingen utrustning · Under 5 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Länken hoppar direkt till följ-med-delen (7:50). Lämplig när nybörjarövningarna känns stabila och du vill utmana dig lite mer.</p>
+              <p class="video-exercise-note" data-sv="Länken hoppar direkt till följ-med-delen (7:50). Lämplig när nybörjarövningarna känns stabila och du vill utmana dig lite mer." data-en="The link jumps straight to the follow-along (7:50). Good when beginner exercises feel solid and you want a bit more challenge.">Länken hoppar direkt till följ-med-delen (7:50). Lämplig när nybörjarövningarna känns stabila och du vill utmana dig lite mer.</p>
             </div></div>
           </div>
 
-          <div class="video-card" data-niva="1" data-tid="5">
+          <div class="video-card" data-niva="1" data-tid="5" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/SMKPSk2z9NM?t=320" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/SMKPSk2z9NM/hqdefault.jpg" alt="4 nybörjarövningar — kort pass" loading="lazy" />
@@ -1091,20 +1102,20 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <span class="leo-ts-badge">▶ Följ med startar 5:20</span>
-              <div class="video-title">Rör dig som LeoMoves — 4 nybörjarövningar</div>
-              <div class="video-meta">LeoMoves · Ingen utrustning · Under 5 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <span class="leo-ts-badge" data-sv="▶ Följ med startar 5:20" data-en="▶ Follow-along starts 5:20">▶ Följ med startar 5:20</span>
+              <div class="video-title" data-sv="Rör dig som LeoMoves — 4 nybörjarövningar" data-en="Move Like LeoMoves — 4 Beginner Exercises">Rör dig som LeoMoves — 4 nybörjarövningar</div>
+              <div class="video-meta" data-sv="LeoMoves · Ingen utrustning · Under 5 min" data-en="LeoMoves · No equipment · Under 5 min">LeoMoves · Ingen utrustning · Under 5 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Länken hoppar direkt till följ-med-delen (5:20). Perfekt om du har ont om tid.</p>
+              <p class="video-exercise-note" data-sv="Länken hoppar direkt till följ-med-delen (5:20). Perfekt om du har ont om tid." data-en="The link jumps straight to the follow-along (5:20). Perfect if you're short on time.">Länken hoppar direkt till följ-med-delen (5:20). Perfekt om du har ont om tid.</p>
             </div></div>
           </div>
 
           <!-- Begin & Win class 1 -->
-          <div class="video-card" data-niva="1" data-tid="20">
+          <div class="video-card" data-niva="1" data-tid="20" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/v4rUsd9v8EQ" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/v4rUsd9v8EQ/hqdefault.jpg" alt="Begin & Win — klass 1" loading="lazy" />
@@ -1112,19 +1123,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">"Begin & Win" — klass 1 | 16 min nybörjarpass</div>
-              <div class="video-meta">LeoMoves · Följ med · 16 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <div class="video-title" data-sv="&quot;Begin &amp; Win&quot; — klass 1 | 16 min nybörjarpass" data-en="&quot;Begin &amp; Win&quot; — class 1 | 16 min beginner workout">"Begin &amp; Win" — klass 1 | 16 min nybörjarpass</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 16 min" data-en="LeoMoves · Follow-along · 16 min">LeoMoves · Följ med · 16 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Första passet i "Begin & Win"-serien — uppbyggt för den som aldrig tränat förut. Leder dig steg för steg igenom grundrörelserna utan att ta något för givet.</p>
+              <p class="video-exercise-note" data-sv="Första passet i &quot;Begin &amp; Win&quot;-serien — uppbyggt för den som aldrig tränat förut. Leder dig steg för steg igenom grundrörelserna utan att ta något för givet." data-en="First session in the &quot;Begin &amp; Win&quot; series — built for someone who has never trained before. Guides you step by step through the basic movements without taking anything for granted.">Första passet i "Begin &amp; Win"-serien — uppbyggt för den som aldrig tränat förut. Leder dig steg för steg igenom grundrörelserna utan att ta något för givet.</p>
             </div></div>
           </div>
 
           <!-- Feel Good in 20 Minutes -->
-          <div class="video-card" data-niva="1" data-tid="20">
+          <div class="video-card" data-niva="1" data-tid="20" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/52PrHHGxl40" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/52PrHHGxl40/hqdefault.jpg" alt="Känn dig bra på 20 minuter" loading="lazy" />
@@ -1132,19 +1143,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Känn dig bra på 20 minuter — nybörjarpass</div>
-              <div class="video-meta">LeoMoves · Följ med · 20 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <div class="video-title" data-sv="Känn dig bra på 20 minuter — nybörjarpass" data-en="Feel Good in 20 Minutes — Beginner Workout">Känn dig bra på 20 minuter — nybörjarpass</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 20 min" data-en="LeoMoves · Follow-along · 20 min">LeoMoves · Följ med · 20 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Lugnt och välkomnande — förutsätter ingenting. Bra om du vill komma igång utan att det ska kännas överväldigande.</p>
+              <p class="video-exercise-note" data-sv="Lugnt och välkomnande — förutsätter ingenting. Bra om du vill komma igång utan att det ska kännas överväldigande." data-en="Calm and welcoming — assumes nothing. Good if you want to get started without feeling overwhelmed.">Lugnt och välkomnande — förutsätter ingenting. Bra om du vill komma igång utan att det ska kännas överväldigande.</p>
             </div></div>
           </div>
 
           <!-- Beginner Workout With Parents -->
-          <div class="video-card" data-niva="1" data-tid="40">
+          <div class="video-card" data-niva="12" data-tid="40" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/IGj1-k2J3Cg" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/IGj1-k2J3Cg/hqdefault.jpg" alt="Så här börjar du — tränar med föräldrarna" loading="lazy" />
@@ -1152,19 +1163,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Så här börjar du — nybörjarpass med föräldrarna</div>
-              <div class="video-meta">LeoMoves · Följ med · ~40 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="Så här börjar du — nybörjarpass med föräldrarna" data-en="This Is How You Start — Beginner Workout with Parents">Så här börjar du — nybörjarpass med föräldrarna</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · ~40 min" data-en="LeoMoves · Follow-along · ~40 min">LeoMoves · Följ med · ~40 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Längre pass — bra om du vill se hur ett fullständigt nybörjarpass ser ut i verkligheten, eller vill träna ihop med någon hemma.</p>
+              <p class="video-exercise-note" data-sv="Längre pass — bra om du vill se hur ett fullständigt nybörjarpass ser ut i verkligheten, eller vill träna ihop med någon hemma." data-en="Longer session — good if you want to see what a complete beginner workout looks like in practice, or want to train together with someone at home.">Längre pass — bra om du vill se hur ett fullständigt nybörjarpass ser ut i verkligheten, eller vill träna ihop med någon hemma.</p>
             </div></div>
           </div>
 
           <!-- Tilted Shoulders / Posture -->
-          <div class="video-card" data-niva="1" data-tid="5">
+          <div class="video-card" data-niva="1" data-tid="5" data-fokus="mobility">
             <div class="video-thumb">
               <a href="https://youtu.be/xB0AXkbxROo" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/xB0AXkbxROo/hqdefault.jpg" alt="Räta upp axlar och öppna bröstet" loading="lazy" />
@@ -1172,19 +1183,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">🧘 Hållning</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Räta upp axlar och öppna bröstet — kort rutin</div>
-              <div class="video-meta">LeoMoves · Följ med · Under 5 min</div>
+              <div class="video-muscle-tag" data-sv="🧘 Hållning" data-en="🧘 Posture">🧘 Hållning</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <div class="video-title" data-sv="Räta upp axlar och öppna bröstet — kort rutin" data-en="Straighten Your Shoulders and Open Your Chest — Short Routine">Räta upp axlar och öppna bröstet — kort rutin</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · Under 5 min" data-en="LeoMoves · Follow-along · Under 5 min">LeoMoves · Följ med · Under 5 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Riktar sig mot framåtlutade axlar och ihopsjunket bröst — vanligt om du sitter mycket. Inte ett träningspass, utan en kort daglig rörlighetsrutin.</p>
+              <p class="video-exercise-note" data-sv="Riktar sig mot framåtlutade axlar och ihopsjunket bröst — vanligt om du sitter mycket. Inte ett träningspass, utan en kort daglig rörlighetsrutin." data-en="Targets hunched shoulders and a tight chest — common if you sit a lot. Not a workout, but a short daily mobility routine.">Riktar sig mot framåtlutade axlar och ihopsjunket bröst — vanligt om du sitter mycket. Inte ett träningspass, utan en kort daglig rörlighetsrutin.</p>
             </div></div>
           </div>
 
           <!-- Recovery Session -->
-          <div class="video-card" data-niva="1" data-tid="20">
+          <div class="video-card" data-niva="1" data-tid="20" data-fokus="recovery">
             <div class="video-thumb">
               <a href="https://youtu.be/AFTk31uo0FI" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/AFTk31uo0FI/hqdefault.jpg" alt="Återhämtningspass för ömma muskler" loading="lazy" />
@@ -1192,19 +1203,19 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">🔄 Återhämtning</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Återhämtningspass för ömma muskler och viladagar — 15 min</div>
-              <div class="video-meta">LeoMoves · Följ med · 15 min</div>
+              <div class="video-muscle-tag" data-sv="🔄 Återhämtning" data-en="🔄 Recovery">🔄 Återhämtning</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare" data-en="Beginner">Nybörjare</span>
+              <div class="video-title" data-sv="Återhämtningspass för ömma muskler och viladagar — 15 min" data-en="Recovery Session for Sore Muscles and Rest Days — 15 min">Återhämtningspass för ömma muskler och viladagar — 15 min</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 15 min" data-en="LeoMoves · Follow-along · 15 min">LeoMoves · Följ med · 15 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Perfekt för viladagar eller när musklerna är ömma. Lugnt tempo utan tunga belastningar — bara rörelse och återhämtning.</p>
+              <p class="video-exercise-note" data-sv="Perfekt för viladagar eller när musklerna är ömma. Lugnt tempo utan tunga belastningar — bara rörelse och återhämtning." data-en="Perfect for rest days or when muscles are sore. Easy pace with no heavy load — just movement and recovery.">Perfekt för viladagar eller när musklerna är ömma. Lugnt tempo utan tunga belastningar — bara rörelse och återhämtning.</p>
             </div></div>
           </div>
 
           <!-- 10 Minutes as a Beginner -->
-          <div class="video-card" data-niva="1" data-tid="10">
+          <div class="video-card" data-niva="12" data-tid="10" data-fokus="fullbody">
             <div class="video-thumb">
               <a href="https://youtu.be/Qo5bRRG7uxM" target="_blank" rel="noopener noreferrer">
                 <img src="https://img.youtube.com/vi/Qo5bRRG7uxM/hqdefault.jpg" alt="10 minuter som nybörjare" loading="lazy" />
@@ -1212,22 +1223,182 @@
               </a>
             </div>
             <div class="video-body">
-              <div class="video-muscle-tag">💪 Helkropp</div>
-              <span class="leo-niva-badge">Nybörjare</span>
-              <div class="video-title">Gör dessa 10 minuter som nybörjare — kroppen förändras</div>
-              <div class="video-meta">LeoMoves · Följ med · 10 min</div>
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="Gör dessa 10 minuter som nybörjare — kroppen förändras" data-en="Do These 10 Minutes as a Beginner — Your Body Will Change">Gör dessa 10 minuter som nybörjare — kroppen förändras</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
               <button class="video-expand-btn">▼ Visa anteckningar</button>
             </div>
             <div class="video-expand-body"><div class="video-expand-inner">
-              <p class="video-exercise-note">Kort och effektivt pass utan utrustning. Bra om du vill träna men bara har lite tid att röra på dig.</p>
+              <p class="video-exercise-note" data-sv="Kort och effektivt pass utan utrustning. Bra om du vill träna men bara har lite tid att röra på dig." data-en="Short and effective workout without equipment. Good if you want to train but only have a little time.">Kort och effektivt pass utan utrustning. Bra om du vill träna men bara har lite tid att röra på dig.</p>
             </div></div>
           </div>
 
-          <p class="leo-no-results" id="leoNoResults">Inga videor matchar dina filter — testa en annan kombination.</p>
+          <!-- Six Rounds Bodyweight -->
+          <div class="video-card" data-niva="2" data-tid="35" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/xIe9r-lyMnk" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/xIe9r-lyMnk/hqdefault.jpg" alt="Sex ronder kroppsviktspass" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="Prova alla sex ronder — kroppsviktspass med timer" data-en="Try All Six Rounds — Bodyweight Workout With Timer">Prova alla sex ronder — kroppsviktspass med timer</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 35 min" data-en="LeoMoves · Follow-along · 35 min">LeoMoves · Följ med · 35 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Uppdelat i sex ronder för tydlig struktur. Bra om du vill ha ett lagom utmanande helkroppspass med inbyggd timer." data-en="Split into six rounds for clear structure. Good if you want a moderately challenging full-body workout with a built-in timer.">Uppdelat i sex ronder för tydlig struktur. Bra om du vill ha ett lagom utmanande helkroppspass med inbyggd timer.</p>
+            </div></div>
+          </div>
+
+          <!-- 30 Min HIIT Challenge - Nybörjare+ -->
+          <div class="video-card" data-niva="12" data-tid="30" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/ehd_ayRNIxI" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/ehd_ayRNIxI/hqdefault.jpg" alt="30 min HIIT helkropp" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="30-minutersutmaning — bodyweight HIIT helkropp" data-en="30-Minute Challenge — Bodyweight HIIT Full Body">30-minutersutmaning — bodyweight HIIT helkropp</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 30 min" data-en="LeoMoves · Follow-along · 30 min">LeoMoves · Följ med · 30 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="HIIT-pass med kroppsvikt för hela kroppen. Passar dig som är redo att ta nästa steg från de kortare nybörjarpassen." data-en="Bodyweight HIIT for the full body. Suits you if you're ready to step up from the shorter beginner workouts.">HIIT-pass med kroppsvikt för hela kroppen. Passar dig som är redo att ta nästa steg från de kortare nybörjarpassen.</p>
+            </div></div>
+          </div>
+
+          <!-- Intense Ab Workout -->
+          <div class="video-card" data-niva="12" data-tid="10" data-fokus="abs">
+            <div class="video-thumb">
+              <a href="https://youtu.be/KuoYDBbgNzo" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/KuoYDBbgNzo/hqdefault.jpg" alt="10 min mage HIIT" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="🔥 Mage &amp; core" data-en="🔥 Abs &amp; Core">🔥 Mage &amp; core</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="Intensivt 10-minuterspass — mage &amp; core med timer" data-en="Intense 10-Minute Ab Workout — HIIT With Timer">Intensivt 10-minuterspass — mage &amp; core med timer</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Fokuserat core-pass utan utrustning. Bra tillägg till ett vanligt träningspass eller som fristående kortpass." data-en="Focused core workout without equipment. Good as an add-on to a regular session or as a standalone short workout.">Fokuserat core-pass utan utrustning. Bra tillägg till ett vanligt träningspass eller som fristående kortpass.</p>
+            </div></div>
+          </div>
+
+          <!-- 30 Min HIIT with Warmup - Mellannivå -->
+          <div class="video-card" data-niva="2" data-tid="30" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/bpFBoab9GZs" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/bpFBoab9GZs/hqdefault.jpg" alt="30 min HIIT med uppvärmning" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="30 min HIIT med uppvärmning, set och avslutning" data-en="30 Min Bodyweight HIIT With Warmup, Sets &amp; Finisher">30 min HIIT med uppvärmning, set och avslutning</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 30 min" data-en="LeoMoves · Follow-along · 30 min">LeoMoves · Följ med · 30 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Komplett pass med uppvärmning, huvudpass och avslutning. Bra struktur om du vill ha ett fullständigt träningspass." data-en="Complete session with warmup, main workout and finisher. Good structure if you want a full training session.">Komplett pass med uppvärmning, huvudpass och avslutning. Bra struktur om du vill ha ett fullständigt träningspass.</p>
+            </div></div>
+          </div>
+
+          <!-- Efficient 10 Min Fullbody - Mellannivå+ -->
+          <div class="video-card" data-niva="3" data-tid="10" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/7jas7wlNibQ" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/7jas7wlNibQ/hqdefault.jpg" alt="Effektivt 10 min helkropp" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå+" data-en="Intermediate+">Mellannivå+</span>
+              <div class="video-title" data-sv="Effektivt 10-minuterspass — helkropp" data-en="Efficient 10-Minute Full Body Workout">Effektivt 10-minuterspass — helkropp</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Tät och effektiv — minimal vila för maximalt utbyte på kort tid. Kräver en stabil grundkondition." data-en="Dense and efficient — minimal rest for maximum output in a short time. Requires a solid fitness base.">Tät och effektiv — minimal vila för maximalt utbyte på kort tid. Kräver en stabil grundkondition.</p>
+            </div></div>
+          </div>
+
+          <!-- Hotel Room Workout -->
+          <div class="video-card" data-niva="2" data-tid="20" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/ylYARr9ZVKE" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/ylYARr9ZVKE/hqdefault.jpg" alt="20 min hotelrumspass" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="20 min hotelrumspass — ingen utrustning" data-en="20 Min Hotel Room Workout — No Equipment Needed">20 min hotelrumspass — ingen utrustning</div>
+              <div class="video-meta" data-sv="LeoMoves · Ingen utrustning · 20 min" data-en="LeoMoves · No equipment · 20 min">LeoMoves · Ingen utrustning · 20 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Fungerar i ett litet utrymme utan utrustning — perfekt på resan eller hemma när du vill träna utan gymredskap." data-en="Works in a small space without equipment — perfect while travelling or at home when you want to train without gym gear.">Fungerar i ett litet utrymme utan utrustning — perfekt på resan eller hemma när du vill träna utan gymredskap.</p>
+            </div></div>
+          </div>
+
+          <!-- Breakletics HIIT -->
+          <div class="video-card" data-niva="2" data-tid="30" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/KwJxkCeRyws" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/KwJxkCeRyws/hqdefault.jpg" alt="Breakletics 30 min HIIT" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="Breakletics — 30 min HIIT att följa med" data-en="Breakletics — 30 Min HIIT Workout to Follow Along">Breakletics — 30 min HIIT att följa med</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 30 min" data-en="LeoMoves · Follow-along · 30 min">LeoMoves · Följ med · 30 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Kombinerar HIIT och funktionell rörelse. Bra om du vill testa något lite utöver vanliga kroppsviktsövningar." data-en="Combines HIIT and functional movement. Good if you want to try something beyond standard bodyweight exercises.">Kombinerar HIIT och funktionell rörelse. Bra om du vill testa något lite utöver vanliga kroppsviktsövningar.</p>
+            </div></div>
+          </div>
+
+          <!-- 10 Min Mobility Routine -->
+          <div class="video-card" data-niva="12" data-tid="10" data-fokus="mobility">
+            <div class="video-thumb">
+              <a href="https://youtu.be/Y0OfTlcd8Ww" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/Y0OfTlcd8Ww/hqdefault.jpg" alt="10 min aktiv rörlighet" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="🧘 Aktiv rörlighet" data-en="🧘 Active Mobility">🧘 Aktiv rörlighet</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="10-minutersrutin för aktiv rörlighet — perfekt på morgonen" data-en="10-Minute Mobility Routine — Perfect to Start the Day">10-minutersrutin för aktiv rörlighet — perfekt på morgonen</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Kombinerar styrka och rörlighet — bra som daglig morgonrutin eller uppvärmning inför träning." data-en="Combines strength and mobility — good as a daily morning routine or warmup before training.">Kombinerar styrka och rörlighet — bra som daglig morgonrutin eller uppvärmning inför träning.</p>
+            </div></div>
+          </div>
+
+          <p class="leo-no-results" id="leoNoResults" data-sv="Inga videor matchar dina filter — testa en annan kombination." data-en="No videos match your filters — try a different combination.">Inga videor matchar dina filter — testa en annan kombination.</p>
 
         </div><!-- /#leoGrid -->
 
-        <p class="leo-more-note">Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar.</p>
+        <p class="leo-more-note" data-sv="Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar." data-en="More videos on the way — the library grows as difficulty levels expand.">Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar.</p>
 
       </div><!-- /#leo-content -->
 

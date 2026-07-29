@@ -528,6 +528,8 @@
   background: #111;
   overflow: hidden;
 }
+/* Compact thumbnails for the LeoMoves filter grid */
+#leoGrid .video-thumb { aspect-ratio: 16 / 6; }
 .video-thumb img {
   width: 100%;
   height: 100%;

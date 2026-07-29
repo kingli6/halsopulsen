@@ -19,6 +19,47 @@ if (hamburger && navLinks) {
   }));
 }
 
+/* ── Section toggles ── */
+function toggleSection(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const chevron = btn ? btn.querySelector('.section-chevron') : null;
+  const isNowHidden = el.classList.toggle('hidden');
+  if (chevron) chevron.classList.toggle('rotated', !isNowHidden);
+}
+
+/* ── LeoMoves filter ── */
+const _leoFilters = { niva: 'all', tid: 'all', fokus: 'all' };
+
+function setLeoFilter(type, value, btn) {
+  _leoFilters[type] = value;
+  document.querySelectorAll(`.leo-chip[data-filter-type="${type}"]`).forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _applyLeoFilter();
+}
+
+function _applyLeoFilter() {
+  const cards = document.querySelectorAll('#leoGrid .video-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const niva      = card.dataset.niva;
+    const tid       = parseInt(card.dataset.tid);
+    const fokus     = card.dataset.fokus;
+    const filterTid = _leoFilters.tid;
+    const showNiva  = _leoFilters.niva === 'all' || niva === _leoFilters.niva;
+    const showFokus = _leoFilters.fokus === 'all' || fokus === _leoFilters.fokus;
+    let showTid;
+    if (filterTid === 'all')     showTid = true;
+    else if (filterTid === '40') showTid = tid >= 40;
+    else                         showTid = tid <= parseInt(filterTid);
+    const show = showNiva && showTid && showFokus;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const msg = document.getElementById('leoNoResults');
+  if (msg) msg.classList.toggle('visible', visible === 0);
+}
+
 /* ── Accordion ── */
 document.querySelectorAll('.accordion-header').forEach(header => {
   header.addEventListener('click', () => {
