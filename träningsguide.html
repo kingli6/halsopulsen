@@ -935,14 +935,16 @@
             <button class="leo-chip" data-filter-type="niva" data-filter-value="12" onclick="setLeoFilter('niva','12',this)" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</button>
             <button class="leo-chip" data-filter-type="niva" data-filter-value="2" onclick="setLeoFilter('niva','2',this)" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</button>
             <button class="leo-chip" data-filter-type="niva" data-filter-value="3" onclick="setLeoFilter('niva','3',this)" data-sv="Mellannivå+" data-en="Intermediate+">Mellannivå+</button>
+            <button class="leo-chip" data-filter-type="niva" data-filter-value="4" onclick="setLeoFilter('niva','4',this)" data-sv="Avancerad" data-en="Advanced">Avancerad</button>
           </div>
           <div class="leo-filter-group">
             <span class="leo-filter-label" data-sv="Tid" data-en="Time">Tid</span>
             <button class="leo-chip active" data-filter-type="tid" data-filter-value="all" onclick="setLeoFilter('tid','all',this)" data-sv="Alla" data-en="All">Alla</button>
             <button class="leo-chip" data-filter-type="tid" data-filter-value="5" onclick="setLeoFilter('tid','5',this)" data-sv="~5 min" data-en="~5 min">~5 min</button>
             <button class="leo-chip" data-filter-type="tid" data-filter-value="10" onclick="setLeoFilter('tid','10',this)" data-sv="~10 min" data-en="~10 min">~10 min</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="15" onclick="setLeoFilter('tid','15',this)" data-sv="~15 min" data-en="~15 min">~15 min</button>
             <button class="leo-chip" data-filter-type="tid" data-filter-value="20" onclick="setLeoFilter('tid','20',this)" data-sv="~20 min" data-en="~20 min">~20 min</button>
-            <button class="leo-chip" data-filter-type="tid" data-filter-value="40" onclick="setLeoFilter('tid','40',this)" data-sv="~40 min" data-en="~40 min">~40 min</button>
+            <button class="leo-chip" data-filter-type="tid" data-filter-value="40" onclick="setLeoFilter('tid','40',this)" data-sv="30+ min" data-en="30+ min">30+ min</button>
           </div>
           <div class="leo-filter-group">
             <span class="leo-filter-label" data-sv="Fokus" data-en="Focus">Fokus</span>
@@ -1374,9 +1376,275 @@
             </div></div>
           </div>
 
+          <!-- ── NEW VIDEOS (leo-extra — hidden until "Visa fler" or filter active) ── -->
+
+          <!-- 5 ROUND Hiit Workout -->
+          <div class="video-card leo-extra" data-niva="2" data-tid="30" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/Oeop4Sa4Ya0?t=649" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/Oeop4Sa4Ya0/hqdefault.jpg" alt="5 ROUND Hiit Workout" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="5-ronders HIIT med komplexa övningar och förklaring" data-en="5 Round HIIT Workout with Complex Exercises and Explanation">5-ronders HIIT med komplexa övningar och förklaring</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 30 min" data-en="LeoMoves · Follow-along · 30 min">LeoMoves · Följ med · 30 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Länken hoppar direkt till workoutet (startar vid 10:49). Komplexa övningar med tydlig genomgång — bra om du gillar att förstå varför du gör det du gör." data-en="The link jumps straight to the workout (starts at 10:49). Complex movements with clear explanations — great if you like understanding the why.">Länken hoppar direkt till workoutet (startar vid 10:49). Komplexa övningar med tydlig genomgång — bra om du gillar att förstå varför du gör det du gör.</p>
+            </div></div>
+          </div>
+
+          <!-- 15 min Tabata -->
+          <div class="video-card leo-extra" data-niva="12" data-tid="15" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/nANmpyJ5W8A" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/nANmpyJ5W8A/hqdefault.jpg" alt="15 min Tabata workout" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="15-minuters tabata för att kicka igång dagen" data-en="15 Min Tabata Workout to Start the Day">15-minuters tabata för att kicka igång dagen</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 15 min" data-en="LeoMoves · Follow-along · 15 min">LeoMoves · Följ med · 15 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Kort och intensiv tabatastruktur — bra morgonpass om du vill ha pulsen upp utan för lång investering." data-en="Short, intense tabata structure — a good morning session if you want your heart rate up without a long time commitment.">Kort och intensiv tabatastruktur — bra morgonpass om du vill ha pulsen upp utan för lång investering.</p>
+            </div></div>
+          </div>
+
+          <!-- 10 Minute Ab Workout -->
+          <div class="video-card leo-extra" data-niva="12" data-tid="10" data-fokus="abs">
+            <div class="video-thumb">
+              <a href="https://youtu.be/T7AhbxJA8F0" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/T7AhbxJA8F0/hqdefault.jpg" alt="10 Minute Ab Workout" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="🔥 Mage & core" data-en="🔥 Abs & Core">🔥 Mage & core</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="10-minuters magövningar utan utrustning" data-en="10 Minute Ab Workout — No Equipment">10-minuters magövningar utan utrustning</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Fokuserat core-pass utan utrustning. Bra komplement till helkroppspass eller som fristående daglig rutin." data-en="Focused core session with no equipment. Good complement to full-body workouts or as a standalone daily routine.">Fokuserat core-pass utan utrustning. Bra komplement till helkroppspass eller som fristående daglig rutin.</p>
+            </div></div>
+          </div>
+
+          <!-- Bodyweight Workout To Move Well -->
+          <div class="video-card leo-extra" data-niva="3" data-tid="15" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/xas8bykH4Lw" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/xas8bykH4Lw/hqdefault.jpg" alt="Bodyweight Workout To Move Well" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå+" data-en="Intermediate+">Mellannivå+</span>
+              <div class="video-title" data-sv="Kroppsviktspass för att röra sig bättre [3 rundor]" data-en="Bodyweight Workout To Move Well [3 Rounds]">Kroppsviktspass för att röra sig bättre [3 rundor]</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 15 min" data-en="LeoMoves · Follow-along · 15 min">LeoMoves · Följ med · 15 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Fokus på att röra sig bra — inte bara träna hårt. 3 rundor med funktionella rörelsemönster som utmanar koordination och kroppskontroll." data-en="Focus on moving well — not just training hard. 3 rounds of functional movement patterns that challenge coordination and body control.">Fokus på att röra sig bra — inte bara träna hårt. 3 rundor med funktionella rörelsemönster som utmanar koordination och kroppskontroll.</p>
+            </div></div>
+          </div>
+
+          <!-- 15min Advanced Bodyweight Workout -->
+          <div class="video-card leo-extra" data-niva="4" data-tid="15" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/jXgQDAbdOQY" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/jXgQDAbdOQY/hqdefault.jpg" alt="15min Advanced Bodyweight Workout" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge advanced" data-sv="Avancerad" data-en="Advanced">Avancerad</span>
+              <div class="video-title" data-sv="15-minuters avancerat kroppsviktspass [3 rundor med timer]" data-en="15min Advanced Bodyweight Workout [3 Rounds with Timer]">15-minuters avancerat kroppsviktspass [3 rundor med timer]</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 15 min" data-en="LeoMoves · Follow-along · 15 min">LeoMoves · Följ med · 15 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Hög kravnivå på koordination och styrka. Kör Mellannivå+ ett tag och känn att det sitter innan du provar det här." data-en="High demands on coordination and strength. Work through Intermediate+ for a while and feel confident there before trying this.">Hög kravnivå på koordination och styrka. Kör Mellannivå+ ett tag och känn att det sitter innan du provar det här.</p>
+            </div></div>
+          </div>
+
+          <!-- Bodyweight Workout For You! 5 min -->
+          <div class="video-card leo-extra" data-niva="3" data-tid="5" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/kTGIF9SDV4Q" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/kTGIF9SDV4Q/hqdefault.jpg" alt="Bodyweight Workout For You!" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå+" data-en="Intermediate+">Mellannivå+</span>
+              <div class="video-title" data-sv="Kroppsviktspass för dig! [Ingen utrustning] — 5 min" data-en="Bodyweight Workout For You! [No Equipment] — 5 min">Kroppsviktspass för dig! [Ingen utrustning] — 5 min</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 5 min" data-en="LeoMoves · Follow-along · 5 min">LeoMoves · Följ med · 5 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Kompakt 5-minuterspass — perfekt som snabb uppvärmning eller när du har ont om tid men ändå vill röra på dig." data-en="Compact 5-minute session — perfect as a quick warmup or when you're short on time but still want to move.">Kompakt 5-minuterspass — perfekt som snabb uppvärmning eller när du har ont om tid men ändå vill röra på dig.</p>
+            </div></div>
+          </div>
+
+          <!-- Quick & Easy 10-Minute Bodyweight -->
+          <div class="video-card leo-extra" data-niva="2" data-tid="10" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/tdRm_dwdTmg" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/tdRm_dwdTmg/hqdefault.jpg" alt="Quick & Easy 10-Minute Bodyweight Workout" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="Snabbt & enkelt 10-minuters kroppsviktspass — följ med med timer" data-en="Quick & Easy 10-Minute Bodyweight Workout — Follow Along with Timer">Snabbt & enkelt 10-minuters kroppsviktspass — följ med med timer</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Enkel och tydlig struktur med inbyggd timer. Bra vardagspass utan krångel — fungerar oavsett hur mycket tid du har." data-en="Simple, clear structure with a built-in timer. A solid everyday session without any fuss — works no matter how much time you have.">Enkel och tydlig struktur med inbyggd timer. Bra vardagspass utan krångel — fungerar oavsett hur mycket tid du har.</p>
+            </div></div>
+          </div>
+
+          <!-- [10 Minutes Only] Intense Full Body -->
+          <div class="video-card leo-extra" data-niva="2" data-tid="10" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/WYpo0XTMxJ4" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/WYpo0XTMxJ4/hqdefault.jpg" alt="Intense Full Body Workout 10 min" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="[Bara 10 minuter] Intensivt helkroppspass med timer" data-en="[10 Minutes Only] Intense Full Body Workout — With Timer">[Bara 10 minuter] Intensivt helkroppspass med timer</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 10 min" data-en="LeoMoves · Follow-along · 10 min">LeoMoves · Följ med · 10 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Komprimerat men intensivt — mer arbetstid per minut än de flesta längre pass. Bra när du vill jobba utan att lägga 30 minuter." data-en="Short but intense — more working time per minute than most longer sessions. Great when you want a real effort without spending 30 minutes.">Komprimerat men intensivt — mer arbetstid per minut än de flesta längre pass. Bra när du vill jobba utan att lägga 30 minuter.</p>
+            </div></div>
+          </div>
+
+          <!-- Do Those 20 Minutes EVERYDAY -->
+          <div class="video-card leo-extra" data-niva="12" data-tid="20" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/dZ5PgW5RD7A" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/dZ5PgW5RD7A/hqdefault.jpg" alt="Do Those 20 Minutes EVERYDAY" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Nybörjare+" data-en="Beginner+">Nybörjare+</span>
+              <div class="video-title" data-sv="Gör de här 20 minuterna VARJE DAG för din kropp" data-en="Do Those 20 Minutes EVERYDAY for Your Body">Gör de här 20 minuterna VARJE DAG för din kropp</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 20 min" data-en="LeoMoves · Follow-along · 20 min">LeoMoves · Följ med · 20 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Byggt som ett dagligt rörelsemönster, inte bara ett träningspass. Bra om du vill etablera en stabil vana som faktiskt håller." data-en="Designed as a daily movement practice, not just a workout. Great for building a consistent habit that actually sticks.">Byggt som ett dagligt rörelsemönster, inte bara ett träningspass. Bra om du vill etablera en stabil vana som faktiskt håller.</p>
+            </div></div>
+          </div>
+
+          <!-- Do these 13 MIN EVERY DAY -->
+          <div class="video-card leo-extra" data-niva="3" data-tid="13" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/Da_FryQDqk8" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/Da_FryQDqk8/hqdefault.jpg" alt="Do these 13 MIN EVERY DAY" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå+" data-en="Intermediate+">Mellannivå+</span>
+              <div class="video-title" data-sv="Gör de här 13 minuterna VARJE DAG för att lyckas" data-en="Do These 13 Min Every Day to Succeed!">Gör de här 13 minuterna VARJE DAG för att lyckas</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 13 min" data-en="LeoMoves · Follow-along · 13 min">LeoMoves · Följ med · 13 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Mellannivå+ med hög intensitet på bara 13 minuter. Krävande men klart om du är van — bra alternativ till längre pass på tighta dagar." data-en="Intermediate+ with high intensity in just 13 minutes. Demanding but doable if you're used to training — a good alternative to longer sessions on tight days.">Mellannivå+ med hög intensitet på bara 13 minuter. Krävande men klart om du är van — bra alternativ till längre pass på tighta dagar.</p>
+            </div></div>
+          </div>
+
+          <!-- INTENSE 15min HIIT -->
+          <div class="video-card leo-extra" data-niva="2" data-tid="15" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/gb7yFMHkuyk" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/gb7yFMHkuyk/hqdefault.jpg" alt="INTENSE 15min HIIT Workout" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="Intensivt 15-minuters HIIT-pass (ingen utrustning!)" data-en="Try This INTENSE 15min HIIT Workout (No Equipment Needed!)">Intensivt 15-minuters HIIT-pass (ingen utrustning!)</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 15 min" data-en="LeoMoves · Follow-along · 15 min">LeoMoves · Följ med · 15 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Intensivt HIIT-format med hög belastning per övning. Bra val om du vill jobba ordentligt på kort tid." data-en="Intense HIIT format with high load per exercise. A good pick if you want a solid effort in a short time.">Intensivt HIIT-format med hög belastning per övning. Bra val om du vill jobba ordentligt på kort tid.</p>
+            </div></div>
+          </div>
+
+          <!-- HIIT [35 Seconds On 15 Seconds Off] -->
+          <div class="video-card leo-extra" data-niva="2" data-tid="15" data-fokus="fullbody">
+            <div class="video-thumb">
+              <a href="https://youtu.be/L477e5Dl6tI" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/L477e5Dl6tI/hqdefault.jpg" alt="HIIT 35 Seconds On 15 Off" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="💪 Helkropp" data-en="💪 Full Body">💪 Helkropp</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="HIIT-pass [35 sek på, 15 av] — med timer, ingen utrustning" data-en="HIIT Workout [35 Seconds On, 15 Seconds Off] — With Timer, No Equipment">HIIT-pass [35 sek på, 15 av] — med timer, ingen utrustning</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 15 min" data-en="LeoMoves · Follow-along · 15 min">LeoMoves · Följ med · 15 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Klassiskt intervallformat med 35/15-sekunder. Timern är inbyggd — följ bara med." data-en="Classic interval format with 35/15 seconds. Timer is built in — just follow along.">Klassiskt intervallformat med 35/15-sekunder. Timern är inbyggd — följ bara med.</p>
+            </div></div>
+          </div>
+
+          <!-- Morning & Afternoon Stretches — Recovery -->
+          <div class="video-card leo-extra" data-niva="2" data-tid="5" data-fokus="recovery">
+            <div class="video-thumb">
+              <a href="https://youtu.be/q0PK2-8mJrE" target="_blank" rel="noopener noreferrer">
+                <img src="https://img.youtube.com/vi/q0PK2-8mJrE/hqdefault.jpg" alt="Morning and Afternoon Stretches" loading="lazy" />
+                <div class="video-play-btn"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55c-2.93.78-4.63 3.26-5.42 6.19C.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="#FF0000"/><path d="M45 24L27 14v20" fill="#fff"/></svg></div>
+              </a>
+            </div>
+            <div class="video-body">
+              <div class="video-muscle-tag" data-sv="🧘 Återhämtning" data-en="🧘 Recovery">🧘 Återhämtning</div>
+              <span class="leo-niva-badge" data-sv="Mellannivå" data-en="Intermediate">Mellannivå</span>
+              <div class="video-title" data-sv="Morgon- och eftermiddagsstretching — 5 min nedvarvning" data-en="Morning and Afternoon Stretches — 5 Min Body Cool Down">Morgon- och eftermiddagsstretching — 5 min nedvarvning</div>
+              <div class="video-meta" data-sv="LeoMoves · Följ med · 5 min" data-en="LeoMoves · Follow-along · 5 min">LeoMoves · Följ med · 5 min</div>
+              <button class="video-expand-btn">▼ Visa anteckningar</button>
+            </div>
+            <div class="video-expand-body"><div class="video-expand-inner">
+              <p class="video-exercise-note" data-sv="Perfekt nedvarvning efter ett pass eller som fristående återhämtningsrutin. Kort nog för att faktiskt bli av med." data-en="Perfect cooldown after a session or as a standalone recovery routine. Short enough to actually stick to.">Perfekt nedvarvning efter ett pass eller som fristående återhämtningsrutin. Kort nog för att faktiskt bli av med.</p>
+            </div></div>
+          </div>
+
           <p class="leo-no-results" id="leoNoResults" data-sv="Inga videor matchar dina filter — testa en annan kombination." data-en="No videos match your filters — try a different combination.">Inga videor matchar dina filter — testa en annan kombination.</p>
 
         </div><!-- /#leoGrid -->
+
+        <button id="leoShowMore" class="leo-show-more-btn" onclick="showLeoExtra()" style="display:none;">
+          <span data-sv="Visa " data-en="Show ">Visa </span><span class="leo-extra-count">0</span><span data-sv=" videor till ↓" data-en=" more videos ↓"> videor till ↓</span>
+        </button>
 
         <p class="leo-more-note" data-sv="Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar." data-en="More videos on the way — the library grows as difficulty levels expand.">Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar.</p>
 
