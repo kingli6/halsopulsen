@@ -30,6 +30,7 @@ function toggleSection(id, btn) {
 
 /* ── LeoMoves filter ── */
 const _leoFilters = { niva: 'all', tid: 'all', fokus: 'all' };
+let _leoShowAll = false;
 
 function setLeoFilter(type, value, btn) {
   _leoFilters[type] = value;
@@ -38,9 +39,18 @@ function setLeoFilter(type, value, btn) {
   _applyLeoFilter();
 }
 
+function showLeoExtra() {
+  _leoShowAll = true;
+  const btn = document.getElementById('leoShowMore');
+  if (btn) btn.style.display = 'none';
+  _applyLeoFilter();
+}
+
 function _applyLeoFilter() {
   const cards = document.querySelectorAll('#leoGrid .video-card');
+  const anyFilter = _leoFilters.niva !== 'all' || _leoFilters.tid !== 'all' || _leoFilters.fokus !== 'all';
   let visible = 0;
+  let hiddenExtra = 0;
   cards.forEach(card => {
     const niva      = card.dataset.niva;
     const tid       = parseInt(card.dataset.tid);
@@ -53,17 +63,28 @@ function _applyLeoFilter() {
       showTid = true;
     } else {
       const t = parseInt(filterTid);
-      if (t <= 5)       showTid = tid <= 9;          // ~5 min  → ≤ 9 min
-      else if (t <= 10) showTid = tid >= 10 && tid <= 19; // ~10 min → 10–19 min
-      else if (t <= 20) showTid = tid >= 20 && tid <= 29; // ~20 min → 20–29 min
-      else              showTid = tid >= 30;          // ~40 min → 30+ min
+      if (t <= 5)       showTid = tid <= 7;                 // ~5 min  → ≤7 min
+      else if (t <= 10) showTid = tid >= 8  && tid <= 12;   // ~10 min → 8–12 min
+      else if (t <= 15) showTid = tid >= 13 && tid <= 17;   // ~15 min → 13–17 min
+      else if (t <= 20) showTid = tid >= 18 && tid <= 25;   // ~20 min → 18–25 min
+      else              showTid = tid >= 26;                 // 30+ min → 26+ min
     }
-    const show = showNiva && showTid && showFokus;
+    const matchesFilter = showNiva && showTid && showFokus;
+    const isExtra = card.classList.contains('leo-extra');
+    // Extra cards are hidden until revealed, unless a filter is active or user clicked "show more"
+    const show = matchesFilter && (!isExtra || anyFilter || _leoShowAll);
     card.style.display = show ? '' : 'none';
     if (show) visible++;
+    if (matchesFilter && isExtra && !anyFilter && !_leoShowAll) hiddenExtra++;
   });
   const msg = document.getElementById('leoNoResults');
   if (msg) msg.classList.toggle('visible', visible === 0);
+  const showMoreBtn = document.getElementById('leoShowMore');
+  if (showMoreBtn && !_leoShowAll) {
+    showMoreBtn.style.display = hiddenExtra > 0 ? '' : 'none';
+    const countEl = showMoreBtn.querySelector('.leo-extra-count');
+    if (countEl) countEl.textContent = hiddenExtra;
+  }
 }
 
 /* ── Accordion ── */
