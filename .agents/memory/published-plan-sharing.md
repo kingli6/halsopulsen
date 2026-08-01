@@ -3,16 +3,18 @@ name: Published plan sharing
 description: The durable boundary and security limitations for personal plan links.
 ---
 
-Published plans should be immutable snapshots. Each publish creates a new
-server-stored version and a new random participant share token; later draft
-edits must not change the already shared plan or its history.
+Published plans should be immutable snapshots once participant activity exists.
+Before the first log or moved/skipped assignment, the owner may update the
+current published version in place and keep its share token; after activity,
+edits must create a new server-stored version.
 
-**Why:** A participant link needs to work across browsers and devices, while
-the owner needs a recoverable history of exactly what was shared.
+**Why:** Early plan corrections should not create needless versions, but after
+activity the published program must remain an accurate record of what happened.
 
-**How to apply:** Keep the participant route read-only for program structure,
-persist participant logs against the shared snapshot, and replace the current
-browser-held owner key with real owner authentication before production use.
+**How to apply:** Expose “Edit current plan” only while the server reports no
+participant activity. Otherwise expose “Edit as new version.” Keep the
+participant route read-only for program structure, persist logs against the
+snapshot, and replace the browser-held owner key before production use.
 
 When creating a new version from an older plan, the server must re-read the
 parent snapshot and make its assignments and logs authoritative. The editor's
@@ -35,14 +37,13 @@ core planning and logging loop.
 page when that access model is built. Keep public progress sharing separate
 and defer it until the private workflow proves useful.
 
-Deleting a published version should revoke its participant link and remove it
-from the active owner library, while retaining its snapshot and logs in
-recoverable storage until a real restore flow exists.
+Deleting a published version should immediately revoke its participant link
+and permanently remove its snapshot, logs, and historical references.
 
-**Why:** A one-week regret timer is hidden state without a recovery surface.
-Soft deletion protects valuable training history now without pretending that
-permanent deletion and restoration are already designed.
+**Why:** The owner explicitly asked not to pay storage for unused data, and a
+soft-delete policy would retain data without a restore feature.
 
-**How to apply:** Treat CSV as a human-readable export, not a reliable backup
-format. If import or restart becomes necessary, define a versioned private
-backup format separately.
+**How to apply:** Require confirmation that names the plan and warns about
+logs before deletion. Treat CSV as a human-readable export, not a reliable
+backup format. If import or restart becomes necessary, define a versioned
+private backup format separately.

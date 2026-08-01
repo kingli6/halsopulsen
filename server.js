@@ -32,7 +32,10 @@ function readPublishedPlans() {
   try {
     if (!fs.existsSync(PLAN_STORAGE_PATH)) return [];
     const value = JSON.parse(fs.readFileSync(PLAN_STORAGE_PATH, 'utf8'));
-    return Array.isArray(value) ? value : [];
+    const plans = Array.isArray(value) ? value : [];
+    const activePlans = plans.filter(plan => !plan.deletedAt);
+    if (activePlans.length !== plans.length) writePublishedPlans(activePlans);
+    return activePlans;
   } catch (error) {
     console.error('Could not read published plans:', error.message);
     return [];
@@ -48,6 +51,8 @@ function writePublishedPlans(plans) {
 
 function publicPlanSummary(plan) {
   const program = plan.program || {};
+  const assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
+  const logs = Array.isArray(plan.logs) ? plan.logs : [];
   return {
     id: plan.id,
     name: plan.name,
@@ -62,7 +67,10 @@ function publicPlanSummary(plan) {
     progressionNotes: program.progressionNotes || '',
     successMetric: program.successMetric || '',
     publishedAt: plan.publishedAt,
-    sharePath: plan.shareToken ? `/dashboard/share/${plan.shareToken}/` : ''
+    sharePath: plan.shareToken ? `/dashboard/share/${plan.shareToken}/` : '',
+    hasParticipantActivity: logs.length > 0 || assignments.some(assignment =>
+      assignment?.moved || (assignment?.status && assignment.status !== 'planned')
+    )
   };
 }
 
@@ -169,6 +177,60 @@ app.get('/api/plans/owner/:id', (req, res) => {
   });
 });
 
+app.put('/api/plans/owner/:id', (req, res) => {
+  const ownerKey = String(req.get('x-owner-key') || '');
+  const validationError = validatePlanPayload({ ...req.body, ownerKey });
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+
+  const plans = readPublishedPlans();
+  const planIndex = plans.findIndex(item =>
+    item.id === req.params.id &&
+    !item.deletedAt &&
+    item.ownerKeyHash === hashOwnerKey(ownerKey)
+  );
+  if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Plan not found.' });
+
+  const plan = plans[planIndex];
+  const assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
+  const logs = Array.isArray(plan.logs) ? plan.logs : [];
+  const hasParticipantActivity = logs.length > 0 || assignments.some(assignment =>
+    assignment?.moved || (assignment?.status && assignment.status !== 'planned')
+  );
+  if (hasParticipantActivity) {
+    return res.status(409).json({
+      ok: false,
+      error: 'This plan already has participant activity. Publish a new version to protect its history.'
+    });
+  }
+
+  const program = { ...req.body.program, version: plan.version };
+  plans[planIndex] = {
+    ...plan,
+    name: String(program.name || plan.name).slice(0, 100),
+    personName: String(req.body.personName || plan.personName || 'Participant').slice(0, 100),
+    goal: String(req.body.goal || '').slice(0, 160),
+    description: String(program.description || '').slice(0, 300),
+    program,
+    assignments: Array.isArray(req.body.assignments) ? req.body.assignments : [],
+    logs: []
+  };
+  writePublishedPlans(plans);
+
+  const updated = plans[planIndex];
+  res.json({
+    ok: true,
+    plan: {
+      ...publicPlanSummary(updated),
+      program: updated.program,
+      personName: updated.personName,
+      goal: updated.goal,
+      assignments: updated.assignments,
+      logs: updated.logs,
+      history: updated.history
+    }
+  });
+});
+
 app.delete('/api/plans/owner/:id', (req, res) => {
   const ownerKey = String(req.get('x-owner-key') || '');
   if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
@@ -181,18 +243,25 @@ app.delete('/api/plans/owner/:id', (req, res) => {
   );
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Plan not found.' });
 
-  const deletedAt = new Date().toISOString();
-  plans[planIndex] = {
-    ...plans[planIndex],
-    deletedAt,
-    shareToken: null
-  };
-  writePublishedPlans(plans);
+  const deletedPlan = plans[planIndex];
+  const remainingPlans = plans
+    .filter((_, index) => index !== planIndex)
+    .map(plan => {
+      if (plan.ownerKeyHash !== deletedPlan.ownerKeyHash) return plan;
+      return {
+        ...plan,
+        parentPlanId: plan.parentPlanId === deletedPlan.id ? null : plan.parentPlanId,
+        history: Array.isArray(plan.history)
+          ? plan.history.filter(item => item?.planId !== deletedPlan.id)
+          : plan.history
+      };
+    });
+  writePublishedPlans(remainingPlans);
   res.json({
     ok: true,
     id: req.params.id,
-    deletedAt,
-    logsRetained: true
+    logsDeleted: true,
+    historyReferencesDeleted: true
   });
 });
 

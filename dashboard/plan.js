@@ -6,6 +6,7 @@ const planState = {
   selectedWeekIndex: 0,
   toastTimer: null,
   publishing: false,
+  editingCurrentPlanId: null,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
 
@@ -70,7 +71,9 @@ function renderPlanOverview() {
   setPlanText("draftProgramName", program.name);
   setPlanText("planPerson", `For ${planState.data.person?.name || "my dashboard"}`);
   setPlanText("draftProgramDescription", program.description || "No description yet.");
-  setPlanText("draftSourceLabel", planState.data.draftSourcePlanId
+  setPlanText("draftSourceLabel", planState.editingCurrentPlanId
+    ? `Editing the current published version ${planState.data.publishedProgram?.version || "—"}. Save changes to keep this version and share link.`
+    : planState.data.draftSourcePlanId
     ? `Editing a new draft from published version ${planState.data.draftSourceVersion || planState.data.publishedProgram?.version || "—"}`
     : "New draft — the live plan changes only after publishing.");
   const changed = TrackerData.hasDraftChanges(planState.data);
@@ -81,8 +84,17 @@ function renderPlanOverview() {
     : "Not published to a share link yet");
   setPlanText("publishHeading", changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", changed
-    ? "Publishing creates one immutable multi-week snapshot and a new share link. Future assignments use the correct week by date."
+    ? (planState.editingCurrentPlanId
+      ? "No participant activity has been recorded yet, so these changes will keep the same version and share link."
+      : "Publishing creates one immutable multi-week snapshot and a new share link. Future assignments use the correct week by date.")
     : "The logging page and its share link are already showing this version.");
+  const publishButton = document.getElementById("publishBtn");
+  if (publishButton && !planState.publishing) {
+    publishButton.textContent = planState.editingCurrentPlanId ? "Save current plan" : "Publish plan";
+  }
+  setPlanText("detailsModalContext", planState.editingCurrentPlanId
+    ? "These changes will update the current published version because no participant activity has been recorded yet."
+    : "These details are part of the version you publish. The live logging page changes only after saving or publishing.");
   const currentLink = document.getElementById("currentShareLink");
   if (currentLink) {
     currentLink.hidden = !planState.data.publishedSharePath;
@@ -115,6 +127,7 @@ function startNewDraft() {
   planState.data.draftSourcePlanId = null;
   planState.data.draftSourceVersion = null;
   planState.data.assignmentPrefix = "";
+  planState.editingCurrentPlanId = null;
   enterEditor();
   TrackerData.save(planState.data);
   showPlanToast("New plan draft ready.");
@@ -207,6 +220,8 @@ async function editPublishedPlan(planId) {
     nextData.draftSourcePlanId = source.id;
     nextData.draftSourceVersion = source.version;
     nextData.assignmentPrefix = `v${source.version}-assignment`;
+    nextData.publishedSharePath = source.sharePath || "";
+    planState.editingCurrentPlanId = null;
     planState.data = nextData;
     planState.editorMode = true;
     window.history.pushState({}, "", "/dashboard/plan/?view=editor");
@@ -218,17 +233,52 @@ async function editPublishedPlan(planId) {
   }
 }
 
+async function editCurrentPlan(planId) {
+  const libraryPlan = planState.library.find(plan => plan.id === planId);
+  if (!libraryPlan) return;
+  if (libraryPlan.hasParticipantActivity) {
+    showPlanToast("This plan has participant activity. Edit it as a new version to protect the history.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
+      headers: { "X-Owner-Key": planState.ownerKey }
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
+    const source = result.plan;
+    const nextData = TrackerData.fromPublishedPlan(source);
+    nextData.draftGoal = nextData.goal;
+    nextData.publishedGoal = nextData.goal;
+    nextData.draftProgram = TrackerData.clone(nextData.publishedProgram);
+    nextData.draftSourcePlanId = null;
+    nextData.draftSourceVersion = source.version;
+    nextData.assignmentPrefix = `v${source.version}-assignment`;
+    nextData.publishedSharePath = source.sharePath || "";
+    planState.selectedWeekIndex = 0;
+    planState.editingCurrentPlanId = source.id;
+    planState.data = nextData;
+    planState.editorMode = true;
+    window.history.pushState({}, "", "/dashboard/plan/?view=editor");
+    TrackerData.save(planState.data);
+    renderAllPlan();
+    showPlanToast(`Editing current Version ${source.version}.`);
+  } catch (error) {
+    showPlanToast(error.message || "Could not load that published version.");
+  }
+}
+
 async function deletePublishedPlan(planId) {
   const plan = planState.library.find(item => item.id === planId);
   if (!plan) return;
 
   const isCurrent = plan.id === planState.data.publishedPlanId;
-  const localLogCount = isCurrent && Array.isArray(planState.data.logs) ? planState.data.logs.length : 0;
-  const logWarning = localLogCount
-    ? ` ${localLogCount} logged ${localLogCount === 1 ? "session is" : "sessions are"} kept in the local logging record, but the share link will stop working. Export the CSV first if you want a separate copy.`
+  const logWarning = plan.hasParticipantActivity
+    ? " Participant activity and saved history will also be permanently erased."
     : "";
   const confirmed = window.confirm(
-    `Delete "${plan.name}" Version ${plan.version} from the plan library? This revokes its participant link.${logWarning}`
+    `Permanently delete "${plan.name}" Version ${plan.version}? The participant link, plan, logs, and historical references will be erased.${logWarning}`
   );
   if (!confirmed) return;
 
@@ -241,12 +291,18 @@ async function deletePublishedPlan(planId) {
     if (!response.ok || !result.ok) throw new Error(result.error || "Could not delete that plan.");
 
     planState.library = planState.library.filter(item => item.id !== planId);
+    planState.data.history = (planState.data.history || []).filter(item => item.planId !== planId);
     if (isCurrent) {
-      planState.data.publishedSharePath = "";
-      TrackerData.save(planState.data);
+      const fresh = TrackerData.defaultData();
+      fresh.publishedProgram = null;
+      fresh.publishedGoal = fresh.draftGoal;
+      fresh.goal = fresh.draftGoal;
+      planState.data = fresh;
     }
+    planState.editingCurrentPlanId = null;
+    TrackerData.save(planState.data);
     renderLibrary();
-    showPlanToast(`Version ${plan.version} removed. Logged data was retained.`);
+    showPlanToast(`Version ${plan.version} permanently deleted.`);
   } catch (error) {
     showPlanToast(error.message || "Could not delete that plan.");
   }
@@ -349,7 +405,9 @@ function renderLibrary() {
       </div>
       <div class="library-actions">
         <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open</button>
-        <button class="button button-primary button-small" type="button" data-edit-plan="${escapePlanHtml(plan.id)}">Edit as new version</button>
+        ${plan.id === planState.data.publishedPlanId && !plan.hasParticipantActivity
+          ? `<button class="button button-primary button-small" type="button" data-edit-current-plan="${escapePlanHtml(plan.id)}">Edit current plan</button>`
+          : `<button class="button button-primary button-small" type="button" data-edit-plan="${escapePlanHtml(plan.id)}">Edit as new version</button>`}
         <button class="button button-secondary button-small" type="button" data-copy-plan="${escapePlanHtml(plan.sharePath)}">Copy link</button>
         <button class="button button-danger button-small" type="button" data-delete-plan="${escapePlanHtml(plan.id)}">Delete</button>
       </div>
@@ -689,18 +747,24 @@ async function publishPlan() {
   planState.publishing = true;
   const button = document.getElementById("publishBtn");
   button.disabled = true;
-  button.textContent = "Publishing…";
+  const updatingCurrent = Boolean(
+    planState.editingCurrentPlanId &&
+    planState.editingCurrentPlanId === planState.data.publishedPlanId
+  );
+  button.textContent = updatingCurrent ? "Saving…" : "Publishing…";
   const nextData = TrackerData.clone(planState.data);
   const lineageVersion = Math.max(
     nextData.publishedProgram?.version || 0,
     nextData.draftProgram?.version || 0,
     ...planState.library.map(plan => Number(plan.version) || 0)
   );
-  const nextVersion = (nextData.publishedPlanId || nextData.draftSourcePlanId)
+  const nextVersion = updatingCurrent
+    ? Number(nextData.publishedProgram?.version) || lineageVersion || 1
+    : (nextData.publishedPlanId || nextData.draftSourcePlanId)
     ? lineageVersion + 1
     : 1;
   const previousPlanId = nextData.publishedPlanId;
-  if (previousPlanId && (nextData.assignments.length || nextData.logs.length)) {
+  if (!updatingCurrent && previousPlanId && (nextData.assignments.length || nextData.logs.length)) {
     nextData.history = Array.isArray(nextData.history) ? nextData.history : [];
     nextData.history.unshift({
       planId: previousPlanId,
@@ -716,16 +780,22 @@ async function publishPlan() {
   nextData.publishedGoal = nextData.draftGoal;
   nextData.goal = nextData.publishedGoal;
   nextData.publishedProgram = TrackerData.clone({ ...draft, version: nextVersion });
-  nextData.publishedPlanId = null;
-  nextData.publishedSharePath = "";
-  nextData.publishedAt = "";
+  if (!updatingCurrent) {
+    nextData.publishedPlanId = null;
+    nextData.publishedSharePath = "";
+    nextData.publishedAt = "";
+  }
   nextData.assignmentPrefix = `v${nextVersion}-assignment`;
   nextData.assignments = [];
   nextData.logs = [];
   TrackerData.ensureAssignments(nextData);
   try {
-    const response = await fetch("/api/plans/publish", {
-      method: "POST",
+    const response = await fetch(
+      updatingCurrent
+        ? `/api/plans/owner/${encodeURIComponent(planState.editingCurrentPlanId)}`
+        : "/api/plans/publish",
+      {
+      method: updatingCurrent ? "PUT" : "POST",
       headers: { "Content-Type": "application/json", "X-Owner-Key": planState.ownerKey },
       body: JSON.stringify({
         ownerKey: planState.ownerKey,
@@ -737,19 +807,25 @@ async function publishPlan() {
         history: nextData.history,
         parentPlanId: previousPlanId
       })
-    });
+      }
+    );
     const result = await response.json();
-    if (!response.ok || !result.ok) throw new Error(result.error || "Could not publish the plan.");
+    if (!response.ok || !result.ok) throw new Error(result.error || (updatingCurrent ? "Could not save the current plan." : "Could not publish the plan."));
     nextData.publishedPlanId = result.plan.id;
     nextData.publishedSharePath = result.plan.sharePath;
     nextData.publishedAt = result.plan.publishedAt;
     nextData.history = Array.isArray(result.plan.history) ? result.plan.history : nextData.history;
     nextData.draftSourcePlanId = null;
     nextData.draftSourceVersion = null;
+    planState.editingCurrentPlanId = null;
     planState.data = nextData;
-    planState.library = [result.plan, ...planState.library.filter(plan => plan.id !== result.plan.id)];
+    planState.library = updatingCurrent
+      ? planState.library.map(plan => plan.id === result.plan.id ? result.plan : plan)
+      : [result.plan, ...planState.library.filter(plan => plan.id !== result.plan.id)];
     TrackerData.save(planState.data);
-    showPlanToast(`Published. New share link created for version ${nextVersion}.`);
+    showPlanToast(updatingCurrent
+      ? `Version ${nextVersion} updated. The share link stayed the same.`
+      : `Published. New share link created for version ${nextVersion}.`);
     renderAllPlan();
   } catch (error) {
     showPlanToast(error.message || "Could not publish the plan.");
@@ -810,10 +886,12 @@ function bindPlanEvents() {
   document.getElementById("planLibrary").addEventListener("click", event => {
     const open = event.target.closest("[data-open-plan]");
     const edit = event.target.closest("[data-edit-plan]");
+    const editCurrent = event.target.closest("[data-edit-current-plan]");
     const copy = event.target.closest("[data-copy-plan]");
     const remove = event.target.closest("[data-delete-plan]");
     if (open) window.open(open.dataset.openPlan, "_blank", "noopener");
     if (edit) editPublishedPlan(edit.dataset.editPlan);
+    if (editCurrent) editCurrentPlan(editCurrent.dataset.editCurrentPlan);
     if (copy) copyPlanLink(copy.dataset.copyPlan);
     if (remove) deletePublishedPlan(remove.dataset.deletePlan);
   });
