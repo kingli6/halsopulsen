@@ -6,7 +6,6 @@ const planState = {
   selectedWeekIndex: 0,
   toastTimer: null,
   publishing: false,
-  showProgress: false,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
 
@@ -58,21 +57,11 @@ function formatPublishedDate(value) {
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-function formatProgressDate(value) {
-  if (!value) return "No sessions yet";
-  const date = String(value).slice(0, 10);
-  return formatPublishedDate(date);
-}
-
 function renderLibrarySummary() {
   const summary = document.getElementById("librarySummary");
   if (!summary) return;
-  const linkedRecords = planState.library.reduce((total, plan) => total + (Number(plan.linkedParticipantCount) || 0), 0);
-  const sessions = planState.library.reduce((total, plan) => total + (Number(plan.completedSessions) || 0), 0);
   summary.innerHTML = `
-    <span><strong>${planState.library.length}</strong> published ${planState.library.length === 1 ? "snapshot" : "snapshots"}</span>
-    <span><strong>${linkedRecords}</strong> linked ${linkedRecords === 1 ? "participant record" : "participant records"}</span>
-    <span><strong>${sessions}</strong> logged ${sessions === 1 ? "session" : "sessions"}</span>
+    <span><strong>${planState.library.length}</strong> published ${planState.library.length === 1 ? "version" : "versions"}</span>
   `;
 }
 
@@ -229,6 +218,40 @@ async function editPublishedPlan(planId) {
   }
 }
 
+async function deletePublishedPlan(planId) {
+  const plan = planState.library.find(item => item.id === planId);
+  if (!plan) return;
+
+  const isCurrent = plan.id === planState.data.publishedPlanId;
+  const localLogCount = isCurrent && Array.isArray(planState.data.logs) ? planState.data.logs.length : 0;
+  const logWarning = localLogCount
+    ? ` ${localLogCount} logged ${localLogCount === 1 ? "session is" : "sessions are"} kept in the local logging record, but the share link will stop working. Export the CSV first if you want a separate copy.`
+    : "";
+  const confirmed = window.confirm(
+    `Delete "${plan.name}" Version ${plan.version} from the plan library? This revokes its participant link.${logWarning}`
+  );
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
+      method: "DELETE",
+      headers: { "X-Owner-Key": planState.ownerKey }
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not delete that plan.");
+
+    planState.library = planState.library.filter(item => item.id !== planId);
+    if (isCurrent) {
+      planState.data.publishedSharePath = "";
+      TrackerData.save(planState.data);
+    }
+    renderLibrary();
+    showPlanToast(`Version ${plan.version} removed. Logged data was retained.`);
+  } catch (error) {
+    showPlanToast(error.message || "Could not delete that plan.");
+  }
+}
+
 function currentDraftWeek() {
   const weeks = planState.data.draftProgram.weeks || [];
   if (!weeks.length) return null;
@@ -323,23 +346,12 @@ function renderLibrary() {
       <div class="library-item-main">
         <div class="library-item-title"><strong>${escapePlanHtml(plan.name)}</strong><span class="${plan.id === planState.data.publishedPlanId ? "current-tag" : "archived-tag"}">${plan.id === planState.data.publishedPlanId ? "Current" : "Archived"}</span></div>
         <span>For ${escapePlanHtml(plan.personName || "Participant")} · ${escapePlanHtml(plan.goal || "No goal")} · ${escapePlanHtml(plan.phase || "Foundation")} · Week ${plan.weekNumber || 1} · Version ${plan.version} · ${formatPublishedDate(plan.publishedAt)}</span>
-        <div class="library-usage">
-          <span>${plan.linkedParticipantCount || 0} linked ${plan.linkedParticipantCount === 1 ? "participant" : "participants"}</span>
-          <span>${plan.shareLinkActive ? "Share link active" : "No share link"}</span>
-          <span>${plan.completedSessions || 0}/${plan.plannedSessions || 0} sessions logged</span>
-        </div>
-        ${planState.showProgress ? `
-          <div class="library-progress" aria-label="Participant progress">
-            <div class="library-progress-heading"><strong>Participant progress</strong><span>${plan.completedSessions || 0}/${plan.plannedSessions || 0} completed · ${plan.completionRate || 0}%</span></div>
-            <div class="library-progress-track"><span style="width:${Math.min(100, Math.max(0, Number(plan.completionRate) || 0))}%"></span></div>
-            <div class="library-progress-meta"><span>${plan.skippedSessions || 0} skipped</span><span>Last activity: ${formatProgressDate(plan.lastActivityAt)}</span></div>
-          </div>
-        ` : ""}
       </div>
       <div class="library-actions">
         <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open</button>
         <button class="button button-primary button-small" type="button" data-edit-plan="${escapePlanHtml(plan.id)}">Edit as new version</button>
         <button class="button button-secondary button-small" type="button" data-copy-plan="${escapePlanHtml(plan.sharePath)}">Copy link</button>
+        <button class="button button-danger button-small" type="button" data-delete-plan="${escapePlanHtml(plan.id)}">Delete</button>
       </div>
     </article>
   `).join("");
@@ -782,10 +794,6 @@ function bindPlanEvents() {
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);
   document.getElementById("cancelDetailsBtn").addEventListener("click", closeDetailsModal);
   document.getElementById("publishBtn").addEventListener("click", publishPlan);
-  document.getElementById("showProgressToggle").addEventListener("change", event => {
-    planState.showProgress = event.target.checked;
-    renderLibrary();
-  });
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
     if (tab) selectDraftWeek(tab.dataset.weekIndex);
@@ -803,9 +811,11 @@ function bindPlanEvents() {
     const open = event.target.closest("[data-open-plan]");
     const edit = event.target.closest("[data-edit-plan]");
     const copy = event.target.closest("[data-copy-plan]");
+    const remove = event.target.closest("[data-delete-plan]");
     if (open) window.open(open.dataset.openPlan, "_blank", "noopener");
     if (edit) editPublishedPlan(edit.dataset.editPlan);
     if (copy) copyPlanLink(copy.dataset.copyPlan);
+    if (remove) deletePublishedPlan(remove.dataset.deletePlan);
   });
   document.getElementById("createPlanBtn").addEventListener("click", event => {
     event.preventDefault();
