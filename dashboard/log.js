@@ -143,14 +143,17 @@ function intensityOptions(selected = "") {
 function renderGoal() {
   if (!logState.data) return;
   const published = logState.data.publishedProgram;
-  const activeDays = published?.days.filter(day => day.enabled && day.exercises.length) || [];
+  const weeks = Array.isArray(published?.weeks) && published.weeks.length ? published.weeks : published ? [published] : [];
+  const activeWeek = published ? (TrackerData.programWeekForDate(published, TrackerData.todayISO()) || weeks[0]) : null;
+  const activeDays = activeWeek?.days.filter(day => day.enabled && day.exercises.length) || [];
   setLogText("goalHeading", logState.data.publishedGoal || logState.data.goal);
+  setLogText("weekHeading", activeWeek ? `Week ${activeWeek.weekNumber} · choose a workout` : "Choose a workout");
   setLogText("goalText", published
-    ? `${published.phase || "Foundation"} · Week ${published.weekNumber || 1} of ${published.durationWeeks || 1}${published.startDate ? ` · Starts ${TrackerData.formatShortDate(published.startDate)}` : ""}. ${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Recommended days are a starting point, not a pass/fail test.`
+    ? `${activeWeek?.phase || "Foundation"} · Week ${activeWeek?.weekNumber || 1} of ${weeks.length}${published.startDate ? ` · Starts ${TrackerData.formatShortDate(published.startDate)}` : ""}. ${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Recommended days are a starting point, not a pass/fail test.`
     : "The owner has not published a program yet.");
   setLogText("publishedHeading", published?.name || "No program published yet");
   setLogText("publishedSummary", published
-    ? `${published.description || "Published training plan."}${published.progressionNotes ? ` Progression: ${published.progressionNotes}` : ""}${published.successMetric ? ` Success metric: ${published.successMetric}` : ""}`
+    ? `${published.description || "Published training plan."}${activeWeek?.progressionNotes ? ` Progression: ${activeWeek.progressionNotes}` : ""}${activeWeek?.successMetric ? ` Success metric: ${activeWeek.successMetric}` : ""}`
     : "The owner can create a week with different workouts for different days.");
   setLogText("publishedVersion", published ? `Version ${published.version} · published plan` : "Waiting for a plan");
   setLogText("publishedStatus", published ? `Published v${published.version}` : "No plan yet");
@@ -199,7 +202,11 @@ function renderWeek() {
   if (!logState.data) return;
   const weekStart = TrackerData.addDays(TrackerData.startOfWeek(TrackerData.todayISO()), logState.weekOffset * 7);
   const weekEnd = TrackerData.addDays(weekStart, 6);
-  setLogText("weekLabel", logState.weekOffset === 0 ? "This week" : TrackerData.formatDateRange(weekStart, weekEnd));
+  const published = logState.data.publishedProgram;
+  const activeWeek = published ? TrackerData.programWeekForDate(published, weekStart) : null;
+  setLogText("weekLabel", activeWeek
+    ? `Week ${activeWeek.weekNumber} · ${TrackerData.formatDateRange(weekStart, weekEnd)}`
+    : (logState.weekOffset === 0 ? "This week" : TrackerData.formatDateRange(weekStart, weekEnd)));
   document.getElementById("dayGrid").innerHTML = Array.from({ length: 7 }, (_, index) => {
     const date = TrackerData.addDays(weekStart, index);
     const assignment = TrackerData.assignmentForDate(logState.data, date);
@@ -237,7 +244,10 @@ function renderStats() {
   if (!logState.data) return;
   const assignments = weekAssignments();
   const completed = assignments.filter(assignment => Boolean(TrackerData.logForAssignment(logState.data, assignment.id))).length;
-  const activeDays = logState.data.publishedProgram?.days.filter(day => day.enabled && day.exercises.length).length || 0;
+  const activeWeek = logState.data.publishedProgram
+    ? TrackerData.programWeekForDate(logState.data.publishedProgram, TrackerData.todayISO())
+    : null;
+  const activeDays = activeWeek?.days.filter(day => day.enabled && day.exercises.length).length || 0;
   const plannedCount = Math.max(assignments.length, activeDays);
   const rate = plannedCount ? Math.round((completed / plannedCount) * 100) : 0;
   setLogText("weekCompletion", `${completed}/${plannedCount}`);

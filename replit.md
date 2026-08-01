@@ -20,6 +20,7 @@ Build the first version for the owner and their partner:
   planning workspace.
 - The first prototype stores one person's program and logs in the browser.
 - The owner plans each weekday separately, then publishes a version.
+- A program can contain multiple independently editable weeks; one publish creates the complete multi-week snapshot.
 - The participant sees the published version in a separate logging workspace.
 - Recommended days are flexible; unfinished assignments can be moved to an
   open day.

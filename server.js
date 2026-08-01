@@ -70,10 +70,16 @@ function validatePlanPayload(body) {
   if (!body || typeof body.ownerKey !== 'string' || body.ownerKey.length < 16) {
     return 'A valid owner key is required.';
   }
-  if (!body.program || !Array.isArray(body.program.days) || body.program.days.length !== 7) {
-    return 'A complete seven-day program is required.';
+  const program = body.program;
+  const hasWeeks = Array.isArray(program?.weeks) && program.weeks.length > 0;
+  const hasLegacyDays = Array.isArray(program?.days) && program.days.length === 7;
+  if (!hasWeeks && !hasLegacyDays) {
+    return 'A complete program with at least one seven-day week is required.';
   }
-  if (JSON.stringify(body.program).length > 150000) {
+  if (hasWeeks && program.weeks.some(week => !Array.isArray(week?.days) || week.days.length !== 7)) {
+    return 'Every program week must contain seven days.';
+  }
+  if (JSON.stringify(program).length > 150000) {
     return 'The program is too large.';
   }
   return null;

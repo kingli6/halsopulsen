@@ -3,6 +3,7 @@ const planState = {
   ownerKey: TrackerData.getOwnerKey(),
   library: [],
   selectedWeekday: null,
+  selectedWeekIndex: 0,
   toastTimer: null,
   publishing: false,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
@@ -70,9 +71,9 @@ function renderPlanOverview() {
   setPlanText("publishedDetail", planState.data.publishedPlanId
     ? `Version ${planState.data.publishedProgram.version} published`
     : "Not published to a share link yet");
-  setPlanText("publishHeading", changed ? "Publish when this week is ready" : "Your published plan is current");
+  setPlanText("publishHeading", changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", changed
-    ? "Publishing creates a new immutable snapshot and a new share link. Future unlogged assignments use this week."
+    ? "Publishing creates one immutable multi-week snapshot and a new share link. Future assignments use the correct week by date."
     : "The logging page and its share link are already showing this version.");
   const currentLink = document.getElementById("currentShareLink");
   if (currentLink) {
@@ -90,6 +91,7 @@ function enterEditor() {
 function startNewDraft() {
   const freshProgram = TrackerData.normalizeProgram(TrackerData.defaultProgram());
   planState.data.draftProgram = freshProgram;
+  planState.selectedWeekIndex = 0;
   planState.data.draftProgram.version = 1;
   planState.data.draftGoal = "Build a consistent training habit";
   planState.data.publishedGoal = planState.data.draftGoal;
@@ -110,6 +112,49 @@ function startNewDraft() {
   showPlanToast("New plan draft ready.");
 }
 
+function createBlankWeek(weekNumber) {
+  return {
+    weekNumber,
+    phase: "Foundation",
+    progressionNotes: "",
+    successMetric: "",
+    days: Array.from({ length: 7 }, (_, weekday) => TrackerData.emptyDay(weekday))
+  };
+}
+
+function selectDraftWeek(index) {
+  planState.selectedWeekIndex = Math.max(0, Number(index) || 0);
+  renderAllPlan();
+}
+
+function addBlankWeek() {
+  const program = planState.data.draftProgram;
+  if (!Array.isArray(program.weeks) || !program.weeks.length) {
+    planState.data.draftProgram = TrackerData.normalizeProgram(program);
+  }
+  const weeks = planState.data.draftProgram.weeks;
+  weeks.push(createBlankWeek(weeks.length + 1));
+  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
+  planState.selectedWeekIndex = weeks.length - 1;
+  TrackerData.save(planState.data);
+  showPlanToast(`Week ${weeks.length} added. Add workouts to its days.`);
+  renderAllPlan();
+}
+
+function duplicateCurrentWeek() {
+  const program = planState.data.draftProgram;
+  const source = currentDraftWeek();
+  if (!source) return;
+  const copy = TrackerData.clone(source);
+  copy.weekNumber = program.weeks.length + 1;
+  program.weeks.push(copy);
+  planState.data.draftProgram = TrackerData.normalizeProgram(program);
+  planState.selectedWeekIndex = program.weeks.length - 1;
+  TrackerData.save(planState.data);
+  showPlanToast(`Week ${copy.weekNumber} duplicated. Adjust its workouts as needed.`);
+  renderAllPlan();
+}
+
 async function editPublishedPlan(planId) {
   try {
     const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
@@ -122,6 +167,7 @@ async function editPublishedPlan(planId) {
     nextData.draftGoal = nextData.goal;
     nextData.publishedGoal = nextData.goal;
     nextData.draftProgram = TrackerData.clone(nextData.publishedProgram);
+    planState.selectedWeekIndex = 0;
     nextData.draftSourcePlanId = source.id;
     nextData.draftSourceVersion = source.version;
     nextData.assignmentPrefix = `v${source.version}-assignment`;
@@ -136,10 +182,31 @@ async function editPublishedPlan(planId) {
   }
 }
 
+function currentDraftWeek() {
+  const weeks = planState.data.draftProgram.weeks || [];
+  if (!weeks.length) return null;
+  planState.selectedWeekIndex = Math.max(0, Math.min(planState.selectedWeekIndex, weeks.length - 1));
+  return weeks[planState.selectedWeekIndex];
+}
+
+function renderWeekTabs() {
+  const weeks = planState.data.draftProgram.weeks || [];
+  const tabs = document.getElementById("weekTabs");
+  if (!tabs) return;
+  tabs.innerHTML = weeks.map((week, index) => `
+    <button class="week-tab ${index === planState.selectedWeekIndex ? "is-selected" : ""}" type="button" role="tab" aria-selected="${index === planState.selectedWeekIndex}" data-week-index="${index}">
+      <strong>Week ${week.weekNumber}</strong><span>${escapePlanHtml(week.phase || "Foundation")}</span>
+    </button>
+  `).join("");
+}
+
 function renderBuilder() {
-  const program = planState.data.draftProgram;
+  const week = currentDraftWeek();
+  if (!week) return;
+  setPlanText("weekBuilderHeading", `Week ${week.weekNumber} · ${week.phase || "Foundation"}`);
+  renderWeekTabs();
   document.getElementById("builderGrid").innerHTML = TrackerData.WEEKDAYS.map(weekday => {
-    const day = program.days.find(item => item.weekday === weekday) || TrackerData.emptyDay(weekday);
+    const day = week.days.find(item => item.weekday === weekday) || TrackerData.emptyDay(weekday);
     const enabled = day.enabled && day.exercises.length;
     return `
       <article class="builder-day ${enabled ? "has-workout" : "rest-day"}">
@@ -179,8 +246,11 @@ function renderPublishedPreview() {
     container.innerHTML = `<div class="empty-panel">Publish the first version to create the live share link.</div>`;
     return;
   }
+  const weeks = program.weeks || [program];
+  const previewWeek = weeks[Math.min(planState.selectedWeekIndex, weeks.length - 1)] || weeks[0];
+  setPlanText("publishedPreviewHeading", `Published Week ${previewWeek.weekNumber}`);
   container.innerHTML = TrackerData.WEEKDAYS.map(weekday => {
-    const day = program.days.find(item => item.weekday === weekday) || TrackerData.emptyDay(weekday);
+    const day = previewWeek.days.find(item => item.weekday === weekday) || TrackerData.emptyDay(weekday);
     const active = day.enabled && day.exercises.length;
     return `
       <div class="published-day ${active ? "has-workout" : "is-rest"}">
@@ -195,7 +265,7 @@ function renderPublishedPreview() {
 function renderLibrary() {
   const container = document.getElementById("planLibrary");
   if (!planState.library.length) {
-    container.innerHTML = `<div class="empty-panel">Your published versions will appear here after you publish the first week.</div>`;
+    container.innerHTML = `<div class="empty-panel">Your published versions will appear here after you publish the first program.</div>`;
     return;
   }
   container.innerHTML = planState.library.map(plan => `
@@ -235,16 +305,18 @@ function setPlanView() {
 }
 
 function openDetailsModal() {
+  const week = currentDraftWeek();
+  const program = planState.data.draftProgram;
   document.getElementById("personNameInput").value = planState.data.person?.name || "";
   document.getElementById("goalInput").value = planState.data.draftGoal;
-  document.getElementById("programNameInput").value = planState.data.draftProgram.name;
-  document.getElementById("phaseInput").value = planState.data.draftProgram.phase || "";
-  document.getElementById("weekNumberInput").value = planState.data.draftProgram.weekNumber || 1;
-  document.getElementById("durationWeeksInput").value = planState.data.draftProgram.durationWeeks || 1;
-  document.getElementById("startDateInput").value = planState.data.draftProgram.startDate || TrackerData.todayISO();
-  document.getElementById("programDescriptionInput").value = planState.data.draftProgram.description;
-  document.getElementById("progressionNotesInput").value = planState.data.draftProgram.progressionNotes || "";
-  document.getElementById("successMetricInput").value = planState.data.draftProgram.successMetric || "";
+  document.getElementById("programNameInput").value = program.name;
+  document.getElementById("phaseInput").value = week?.phase || "";
+  document.getElementById("weekNumberInput").value = week?.weekNumber || 1;
+  document.getElementById("durationWeeksInput").value = program.weeks?.length || 1;
+  document.getElementById("startDateInput").value = program.startDate || TrackerData.todayISO();
+  document.getElementById("programDescriptionInput").value = program.description;
+  document.getElementById("progressionNotesInput").value = week?.progressionNotes || "";
+  document.getElementById("successMetricInput").value = week?.successMetric || "";
   document.getElementById("detailsModal").hidden = false;
 }
 
@@ -263,14 +335,18 @@ function saveDetails(event) {
   }
   planState.data.person = { ...(planState.data.person || {}), name: personName };
   planState.data.draftGoal = goal;
-  planState.data.draftProgram.name = name;
-  planState.data.draftProgram.description = document.getElementById("programDescriptionInput").value.trim();
-  planState.data.draftProgram.phase = document.getElementById("phaseInput").value.trim() || "Foundation";
-  planState.data.draftProgram.weekNumber = Math.max(1, Number(document.getElementById("weekNumberInput").value) || 1);
-  planState.data.draftProgram.durationWeeks = Math.max(1, Number(document.getElementById("durationWeeksInput").value) || 1);
-  planState.data.draftProgram.startDate = document.getElementById("startDateInput").value || TrackerData.todayISO();
-  planState.data.draftProgram.progressionNotes = document.getElementById("progressionNotesInput").value.trim();
-  planState.data.draftProgram.successMetric = document.getElementById("successMetricInput").value.trim();
+  const program = planState.data.draftProgram;
+  const week = currentDraftWeek();
+  program.name = name;
+  program.description = document.getElementById("programDescriptionInput").value.trim();
+  program.startDate = document.getElementById("startDateInput").value || TrackerData.todayISO();
+  if (week) {
+    week.phase = document.getElementById("phaseInput").value.trim() || "Foundation";
+    week.weekNumber = Math.max(1, Number(document.getElementById("weekNumberInput").value) || planState.selectedWeekIndex + 1);
+    week.progressionNotes = document.getElementById("progressionNotesInput").value.trim();
+    week.successMetric = document.getElementById("successMetricInput").value.trim();
+  }
+  planState.data.draftProgram = TrackerData.normalizeProgram(program);
   TrackerData.save(planState.data);
   closeDetailsModal();
   showPlanToast("Plan details saved to the draft.");
@@ -466,7 +542,8 @@ function addActivityRow(activity = { name: "", activityType: "strength", format:
 }
 
 function openWorkoutModal(weekday) {
-  const day = planState.data.draftProgram.days.find(item => item.weekday === weekday);
+  const week = currentDraftWeek();
+  const day = week?.days.find(item => item.weekday === weekday);
   if (!day) return;
   planState.selectedWeekday = weekday;
   setPlanText("workoutModalTitle", `${day.enabled ? "Edit" : "Add"} ${TrackerData.DAY_NAMES[weekday]} workout`);
@@ -492,7 +569,8 @@ function saveWorkout(event) {
     return;
   }
   const weekday = planState.selectedWeekday;
-  planState.data.draftProgram.days[weekday] = {
+  const week = currentDraftWeek();
+  week.days[weekday] = {
     weekday,
     enabled: true,
     name,
@@ -502,6 +580,7 @@ function saveWorkout(event) {
     cooldown: document.getElementById("cooldownInput").value.trim(),
     exercises: activities.map(TrackerData.normalizeExercise)
   };
+  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
   TrackerData.save(planState.data);
   document.getElementById("workoutModal").hidden = true;
   showPlanToast(`${TrackerData.DAY_NAMES[weekday]} workout saved to the draft.`);
@@ -509,10 +588,12 @@ function saveWorkout(event) {
 }
 
 function clearDay(weekday) {
-  const day = planState.data.draftProgram.days[weekday];
+  const week = currentDraftWeek();
+  const day = week?.days.find(item => item.weekday === weekday);
   if (!day?.enabled) return;
   if (!window.confirm(`Clear the ${TrackerData.DAY_NAMES[weekday]} workout from the draft?`)) return;
-  planState.data.draftProgram.days[weekday] = TrackerData.emptyDay(weekday);
+  week.days[weekday] = TrackerData.emptyDay(weekday);
+  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
   TrackerData.save(planState.data);
   showPlanToast(`${TrackerData.DAY_NAMES[weekday]} is now Rest / open.`);
   renderAllPlan();
@@ -520,8 +601,9 @@ function clearDay(weekday) {
 
 async function publishPlan() {
   const draft = planState.data.draftProgram;
-  const activeDays = draft.days.filter(day => day.enabled && day.exercises.length);
-  if (!activeDays.length) {
+  const weeks = Array.isArray(draft.weeks) ? draft.weeks : [];
+  const activeWeeks = weeks.filter(week => week.days.some(day => day.enabled && day.exercises.length));
+  if (!activeWeeks.length) {
     showPlanToast("Add at least one workout day before publishing.");
     return;
   }
@@ -638,6 +720,12 @@ function bindPlanEvents() {
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);
   document.getElementById("cancelDetailsBtn").addEventListener("click", closeDetailsModal);
   document.getElementById("publishBtn").addEventListener("click", publishPlan);
+  document.getElementById("weekTabs").addEventListener("click", event => {
+    const tab = event.target.closest("[data-week-index]");
+    if (tab) selectDraftWeek(tab.dataset.weekIndex);
+  });
+  document.getElementById("addWeekBtn").addEventListener("click", addBlankWeek);
+  document.getElementById("duplicateWeekBtn").addEventListener("click", duplicateCurrentWeek);
   document.getElementById("builderGrid").addEventListener("click", event => {
     const edit = event.target.closest("[data-edit-day]");
     const clear = event.target.closest("[data-clear-day]");
