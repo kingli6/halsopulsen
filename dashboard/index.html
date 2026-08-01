@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="A simple personal training dashboard for goals, flexible assignments, and progress." />
-  <title>Personal Tracker — HälsoPulsen</title>
+  <meta name="description" content="A private training log for following a published weekly plan." />
+  <title>Log training — HälsoPulsen</title>
   <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="portal.css" />
 </head>
 <body>
   <header class="topbar">
@@ -19,11 +19,11 @@
         <span>Hälso<span class="brand-accent">Pulsen</span></span>
       </a>
       <nav class="topnav" aria-label="Main navigation">
-        <a class="topnav-link active" href="/dashboard/">My tracker</a>
+        <a class="topnav-link active" href="/dashboard/">Log training</a>
+        <a class="topnav-link owner-link" href="/dashboard/plan/">Plan program</a>
         <a class="topnav-link" href="/">Main site</a>
         <a class="topnav-link legacy-link" href="/challenge/">Group challenge</a>
       </nav>
-      <button class="icon-button" id="openProgramTop" type="button" aria-label="Edit program">⚙</button>
     </div>
   </header>
 
@@ -31,27 +31,27 @@
     <section class="page-intro">
       <div>
         <p class="eyebrow">PERSONAL TRAINING LOG</p>
-        <h1>Make progress that fits real life.</h1>
-        <p class="intro-copy">Your plan gives you a recommendation. Your week can still move when life does.</p>
+        <h1>Follow the plan. Record what happened.</h1>
+        <p class="intro-copy">Your owner-created plan is here when you need it. The recommended day is a guide — move unfinished work when real life gets in the way.</p>
       </div>
       <div class="intro-actions">
-        <button class="button button-secondary" id="copySummaryBtn" type="button">Copy AI summary</button>
-        <button class="button button-primary" id="exportBtn" type="button">Export CSV <span aria-hidden="true">↓</span></button>
+        <button class="button button-secondary" id="exportBtn" type="button">Export CSV <span aria-hidden="true">↓</span></button>
+        <a class="button button-primary" href="/dashboard/plan/">Open plan workspace</a>
       </div>
     </section>
 
     <section class="goal-strip card" aria-labelledby="goalHeading">
       <div class="goal-copy">
         <div class="section-kicker">CURRENT GOAL</div>
-        <h2 id="goalHeading">Build a consistent squat habit</h2>
-        <p id="goalText">Complete four flexible sessions each week. Recommended days are a starting point, not a pass/fail test.</p>
+        <h2 id="goalHeading">Build a consistent training habit</h2>
+        <p id="goalText">Your published program will appear here.</p>
       </div>
       <div class="goal-stat">
         <span class="goal-stat-value" id="weekCompletion">0/0</span>
         <span class="goal-stat-label">sessions this week</span>
         <div class="mini-progress"><span id="weekProgressBar"></span></div>
       </div>
-      <button class="text-button" id="editGoalBtn" type="button">Edit program <span aria-hidden="true">↗</span></button>
+      <span class="published-badge" id="publishedStatus">Published plan</span>
     </section>
 
     <section class="today-layout">
@@ -64,30 +64,30 @@
           <span class="status-pill status-recommended" id="todayStatus">Recommended</span>
         </div>
         <h2 id="todayHeading">Today's assignment</h2>
-        <p class="today-subtitle" id="todaySubtitle">Choose a day below if today does not work for you.</p>
+        <p class="today-subtitle" id="todaySubtitle">Select a day below to see its workout.</p>
         <div class="assignment-preview" id="assignmentPreview"></div>
         <div class="today-actions">
           <button class="button button-primary" id="logAssignmentBtn" type="button">Log this session</button>
           <button class="button button-quiet" id="skipAssignmentBtn" type="button">Skip for now</button>
         </div>
-        <p class="helper-text"><span class="helper-dot"></span> Click any day tile below to move this assignment.</p>
+        <p class="helper-text"><span class="helper-dot"></span> Click an open day to move this unfinished assignment.</p>
       </div>
 
       <aside class="insight-card card" aria-labelledby="insightHeading">
-        <div class="insight-icon">✦</div>
-        <p class="section-kicker">QUICK INSIGHT</p>
-        <h2 id="insightHeading">Your dashboard is ready.</h2>
-        <p id="insightText">Once you log a few sessions, this space will show patterns in consistency, volume, and difficulty.</p>
+        <div class="insight-icon">✓</div>
+        <p class="section-kicker">KEEP IT SIMPLE</p>
+        <h2 id="insightHeading">The log is your record.</h2>
+        <p id="insightText">The plan stays separate from the work you record. If the plan needs changing, use the owner planning workspace.</p>
         <div class="insight-rule"></div>
-        <p class="insight-footnote">No AI is required here. Export your data whenever you want another tool to analyse it.</p>
+        <p class="insight-footnote">Your data is stored in this browser in this first prototype.</p>
       </aside>
     </section>
 
     <section class="section-block" aria-labelledby="weekHeading">
       <div class="section-heading-row">
         <div>
-          <p class="section-kicker">FLEXIBLE WEEK</p>
-          <h2 id="weekHeading">Your week</h2>
+          <p class="section-kicker">YOUR PUBLISHED WEEK</p>
+          <h2 id="weekHeading">Choose a workout</h2>
         </div>
         <div class="week-navigation">
           <button class="round-button" id="previousWeekBtn" type="button" aria-label="Previous week">←</button>
@@ -97,7 +97,7 @@
       </div>
       <div class="week-notice">
         <span class="notice-icon">↗</span>
-        <span><strong>Recommended days are guides.</strong> Select another open day to move an unfinished assignment. We keep both dates so you can learn what works.</span>
+        <span><strong>Recommended days are guides.</strong> Select another open day to move an unfinished workout. We keep the original recommendation.</span>
       </div>
       <div class="day-grid" id="dayGrid" role="list" aria-label="Days in selected week"></div>
       <div class="legend">
@@ -108,7 +108,7 @@
       </div>
     </section>
 
-    <section class="section-block lower-grid">
+    <section class="section-block lower-grid" aria-label="Progress and history">
       <div class="card progress-card" aria-labelledby="progressHeading">
         <div class="section-heading-row compact">
           <div>
@@ -122,11 +122,9 @@
           <div class="metric"><strong id="completionRate">0%</strong><span>follow-through</span></div>
           <div class="metric"><strong id="averageDifficulty">—</strong><span>avg difficulty</span></div>
         </div>
-        <div class="chart-wrap">
-          <div class="chart" id="progressChart" aria-label="Progress over the last 14 days"></div>
-        </div>
+        <div class="chart-wrap"><div class="chart" id="progressChart" aria-label="Progress over the last 14 days"></div></div>
         <div class="chart-axis"><span id="chartStart">—</span><span>today</span><span id="chartEnd">—</span></div>
-        <p class="chart-note" id="chartNote">Log sessions to see actual work compared with your planned days.</p>
+        <p class="chart-note" id="chartNote">Log sessions to see actual work compared with planned work.</p>
       </div>
 
       <div class="card history-card" aria-labelledby="historyHeading">
@@ -141,23 +139,21 @@
       </div>
     </section>
 
-    <section class="card program-card" aria-labelledby="programHeading">
-      <div class="program-card-main">
-        <p class="section-kicker">ACTIVE PROGRAM</p>
-        <h2 id="programHeading">Squat habit</h2>
-        <p id="programSummary">Three sets with a long break between each set.</p>
-        <div class="exercise-chips" id="exerciseChips"></div>
+    <section class="card published-card" aria-labelledby="publishedHeading">
+      <div>
+        <p class="section-kicker">PUBLISHED PROGRAM</p>
+        <h2 id="publishedHeading">No program published yet</h2>
+        <p id="publishedSummary">The owner can create a week with different workouts for different days.</p>
       </div>
-      <div class="program-card-meta">
-        <div><span class="meta-label">Recommended</span><strong id="recommendedDaysText">Mon · Wed · Fri · Sun</strong></div>
-        <div><span class="meta-label">Data</span><strong>Stored in this browser</strong></div>
-        <button class="button button-secondary" id="openProgramBtn" type="button">Edit program</button>
+      <div class="published-meta">
+        <span id="publishedVersion">Waiting for a plan</span>
+        <a class="button button-secondary" href="/dashboard/plan/">View plan workspace</a>
       </div>
     </section>
 
     <footer class="dashboard-footer">
-      <span>HälsoPulsen personal tracker</span>
-      <span>Export your data for independent analysis anytime.</span>
+      <span>HälsoPulsen personal training log</span>
+      <span>Program planning and daily logging are separate by design.</span>
     </footer>
   </main>
 
@@ -178,27 +174,16 @@
             <span>How difficult was it?</span>
             <select id="difficulty">
               <option value="">Not recorded</option>
-              <option value="1">1 — Very easy</option>
-              <option value="2">2</option>
-              <option value="3">3 — Easy</option>
-              <option value="4">4</option>
-              <option value="5">5 — Moderate</option>
-              <option value="6">6</option>
-              <option value="7">7 — Hard</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-              <option value="10">10 — Max effort</option>
+              <option value="1">1 — Very easy</option><option value="2">2</option><option value="3">3 — Easy</option>
+              <option value="4">4</option><option value="5">5 — Moderate</option><option value="6">6</option>
+              <option value="7">7 — Hard</option><option value="8">8</option><option value="9">9</option><option value="10">10 — Max effort</option>
             </select>
           </label>
           <label>
             <span>How did you feel?</span>
             <select id="energy">
-              <option value="">Not recorded</option>
-              <option value="1">1 — Low energy</option>
-              <option value="2">2</option>
-              <option value="3">3 — Okay</option>
-              <option value="4">4</option>
-              <option value="5">5 — Great</option>
+              <option value="">Not recorded</option><option value="1">1 — Low energy</option><option value="2">2</option>
+              <option value="3">3 — Okay</option><option value="4">4</option><option value="5">5 — Great</option>
             </select>
           </label>
         </div>
@@ -214,61 +199,8 @@
     </div>
   </div>
 
-  <div class="modal-backdrop" id="programModal" hidden>
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="programModalTitle">
-      <div class="modal-header">
-        <div>
-          <p class="section-kicker">PROGRAM SETUP</p>
-          <h2 id="programModalTitle">Shape your plan</h2>
-        </div>
-        <button class="modal-close" id="closeProgramModal" type="button" aria-label="Close">×</button>
-      </div>
-      <p class="modal-context">Set the structure once. You can move individual assignments whenever your week changes.</p>
-      <form id="programForm">
-        <div class="form-grid">
-          <label>
-            <span>Goal</span>
-            <input id="goalInput" required maxlength="100" />
-          </label>
-          <label>
-            <span>Program name</span>
-            <input id="programNameInput" required maxlength="70" />
-          </label>
-        </div>
-        <label>
-          <span>Short description <em>(optional)</em></span>
-          <textarea id="programDescriptionInput" rows="2" maxlength="180"></textarea>
-        </label>
-        <div class="exercise-editor-header">
-          <div>
-            <span class="form-label">Exercises</span>
-            <p class="field-help">Keep this simple. Each exercise can have its own sets, reps, and rest.</p>
-          </div>
-          <button class="button button-secondary button-small" id="addExerciseBtn" type="button">+ Add exercise</button>
-        </div>
-        <div class="exercise-editor-list" id="exerciseEditorList"></div>
-        <fieldset class="day-picker">
-          <legend>Recommended days</legend>
-          <p class="field-help">These are suggestions, not deadlines. You can move a session from the week view.</p>
-          <div class="day-checkboxes" id="dayCheckboxes">
-            <label><input type="checkbox" value="1" /> <span>Mon</span></label>
-            <label><input type="checkbox" value="2" /> <span>Tue</span></label>
-            <label><input type="checkbox" value="3" /> <span>Wed</span></label>
-            <label><input type="checkbox" value="4" /> <span>Thu</span></label>
-            <label><input type="checkbox" value="5" /> <span>Fri</span></label>
-            <label><input type="checkbox" value="6" /> <span>Sat</span></label>
-            <label><input type="checkbox" value="0" /> <span>Sun</span></label>
-          </div>
-        </fieldset>
-        <div class="modal-actions">
-          <button class="button button-secondary" id="cancelProgramBtn" type="button">Cancel</button>
-          <button class="button button-primary" type="submit">Save program</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
+  <script src="data.js"></script>
+  <script src="log.js"></script>
 </body>
 </html>

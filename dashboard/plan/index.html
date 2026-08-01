@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="The owner workspace for creating and publishing a personal training program." />
+  <title>Plan program — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="../../images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../portal.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">H</span>
+        <span>Hälso<span class="brand-accent">Pulsen</span></span>
+      </a>
+      <nav class="topnav" aria-label="Main navigation">
+        <a class="topnav-link" href="/dashboard/">Log training</a>
+        <a class="topnav-link active" href="/dashboard/plan/">Plan program</a>
+        <a class="topnav-link" href="/">Main site</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell page plan-page">
+    <section class="page-intro plan-intro">
+      <div>
+        <p class="eyebrow">OWNER WORKSPACE</p>
+        <h1>Build the week once. Let the log stay simple.</h1>
+        <p class="intro-copy">Create a separate workout for each training day, review the full week, then publish it for logging. Draft changes stay out of the participant view until you publish.</p>
+      </div>
+      <div class="intro-actions">
+        <span class="local-owner-badge">Local prototype · not access controlled</span>
+        <a class="button button-primary" href="/dashboard/">Preview logging page</a>
+      </div>
+    </section>
+
+    <section class="owner-notice">
+      <span class="notice-icon">i</span>
+      <div><strong>This is the planning side.</strong><span>In the persistent version, this route should require your admin login. For now it is separated by interface and stored locally in this browser.</span></div>
+    </section>
+
+    <section class="plan-overview card">
+      <div class="plan-overview-main">
+        <p class="section-kicker">DRAFT PROGRAM</p>
+        <h2 id="draftProgramName">Weekly training plan</h2>
+        <p id="draftProgramDescription">Build a plan around the person’s goal.</p>
+      </div>
+      <div class="plan-overview-fields">
+        <label><span>Goal</span><input id="goalInput" maxlength="120" /></label>
+        <label><span>Program name</span><input id="programNameInput" maxlength="80" /></label>
+        <label class="full-field"><span>Short description <em>(optional)</em></span><textarea id="programDescriptionInput" rows="2" maxlength="220"></textarea></label>
+        <button class="button button-secondary" id="saveDetailsBtn" type="button">Save program details</button>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="weekBuilderHeading">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">WEEK BUILDER</p>
+          <h2 id="weekBuilderHeading">Program each day separately</h2>
+        </div>
+        <span class="draft-status" id="draftStatus">Draft changes</span>
+      </div>
+      <div class="builder-grid" id="builderGrid"></div>
+    </section>
+
+    <section class="publish-panel card">
+      <div>
+        <p class="section-kicker">HANDOFF TO LOGGING</p>
+        <h2 id="publishHeading">Publish when this week is ready</h2>
+        <p id="publishDescription">Publishing creates the schedule that appears on the logging page. You can keep editing this draft afterwards.</p>
+      </div>
+      <div class="publish-actions">
+        <span class="published-detail" id="publishedDetail">No published version yet</span>
+        <button class="button button-primary" id="publishBtn" type="button">Publish plan</button>
+      </div>
+    </section>
+
+    <section class="section-block published-preview-block" aria-labelledby="publishedPreviewHeading">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">CURRENTLY LIVE</p>
+          <h2 id="publishedPreviewHeading">Published week</h2>
+        </div>
+        <a class="text-button" href="/dashboard/">Open logging page ↗</a>
+      </div>
+      <div class="published-preview" id="publishedPreview"></div>
+    </section>
+
+    <footer class="dashboard-footer">
+      <span>HälsoPulsen owner workspace</span>
+      <span>Publish is the boundary between planning and logging.</span>
+    </footer>
+  </main>
+
+  <div class="modal-backdrop" id="workoutModal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="workoutModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="section-kicker">DAY WORKOUT</p>
+          <h2 id="workoutModalTitle">Add Monday workout</h2>
+        </div>
+        <button class="modal-close" id="closeWorkoutModal" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="modal-context">This workout belongs only to the selected day. Other days keep their own structure.</p>
+      <form id="workoutForm">
+        <div class="form-grid">
+          <label><span>Workout name</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A" /></label>
+          <label><span>Day note <em>(optional)</em></span><input id="workoutDescriptionInput" maxlength="160" placeholder="e.g. Keep two reps in reserve" /></label>
+        </div>
+        <div class="exercise-editor-header">
+          <div><span class="form-label">Exercises</span><p class="field-help">Set the target for every exercise in this day’s workout.</p></div>
+          <button class="button button-secondary button-small" id="addExerciseBtn" type="button">+ Add exercise</button>
+        </div>
+        <div class="exercise-editor-list" id="exerciseEditorList"></div>
+        <div class="modal-actions">
+          <button class="button button-secondary" id="cancelWorkoutBtn" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Save day workout</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="../data.js"></script>
+  <script src="../plan.js"></script>
+</body>
+</html>
