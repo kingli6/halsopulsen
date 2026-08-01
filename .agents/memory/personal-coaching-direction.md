@@ -32,3 +32,11 @@ concentric/lifting, and top pause; `3-1-1-0` is the canonical example.
 
 **Why:** The four-part notation removes ambiguity about pauses and keeps tempo
 distinct from rest between sets.
+
+Workout editing has two levels: the workout overview describes the whole day
+(title, session-wide note, main focus, warm-up, and cool-down), while activities
+contain the specific exercises, cardio blocks, or guided sessions and their
+prescriptions.
+
+**Why:** Separating session context from prescribed activities prevents users
+from confusing a day label or warm-up instruction with an individual exercise.

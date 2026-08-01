@@ -188,3 +188,15 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .log-exercise-heading > span { color: var(--muted); font-size: 10px; }
 @media (max-width: 980px) { .library-view-header { align-items: flex-start; flex-direction: column; }.plan-details-bar { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 620px) { .library-item { align-items: flex-start; flex-direction: column; }.library-actions { width: 100%; flex-wrap: wrap; }.library-actions .button { flex: 1; }.library-note { display: none; }.publish-actions { gap: 7px; }.log-exercise-heading { align-items: flex-start; flex-direction: column; gap: 2px; } }
+
+.workout-overview-section, .workout-activities-section { padding: 15px; border: 1px solid var(--line); border-radius: 13px; background: #fbfdfb; }
+.form-section-heading { margin-bottom: 14px; }
+.form-section-heading h3, .exercise-editor-header h3 { margin: 3px 0 4px; font: 600 16px var(--font-display); }
+.form-section-heading p:last-child { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.workout-activities-section .exercise-editor-list { margin-top: 14px; }
+.workout-activities-section .activity-editor { background: #fff; }
+@media (max-width: 620px) {
+  .workout-overview-section, .workout-activities-section { padding: 12px; }
+  .exercise-editor-header { align-items: flex-start; flex-direction: column; }
+  .exercise-editor-header .button { align-self: stretch; }
+}
