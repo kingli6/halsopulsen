@@ -50,14 +50,14 @@
         <div>
           <p class="section-kicker">PUBLISHED PROGRAMS</p>
           <h2 id="libraryHeading">Plan library</h2>
-          <p>Each published version keeps its own share link and workout record. Editing one creates a new draft; it never rewrites the original.</p>
+          <p>Edit a current plan in place before the participant starts. Once activity exists, create a new version so the training record stays accurate.</p>
         </div>
         <a class="button button-primary" href="/dashboard/plan/?view=editor" id="createPlanBtn">+ Create new plan</a>
       </div>
       <div class="library-toolbar">
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
       </div>
-      <p class="library-access-note">One participant uses each published share link by design. Deleting a version removes it from this library and revokes its link; logged sessions are retained for recovery rather than permanently erased.</p>
+      <p class="library-access-note">One participant uses each published share link by design. Deleting a version permanently removes its plan, participant link, logs, and saved history.</p>
       <div class="plan-library" id="planLibrary"></div>
     </section>
 
@@ -132,7 +132,7 @@
         </div>
         <button class="modal-close" id="closeDetailsModal" type="button" aria-label="Close">×</button>
       </div>
-      <p class="modal-context">These details are part of the next version you publish. The live logging page changes only after publishing.</p>
+      <p class="modal-context" id="detailsModalContext">These details are part of the version you publish. The live logging page changes only after saving or publishing.</p>
       <form id="detailsForm">
         <label><span>Person</span><input id="personNameInput" maxlength="100" required placeholder="e.g. Alex" /></label>
         <label><span>Goal</span><input id="goalInput" maxlength="120" required /></label>
