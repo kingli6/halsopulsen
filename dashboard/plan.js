@@ -451,12 +451,18 @@ function updateActivityRow(row, activity = readActivityRow(row)) {
   };
 }
 
-function addActivityRow(activity = { name: "", activityType: "strength", format: "sets", sets: 3, targetValue: 10, targetUnit: "reps", intensity: "", rir: null, load: null, loadUnit: "kg", tempo: "", notes: "", restSeconds: 90 }) {
+function addActivityRow(activity = { name: "", activityType: "strength", format: "sets", sets: 3, targetValue: 10, targetUnit: "reps", intensity: "", rir: null, load: null, loadUnit: "kg", tempo: "", notes: "", restSeconds: 90 }, { focus = false } = {}) {
   const list = document.getElementById("exerciseEditorList");
   const row = document.createElement("div");
   row.className = "activity-editor";
   list.appendChild(row);
   updateActivityRow(row, prepareEditorActivity(activity));
+  if (focus) {
+    requestAnimationFrame(() => {
+      row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      row.querySelector('[data-field="name"]')?.focus();
+    });
+  }
 }
 
 function openWorkoutModal(weekday) {
@@ -650,7 +656,7 @@ function bindPlanEvents() {
     event.preventDefault();
     startNewDraft();
   });
-  document.getElementById("addExerciseBtn").addEventListener("click", () => addActivityRow());
+  document.getElementById("addExerciseBtn").addEventListener("click", () => addActivityRow(undefined, { focus: true }));
   document.getElementById("workoutForm").addEventListener("submit", saveWorkout);
   document.getElementById("closeWorkoutModal").addEventListener("click", () => { document.getElementById("workoutModal").hidden = true; });
   document.getElementById("cancelWorkoutBtn").addEventListener("click", () => { document.getElementById("workoutModal").hidden = true; });

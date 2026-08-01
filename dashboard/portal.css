@@ -195,8 +195,11 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .form-section-heading p:last-child { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .workout-activities-section .exercise-editor-list { margin-top: 14px; }
 .workout-activities-section .activity-editor { background: #fff; }
+.add-activity-footer { display: flex; align-items: center; gap: 10px; padding-top: 14px; margin-top: 14px; border-top: 1px solid #e8f0e9; }
+.add-activity-footer > span { color: var(--muted); font-size: 11px; }
 @media (max-width: 620px) {
   .workout-overview-section, .workout-activities-section { padding: 12px; }
   .exercise-editor-header { align-items: flex-start; flex-direction: column; }
-  .exercise-editor-header .button { align-self: stretch; }
+  .add-activity-footer { align-items: flex-start; flex-direction: column; }
+  .add-activity-footer .button { width: 100%; }
 }
