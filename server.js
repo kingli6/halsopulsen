@@ -48,6 +48,16 @@ function writePublishedPlans(plans) {
 
 function publicPlanSummary(plan) {
   const program = plan.program || {};
+  const assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
+  const logs = Array.isArray(plan.logs) ? plan.logs : [];
+  const plannedSessions = assignments.length;
+  const completedSessions = logs.length;
+  const skippedSessions = assignments.filter(assignment => assignment.status === 'skipped').length;
+  const lastActivityAt = logs
+    .map(log => log.createdAt || log.date || '')
+    .filter(Boolean)
+    .sort()
+    .at(-1) || '';
   return {
     id: plan.id,
     name: plan.name,
@@ -62,7 +72,14 @@ function publicPlanSummary(plan) {
     progressionNotes: program.progressionNotes || '',
     successMetric: program.successMetric || '',
     publishedAt: plan.publishedAt,
-    sharePath: `/dashboard/share/${plan.shareToken}/`
+    sharePath: `/dashboard/share/${plan.shareToken}/`,
+    linkedParticipantCount: plan.personName ? 1 : 0,
+    shareLinkActive: Boolean(plan.shareToken),
+    plannedSessions,
+    completedSessions,
+    skippedSessions,
+    completionRate: plannedSessions ? Math.round((completedSessions / plannedSessions) * 100) : 0,
+    lastActivityAt
   };
 }
 
