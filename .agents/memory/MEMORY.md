@@ -1,1 +1,1 @@
-- [Personal coaching direction](personal-coaching-direction.md) — build admin-led individual coaching first; use AI for drafts and approved recommendations.
+- [Personal coaching direction](personal-coaching-direction.md) — build a simple individual tracker first; keep AI external until the structured data loop proves useful.
