@@ -46,3 +46,14 @@ where the new card appears, and focus the new card after it is created.
 
 **Why:** Users need immediate visual confirmation that an activity was added and
 should not have to search or scroll through a long modal to begin editing it.
+
+Programs may contain multiple independently editable weeks. Each week owns its
+phase, progression guidance, success metric, and seven-day schedule; publishing
+captures all weeks in one immutable program version and share link.
+
+**Why:** Real programming changes across phases, while one share link and one
+version keep the participant experience and historical logs coherent.
+
+**How to apply:** Select the active week while authoring, derive the participant's
+week from the program start calendar week, and preserve the week number on every
+generated assignment.

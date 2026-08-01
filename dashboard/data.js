@@ -185,24 +185,61 @@ const TrackerData = (() => {
     };
   }
 
-  function normalizeProgram(program) {
-    const sourceDays = Array.isArray(program?.days) ? program.days : [];
+  function normalizeWeek(week, fallbackWeekNumber = 1, programDefaults = {}) {
+    const sourceDays = Array.isArray(week?.days) ? week.days : [];
     const days = Array.from({ length: 7 }, (_, weekday) => {
       const source = sourceDays.find(day => Number(day.weekday) === weekday);
       return source ? normalizeWorkout({ ...source, enabled: source.enabled !== false }, weekday) : emptyDay(weekday);
     });
     return {
+      weekNumber: Math.max(1, Number(week?.weekNumber) || fallbackWeekNumber),
+      phase: String(week?.phase || programDefaults.phase || "Foundation"),
+      progressionNotes: String(week?.progressionNotes || programDefaults.progressionNotes || ""),
+      successMetric: String(week?.successMetric || programDefaults.successMetric || ""),
+      days
+    };
+  }
+
+  function syncProgramSummary(program) {
+    const firstWeek = program.weeks?.[0] || normalizeWeek({ days: program.days }, 1, program);
+    program.weeks = Array.isArray(program.weeks) && program.weeks.length ? program.weeks : [firstWeek];
+    program.durationWeeks = program.weeks.length;
+    program.days = program.weeks[0].days;
+    program.phase = program.weeks[0].phase;
+    program.weekNumber = program.weeks[0].weekNumber;
+    program.progressionNotes = program.weeks[0].progressionNotes;
+    program.successMetric = program.weeks[0].successMetric;
+    return program;
+  }
+
+  function normalizeProgram(program) {
+    const programDefaults = {
+      phase: String(program?.phase || "Foundation"),
+      progressionNotes: String(program?.progressionNotes || ""),
+      successMetric: String(program?.successMetric || "")
+    };
+    const sourceWeeks = Array.isArray(program?.weeks) && program.weeks.length
+      ? program.weeks
+      : Array.from({ length: Math.max(1, Number(program?.durationWeeks) || 1) }, (_, index) => ({
+        weekNumber: (Number(program?.weekNumber) || 1) + index,
+        days: Array.isArray(program?.days) ? program.days : [],
+        phase: programDefaults.phase,
+        progressionNotes: programDefaults.progressionNotes,
+        successMetric: programDefaults.successMetric
+      }));
+    const weeks = sourceWeeks.map((week, index) => normalizeWeek(week, index + 1, programDefaults));
+    return syncProgramSummary({
       name: String(program?.name || "Training plan"),
       description: String(program?.description || ""),
       version: Number(program?.version) || 1,
-      phase: String(program?.phase || "Foundation"),
+      phase: programDefaults.phase,
       weekNumber: Math.max(1, Number(program?.weekNumber) || 1),
-      durationWeeks: Math.max(1, Number(program?.durationWeeks) || 1),
+      durationWeeks: weeks.length,
       startDate: String(program?.startDate || todayISO()),
-      progressionNotes: String(program?.progressionNotes || ""),
-      successMetric: String(program?.successMetric || ""),
-      days
-    };
+      progressionNotes: programDefaults.progressionNotes,
+      successMetric: programDefaults.successMetric,
+      weeks
+    });
   }
 
   function oldProgramToNew(rawProgram) {
@@ -284,6 +321,7 @@ const TrackerData = (() => {
       recommendedDate: String(assignment?.recommendedDate || assignment?.date || todayISO()),
       status: assignment?.status || "planned",
       moved: Boolean(assignment?.moved),
+      weekNumber: Number(assignment?.weekNumber) || null,
       workout
     };
   }
@@ -402,16 +440,31 @@ const TrackerData = (() => {
     return allLogs(data).find(log => log.assignmentId === id) || null;
   }
 
+  function programWeekIndexForDate(program, date) {
+    const weeks = Array.isArray(program?.weeks) && program.weeks.length ? program.weeks : [program];
+    const start = startOfWeek(program?.startDate || todayISO());
+    const offset = Math.floor(daysBetween(start, date) / 7);
+    return Math.max(0, Math.min(weeks.length - 1, offset));
+  }
+
+  function programWeekForDate(program, date) {
+    const weeks = Array.isArray(program?.weeks) && program.weeks.length ? program.weeks : [program];
+    return weeks[programWeekIndexForDate(program, date)] || weeks[0] || null;
+  }
+
   function ensureAssignments(data, options = {}) {
     const program = data.publishedProgram;
     if (!program) return;
-    const start = options.startDate || addDays(todayISO(), -35);
-    const end = options.endDate || addDays(todayISO(), 56);
+    const weeks = Array.isArray(program.weeks) && program.weeks.length ? program.weeks : [program];
+    const start = options.startDate || startOfWeek(program.startDate || todayISO());
+    const end = options.endDate || addDays(start, weeks.length * 7 - 1);
     const existingDates = new Set(data.assignments.map(assignment => assignment.date));
     for (let index = 0; index <= daysBetween(start, end); index += 1) {
       const date = addDays(start, index);
       const weekday = fromISO(date).getDay();
-      const workout = program.days.find(day => day.weekday === weekday);
+      const weekIndex = programWeekIndexForDate(program, date);
+      const week = weeks[weekIndex];
+      const workout = week?.days.find(day => day.weekday === weekday);
       if (!workout?.enabled || !workout.exercises.length || existingDates.has(date)) continue;
       data.assignments.push({
         id: `${data.assignmentPrefix || "assignment"}-${date}`,
@@ -419,6 +472,7 @@ const TrackerData = (() => {
         recommendedDate: date,
         status: "planned",
         moved: false,
+        weekNumber: week?.weekNumber || weekIndex + 1,
         workout: clone(workout)
       });
       existingDates.add(date);
@@ -464,6 +518,8 @@ const TrackerData = (() => {
     allAssignments,
     allLogs,
     logForAssignment,
+    programWeekIndexForDate,
+    programWeekForDate,
     ensureAssignments,
     hasDraftChanges
   };
