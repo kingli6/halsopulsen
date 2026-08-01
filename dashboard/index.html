@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A simple personal training dashboard for goals, flexible assignments, and progress." />
+  <title>Personal Tracker — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">H</span>
+        <span>Hälso<span class="brand-accent">Pulsen</span></span>
+      </a>
+      <nav class="topnav" aria-label="Main navigation">
+        <a class="topnav-link active" href="/dashboard/">My tracker</a>
+        <a class="topnav-link" href="/">Main site</a>
+        <a class="topnav-link legacy-link" href="/challenge/">Group challenge</a>
+      </nav>
+      <button class="icon-button" id="openProgramTop" type="button" aria-label="Edit program">⚙</button>
+    </div>
+  </header>
+
+  <main class="shell page">
+    <section class="page-intro">
+      <div>
+        <p class="eyebrow">PERSONAL TRAINING LOG</p>
+        <h1>Make progress that fits real life.</h1>
+        <p class="intro-copy">Your plan gives you a recommendation. Your week can still move when life does.</p>
+      </div>
+      <div class="intro-actions">
+        <button class="button button-secondary" id="copySummaryBtn" type="button">Copy AI summary</button>
+        <button class="button button-primary" id="exportBtn" type="button">Export CSV <span aria-hidden="true">↓</span></button>
+      </div>
+    </section>
+
+    <section class="goal-strip card" aria-labelledby="goalHeading">
+      <div class="goal-copy">
+        <div class="section-kicker">CURRENT GOAL</div>
+        <h2 id="goalHeading">Build a consistent squat habit</h2>
+        <p id="goalText">Complete four flexible sessions each week. Recommended days are a starting point, not a pass/fail test.</p>
+      </div>
+      <div class="goal-stat">
+        <span class="goal-stat-value" id="weekCompletion">0/0</span>
+        <span class="goal-stat-label">sessions this week</span>
+        <div class="mini-progress"><span id="weekProgressBar"></span></div>
+      </div>
+      <button class="text-button" id="editGoalBtn" type="button">Edit program <span aria-hidden="true">↗</span></button>
+    </section>
+
+    <section class="today-layout">
+      <div class="today-card card" aria-labelledby="todayHeading">
+        <div class="card-topline">
+          <div>
+            <p class="section-kicker">UP NEXT</p>
+            <p class="today-date" id="todayDate">Today</p>
+          </div>
+          <span class="status-pill status-recommended" id="todayStatus">Recommended</span>
+        </div>
+        <h2 id="todayHeading">Today's assignment</h2>
+        <p class="today-subtitle" id="todaySubtitle">Choose a day below if today does not work for you.</p>
+        <div class="assignment-preview" id="assignmentPreview"></div>
+        <div class="today-actions">
+          <button class="button button-primary" id="logAssignmentBtn" type="button">Log this session</button>
+          <button class="button button-quiet" id="skipAssignmentBtn" type="button">Skip for now</button>
+        </div>
+        <p class="helper-text"><span class="helper-dot"></span> Click any day tile below to move this assignment.</p>
+      </div>
+
+      <aside class="insight-card card" aria-labelledby="insightHeading">
+        <div class="insight-icon">✦</div>
+        <p class="section-kicker">QUICK INSIGHT</p>
+        <h2 id="insightHeading">Your dashboard is ready.</h2>
+        <p id="insightText">Once you log a few sessions, this space will show patterns in consistency, volume, and difficulty.</p>
+        <div class="insight-rule"></div>
+        <p class="insight-footnote">No AI is required here. Export your data whenever you want another tool to analyse it.</p>
+      </aside>
+    </section>
+
+    <section class="section-block" aria-labelledby="weekHeading">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">FLEXIBLE WEEK</p>
+          <h2 id="weekHeading">Your week</h2>
+        </div>
+        <div class="week-navigation">
+          <button class="round-button" id="previousWeekBtn" type="button" aria-label="Previous week">←</button>
+          <span id="weekLabel">This week</span>
+          <button class="round-button" id="nextWeekBtn" type="button" aria-label="Next week">→</button>
+        </div>
+      </div>
+      <div class="week-notice">
+        <span class="notice-icon">↗</span>
+        <span><strong>Recommended days are guides.</strong> Select another open day to move an unfinished assignment. We keep both dates so you can learn what works.</span>
+      </div>
+      <div class="day-grid" id="dayGrid" role="list" aria-label="Days in selected week"></div>
+      <div class="legend">
+        <span><i class="legend-swatch recommended"></i> Recommended</span>
+        <span><i class="legend-swatch moved"></i> Moved</span>
+        <span><i class="legend-swatch complete"></i> Completed</span>
+        <span><i class="legend-swatch open"></i> Open day</span>
+      </div>
+    </section>
+
+    <section class="section-block lower-grid">
+      <div class="card progress-card" aria-labelledby="progressHeading">
+        <div class="section-heading-row compact">
+          <div>
+            <p class="section-kicker">THE BIG PICTURE</p>
+            <h2 id="progressHeading">Progress</h2>
+          </div>
+          <span class="range-label">Last 14 days</span>
+        </div>
+        <div class="metric-row">
+          <div class="metric"><strong id="completedCount">0</strong><span>completed</span></div>
+          <div class="metric"><strong id="completionRate">0%</strong><span>follow-through</span></div>
+          <div class="metric"><strong id="averageDifficulty">—</strong><span>avg difficulty</span></div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart" id="progressChart" aria-label="Progress over the last 14 days"></div>
+        </div>
+        <div class="chart-axis"><span id="chartStart">—</span><span>today</span><span id="chartEnd">—</span></div>
+        <p class="chart-note" id="chartNote">Log sessions to see actual work compared with your planned days.</p>
+      </div>
+
+      <div class="card history-card" aria-labelledby="historyHeading">
+        <div class="section-heading-row compact">
+          <div>
+            <p class="section-kicker">WHAT HAPPENED</p>
+            <h2 id="historyHeading">Recent sessions</h2>
+          </div>
+          <button class="text-button" id="clearLogsBtn" type="button">Clear logs</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </section>
+
+    <section class="card program-card" aria-labelledby="programHeading">
+      <div class="program-card-main">
+        <p class="section-kicker">ACTIVE PROGRAM</p>
+        <h2 id="programHeading">Squat habit</h2>
+        <p id="programSummary">Three sets with a long break between each set.</p>
+        <div class="exercise-chips" id="exerciseChips"></div>
+      </div>
+      <div class="program-card-meta">
+        <div><span class="meta-label">Recommended</span><strong id="recommendedDaysText">Mon · Wed · Fri · Sun</strong></div>
+        <div><span class="meta-label">Data</span><strong>Stored in this browser</strong></div>
+        <button class="button button-secondary" id="openProgramBtn" type="button">Edit program</button>
+      </div>
+    </section>
+
+    <footer class="dashboard-footer">
+      <span>HälsoPulsen personal tracker</span>
+      <span>Export your data for independent analysis anytime.</span>
+    </footer>
+  </main>
+
+  <div class="modal-backdrop" id="logModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="section-kicker">SESSION LOG</p>
+          <h2 id="logModalTitle">Log your session</h2>
+        </div>
+        <button class="modal-close" id="closeLogModal" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="modal-context" id="logModalContext"></p>
+      <form id="logForm">
+        <div id="logExerciseFields"></div>
+        <div class="form-grid">
+          <label>
+            <span>How difficult was it?</span>
+            <select id="difficulty">
+              <option value="">Not recorded</option>
+              <option value="1">1 — Very easy</option>
+              <option value="2">2</option>
+              <option value="3">3 — Easy</option>
+              <option value="4">4</option>
+              <option value="5">5 — Moderate</option>
+              <option value="6">6</option>
+              <option value="7">7 — Hard</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10 — Max effort</option>
+            </select>
+          </label>
+          <label>
+            <span>How did you feel?</span>
+            <select id="energy">
+              <option value="">Not recorded</option>
+              <option value="1">1 — Low energy</option>
+              <option value="2">2</option>
+              <option value="3">3 — Okay</option>
+              <option value="4">4</option>
+              <option value="5">5 — Great</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          <span>Note <em>(optional)</em></span>
+          <textarea id="sessionNote" rows="3" placeholder="How did it feel? Anything worth remembering?"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button class="button button-secondary" id="cancelLogBtn" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Save session</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="programModal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="programModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="section-kicker">PROGRAM SETUP</p>
+          <h2 id="programModalTitle">Shape your plan</h2>
+        </div>
+        <button class="modal-close" id="closeProgramModal" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="modal-context">Set the structure once. You can move individual assignments whenever your week changes.</p>
+      <form id="programForm">
+        <div class="form-grid">
+          <label>
+            <span>Goal</span>
+            <input id="goalInput" required maxlength="100" />
+          </label>
+          <label>
+            <span>Program name</span>
+            <input id="programNameInput" required maxlength="70" />
+          </label>
+        </div>
+        <label>
+          <span>Short description <em>(optional)</em></span>
+          <textarea id="programDescriptionInput" rows="2" maxlength="180"></textarea>
+        </label>
+        <div class="exercise-editor-header">
+          <div>
+            <span class="form-label">Exercises</span>
+            <p class="field-help">Keep this simple. Each exercise can have its own sets, reps, and rest.</p>
+          </div>
+          <button class="button button-secondary button-small" id="addExerciseBtn" type="button">+ Add exercise</button>
+        </div>
+        <div class="exercise-editor-list" id="exerciseEditorList"></div>
+        <fieldset class="day-picker">
+          <legend>Recommended days</legend>
+          <p class="field-help">These are suggestions, not deadlines. You can move a session from the week view.</p>
+          <div class="day-checkboxes" id="dayCheckboxes">
+            <label><input type="checkbox" value="1" /> <span>Mon</span></label>
+            <label><input type="checkbox" value="2" /> <span>Tue</span></label>
+            <label><input type="checkbox" value="3" /> <span>Wed</span></label>
+            <label><input type="checkbox" value="4" /> <span>Thu</span></label>
+            <label><input type="checkbox" value="5" /> <span>Fri</span></label>
+            <label><input type="checkbox" value="6" /> <span>Sat</span></label>
+            <label><input type="checkbox" value="0" /> <span>Sun</span></label>
+          </div>
+        </fieldset>
+        <div class="modal-actions">
+          <button class="button button-secondary" id="cancelProgramBtn" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Save program</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

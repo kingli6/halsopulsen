@@ -23,21 +23,25 @@ publishes a private link for each person.
 The preferred workflow is:
 
 1. The admin creates a person and a goal.
-2. The admin creates a structured program, or asks the AI to prepare a draft.
-3. The admin reviews and edits the draft.
-4. The admin publishes the program and sends the person a private dashboard link.
-5. The person sees today's assignments and records what they actually did.
-6. The dashboard compares planned work with completed work.
+2. The admin creates a structured program.
+3. The admin publishes the program and sends the person a private dashboard link.
+4. The person sees recommended assignments and records what they actually did.
+5. The person can move an unfinished assignment to another open day.
+6. The dashboard keeps both the recommended date and the actual completion date.
 7. Graphs show trends, consistency, difficulty, and other useful patterns.
-8. The person can ask the AI about their progress.
-9. The AI gives feedback and proposes changes, but important plan changes are
-   shown to the admin or user for approval before they are applied.
+8. The person exports a CSV or copies an AI-ready summary for analysis in any
+   external AI tool.
+9. A future AI layer can give feedback and propose changes, but important plan
+   changes should be shown to the admin or user for approval before they are applied.
 10. The person can optionally send a progress snapshot to the admin, or keep
-    their AI conversation and logs private.
+    their logs private.
 
 ## What the AI should do
 
-AI is capable of:
+AI is postponed from the first implementation. The product should still
+produce clean, structured data for analysis elsewhere.
+
+When an AI layer is added later, it could:
 
 - Turning a natural-language goal into a structured draft program.
 - Asking clarifying questions about schedule, equipment, intensity, and
@@ -65,7 +69,7 @@ Start with:
 - Difficulty, energy, pain/discomfort, and free-form notes.
 - Calendar/history view.
 - Progress graphs.
-- AI progress review and contextual chat.
+- CSV export and copyable AI-ready summaries (AI integration postponed).
 - An admin area for creating, reviewing, publishing, and adjusting programs.
 - An optional “send to admin” progress report.
 
@@ -84,12 +88,18 @@ habits.
 
 ## Important product decisions
 
-### Admin-led is the first release
+### Admin-led is the longer-term direction
 
 The admin-authoring workflow is easier to build and easier to trust than
-letting an AI independently create and publish dashboards. The best near-term
-addition is an AI-assisted admin command that produces a draft the admin can
-inspect, edit, and publish.
+letting an AI independently create and publish dashboards. The first build
+keeps program setup simple and manual. A later AI-assisted admin command can
+produce a draft the admin can inspect, edit, and publish.
+
+### Recommended days, flexible completion
+
+Schedules are recommendations, not deadlines. A person can move an unfinished
+assignment to an open day. The system keeps the original recommended date and
+the actual completion date so the user can learn which patterns work.
 
 ### Store structure, not just chat
 
@@ -131,12 +141,14 @@ not replace authentication, access control, or safe handling of API keys.
 - Plan changes should have an audit trail and an approval state.
 - Private invite links are convenient but can be forwarded; stronger
   authentication can be added if the app expands beyond personal use.
-- AI calls belong on the server. No OpenAI secret should be shipped to browser
-  code.
+- If an AI integration is added later, calls belong on the server. No OpenAI
+  secret should be shipped to browser code.
 
 ## Current work status
 
-The imported project still contains the original group challenge implementation.
-The next implementation phase should be a fresh personal-coaching foundation,
-while keeping the existing project structure where practical and avoiding a
-large migration until the new data model and primary user flow are clear.
+The first personal tracker foundation now lives at `/dashboard/`. It is a
+local-first browser prototype with structured programs, flexible day tiles,
+completion logging, progress visualisation, and CSV/AI-ready export. The
+original group challenge remains available at `/challenge/` as reference
+material. The next phase can decide whether to persist multiple people and
+private links in Supabase.

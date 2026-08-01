@@ -3,9 +3,10 @@
 ## Project overview
 
 HälsoPulsen is being redesigned from a group fitness challenge into a personal
-goal and training dashboard. The long-term product is an AI-assisted coach that
-helps a person plan work, log what happened, understand progress, and adjust
-assignments.
+goal and training dashboard. The long-term product may become an AI-assisted
+coach, but the first usable version is intentionally AI-free: it stores
+structured plans and logs, visualizes progress, and exports clean data for
+analysis in any AI tool.
 
 The current repository is an imported HTML/CSS/JavaScript website with a
 Node.js/Express server and an older Supabase-backed group challenge prototype.
@@ -17,12 +18,13 @@ final product model.
 Build the first version for the owner and their partner:
 
 - An admin/coach creates goals and structured exercise programs.
-- AI may prepare drafts and recommendations.
-- The admin or user approves important changes.
-- Each person receives a private dashboard link.
+- The first prototype stores one person's program in the browser.
+- Recommended days are flexible; unfinished assignments can be moved to an
+  open day.
 - The person logs planned versus completed work.
-- The dashboard includes history, graphs, and contextual AI coaching.
-- Progress can optionally be sent to the admin for review.
+- The dashboard includes history, graphs, CSV export, and an AI-ready copy
+  summary.
+- A later version can add an admin area and private links for multiple people.
 
 Start with a structured squat workout as the example, but keep the data model
 general enough for multiple workouts, running, hangs, mobility, and habits.
@@ -31,8 +33,8 @@ general enough for multiple workouts, running, hangs, mobility, and habits.
 
 - Prefer a practical, admin-led MVP before autonomous AI behavior.
 - Keep goals, programs, assignments, conditions, and logs as structured data.
-- Use AI for clarification, drafting, analysis, conversation, and proposals;
-  do not let it silently publish important plan changes.
+- Keep the first version AI-free and make exported data easy to analyse in any
+  external AI tool.
 - Focus on individual progress before group/social features.
 - Keep the existing stack where practical instead of migrating without a need.
 - Make the interface useful for checking what was planned, what was completed,
