@@ -22,6 +22,15 @@ function escapeLogHtml(value) {
   }[character]));
 }
 
+function safeResourceUrl(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.origin);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function showLogToast(message) {
   const toast = document.getElementById("toast");
   toast.textContent = message;
@@ -80,11 +89,21 @@ function workoutTitle(assignment) {
 
 function activitySummary(activity) {
   const target = TrackerData.targetLabel(activity);
-  const intensity = TrackerData.intensityLabel(activity);
+  const intensity = activity.intensity ? ` · ${activity.intensity}` : "";
+  const heartRate = activity.heartRateTarget ? ` · ${activity.heartRateTarget}` : "";
   const load = activity.load ? ` · ${activity.load} ${activity.loadUnit || "kg"}` : "";
   const tempo = activity.tempo ? ` · tempo ${activity.tempo}` : "";
-  if (activity.activityType === "run") return `${target}${intensity}${load}${tempo}`;
-  return `${activity.sets} × ${target}${intensity}${load}${tempo}`;
+  if (activity.activityType === "strength") {
+    const effort = activity.rir != null ? ` · RIR ${activity.rir}` : "";
+    return `${activity.sets} × ${target}${effort}${load}${tempo}`;
+  }
+  if (activity.activityType === "cardio" && activity.format === "intervals") {
+    const work = activity.workDurationSeconds ? `${activity.workDurationSeconds}s work` : "work";
+    const recovery = activity.recoveryDurationSeconds ? `${activity.recoveryDurationSeconds}s recovery` : "recovery";
+    return `${activity.rounds || activity.targetValue} rounds · ${work} / ${recovery}${intensity}${heartRate}`;
+  }
+  if (activity.activityType === "guided") return `${activity.durationMinutes || activity.targetValue} min${intensity}`;
+  return `${target}${intensity}${heartRate}`;
 }
 
 function workoutTarget(workout) {
@@ -117,7 +136,6 @@ function intensityOptions(selected = "") {
     ["Steady", "Steady"],
     ["Moderate", "Moderate"],
     ["Tempo", "Tempo"],
-    ["Intervals", "Intervals"],
     ["Hard", "Hard"]
   ].map(([value, label]) => `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`).join("");
 }
@@ -348,16 +366,18 @@ function openLogModal() {
   setLogText("logModalTitle", `Log ${workoutTitle(assignment)}`);
   setLogText("logModalContext", assignment.moved
     ? `Recommended for ${TrackerData.formatShortDate(assignment.recommendedDate)}, moved to ${TrackerData.formatShortDate(assignment.date)}. Partial work is useful data too.`
-    : "Record what you actually completed. For runs, record the distance you actually covered and how it felt.");
+    : "Record what you actually completed. The fields match the way this activity was prescribed.");
   document.getElementById("logExerciseFields").innerHTML = assignment.workout.exercises.map((activity, activityIndex) => `
     <div class="log-exercise">
-      <div class="log-exercise-heading"><h3>${escapeLogHtml(activity.name)}</h3><span>${escapeLogHtml(activitySummary(activity))}</span></div>
+      <div class="log-exercise-heading"><div><h3>${escapeLogHtml(activity.name)}</h3><span>${escapeLogHtml(activitySummary(activity))}</span></div>${safeResourceUrl(activity.resourceUrl) ? `<a class="resource-link" href="${escapeLogHtml(safeResourceUrl(activity.resourceUrl))}" target="_blank" rel="noopener">Open resource ↗</a>` : ""}</div>
+      ${activity.goal ? `<p class="log-activity-goal"><strong>Goal:</strong> ${escapeLogHtml(activity.goal)}</p>` : ""}
+      ${activity.description ? `<p class="log-activity-goal">${escapeLogHtml(activity.description)}</p>` : ""}
       ${Array.from({ length: activity.sets }, (_, setIndex) => `<div class="set-row">
-        <span>${activity.activityType === "run" ? "Distance" : `Set ${setIndex + 1}`}</span>
+        <span>${activity.activityType === "strength" ? `Set ${setIndex + 1}` : activity.format === "intervals" ? "Rounds" : activity.activityType === "guided" ? "Session" : "Completed"}</span>
         <label><span class="sr-only">Planned target</span><input value="${escapeLogHtml(TrackerData.targetLabel(activity))}" disabled /></label>
-        <label><span class="sr-only">Completed target</span><input type="number" min="0" step="${activity.activityType === "run" || activity.targetUnit !== "reps" ? "0.1" : "1"}" value="${activity.targetValue}" data-completed-activity="${activityIndex}" data-completed-set="${setIndex}" /></label>
+        <label><span class="sr-only">Completed target</span><input type="number" min="0" step="${activity.activityType === "strength" && activity.targetUnit === "reps" ? "1" : "0.1"}" value="${activity.targetValue}" data-completed-activity="${activityIndex}" data-completed-set="${setIndex}" /></label>
       </div>`).join("")}
-      <label class="actual-intensity"><span>Actual intensity <em>(optional)</em></span><select data-actual-intensity="${activityIndex}">${intensityOptions(activity.intensity)}</select></label>
+      <label class="actual-intensity"><span>How did it feel? <em>(optional)</em></span><select data-actual-intensity="${activityIndex}">${intensityOptions(activity.intensity)}</select></label>
     </div>`).join("");
   document.getElementById("difficulty").value = "";
   document.getElementById("energy").value = "";
@@ -406,7 +426,7 @@ function skipAssignment() {
 }
 
 function exportCsv() {
-  const rows = [["plan_version", "plan_state", "date", "recommended_date", "status", "workout", "session_type", "warmup", "cooldown", "activity", "set", "planned_target", "completed_target", "unit", "planned_intensity", "actual_intensity", "load", "load_unit", "tempo", "activity_notes", "difficulty", "energy", "note"]];
+  const rows = [["plan_version", "plan_state", "date", "recommended_date", "status", "workout", "session_type", "warmup", "cooldown", "activity", "prescription_format", "set_or_round", "planned_target", "completed_target", "unit", "planned_intensity", "actual_intensity", "rir", "pulse_target", "work_duration_seconds", "recovery_duration_seconds", "load", "load_unit", "tempo", "goal", "description", "activity_notes", "resource_url", "difficulty", "energy", "note"]];
   TrackerData.allAssignments(logState.data).forEach(assignment => {
     const log = TrackerData.logForAssignment(logState.data, assignment.id);
     const version = planVersionForAssignment(assignment.id);
@@ -416,8 +436,9 @@ function exportCsv() {
         for (let set = 1; set <= activity.sets; set += 1) rows.push([
           version, state, assignment.date, assignment.recommendedDate, assignment.status, assignment.workout.name,
           assignment.workout.sessionType, assignment.workout.warmup, assignment.workout.cooldown,
-          activity.name, set, activity.targetValue, "", activity.targetUnit, activity.intensity, "",
-          activity.load, activity.loadUnit, activity.tempo, activity.notes, "", "", ""
+          activity.name, activity.format, set, activity.targetValue, "", activity.targetUnit, activity.intensity, "",
+          activity.rir ?? "", activity.heartRateTarget, activity.workDurationSeconds ?? "", activity.recoveryDurationSeconds ?? "",
+          activity.load, activity.loadUnit, activity.tempo, activity.goal, activity.description, activity.notes, activity.resourceUrl, "", "", ""
         ]);
       });
       return;
@@ -425,8 +446,9 @@ function exportCsv() {
     log.exercises.forEach(activity => activity.sets.forEach((set, index) => rows.push([
       version, state, log.date, assignment.recommendedDate, "completed", assignment.workout.name,
       assignment.workout.sessionType, assignment.workout.warmup, assignment.workout.cooldown,
-      activity.name, index + 1, set.planned, set.completed, activity.targetUnit, activity.intensity, set.intensity,
-      activity.load, activity.loadUnit, activity.tempo, activity.notes, log.difficulty, log.energy, log.note
+      activity.name, activity.format, index + 1, set.planned, set.completed, activity.targetUnit, activity.intensity, set.intensity,
+      activity.rir ?? "", activity.heartRateTarget, activity.workDurationSeconds ?? "", activity.recoveryDurationSeconds ?? "",
+      activity.load, activity.loadUnit, activity.tempo, activity.goal, activity.description, activity.notes, activity.resourceUrl, log.difficulty, log.energy, log.note
     ])));
   });
   const csv = rows.map(row => row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");

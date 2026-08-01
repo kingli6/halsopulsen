@@ -28,12 +28,23 @@ function showPlanToast(message) {
 }
 
 function activitySummary(activity) {
-  const target = TrackerData.targetLabel(activity);
-  const intensity = TrackerData.intensityLabel(activity);
+  const intensity = activity.intensity ? ` · ${activity.intensity}` : "";
+  const heartRate = activity.heartRateTarget ? ` · ${activity.heartRateTarget}` : "";
   const load = activity.load ? ` · ${activity.load} ${activity.loadUnit || "kg"}` : "";
-  const tempo = activity.tempo ? ` · tempo ${activity.tempo}` : "";
-  if (activity.activityType === "run") return `${target}${intensity}${load}${tempo}`;
-  return `${activity.sets} × ${target}${intensity}${load}${tempo} · ${TrackerData.formatRest(activity.restSeconds)} rest`;
+  if (activity.activityType === "strength") {
+    const effort = activity.rir != null ? ` · RIR ${activity.rir}` : "";
+    const tempo = activity.tempo ? ` · tempo ${activity.tempo}` : "";
+    return `${activity.sets} × ${TrackerData.targetLabel(activity)}${effort}${load}${tempo} · ${TrackerData.formatRest(activity.restSeconds)} rest`;
+  }
+  if (activity.activityType === "cardio" && activity.format === "intervals") {
+    const work = activity.workDurationSeconds ? `${activity.workDurationSeconds} sec` : "work";
+    const recovery = activity.recoveryDurationSeconds ? `${activity.recoveryDurationSeconds} sec recovery` : "recovery";
+    return `${activity.rounds || activity.targetValue} rounds · ${work} / ${recovery}${intensity}${heartRate}`;
+  }
+  if (activity.activityType === "guided") {
+    return `${activity.durationMinutes || activity.targetValue} min${intensity}`;
+  }
+  return `${TrackerData.targetLabel(activity)}${intensity}${heartRate}`;
 }
 
 function workoutSummary(workout) {
@@ -266,54 +277,186 @@ function saveDetails(event) {
   renderAllPlan();
 }
 
-function updateActivityRow(row) {
-  const type = row.querySelector('[data-field="activityType"]').value;
-  const unit = row.querySelector('[data-field="targetUnit"]');
-  const currentUnit = unit.value;
-  const options = type === "run"
-    ? [{ value: "km", label: "km" }]
-    : [{ value: "reps", label: "reps" }, { value: "minutes", label: "minutes" }, { value: "seconds", label: "seconds" }];
-  unit.innerHTML = options.map(option => `<option value="${option.value}" ${option.value === currentUnit || (type === "run" && option.value === "km") ? "selected" : ""}>${option.label}</option>`).join("");
-  const sets = row.querySelector('[data-field="sets"]');
-  const rest = row.querySelector('[data-field="restSeconds"]');
-  const targetLabel = row.querySelector("[data-target-label]");
-  targetLabel.textContent = type === "run" ? "Distance" : "Target";
-  sets.disabled = type === "run";
-  rest.disabled = type === "run";
-  if (type === "run") {
-    sets.value = 1;
-    rest.value = 0;
-  }
+function infoLabel(label, explanation) {
+  const safeExplanation = escapePlanHtml(explanation);
+  return `<span class="field-label">${label}<button class="info-tip" type="button" aria-label="${safeExplanation}" title="${safeExplanation}">i</button></span>`;
 }
 
-function addActivityRow(activity = { name: "", activityType: "exercise", sets: 3, targetValue: 10, targetUnit: "reps", intensity: "", load: null, loadUnit: "kg", tempo: "", notes: "", restSeconds: 90 }) {
-  const list = document.getElementById("exerciseEditorList");
-  const row = document.createElement("div");
-  row.className = "activity-editor";
+function selectOptions(options, selected) {
+  return options.map(([value, label]) => `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`).join("");
+}
+
+function numberOrNull(value) {
+  return value === "" || value == null || !Number.isFinite(Number(value)) ? null : Number(value);
+}
+
+function readActivityRow(row) {
+  const value = field => row.querySelector(`[data-field="${field}"]`)?.value ?? "";
+  return {
+    name: value("name").trim(),
+    activityType: value("activityType") || "strength",
+    format: value("format"),
+    targetValue: numberOrNull(value("targetValue")),
+    targetUnit: value("targetUnit"),
+    durationMinutes: numberOrNull(value("durationMinutes")),
+    rounds: numberOrNull(value("rounds")),
+    workDurationSeconds: numberOrNull(value("workDurationSeconds")),
+    recoveryDurationSeconds: numberOrNull(value("recoveryDurationSeconds")),
+    intensity: value("intensity"),
+    heartRateTarget: value("heartRateTarget").trim(),
+    rir: numberOrNull(value("rir")),
+    sets: Number(value("sets")) || 1,
+    restSeconds: Number(value("restSeconds")) || 0,
+    load: numberOrNull(value("load")),
+    loadUnit: value("loadUnit") || "kg",
+    tempo: value("tempo").trim(),
+    description: value("description").trim(),
+    goal: value("goal").trim(),
+    notes: value("notes").trim(),
+    resourceUrl: value("resourceUrl").trim()
+  };
+}
+
+function prepareEditorActivity(activity = {}, requestedType = activity.activityType || "strength") {
+  const next = { ...TrackerData.normalizeExercise({ ...activity, activityType: requestedType }) };
+  next.activityType = requestedType;
+  if (requestedType === "strength") {
+    next.format = "sets";
+    next.targetUnit = ["reps", "seconds", "minutes"].includes(activity.targetUnit) ? activity.targetUnit : "reps";
+    next.targetValue = Number(activity.targetValue) || (next.targetUnit === "reps" ? 10 : 30);
+    next.sets = Number(activity.sets) || 3;
+    next.rir = activity.rir ?? null;
+    next.restSeconds = Number(activity.restSeconds) || 90;
+  } else if (requestedType === "cardio") {
+    next.format = activity.format === "intervals" ? "intervals" : "continuous";
+    next.sets = 1;
+    next.restSeconds = 0;
+    if (next.format === "intervals") {
+      const switchingToIntervals = activity.format !== "intervals";
+      next.rounds = switchingToIntervals ? 6 : (Number(activity.rounds || activity.targetValue) || 6);
+      next.targetValue = next.rounds;
+      next.targetUnit = "rounds";
+      next.workDurationSeconds = Number(activity.workDurationSeconds) || 60;
+      next.recoveryDurationSeconds = Number(activity.recoveryDurationSeconds) || 90;
+    } else {
+      next.targetUnit = activity.targetUnit === "km" ? "km" : "minutes";
+      const switchingFromIntervals = activity.format === "intervals";
+      next.targetValue = switchingFromIntervals ? (next.targetUnit === "km" ? 5 : 30) : (Number(activity.targetValue) || (next.targetUnit === "km" ? 5 : 30));
+      next.durationMinutes = next.targetUnit === "minutes" ? next.targetValue : (Number(activity.durationMinutes) || null);
+    }
+  } else {
+    next.activityType = "guided";
+    next.format = "guided";
+    next.sets = 1;
+    next.restSeconds = 0;
+    next.targetUnit = "minutes";
+    next.durationMinutes = Number(activity.durationMinutes || (activity.targetUnit === "minutes" ? activity.targetValue : 20)) || 20;
+    next.targetValue = next.durationMinutes;
+  }
+  return next;
+}
+
+function updateActivityRow(row, activity = readActivityRow(row)) {
+  const type = activity.activityType || "strength";
+  const strength = type === "strength";
+  const cardio = type === "cardio";
+  const intervals = cardio && activity.format === "intervals";
+  const typeOptions = selectOptions([
+    ["strength", "Strength exercise"],
+    ["cardio", "Cardio activity"],
+    ["guided", "Guided session"]
+  ], type);
+  const intensityOptions = selectOptions([
+    ["", "Not set"],
+    ["Easy", "Easy"],
+    ["Steady", "Steady"],
+    ["Moderate", "Moderate"],
+    ["Tempo", "Tempo"],
+    ["Hard", "Hard"]
+  ], activity.intensity || "");
+  const resource = `<label class="full-field">${infoLabel("Demo / resource link", "Optional video or webpage showing how to perform the activity or follow the session.")}<input data-field="resourceUrl" type="url" maxlength="400" value="${escapePlanHtml(activity.resourceUrl || "")}" placeholder="https://… (optional)" /></label>`;
+  let fields = "";
+  if (strength) {
+    fields = `
+      <label>${infoLabel("Sets", "How many working sets to complete.")}<input data-field="sets" type="number" min="1" max="20" value="${activity.sets || 3}" required /></label>
+      <label>${infoLabel(activity.targetUnit === "seconds" ? "Seconds per set" : activity.targetUnit === "minutes" ? "Minutes per set" : "Reps per set", "The planned amount in each set. Use seconds for timed strength work such as a dead hang.")}<input data-field="targetValue" type="number" min="1" step="${activity.targetUnit === "reps" ? "1" : "0.1"}" value="${activity.targetValue || 10}" required /></label>
+      <label>${infoLabel("Measure", "Most strength work uses reps. Choose seconds or minutes for timed holds or carries.")}<select data-field="targetUnit">${selectOptions([["reps", "Reps"], ["seconds", "Seconds"], ["minutes", "Minutes"]], activity.targetUnit || "reps")}</select></label>
+      <label>${infoLabel("Effort target", "Reps in reserve (RIR): how many good repetitions should still be possible at the end of the set.")}<select data-field="rir">${selectOptions([["", "Not set"], ["0", "RIR 0 · max effort"], ["1", "RIR 1 · one left"], ["2", "RIR 2 · two left"], ["3", "RIR 3 · three left"], ["4", "RIR 4 · four left"], ["5", "RIR 5 · easy"]], activity.rir == null ? "" : String(activity.rir))}</select></label>
+      <label>Load<input data-field="load" type="number" min="0" step="0.5" value="${activity.load ?? ""}" placeholder="Optional" /></label>
+      <label>Load unit<select data-field="loadUnit">${selectOptions([["kg", "kg"], ["lb", "lb"]], activity.loadUnit || "kg")}</select></label>
+      <label>${infoLabel("Rest", "The planned rest between sets.")}<input data-field="restSeconds" type="number" min="0" max="3600" value="${activity.restSeconds || 0}" placeholder="Seconds" /></label>
+      <label>Tempo<input data-field="tempo" maxlength="20" value="${escapePlanHtml(activity.tempo || "")}" placeholder="e.g. 3-1-1" /></label>
+      <label class="full-field">${infoLabel("Notes", "Coaching cues, setup instructions, range of motion, or substitutions.")}<textarea data-field="notes" maxlength="500" rows="2" placeholder="e.g. Keep ribs down and move smoothly.">${escapePlanHtml(activity.notes || "")}</textarea></label>
+      ${resource}
+    `;
+  } else if (cardio) {
+    fields = `
+      <label>${infoLabel("Format", "Continuous means one steady effort. Intervals alternate work and recovery periods.")}<select data-field="format">${selectOptions([["continuous", "Continuous"], ["intervals", "Intervals"]], intervals ? "intervals" : "continuous")}</select></label>
+      ${intervals ? `
+        <label>${infoLabel("Rounds", "How many work periods to complete.")}<input data-field="rounds" type="number" min="1" max="100" value="${activity.rounds || activity.targetValue || 6}" required /></label>
+        <label>${infoLabel("Work duration", "How long each active interval lasts.")}<input data-field="workDurationSeconds" type="number" min="1" max="3600" value="${activity.workDurationSeconds || 60}" placeholder="Seconds" /></label>
+        <label>${infoLabel("Recovery", "How long to recover between intervals. This can be easy movement or complete rest.")}<input data-field="recoveryDurationSeconds" type="number" min="0" max="3600" value="${activity.recoveryDurationSeconds || 90}" placeholder="Seconds" /></label>
+      ` : `
+        <label>${infoLabel("Measure", "Choose whether the continuous activity is prescribed by time or distance.")}<select data-field="targetUnit">${selectOptions([["minutes", "Duration · minutes"], ["km", "Distance · km"]], activity.targetUnit === "km" ? "km" : "minutes")}</select></label>
+        <label>${infoLabel(activity.targetUnit === "km" ? "Distance" : "Duration", "The planned amount of continuous cardio to complete.")}<input data-field="targetValue" type="number" min="0.1" step="0.1" value="${activity.targetValue || 30}" required /></label>
+      `}
+      <label>${infoLabel("Intensity", "How hard this should feel. Intervals are a format; intensity describes the work effort.")}<select data-field="intensity">${intensityOptions}</select></label>
+      <label>${infoLabel("Pulse / HR target", "Optional heart-rate zone or beats-per-minute range, such as Zone 2 or 135–150 bpm.")}<input data-field="heartRateTarget" maxlength="40" value="${escapePlanHtml(activity.heartRateTarget || "")}" placeholder="Optional" /></label>
+      <label class="full-field">${infoLabel("Goal", "What should the participant focus on or achieve during this cardio activity?")}<textarea data-field="goal" maxlength="300" rows="2" placeholder="e.g. Stay conversational and finish feeling fresh.">${escapePlanHtml(activity.goal || "")}</textarea></label>
+      <label class="full-field">${infoLabel("Notes", "Optional coaching instructions, route details, equipment, or substitutions.")}<textarea data-field="notes" maxlength="500" rows="2" placeholder="Optional instructions">${escapePlanHtml(activity.notes || "")}</textarea></label>
+      ${resource}
+    `;
+  } else {
+    fields = `
+      <label>${infoLabel("Duration", "The planned length of the guided class, video, or session.")}<input data-field="durationMinutes" type="number" min="1" max="600" value="${activity.durationMinutes || activity.targetValue || 20}" required /></label>
+      <label>${infoLabel("Effort", "Optional overall effort target for the session.")}<select data-field="intensity">${intensityOptions}</select></label>
+      <label class="full-field">${infoLabel("Description", "Explain what the participant should do, especially when the resource link is not enough on its own.")}<textarea data-field="description" maxlength="400" rows="2" placeholder="e.g. Follow the mobility flow and stop before discomfort.">${escapePlanHtml(activity.description || "")}</textarea></label>
+      <label class="full-field">${infoLabel("Goal", "The purpose of the session, such as relaxation, mobility, coordination, or enjoyment.")}<textarea data-field="goal" maxlength="300" rows="2" placeholder="What is this session for?">${escapePlanHtml(activity.goal || "")}</textarea></label>
+      <label class="full-field">${infoLabel("Notes", "Optional coaching cues or alternatives.")}<textarea data-field="notes" maxlength="500" rows="2" placeholder="Optional instructions">${escapePlanHtml(activity.notes || "")}</textarea></label>
+      ${resource}
+    `;
+  }
   row.innerHTML = `
-    <label>Activity<input data-field="name" required maxlength="60" value="${escapePlanHtml(activity.name)}" placeholder="e.g. Squats or Run" /></label>
-    <label>Type<select data-field="activityType"><option value="exercise" ${activity.activityType !== "run" ? "selected" : ""}>Exercise</option><option value="run" ${activity.activityType === "run" ? "selected" : ""}>Run</option></select></label>
-    <label><span data-target-label>${activity.activityType === "run" ? "Distance" : "Target"}</span><input data-field="targetValue" type="number" min="0.1" step="0.1" value="${activity.targetValue ?? activity.reps ?? 10}" required /></label>
-    <label>Unit<select data-field="targetUnit"><option value="reps" ${activity.targetUnit === "reps" ? "selected" : ""}>reps</option><option value="km" ${activity.targetUnit === "km" ? "selected" : ""}>km</option><option value="minutes" ${activity.targetUnit === "minutes" ? "selected" : ""}>minutes</option><option value="seconds" ${activity.targetUnit === "seconds" ? "selected" : ""}>seconds</option></select></label>
-    <label>Intensity<select data-field="intensity"><option value="" ${!activity.intensity ? "selected" : ""}>Not set</option><option value="Easy" ${activity.intensity === "Easy" ? "selected" : ""}>Easy</option><option value="Steady" ${activity.intensity === "Steady" ? "selected" : ""}>Steady</option><option value="Moderate" ${activity.intensity === "Moderate" ? "selected" : ""}>Moderate</option><option value="Tempo" ${activity.intensity === "Tempo" ? "selected" : ""}>Tempo</option><option value="Intervals" ${activity.intensity === "Intervals" ? "selected" : ""}>Intervals</option><option value="Hard" ${activity.intensity === "Hard" ? "selected" : ""}>Hard</option></select></label>
-    <label>Sets<input data-field="sets" type="number" min="1" max="20" value="${activity.sets || 1}" required /></label>
-    <label>Rest (sec)<input data-field="restSeconds" type="number" min="0" max="3600" value="${activity.restSeconds || 0}" required /></label>
-    <label>Load<input data-field="load" type="number" min="0" step="0.5" value="${activity.load ?? ""}" placeholder="Optional" /></label>
-    <label>Load unit<select data-field="loadUnit"><option value="kg" ${activity.loadUnit !== "lb" ? "selected" : ""}>kg</option><option value="lb" ${activity.loadUnit === "lb" ? "selected" : ""}>lb</option></select></label>
-    <label>Tempo<input data-field="tempo" maxlength="20" value="${escapePlanHtml(activity.tempo || "")}" placeholder="e.g. 3-1-1" /></label>
-    <label class="activity-notes-field">Notes<input data-field="notes" maxlength="180" value="${escapePlanHtml(activity.notes || "")}" placeholder="Coaching cue or setup" /></label>
-    <button class="remove-exercise" type="button" aria-label="Remove activity">×</button>
+    <div class="activity-editor-head">
+      <label class="activity-name">${infoLabel("Activity", "Name the movement, sport, class, video, or session.")}<input data-field="name" required maxlength="80" value="${escapePlanHtml(activity.name)}" placeholder="${strength ? "e.g. Goblet squat" : cardio ? "e.g. Running or cycling" : "e.g. SOMA Move or Zumba"}" /></label>
+      <label>${infoLabel("Prescription format", "Choose the kind of instructions this activity needs. The fields below will adapt.")}<select data-field="activityType">${typeOptions}</select></label>
+      <button class="remove-exercise" type="button" aria-label="Remove activity">×</button>
+    </div>
+    <div class="activity-editor-fields">${fields}</div>
   `;
-  row.querySelector('[data-field="activityType"]').addEventListener("change", () => updateActivityRow(row));
-  row.querySelector(".remove-exercise").addEventListener("click", () => {
+  const list = document.getElementById("exerciseEditorList");
+  row.querySelector('[data-field="activityType"]').onchange = event => {
+    updateActivityRow(row, prepareEditorActivity(readActivityRow(row), event.target.value));
+  };
+  const formatField = row.querySelector('[data-field="format"]');
+  if (formatField) formatField.onchange = event => {
+    updateActivityRow(row, prepareEditorActivity({ ...readActivityRow(row), format: event.target.value }, "cardio"));
+  };
+  const measureField = row.querySelector('[data-field="targetUnit"]');
+  if (measureField && cardio) measureField.onchange = event => {
+    const current = readActivityRow(row);
+    current.targetValue = event.target.value === "km" ? 5 : (current.durationMinutes || 30);
+    updateActivityRow(row, prepareEditorActivity({ ...current, targetUnit: event.target.value }, "cardio"));
+  };
+  if (measureField && strength) measureField.onchange = event => {
+    const current = readActivityRow(row);
+    updateActivityRow(row, prepareEditorActivity({ ...current, targetUnit: event.target.value }, "strength"));
+  };
+  row.querySelector(".remove-exercise").onclick = () => {
     if (list.children.length === 1) {
       showPlanToast("Keep at least one activity in this workout.");
       return;
     }
     row.remove();
-  });
+  };
+}
+
+function addActivityRow(activity = { name: "", activityType: "strength", format: "sets", sets: 3, targetValue: 10, targetUnit: "reps", intensity: "", rir: null, load: null, loadUnit: "kg", tempo: "", notes: "", restSeconds: 90 }) {
+  const list = document.getElementById("exerciseEditorList");
+  const row = document.createElement("div");
+  row.className = "activity-editor";
   list.appendChild(row);
-  updateActivityRow(row);
+  updateActivityRow(row, prepareEditorActivity(activity));
 }
 
 function openWorkoutModal(weekday) {
@@ -323,30 +466,20 @@ function openWorkoutModal(weekday) {
   setPlanText("workoutModalTitle", `${day.enabled ? "Edit" : "Add"} ${TrackerData.DAY_NAMES[weekday]} workout`);
   document.getElementById("workoutNameInput").value = day.name || "";
   document.getElementById("workoutDescriptionInput").value = day.description || "";
-  document.getElementById("sessionTypeInput").value = day.sessionType || "Training";
+  const sessionType = document.getElementById("sessionTypeInput");
+  sessionType.value = [...sessionType.options].some(option => option.value === day.sessionType) ? day.sessionType : "Other";
   document.getElementById("warmupInput").value = day.warmup || "";
   document.getElementById("cooldownInput").value = day.cooldown || "";
   document.getElementById("exerciseEditorList").innerHTML = "";
-  (day.exercises.length ? day.exercises : [{ name: "", activityType: "exercise", sets: 3, targetValue: 10, targetUnit: "reps", intensity: "", restSeconds: 90 }]).forEach(addActivityRow);
+  (day.exercises.length ? day.exercises : [{ name: "", activityType: "strength", sets: 3, targetValue: 10, targetUnit: "reps", intensity: "", rir: null, restSeconds: 90 }]).forEach(addActivityRow);
   document.getElementById("workoutModal").hidden = false;
 }
 
 function saveWorkout(event) {
   event.preventDefault();
   const rows = [...document.querySelectorAll("#exerciseEditorList .activity-editor")];
-  const activities = rows.map(row => ({
-    name: row.querySelector('[data-field="name"]').value.trim(),
-    activityType: row.querySelector('[data-field="activityType"]').value,
-    targetValue: Number(row.querySelector('[data-field="targetValue"]').value),
-    targetUnit: row.querySelector('[data-field="targetUnit"]').value,
-    intensity: row.querySelector('[data-field="intensity"]').value,
-    sets: Number(row.querySelector('[data-field="sets"]').value),
-    restSeconds: Number(row.querySelector('[data-field="restSeconds"]').value),
-    load: Number(row.querySelector('[data-field="load"]').value) || null,
-    loadUnit: row.querySelector('[data-field="loadUnit"]').value,
-    tempo: row.querySelector('[data-field="tempo"]').value.trim(),
-    notes: row.querySelector('[data-field="notes"]').value.trim()
-  })).filter(activity => activity.name && activity.targetValue > 0);
+  const activities = rows.map(row => TrackerData.normalizeExercise(readActivityRow(row)))
+    .filter(activity => activity.name && activity.targetValue > 0);
   const name = document.getElementById("workoutNameInput").value.trim();
   if (!name || !activities.length) {
     showPlanToast("Add a workout name and at least one activity.");
