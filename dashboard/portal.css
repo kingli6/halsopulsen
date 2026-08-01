@@ -176,14 +176,20 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .current-tag { background: var(--green-3); color: var(--green); }
 .archived-tag { background: var(--soft); color: var(--muted); }
 .library-actions { display: flex; flex-shrink: 0; gap: 7px; }
-.activity-editor { display: grid; grid-template-columns: minmax(135px, 1.6fr) 90px 78px 88px 105px 62px 75px 32px; gap: 7px; align-items: end; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: #fbfdfb; }
+.library-view { padding: 25px; margin-bottom: 39px; }
+.library-view-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+.library-view-header h2 { margin-bottom: 7px; font-size: 25px; }
+.library-view-header p:last-child { max-width: 700px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.draft-source { display: block; margin-top: 10px; color: var(--green); font-size: 11px; font-weight: 700; }
+.activity-editor { display: grid; grid-template-columns: minmax(135px, 1.7fr) 86px 78px 84px 100px 62px 76px 76px 76px 100px minmax(145px, 1.3fr) 32px; gap: 7px; align-items: end; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: #fbfdfb; }
 .activity-editor label { display: flex; flex-direction: column; gap: 4px; color: var(--ink); font-size: 10px; font-weight: 700; }
 .activity-editor input, .activity-editor select { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; outline: none; background: #fff; color: var(--ink); font-size: 12px; }
 .activity-editor input:disabled { color: #96a39a; background: #f0f4f1; }
+.activity-notes-field { min-width: 0; }
 .actual-intensity { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; color: var(--ink); font-size: 11px; font-weight: 700; }
 .actual-intensity select { width: 180px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
 .log-exercise-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .log-exercise-heading h3 { margin-bottom: 3px; }
 .log-exercise-heading > span { color: var(--muted); font-size: 10px; }
-@media (max-width: 980px) { .activity-editor { grid-template-columns: minmax(135px, 1.4fr) 85px 75px 80px 95px 58px 68px 30px; }.plan-details-bar { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 620px) { .library-item { align-items: flex-start; flex-direction: column; }.library-actions { width: 100%; }.library-actions .button { flex: 1; }.library-note { display: none; }.publish-actions { gap: 7px; }.activity-editor { grid-template-columns: 1fr 1fr; }.activity-editor label:first-child { grid-column: 1 / -1; }.activity-editor label:nth-child(5) { grid-column: 1 / -1; }.activity-editor label:nth-child(6), .activity-editor label:nth-child(7) { grid-column: span 1; }.activity-editor .remove-exercise { align-self: end; }.log-exercise-heading { align-items: flex-start; flex-direction: column; gap: 2px; } }
+@media (max-width: 980px) { .library-view-header { align-items: flex-start; flex-direction: column; }.activity-editor { grid-template-columns: repeat(6, minmax(0, 1fr)); }.activity-editor label:first-child, .activity-editor .activity-notes-field { grid-column: span 2; }.activity-editor label:nth-child(2), .activity-editor label:nth-child(3), .activity-editor label:nth-child(4), .activity-editor label:nth-child(5), .activity-editor label:nth-child(6), .activity-editor label:nth-child(7), .activity-editor label:nth-child(8), .activity-editor label:nth-child(9), .activity-editor .remove-exercise { grid-column: span 1; }.plan-details-bar { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 620px) { .library-item { align-items: flex-start; flex-direction: column; }.library-actions { width: 100%; flex-wrap: wrap; }.library-actions .button { flex: 1; }.library-note { display: none; }.publish-actions { gap: 7px; }.activity-editor { grid-template-columns: 1fr 1fr; }.activity-editor label:first-child, .activity-editor .activity-notes-field { grid-column: 1 / -1; }.activity-editor .remove-exercise { align-self: end; }.log-exercise-heading { align-items: flex-start; flex-direction: column; gap: 2px; } }
