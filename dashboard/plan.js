@@ -155,6 +155,34 @@ function duplicateCurrentWeek() {
   renderAllPlan();
 }
 
+function removeCurrentWeek() {
+  const program = planState.data.draftProgram;
+  const weeks = Array.isArray(program.weeks) ? program.weeks : [];
+  if (weeks.length <= 1) {
+    showPlanToast("A program needs at least one week.");
+    return;
+  }
+
+  const index = Math.max(0, Math.min(planState.selectedWeekIndex, weeks.length - 1));
+  const week = weeks[index];
+  const hasWorkouts = week.days.some(day => day.enabled && day.exercises.length);
+  const label = `Week ${week.weekNumber || index + 1}`;
+  const message = hasWorkouts
+    ? `Remove ${label}? Its workouts and week-specific guidance will be deleted from this draft.`
+    : `Remove ${label} from this draft?`;
+  if (!window.confirm(message)) return;
+
+  weeks.splice(index, 1);
+  weeks.forEach((item, weekIndex) => {
+    item.weekNumber = weekIndex + 1;
+  });
+  planState.data.draftProgram = TrackerData.normalizeProgram(program);
+  planState.selectedWeekIndex = Math.min(index, weeks.length - 1);
+  TrackerData.save(planState.data);
+  showPlanToast(`${label} removed. The remaining weeks were renumbered.`);
+  renderAllPlan();
+}
+
 async function editPublishedPlan(planId) {
   try {
     const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
@@ -193,6 +221,8 @@ function renderWeekTabs() {
   const weeks = planState.data.draftProgram.weeks || [];
   const tabs = document.getElementById("weekTabs");
   if (!tabs) return;
+  const removeButton = document.getElementById("removeWeekBtn");
+  if (removeButton) removeButton.disabled = weeks.length <= 1;
   tabs.innerHTML = weeks.map((week, index) => `
     <button class="week-tab ${index === planState.selectedWeekIndex ? "is-selected" : ""}" type="button" role="tab" aria-selected="${index === planState.selectedWeekIndex}" data-week-index="${index}">
       <strong>Week ${week.weekNumber}</strong><span>${escapePlanHtml(week.phase || "Foundation")}</span>
@@ -726,6 +756,7 @@ function bindPlanEvents() {
   });
   document.getElementById("addWeekBtn").addEventListener("click", addBlankWeek);
   document.getElementById("duplicateWeekBtn").addEventListener("click", duplicateCurrentWeek);
+  document.getElementById("removeWeekBtn").addEventListener("click", removeCurrentWeek);
   document.getElementById("builderGrid").addEventListener("click", event => {
     const edit = event.target.closest("[data-edit-day]");
     const clear = event.target.closest("[data-clear-day]");
