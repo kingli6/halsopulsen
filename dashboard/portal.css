@@ -177,6 +177,8 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .current-tag { background: var(--green-3); color: var(--green); }
 .archived-tag { background: var(--soft); color: var(--muted); }
 .library-actions { display: flex; flex-shrink: 0; gap: 7px; }
+.library-actions .button-danger { border-color: #e8c7c2; background: #fff8f7; color: #a74d43; }
+.library-actions .button-danger:hover { border-color: #d9968d; background: #fbe9e7; color: #8f3e35; }
 .library-view { padding: 25px; margin-bottom: 39px; }
 .library-view-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 .library-view-header h2 { margin-bottom: 7px; font-size: 25px; }

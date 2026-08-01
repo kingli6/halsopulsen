@@ -48,16 +48,6 @@ function writePublishedPlans(plans) {
 
 function publicPlanSummary(plan) {
   const program = plan.program || {};
-  const assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
-  const logs = Array.isArray(plan.logs) ? plan.logs : [];
-  const plannedSessions = assignments.length;
-  const completedSessions = logs.length;
-  const skippedSessions = assignments.filter(assignment => assignment.status === 'skipped').length;
-  const lastActivityAt = logs
-    .map(log => log.createdAt || log.date || '')
-    .filter(Boolean)
-    .sort()
-    .at(-1) || '';
   return {
     id: plan.id,
     name: plan.name,
@@ -72,14 +62,7 @@ function publicPlanSummary(plan) {
     progressionNotes: program.progressionNotes || '',
     successMetric: program.successMetric || '',
     publishedAt: plan.publishedAt,
-    sharePath: `/dashboard/share/${plan.shareToken}/`,
-    linkedParticipantCount: plan.personName ? 1 : 0,
-    shareLinkActive: Boolean(plan.shareToken),
-    plannedSessions,
-    completedSessions,
-    skippedSessions,
-    completionRate: plannedSessions ? Math.round((completedSessions / plannedSessions) * 100) : 0,
-    lastActivityAt
+    sharePath: plan.shareToken ? `/dashboard/share/${plan.shareToken}/` : ''
   };
 }
 
@@ -111,7 +94,7 @@ app.post('/api/plans/publish', (req, res) => {
 
   const plans = readPublishedPlans();
   const parentPlan = req.body.parentPlanId
-    ? plans.find(item => item.id === req.body.parentPlanId && item.ownerKeyHash === hashOwnerKey(req.body.ownerKey))
+    ? plans.find(item => item.id === req.body.parentPlanId && !item.deletedAt && item.ownerKeyHash === hashOwnerKey(req.body.ownerKey))
     : null;
   const submittedHistory = Array.isArray(req.body.history) ? req.body.history : [];
   const history = submittedHistory.filter(item => item?.planId !== parentPlan?.id);
@@ -163,14 +146,14 @@ app.get('/api/plans/owner', (req, res) => {
   if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
   const ownerKeyHash = hashOwnerKey(ownerKey);
   const plans = readPublishedPlans()
-    .filter(plan => plan.ownerKeyHash === ownerKeyHash)
+    .filter(plan => !plan.deletedAt && plan.ownerKeyHash === ownerKeyHash)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   res.json({ ok: true, plans: plans.map(publicPlanSummary) });
 });
 
 app.get('/api/plans/owner/:id', (req, res) => {
   const ownerKey = String(req.get('x-owner-key') || req.query.ownerKey || '');
-  const plan = readPublishedPlans().find(item => item.id === req.params.id && item.ownerKeyHash === hashOwnerKey(ownerKey));
+  const plan = readPublishedPlans().find(item => item.id === req.params.id && !item.deletedAt && item.ownerKeyHash === hashOwnerKey(ownerKey));
   if (!plan) return res.status(404).json({ ok: false, error: 'Plan not found.' });
   res.json({
     ok: true,
@@ -183,6 +166,33 @@ app.get('/api/plans/owner/:id', (req, res) => {
       logs: plan.logs,
       history: plan.history
     }
+  });
+});
+
+app.delete('/api/plans/owner/:id', (req, res) => {
+  const ownerKey = String(req.get('x-owner-key') || '');
+  if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
+
+  const plans = readPublishedPlans();
+  const planIndex = plans.findIndex(item =>
+    item.id === req.params.id &&
+    !item.deletedAt &&
+    item.ownerKeyHash === hashOwnerKey(ownerKey)
+  );
+  if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Plan not found.' });
+
+  const deletedAt = new Date().toISOString();
+  plans[planIndex] = {
+    ...plans[planIndex],
+    deletedAt,
+    shareToken: null
+  };
+  writePublishedPlans(plans);
+  res.json({
+    ok: true,
+    id: req.params.id,
+    deletedAt,
+    logsRetained: true
   });
 });
 

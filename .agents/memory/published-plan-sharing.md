@@ -22,15 +22,27 @@ editing.
 **Why:** This prevents a version publish from silently dropping participant
 activity recorded after the owner opened the draft.
 
-The owner library should be the operational overview for published snapshots:
-show which participant record and share link are attached, how many sessions
-are planned, completed, or skipped, and optionally reveal progress without
-changing the immutable program.
+The owner library should stay focused on published snapshots: version, plan
+identity, participant, share-link actions, and safe lifecycle controls. One
+participant uses each published link by design; do not add open-count or
+multi-user analytics.
 
-**Why:** Authoring and operational monitoring are different jobs. Keeping
-progress behind an explicit owner toggle makes access intentional while
-preserving the published plan as a read-only historical record.
+**Why:** The product is for an individual coaching relationship, not a social
+or analytics platform. Extra usage metrics add complexity without helping the
+core planning and logging loop.
 
-**How to apply:** Treat current prototype usage counts as linked participant
-records and logged sessions, not as unique share-link opens or multi-user
-analytics until durable authentication and participant identity exist.
+**How to apply:** Put participant consent for coach visibility on the logging
+page when that access model is built. Keep public progress sharing separate
+and defer it until the private workflow proves useful.
+
+Deleting a published version should revoke its participant link and remove it
+from the active owner library, while retaining its snapshot and logs in
+recoverable storage until a real restore flow exists.
+
+**Why:** A one-week regret timer is hidden state without a recovery surface.
+Soft deletion protects valuable training history now without pretending that
+permanent deletion and restoration are already designed.
+
+**How to apply:** Treat CSV as a human-readable export, not a reliable backup
+format. If import or restart becomes necessary, define a versioned private
+backup format separately.

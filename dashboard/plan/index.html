@@ -56,12 +56,8 @@
       </div>
       <div class="library-toolbar">
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
-        <label class="progress-toggle">
-          <input id="showProgressToggle" type="checkbox" />
-          <span>Show participant progress</span>
-        </label>
       </div>
-      <p class="library-access-note">Progress is visible here because this owner workspace has access to the published records. The current prototype supports one linked participant per published snapshot.</p>
+      <p class="library-access-note">One participant uses each published share link by design. Deleting a version removes it from this library and revokes its link; logged sessions are retained for recovery rather than permanently erased.</p>
       <div class="plan-library" id="planLibrary"></div>
     </section>
 
