@@ -40,3 +40,9 @@ prescriptions.
 
 **Why:** Separating session context from prescribed activities prevents users
 from confusing a day label or warm-up instruction with an individual exercise.
+
+Place the add-activity action at the end of the activity list, directly below
+where the new card appears, and focus the new card after it is created.
+
+**Why:** Users need immediate visual confirmation that an activity was added and
+should not have to search or scroll through a long modal to begin editing it.
