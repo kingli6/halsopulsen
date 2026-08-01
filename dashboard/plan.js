@@ -85,7 +85,7 @@ function renderPlanOverview() {
   setPlanText("publishHeading", changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", changed
     ? (planState.editingCurrentPlanId
-      ? "No participant activity has been recorded yet, so these changes will keep the same version and share link."
+      ? "Existing completed, skipped, or moved records stay unchanged. Future planned assignments will use these updates, with the same version and share link."
       : "Publishing creates one immutable multi-week snapshot and a new share link. Future assignments use the correct week by date.")
     : "The logging page and its share link are already showing this version.");
   const publishButton = document.getElementById("publishBtn");
@@ -93,7 +93,7 @@ function renderPlanOverview() {
     publishButton.textContent = planState.editingCurrentPlanId ? "Save current plan" : "Publish plan";
   }
   setPlanText("detailsModalContext", planState.editingCurrentPlanId
-    ? "These changes will update the current published version because no participant activity has been recorded yet."
+    ? "These changes update the current plan. Existing participant records stay intact; future planned assignments follow the updated program."
     : "These details are part of the version you publish. The live logging page changes only after saving or publishing.");
   const currentLink = document.getElementById("currentShareLink");
   if (currentLink) {
@@ -236,10 +236,6 @@ async function editPublishedPlan(planId) {
 async function editCurrentPlan(planId) {
   const libraryPlan = planState.library.find(plan => plan.id === planId);
   if (!libraryPlan) return;
-  if (libraryPlan.hasParticipantActivity) {
-    showPlanToast("This plan has participant activity. Edit it as a new version to protect the history.");
-    return;
-  }
 
   try {
     const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
@@ -398,14 +394,14 @@ function renderLibrary() {
     return;
   }
   container.innerHTML = planState.library.map(plan => `
-    <article class="library-item ${plan.id === planState.data.publishedPlanId ? "is-current" : ""}">
+    <article class="library-item ${plan.isCurrent ? "is-current" : ""}">
       <div class="library-item-main">
-        <div class="library-item-title"><strong>${escapePlanHtml(plan.name)}</strong><span class="${plan.id === planState.data.publishedPlanId ? "current-tag" : "archived-tag"}">${plan.id === planState.data.publishedPlanId ? "Current" : "Archived"}</span></div>
+        <div class="library-item-title"><strong>${escapePlanHtml(plan.name)}</strong><span class="${plan.isCurrent ? "current-tag" : "archived-tag"}">${plan.isCurrent ? "Current" : "Archived"}</span></div>
         <span>For ${escapePlanHtml(plan.personName || "Participant")} · ${escapePlanHtml(plan.goal || "No goal")} · ${escapePlanHtml(plan.phase || "Foundation")} · Week ${plan.weekNumber || 1} · Version ${plan.version} · ${formatPublishedDate(plan.publishedAt)}</span>
       </div>
       <div class="library-actions">
         <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open</button>
-        ${plan.id === planState.data.publishedPlanId && !plan.hasParticipantActivity
+        ${plan.isCurrent
           ? `<button class="button button-primary button-small" type="button" data-edit-current-plan="${escapePlanHtml(plan.id)}">Edit current plan</button>`
           : `<button class="button button-primary button-small" type="button" data-edit-plan="${escapePlanHtml(plan.id)}">Edit as new version</button>`}
         <button class="button button-secondary button-small" type="button" data-copy-plan="${escapePlanHtml(plan.sharePath)}">Copy link</button>
@@ -786,9 +782,11 @@ async function publishPlan() {
     nextData.publishedAt = "";
   }
   nextData.assignmentPrefix = `v${nextVersion}-assignment`;
-  nextData.assignments = [];
-  nextData.logs = [];
-  TrackerData.ensureAssignments(nextData);
+  if (!updatingCurrent) {
+    nextData.assignments = [];
+    nextData.logs = [];
+    TrackerData.ensureAssignments(nextData);
+  }
   try {
     const response = await fetch(
       updatingCurrent
@@ -815,6 +813,8 @@ async function publishPlan() {
     nextData.publishedSharePath = result.plan.sharePath;
     nextData.publishedAt = result.plan.publishedAt;
     nextData.history = Array.isArray(result.plan.history) ? result.plan.history : nextData.history;
+    nextData.assignments = Array.isArray(result.plan.assignments) ? result.plan.assignments : nextData.assignments;
+    nextData.logs = Array.isArray(result.plan.logs) ? result.plan.logs : nextData.logs;
     nextData.draftSourcePlanId = null;
     nextData.draftSourceVersion = null;
     planState.editingCurrentPlanId = null;
