@@ -1,0 +1,1 @@
+- [Personal coaching direction](personal-coaching-direction.md) — build admin-led individual coaching first; use AI for drafts and approved recommendations.
