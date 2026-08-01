@@ -78,7 +78,16 @@ const TrackerData = (() => {
   }
 
   function emptyDay(weekday) {
-    return { weekday, enabled: false, name: "", description: "", exercises: [] };
+    return {
+      weekday,
+      enabled: false,
+      name: "",
+      description: "",
+      sessionType: "Rest / open day",
+      warmup: "",
+      cooldown: "",
+      exercises: []
+    };
   }
 
   function defaultProgram() {
@@ -86,6 +95,12 @@ const TrackerData = (() => {
       name: "Foundation week",
       description: "A balanced week with clear sessions and room to move them.",
       version: 1,
+      phase: "Foundation",
+      weekNumber: 1,
+      durationWeeks: 4,
+      startDate: todayISO(),
+      progressionNotes: "Build consistency first. Add load or volume only when the current week feels repeatable.",
+      successMetric: "Complete the planned sessions with good technique.",
       days: [
         { weekday: 0, enabled: true, name: "Easy recovery", description: "Keep this relaxed and leave fresh.", exercises: [{ name: "Brisk walk", activityType: "exercise", sets: 1, targetValue: 30, targetUnit: "minutes", restSeconds: 0 }] },
         { weekday: 1, enabled: true, name: "Strength A", description: "Smooth, controlled repetitions.", exercises: [{ name: "Bodyweight squats", activityType: "exercise", sets: 3, targetValue: 12, targetUnit: "reps", restSeconds: 120 }, { name: "Incline push-ups", activityType: "exercise", sets: 3, targetValue: 8, targetUnit: "reps", restSeconds: 90 }] },
@@ -110,6 +125,10 @@ const TrackerData = (() => {
       targetValue: Math.max(0.1, Number(legacyTarget) || 1),
       targetUnit,
       intensity: String(exercise?.intensity || ""),
+      load: Number(exercise?.load) > 0 ? Number(exercise.load) : null,
+      loadUnit: exercise?.loadUnit === "lb" ? "lb" : "kg",
+      tempo: String(exercise?.tempo || ""),
+      notes: String(exercise?.notes || ""),
       reps: Math.max(1, Number(exercise?.reps) || 1),
       restSeconds: Math.max(0, Number(exercise?.restSeconds) || 0),
       unit: targetUnit
@@ -123,6 +142,9 @@ const TrackerData = (() => {
       enabled: workout?.enabled !== false && exercises.length > 0,
       name: String(workout?.name || (exercises[0]?.name || "Workout")),
       description: String(workout?.description || ""),
+      sessionType: String(workout?.sessionType || "Training"),
+      warmup: String(workout?.warmup || ""),
+      cooldown: String(workout?.cooldown || ""),
       exercises
     };
   }
@@ -137,6 +159,12 @@ const TrackerData = (() => {
       name: String(program?.name || "Training plan"),
       description: String(program?.description || ""),
       version: Number(program?.version) || 1,
+      phase: String(program?.phase || "Foundation"),
+      weekNumber: Math.max(1, Number(program?.weekNumber) || 1),
+      durationWeeks: Math.max(1, Number(program?.durationWeeks) || 1),
+      startDate: String(program?.startDate || todayISO()),
+      progressionNotes: String(program?.progressionNotes || ""),
+      successMetric: String(program?.successMetric || ""),
       days
     };
   }
@@ -174,6 +202,11 @@ const TrackerData = (() => {
         publishedPlanId: raw.publishedPlanId || null,
         publishedSharePath: raw.publishedSharePath || "",
         publishedPlans: Array.isArray(raw.publishedPlans) ? raw.publishedPlans : [],
+        history: normalizeHistory(raw.history),
+        draftSourcePlanId: raw.draftSourcePlanId || null,
+        draftSourceVersion: Number(raw.draftSourceVersion) || null,
+        publishedAt: raw.publishedAt || "",
+        assignmentPrefix: String(raw.assignmentPrefix || ""),
         assignments: (raw.assignments || []).map(normalizeAssignment),
         logs: Array.isArray(raw.logs) ? raw.logs : []
       };
@@ -192,6 +225,11 @@ const TrackerData = (() => {
       publishedPlanId: null,
       publishedSharePath: "",
       publishedPlans: [],
+      history: [],
+      draftSourcePlanId: null,
+      draftSourceVersion: null,
+      publishedAt: "",
+      assignmentPrefix: "",
       assignments: (raw?.assignments || []).map(normalizeAssignment),
       logs: Array.isArray(raw?.logs) ? raw.logs : []
     };
@@ -214,6 +252,19 @@ const TrackerData = (() => {
     };
   }
 
+  function normalizeHistory(history) {
+    if (!Array.isArray(history)) return [];
+    return history.map(item => ({
+      planId: String(item?.planId || ""),
+      version: Number(item?.version) || 1,
+      name: String(item?.name || "Previous plan"),
+      publishedAt: String(item?.publishedAt || ""),
+      program: item?.program ? normalizeProgram(item.program) : null,
+      assignments: Array.isArray(item?.assignments) ? item.assignments.map(normalizeAssignment) : [],
+      logs: Array.isArray(item?.logs) ? item.logs : []
+    })).filter(item => item.planId || item.assignments.length || item.logs.length);
+  }
+
   function defaultData() {
     const program = defaultProgram();
     const normalizedProgram = normalizeProgram(program);
@@ -228,6 +279,11 @@ const TrackerData = (() => {
       publishedPlanId: null,
       publishedSharePath: "",
       publishedPlans: [],
+      history: [],
+      draftSourcePlanId: null,
+      draftSourceVersion: null,
+      publishedAt: "",
+      assignmentPrefix: "",
       assignments: [],
       logs: []
     };
@@ -274,6 +330,11 @@ const TrackerData = (() => {
       publishedPlanId: plan?.id || null,
       publishedSharePath: "",
       publishedPlans: [],
+      history: normalizeHistory(plan?.history),
+      draftSourcePlanId: null,
+      draftSourceVersion: Number(plan?.version) || null,
+      publishedAt: plan?.publishedAt || "",
+      assignmentPrefix: `v${Number(plan?.version) || 1}-assignment`,
       assignments: Array.isArray(plan?.assignments) ? plan.assignments.map(normalizeAssignment) : [],
       logs: Array.isArray(plan?.logs) ? plan.logs : []
     };
@@ -283,15 +344,33 @@ const TrackerData = (() => {
     return data.assignments.find(assignment => assignment.date === date) || null;
   }
 
-  function logForAssignment(data, id) {
-    return data.logs.find(log => log.assignmentId === id) || null;
+  function allAssignments(data) {
+    return [
+      ...(Array.isArray(data?.history) ? data.history.flatMap(item => item.assignments || []) : []),
+      ...(data?.assignments || [])
+    ];
   }
 
-  function ensureAssignments(data) {
+  function allLogs(data) {
+    return [
+      ...(Array.isArray(data?.history) ? data.history.flatMap(item => item.logs || []) : []),
+      ...(data?.logs || [])
+    ];
+  }
+
+  function assignmentForId(data, id) {
+    return allAssignments(data).find(assignment => assignment.id === id) || null;
+  }
+
+  function logForAssignment(data, id) {
+    return allLogs(data).find(log => log.assignmentId === id) || null;
+  }
+
+  function ensureAssignments(data, options = {}) {
     const program = data.publishedProgram;
     if (!program) return;
-    const start = addDays(todayISO(), -35);
-    const end = addDays(todayISO(), 56);
+    const start = options.startDate || addDays(todayISO(), -35);
+    const end = options.endDate || addDays(todayISO(), 56);
     const existingDates = new Set(data.assignments.map(assignment => assignment.date));
     for (let index = 0; index <= daysBetween(start, end); index += 1) {
       const date = addDays(start, index);
@@ -299,7 +378,7 @@ const TrackerData = (() => {
       const workout = program.days.find(day => day.weekday === weekday);
       if (!workout?.enabled || !workout.exercises.length || existingDates.has(date)) continue;
       data.assignments.push({
-        id: `assignment-${date}`,
+        id: `${data.assignmentPrefix || "assignment"}-${date}`,
         date,
         recommendedDate: date,
         status: "planned",
@@ -337,6 +416,7 @@ const TrackerData = (() => {
     intensityLabel,
     emptyDay,
     defaultProgram,
+    defaultData,
     normalizeExercise,
     normalizeProgram,
     load,
@@ -344,6 +424,9 @@ const TrackerData = (() => {
     getOwnerKey,
     fromPublishedPlan,
     assignmentForDate,
+    assignmentForId,
+    allAssignments,
+    allLogs,
     logForAssignment,
     ensureAssignments,
     hasDraftChanges

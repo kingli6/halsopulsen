@@ -30,12 +30,13 @@
     <section class="page-intro plan-intro">
       <div>
         <p class="eyebrow">OWNER WORKSPACE</p>
-        <h1>Build the week once. Let the log stay simple.</h1>
-        <p class="intro-copy">Create a separate workout for each training day, review the full week, then publish it for logging. Draft changes stay out of the participant view until you publish.</p>
+        <h1>Plan with intent. Keep every version.</h1>
+        <p class="intro-copy">Browse published programs in the library, or open a separate editor to create a new plan and publish an immutable version for logging.</p>
       </div>
       <div class="intro-actions">
         <span class="local-owner-badge">Local prototype · not access controlled</span>
-        <a class="button button-primary" id="previewLoggingLink" href="/dashboard/">Preview logging page</a>
+        <a class="button button-secondary" id="previewLoggingLink" href="/dashboard/">Preview logging page</a>
+        <a class="button button-primary" id="editorBackLink" href="/dashboard/plan/" hidden>Back to library</a>
       </div>
     </section>
 
@@ -44,12 +45,26 @@
       <div><strong>This is the planning side.</strong><span>In the persistent version, this route should require your admin login. For now it is separated by interface and stored locally in this browser.</span></div>
     </section>
 
+    <section class="library-view card" id="libraryView" aria-labelledby="libraryHeading">
+      <div class="library-view-header">
+        <div>
+          <p class="section-kicker">PUBLISHED PROGRAMS</p>
+          <h2 id="libraryHeading">Plan library</h2>
+          <p>Each published version keeps its own share link and workout record. Editing one creates a new draft; it never rewrites the original.</p>
+        </div>
+        <a class="button button-primary" href="/dashboard/plan/?view=editor" id="createPlanBtn">+ Create new plan</a>
+      </div>
+      <div class="plan-library" id="planLibrary"></div>
+    </section>
+
+    <div id="editorView" data-view="editor" hidden>
     <section class="plan-details-bar card">
       <div>
         <p class="section-kicker">PLAN DETAILS</p>
         <h2 id="draftProgramName">Weekly training plan</h2>
         <p class="plan-person" id="planPerson">For my dashboard</p>
         <p id="draftProgramDescription">Build a plan around the person’s goal.</p>
+        <span class="draft-source" id="draftSourceLabel"></span>
       </div>
       <button class="button button-secondary" id="editDetailsBtn" type="button">Edit plan details</button>
     </section>
@@ -78,17 +93,6 @@
       </div>
     </section>
 
-    <section class="section-block library-block" aria-labelledby="libraryHeading">
-      <div class="section-heading-row">
-        <div>
-          <p class="section-kicker">YOUR PUBLISHED PLANS</p>
-          <h2 id="libraryHeading">Plan library</h2>
-        </div>
-        <span class="library-note">Share links stay attached to each version</span>
-      </div>
-      <div class="plan-library" id="planLibrary"></div>
-    </section>
-
     <section class="section-block published-preview-block" aria-labelledby="publishedPreviewHeading">
       <div class="section-heading-row">
         <div>
@@ -99,6 +103,7 @@
       </div>
       <div class="published-preview" id="publishedPreview"></div>
     </section>
+    </div>
 
     <footer class="dashboard-footer">
       <span>HälsoPulsen owner workspace</span>
@@ -120,7 +125,15 @@
         <label><span>Person</span><input id="personNameInput" maxlength="100" required placeholder="e.g. Alex" /></label>
         <label><span>Goal</span><input id="goalInput" maxlength="120" required /></label>
         <label><span>Plan name</span><input id="programNameInput" maxlength="80" required /></label>
+        <div class="form-grid">
+          <label><span>Phase</span><input id="phaseInput" maxlength="80" placeholder="e.g. Foundation or Build" /></label>
+          <label><span>Week number</span><input id="weekNumberInput" type="number" min="1" max="52" required /></label>
+          <label><span>Program duration (weeks)</span><input id="durationWeeksInput" type="number" min="1" max="104" required /></label>
+          <label><span>Start date</span><input id="startDateInput" type="date" required /></label>
+        </div>
         <label><span>Short description <em>(optional)</em></span><textarea id="programDescriptionInput" rows="3" maxlength="220"></textarea></label>
+        <label><span>Progression guidance <em>(optional)</em></span><textarea id="progressionNotesInput" rows="3" maxlength="500" placeholder="How should load, volume, or intensity progress?"></textarea></label>
+        <label><span>Success metric <em>(optional)</em></span><input id="successMetricInput" maxlength="220" placeholder="What will show that this phase worked?" /></label>
         <div class="modal-actions">
           <button class="button button-secondary" id="cancelDetailsBtn" type="button">Cancel</button>
           <button class="button button-primary" type="submit">Save details</button>
@@ -143,6 +156,9 @@
         <div class="form-grid">
           <label><span>Workout name</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A or Easy run" /></label>
           <label><span>Day note <em>(optional)</em></span><input id="workoutDescriptionInput" maxlength="160" placeholder="e.g. Keep two reps in reserve" /></label>
+          <label><span>Session type</span><select id="sessionTypeInput"><option>Strength</option><option>Run</option><option>Recovery</option><option>Mobility</option><option>Conditioning</option><option>Skill</option><option>Other</option></select></label>
+          <label><span>Warm-up <em>(optional)</em></span><input id="warmupInput" maxlength="220" placeholder="e.g. 5 min easy walk + 2 ramp-up sets" /></label>
+          <label><span>Cool-down <em>(optional)</em></span><input id="cooldownInput" maxlength="220" placeholder="e.g. 5 min easy breathing and mobility" /></label>
         </div>
         <div class="exercise-editor-header">
           <div><span class="form-label">Activities</span><p class="field-help">Add exercises, runs, or other work to this day.</p></div>

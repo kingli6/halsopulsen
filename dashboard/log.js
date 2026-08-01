@@ -81,12 +81,25 @@ function workoutTitle(assignment) {
 function activitySummary(activity) {
   const target = TrackerData.targetLabel(activity);
   const intensity = TrackerData.intensityLabel(activity);
-  if (activity.activityType === "run") return `${target}${intensity}`;
-  return `${activity.sets} × ${target}${intensity}`;
+  const load = activity.load ? ` · ${activity.load} ${activity.loadUnit || "kg"}` : "";
+  const tempo = activity.tempo ? ` · tempo ${activity.tempo}` : "";
+  if (activity.activityType === "run") return `${target}${intensity}${load}${tempo}`;
+  return `${activity.sets} × ${target}${intensity}${load}${tempo}`;
 }
 
 function workoutTarget(workout) {
-  return workout.exercises.map(activity => `${activity.name} · ${activitySummary(activity)}`).join(" · ");
+  return workout.exercises.map(activity => `${activity.name} · ${activitySummary(activity)}${activity.notes ? ` · ${activity.notes}` : ""}`).join(" · ");
+}
+
+function planVersionForAssignment(assignmentId) {
+  if (!logState.data) return "—";
+  if (logState.data.assignments.some(assignment => assignment.id === assignmentId)) {
+    return logState.data.publishedProgram?.version || 1;
+  }
+  const historical = (logState.data.history || []).find(item =>
+    (item.assignments || []).some(assignment => assignment.id === assignmentId)
+  );
+  return historical?.version || "—";
 }
 
 function totalPlanned(workout) {
@@ -115,10 +128,12 @@ function renderGoal() {
   const activeDays = published?.days.filter(day => day.enabled && day.exercises.length) || [];
   setLogText("goalHeading", logState.data.publishedGoal || logState.data.goal);
   setLogText("goalText", published
-    ? `${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Recommended days are a starting point, not a pass/fail test.`
+    ? `${published.phase || "Foundation"} · Week ${published.weekNumber || 1} of ${published.durationWeeks || 1}${published.startDate ? ` · Starts ${TrackerData.formatShortDate(published.startDate)}` : ""}. ${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Recommended days are a starting point, not a pass/fail test.`
     : "The owner has not published a program yet.");
   setLogText("publishedHeading", published?.name || "No program published yet");
-  setLogText("publishedSummary", published?.description || "The owner can create a week with different workouts for different days.");
+  setLogText("publishedSummary", published
+    ? `${published.description || "Published training plan."}${published.progressionNotes ? ` Progression: ${published.progressionNotes}` : ""}${published.successMetric ? ` Success metric: ${published.successMetric}` : ""}`
+    : "The owner can create a week with different workouts for different days.");
   setLogText("publishedVersion", published ? `Version ${published.version} · published plan` : "Waiting for a plan");
   setLogText("publishedStatus", published ? `Published v${published.version}` : "No plan yet");
 }
@@ -152,7 +167,7 @@ function renderToday() {
 
   const preview = document.getElementById("assignmentPreview");
   preview.innerHTML = assignment
-    ? `<div class="assignment-main-chip"><strong>${escapeLogHtml(workoutTitle(assignment))}</strong><span>${escapeLogHtml(workoutTarget(assignment.workout))}</span></div>`
+    ? `<div class="assignment-main-chip"><strong>${escapeLogHtml(workoutTitle(assignment))}</strong><span>${escapeLogHtml(assignment.workout.sessionType || "Training")}${assignment.workout.warmup ? ` · Warm-up: ${escapeLogHtml(assignment.workout.warmup)}` : ""}</span><span>${escapeLogHtml(workoutTarget(assignment.workout))}</span>${assignment.workout.cooldown ? `<span>Cool-down: ${escapeLogHtml(assignment.workout.cooldown)}</span>` : ""}</div>`
     : `<div class="empty-history">Nothing planned here yet.</div>`;
   const logButton = document.getElementById("logAssignmentBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
@@ -209,7 +224,7 @@ function renderStats() {
   const rate = plannedCount ? Math.round((completed / plannedCount) * 100) : 0;
   setLogText("weekCompletion", `${completed}/${plannedCount}`);
   document.getElementById("weekProgressBar").style.width = `${Math.min(100, rate)}%`;
-  const recentLogs = logState.data.logs.filter(log => {
+  const recentLogs = TrackerData.allLogs(logState.data).filter(log => {
     const age = TrackerData.daysBetween(log.date, TrackerData.todayISO());
     return age >= 0 && age <= 13;
   });
@@ -245,20 +260,47 @@ function renderChart() {
 function renderHistory() {
   if (!logState.data) return;
   const list = document.getElementById("historyList");
-  const logs = [...logState.data.logs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  const logs = [...TrackerData.allLogs(logState.data)].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
   if (!logs.length) {
     list.innerHTML = `<div class="empty-history">No sessions logged yet.<br />Your history will appear here.</div>`;
+    renderVersionHistory();
     return;
   }
   list.innerHTML = logs.map(log => {
-    const assignment = logState.data.assignments.find(item => item.id === log.assignmentId);
+    const assignment = TrackerData.assignmentForId(logState.data, log.assignmentId);
     const completed = totalCompleted(log.exercises);
     const planned = log.exercises.reduce((total, activity) => total + activity.sets.reduce((sum, set) => sum + Number(set.planned || 0), 0), 0);
     return `<div class="history-item"><span class="history-check">✓</span><div class="history-details">
       <span class="history-title">${escapeLogHtml(workoutTitle(assignment) || log.workoutName || "Training session")}</span>
-      <span class="history-meta">${TrackerData.formatLongDate(log.date)}${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}</span>
+      <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Version ${planVersionForAssignment(log.assignmentId)}${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}</span>
     </div><span class="history-value">${TrackerData.targetLabel({ targetValue: completed, targetUnit: "reps" })}/${TrackerData.targetLabel({ targetValue: planned, targetUnit: "reps" })}</span></div>`;
   }).join("");
+  renderVersionHistory();
+}
+
+function renderVersionHistory() {
+  const container = document.getElementById("versionHistory");
+  if (!container || !logState.data) return;
+  const versions = [
+    ...(logState.data.publishedProgram ? [{
+      version: logState.data.publishedProgram.version,
+      name: logState.data.publishedProgram.name,
+      publishedAt: logState.data.publishedAt,
+      logs: logState.data.logs || [],
+      current: true
+    }] : []),
+    ...(logState.data.history || []).map(item => ({ ...item, current: false }))
+  ];
+  if (!versions.length) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `<p class="version-history-title">History by plan version</p>${versions.map(version => `
+    <div class="version-history-item">
+      <div><strong>Version ${escapeLogHtml(version.version)} · ${escapeLogHtml(version.name || "Training plan")}</strong><span>${version.current ? "Current plan" : "Archived plan"}${version.publishedAt ? ` · ${escapeLogHtml(TrackerData.formatShortDate(version.publishedAt.slice(0, 10)))}` : ""}</span></div>
+      <b>${(version.logs || []).length} ${(version.logs || []).length === 1 ? "session" : "sessions"}</b>
+    </div>
+  `).join("")}`;
 }
 
 function renderAllLog() {
@@ -364,16 +406,28 @@ function skipAssignment() {
 }
 
 function exportCsv() {
-  const rows = [["date", "recommended_date", "status", "workout", "activity", "set", "planned_target", "completed_target", "unit", "planned_intensity", "actual_intensity", "difficulty", "energy", "note"]];
-  logState.data.assignments.forEach(assignment => {
+  const rows = [["plan_version", "plan_state", "date", "recommended_date", "status", "workout", "session_type", "warmup", "cooldown", "activity", "set", "planned_target", "completed_target", "unit", "planned_intensity", "actual_intensity", "load", "load_unit", "tempo", "activity_notes", "difficulty", "energy", "note"]];
+  TrackerData.allAssignments(logState.data).forEach(assignment => {
     const log = TrackerData.logForAssignment(logState.data, assignment.id);
+    const version = planVersionForAssignment(assignment.id);
+    const state = version === (logState.data.publishedProgram?.version || 1) ? "current" : "archived";
     if (!log) {
       assignment.workout.exercises.forEach(activity => {
-        for (let set = 1; set <= activity.sets; set += 1) rows.push([assignment.date, assignment.recommendedDate, assignment.status, assignment.workout.name, activity.name, set, activity.targetValue, "", activity.targetUnit, activity.intensity, "", "", "", ""]);
+        for (let set = 1; set <= activity.sets; set += 1) rows.push([
+          version, state, assignment.date, assignment.recommendedDate, assignment.status, assignment.workout.name,
+          assignment.workout.sessionType, assignment.workout.warmup, assignment.workout.cooldown,
+          activity.name, set, activity.targetValue, "", activity.targetUnit, activity.intensity, "",
+          activity.load, activity.loadUnit, activity.tempo, activity.notes, "", "", ""
+        ]);
       });
       return;
     }
-    log.exercises.forEach(activity => activity.sets.forEach((set, index) => rows.push([log.date, assignment.recommendedDate, "completed", assignment.workout.name, activity.name, index + 1, set.planned, set.completed, activity.targetUnit, activity.intensity, set.intensity, log.difficulty, log.energy, log.note])));
+    log.exercises.forEach(activity => activity.sets.forEach((set, index) => rows.push([
+      version, state, log.date, assignment.recommendedDate, "completed", assignment.workout.name,
+      assignment.workout.sessionType, assignment.workout.warmup, assignment.workout.cooldown,
+      activity.name, index + 1, set.planned, set.completed, activity.targetUnit, activity.intensity, set.intensity,
+      activity.load, activity.loadUnit, activity.tempo, activity.notes, log.difficulty, log.energy, log.note
+    ])));
   });
   const csv = rows.map(row => row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });

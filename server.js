@@ -47,6 +47,7 @@ function writePublishedPlans(plans) {
 }
 
 function publicPlanSummary(plan) {
+  const program = plan.program || {};
   return {
     id: plan.id,
     name: plan.name,
@@ -54,6 +55,12 @@ function publicPlanSummary(plan) {
     goal: plan.goal,
     description: plan.description,
     version: plan.version,
+    phase: program.phase || 'Foundation',
+    weekNumber: Number(program.weekNumber) || 1,
+    durationWeeks: Number(program.durationWeeks) || 1,
+    startDate: program.startDate || '',
+    progressionNotes: program.progressionNotes || '',
+    successMetric: program.successMetric || '',
     publishedAt: plan.publishedAt,
     sharePath: `/dashboard/share/${plan.shareToken}/`
   };
@@ -79,6 +86,23 @@ app.post('/api/plans/publish', (req, res) => {
   const validationError = validatePlanPayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
 
+  const plans = readPublishedPlans();
+  const parentPlan = req.body.parentPlanId
+    ? plans.find(item => item.id === req.body.parentPlanId && item.ownerKeyHash === hashOwnerKey(req.body.ownerKey))
+    : null;
+  const submittedHistory = Array.isArray(req.body.history) ? req.body.history : [];
+  const history = submittedHistory.filter(item => item?.planId !== parentPlan?.id);
+  if (parentPlan) {
+    history.unshift({
+      planId: parentPlan.id,
+      version: parentPlan.version,
+      name: parentPlan.name,
+      publishedAt: parentPlan.publishedAt,
+      program: parentPlan.program,
+      assignments: Array.isArray(parentPlan.assignments) ? parentPlan.assignments : [],
+      logs: Array.isArray(parentPlan.logs) ? parentPlan.logs : []
+    });
+  }
   const plan = {
     id: crypto.randomUUID(),
     shareToken: crypto.randomBytes(24).toString('base64url'),
@@ -91,9 +115,10 @@ app.post('/api/plans/publish', (req, res) => {
     program: req.body.program,
     assignments: Array.isArray(req.body.assignments) ? req.body.assignments : [],
     logs: Array.isArray(req.body.logs) ? req.body.logs : [],
+    history,
+    parentPlanId: req.body.parentPlanId || null,
     publishedAt: new Date().toISOString()
   };
-  const plans = readPublishedPlans();
   plans.push(plan);
   writePublishedPlans(plans);
   res.status(201).json({
@@ -104,7 +129,8 @@ app.post('/api/plans/publish', (req, res) => {
       personName: plan.personName,
       goal: plan.goal,
       assignments: plan.assignments,
-      logs: plan.logs
+      logs: plan.logs,
+      history: plan.history
     }
   });
 });
@@ -131,7 +157,8 @@ app.get('/api/plans/owner/:id', (req, res) => {
       personName: plan.personName,
       goal: plan.goal,
       assignments: plan.assignments,
-      logs: plan.logs
+      logs: plan.logs,
+      history: plan.history
     }
   });
 });
@@ -151,7 +178,8 @@ app.get('/api/plans/share/:token', (req, res) => {
       publishedAt: plan.publishedAt,
       program: plan.program,
       assignments: plan.assignments,
-      logs: plan.logs
+      logs: plan.logs,
+      history: plan.history
     }
   });
 });
