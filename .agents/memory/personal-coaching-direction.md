@@ -18,3 +18,11 @@ assignments, conditions, and logs as structured records. Keep recommended days
 flexible: users can move unfinished work and the app preserves both the
 recommended and actual dates. Treat publishing as the boundary between the
 owner's draft and the person's live log.
+
+Use three activity prescription formats rather than sport-specific types:
+strength exercise, cardio activity, and guided session. Keep workout structure
+(such as intervals) separate from effort (such as Easy, Hard, or RIR).
+
+**Why:** A run is an activity, intervals are a structure, and intensity is an
+effort target. Separating them makes the editor understandable while still
+covering running, cycling, classes, videos, mobility, and timed strength work.

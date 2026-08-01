@@ -102,47 +102,83 @@ const TrackerData = (() => {
       progressionNotes: "Build consistency first. Add load or volume only when the current week feels repeatable.",
       successMetric: "Complete the planned sessions with good technique.",
       days: [
-        { weekday: 0, enabled: true, name: "Easy recovery", description: "Keep this relaxed and leave fresh.", exercises: [{ name: "Brisk walk", activityType: "exercise", sets: 1, targetValue: 30, targetUnit: "minutes", restSeconds: 0 }] },
-        { weekday: 1, enabled: true, name: "Strength A", description: "Smooth, controlled repetitions.", exercises: [{ name: "Bodyweight squats", activityType: "exercise", sets: 3, targetValue: 12, targetUnit: "reps", restSeconds: 120 }, { name: "Incline push-ups", activityType: "exercise", sets: 3, targetValue: 8, targetUnit: "reps", restSeconds: 90 }] },
+        { weekday: 0, enabled: true, name: "Easy recovery", description: "Keep this relaxed and leave fresh.", sessionType: "Cardio", exercises: [{ name: "Brisk walk", activityType: "cardio", format: "continuous", targetValue: 30, targetUnit: "minutes", intensity: "Easy", goal: "Keep the pace conversational.", restSeconds: 0 }] },
+        { weekday: 1, enabled: true, name: "Strength A", description: "Smooth, controlled repetitions.", sessionType: "Strength", exercises: [{ name: "Bodyweight squats", activityType: "strength", sets: 3, targetValue: 12, targetUnit: "reps", rir: 2, restSeconds: 120 }, { name: "Incline push-ups", activityType: "strength", sets: 3, targetValue: 8, targetUnit: "reps", rir: 2, restSeconds: 90 }] },
         emptyDay(2),
-        { weekday: 3, enabled: true, name: "Mobility", description: "Move through a comfortable range.", exercises: [{ name: "Hip mobility flow", activityType: "exercise", sets: 2, targetValue: 8, targetUnit: "reps", restSeconds: 60 }, { name: "Dead hang", activityType: "exercise", sets: 3, targetValue: 20, targetUnit: "seconds", restSeconds: 90 }] },
+        { weekday: 3, enabled: true, name: "Mobility", description: "Move through a comfortable range.", sessionType: "Mobility / recovery", exercises: [{ name: "Hip mobility flow", activityType: "guided", format: "guided", durationMinutes: 12, targetValue: 12, targetUnit: "minutes", goal: "Move gently through a comfortable range.", restSeconds: 0 }, { name: "Dead hang", activityType: "strength", sets: 3, targetValue: 20, targetUnit: "seconds", restSeconds: 90 }] },
         emptyDay(4),
-        { weekday: 5, enabled: true, name: "Strength B", description: "Keep one or two good repetitions in reserve.", exercises: [{ name: "Reverse lunges", activityType: "exercise", sets: 3, targetValue: 8, targetUnit: "reps", restSeconds: 120 }, { name: "Backpack rows", activityType: "exercise", sets: 3, targetValue: 10, targetUnit: "reps", restSeconds: 90 }] },
+        { weekday: 5, enabled: true, name: "Strength B", description: "Keep one or two good repetitions in reserve.", sessionType: "Strength", exercises: [{ name: "Reverse lunges", activityType: "strength", sets: 3, targetValue: 8, targetUnit: "reps", rir: 2, restSeconds: 120 }, { name: "Backpack rows", activityType: "strength", sets: 3, targetValue: 10, targetUnit: "reps", rir: 2, restSeconds: 90 }] },
         emptyDay(6)
       ]
     };
   }
 
+  function inferActivityType(exercise) {
+    const rawType = String(exercise?.activityType || "").toLowerCase();
+    if (rawType === "run" || rawType === "cardio") return "cardio";
+    if (rawType === "guided") return "guided";
+    if (rawType === "strength") return "strength";
+    const name = String(exercise?.name || "").toLowerCase();
+    if (exercise?.unit === "km" || exercise?.distanceKm != null || /run|walk|jog|bike|cycle|row|swim|hike|ellipt|cardio/.test(name)) return "cardio";
+    if (/mobility|yoga|soma|zumba|dance|stretch|flow|video|class|breath/.test(name)) return "guided";
+    return "strength";
+  }
+
   function normalizeExercise(exercise) {
-    const activityType = exercise?.activityType || (exercise?.unit === "km" || exercise?.distanceKm != null ? "run" : "exercise");
+    const activityType = inferActivityType(exercise);
+    const legacyIntervals = String(exercise?.intensity || "").toLowerCase() === "intervals";
+    const format = String(exercise?.format || (legacyIntervals ? "intervals" : activityType === "guided" ? "guided" : activityType === "cardio" ? "continuous" : "sets"));
     const targetUnit = exercise?.targetUnit
-      || (activityType === "run" ? "km" : exercise?.unit || "reps");
-    const legacyTarget = exercise?.targetValue ?? (targetUnit === "km" ? exercise?.distanceKm : exercise?.reps);
+      || (activityType === "cardio" && !legacyIntervals ? (exercise?.unit || "km") : activityType === "guided" ? "minutes" : "reps");
+    const legacyTarget = exercise?.targetValue
+      ?? (activityType === "guided" ? exercise?.durationMinutes : null)
+      ?? (targetUnit === "km" ? exercise?.distanceKm : exercise?.reps);
+    const durationMinutes = Number(exercise?.durationMinutes ?? (activityType === "guided" || (activityType === "cardio" && targetUnit === "minutes" && !legacyIntervals) ? legacyTarget : 0)) || null;
+    const rounds = Number(exercise?.rounds ?? (format === "intervals" ? legacyTarget : 0)) || null;
     return {
       name: String(exercise?.name || "Exercise"),
       activityType,
-      sets: activityType === "run" ? 1 : Math.max(1, Number(exercise?.sets) || 1),
-      targetValue: Math.max(0.1, Number(legacyTarget) || 1),
-      targetUnit,
-      intensity: String(exercise?.intensity || ""),
+      format,
+      description: String(exercise?.description || ""),
+      goal: String(exercise?.goal || ""),
+      sets: activityType === "strength" ? Math.max(1, Number(exercise?.sets) || 1) : 1,
+      targetValue: Math.max(0.1, Number(format === "intervals" ? rounds : legacyTarget) || 1),
+      targetUnit: format === "intervals" ? "rounds" : targetUnit,
+      durationMinutes,
+      rounds,
+      workDurationSeconds: Number(exercise?.workDurationSeconds) > 0 ? Number(exercise.workDurationSeconds) : null,
+      recoveryDurationSeconds: Number(exercise?.recoveryDurationSeconds) > 0 ? Number(exercise.recoveryDurationSeconds) : null,
+      intensity: legacyIntervals ? "" : String(exercise?.intensity || ""),
+      heartRateTarget: String(exercise?.heartRateTarget || ""),
+      rir: Number.isFinite(Number(exercise?.rir)) && exercise?.rir !== "" ? Math.max(0, Math.min(5, Number(exercise.rir))) : null,
       load: Number(exercise?.load) > 0 ? Number(exercise.load) : null,
       loadUnit: exercise?.loadUnit === "lb" ? "lb" : "kg",
       tempo: String(exercise?.tempo || ""),
       notes: String(exercise?.notes || ""),
+      resourceUrl: String(exercise?.resourceUrl || ""),
       reps: Math.max(1, Number(exercise?.reps) || 1),
       restSeconds: Math.max(0, Number(exercise?.restSeconds) || 0),
-      unit: targetUnit
+      unit: format === "intervals" ? "rounds" : targetUnit
     };
   }
 
   function normalizeWorkout(workout, weekday = 0) {
     const exercises = Array.isArray(workout?.exercises) ? workout.exercises.map(normalizeExercise) : [];
+    const sessionTypeMap = {
+      Run: "Cardio",
+      Recovery: "Mobility / recovery",
+      Mobility: "Mobility / recovery",
+      Conditioning: "Cardio",
+      Skill: "Guided session",
+      Training: "Other"
+    };
+    const rawSessionType = String(workout?.sessionType || "Other");
     return {
       weekday,
       enabled: workout?.enabled !== false && exercises.length > 0,
       name: String(workout?.name || (exercises[0]?.name || "Workout")),
       description: String(workout?.description || ""),
-      sessionType: String(workout?.sessionType || "Training"),
+      sessionType: sessionTypeMap[rawSessionType] || rawSessionType,
       warmup: String(workout?.warmup || ""),
       cooldown: String(workout?.cooldown || ""),
       exercises

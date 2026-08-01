@@ -154,14 +154,14 @@
       <p class="modal-context">This workout belongs only to the selected day. Other days keep their own structure.</p>
       <form id="workoutForm">
         <div class="form-grid">
-          <label><span>Workout name</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A or Easy run" /></label>
+          <label><span>Workout name</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A or Easy cardio" /></label>
           <label><span>Day note <em>(optional)</em></span><input id="workoutDescriptionInput" maxlength="160" placeholder="e.g. Keep two reps in reserve" /></label>
-          <label><span>Session type</span><select id="sessionTypeInput"><option>Strength</option><option>Run</option><option>Recovery</option><option>Mobility</option><option>Conditioning</option><option>Skill</option><option>Other</option></select></label>
+          <label><span>Session focus</span><select id="sessionTypeInput"><option>Strength</option><option>Cardio</option><option>Mobility / recovery</option><option>Guided session</option><option>Mixed</option><option>Other</option></select></label>
           <label><span>Warm-up <em>(optional)</em></span><input id="warmupInput" maxlength="220" placeholder="e.g. 5 min easy walk + 2 ramp-up sets" /></label>
           <label><span>Cool-down <em>(optional)</em></span><input id="cooldownInput" maxlength="220" placeholder="e.g. 5 min easy breathing and mobility" /></label>
         </div>
         <div class="exercise-editor-header">
-          <div><span class="form-label">Activities</span><p class="field-help">Add exercises, runs, or other work to this day.</p></div>
+          <div><span class="form-label">Activities</span><p class="field-help">Choose the format that matches the work. The fields will adapt to it.</p></div>
           <button class="button button-secondary button-small" id="addExerciseBtn" type="button">+ Add activity</button>
         </div>
         <div class="exercise-editor-list" id="exerciseEditorList"></div>
