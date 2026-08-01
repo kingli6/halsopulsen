@@ -74,6 +74,14 @@ function publicPlanSummary(plan) {
   };
 }
 
+function ownerPlanSummaries(plans) {
+  const childPlanIds = new Set(plans.map(plan => plan.parentPlanId).filter(Boolean));
+  return plans.map(plan => ({
+    ...publicPlanSummary(plan),
+    isCurrent: !childPlanIds.has(plan.id)
+  }));
+}
+
 function validatePlanPayload(body) {
   if (!body || typeof body.ownerKey !== 'string' || body.ownerKey.length < 16) {
     return 'A valid owner key is required.';
@@ -91,6 +99,78 @@ function validatePlanPayload(body) {
     return 'The program is too large.';
   }
   return null;
+}
+
+function parseISODate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatISODate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function startOfWeekISO(value) {
+  const date = parseISODate(value) || new Date();
+  date.setDate(date.getDate() - date.getDay());
+  return formatISODate(date);
+}
+
+function addDaysISO(value, amount) {
+  const date = parseISODate(value) || new Date();
+  date.setDate(date.getDate() + amount);
+  return formatISODate(date);
+}
+
+function daysBetweenISO(start, end) {
+  const startDate = parseISODate(start);
+  const endDate = parseISODate(end);
+  return startDate && endDate ? Math.round((endDate - startDate) / 86400000) : 0;
+}
+
+function workoutForProgramDate(program, date) {
+  const weeks = Array.isArray(program?.weeks) && program.weeks.length ? program.weeks : [program];
+  const start = startOfWeekISO(program?.startDate);
+  const weekIndex = Math.max(0, Math.min(weeks.length - 1, Math.floor(daysBetweenISO(start, date) / 7)));
+  const weekday = parseISODate(date).getDay();
+  const week = weeks[weekIndex];
+  const day = Array.isArray(week?.days)
+    ? week.days.find(item => Number(item.weekday) === weekday)
+    : null;
+  return day?.enabled && Array.isArray(day.exercises) && day.exercises.length ? { week, day } : null;
+}
+
+function assignmentsForUpdatedProgram(program, existingAssignments, assignmentPrefix, effectiveDate) {
+  const assignments = Array.isArray(existingAssignments) ? existingAssignments : [];
+  const start = startOfWeekISO(program?.startDate);
+  const end = addDaysISO(start, (Array.isArray(program?.weeks) && program.weeks.length ? program.weeks.length : 1) * 7 - 1);
+  const preserved = assignments.filter(assignment => {
+    const status = assignment?.status || 'planned';
+    return Boolean(assignment?.moved) || status !== 'planned' || String(assignment?.date || '') < effectiveDate;
+  });
+  const occupiedDates = new Set(
+    preserved.flatMap(assignment => [assignment?.date, assignment?.recommendedDate]).filter(Boolean)
+  );
+  const generated = [];
+  const firstDate = effectiveDate > start ? effectiveDate : start;
+  for (let index = 0; index <= daysBetweenISO(firstDate, end); index += 1) {
+    const date = addDaysISO(firstDate, index);
+    if (occupiedDates.has(date)) continue;
+    const scheduled = workoutForProgramDate(program, date);
+    if (!scheduled) continue;
+    generated.push({
+      id: `${assignmentPrefix || 'assignment'}-${date}`,
+      date,
+      recommendedDate: date,
+      status: 'planned',
+      moved: false,
+      weekNumber: Number(scheduled.week?.weekNumber) || 1,
+      workout: scheduled.day
+    });
+  }
+  return [...preserved, ...generated].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 }
 
 // ── Published personal training plans ─────────────────────────────
@@ -156,7 +236,7 @@ app.get('/api/plans/owner', (req, res) => {
   const plans = readPublishedPlans()
     .filter(plan => !plan.deletedAt && plan.ownerKeyHash === ownerKeyHash)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-  res.json({ ok: true, plans: plans.map(publicPlanSummary) });
+  res.json({ ok: true, plans: ownerPlanSummaries(plans) });
 });
 
 app.get('/api/plans/owner/:id', (req, res) => {
@@ -191,19 +271,16 @@ app.put('/api/plans/owner/:id', (req, res) => {
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Plan not found.' });
 
   const plan = plans[planIndex];
-  const assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
-  const logs = Array.isArray(plan.logs) ? plan.logs : [];
-  const hasParticipantActivity = logs.length > 0 || assignments.some(assignment =>
-    assignment?.moved || (assignment?.status && assignment.status !== 'planned')
-  );
-  if (hasParticipantActivity) {
-    return res.status(409).json({
-      ok: false,
-      error: 'This plan already has participant activity. Publish a new version to protect its history.'
-    });
-  }
-
   const program = { ...req.body.program, version: plan.version };
+  const effectiveDate = parseISODate(req.body.effectiveDate)
+    ? String(req.body.effectiveDate)
+    : formatISODate(new Date());
+  const assignments = assignmentsForUpdatedProgram(
+    program,
+    plan.assignments,
+    `v${plan.version}-assignment`,
+    effectiveDate
+  );
   plans[planIndex] = {
     ...plan,
     name: String(program.name || plan.name).slice(0, 100),
@@ -211,8 +288,9 @@ app.put('/api/plans/owner/:id', (req, res) => {
     goal: String(req.body.goal || '').slice(0, 160),
     description: String(program.description || '').slice(0, 300),
     program,
-    assignments: Array.isArray(req.body.assignments) ? req.body.assignments : [],
-    logs: []
+    assignments,
+    logs: Array.isArray(plan.logs) ? plan.logs : [],
+    updatedAt: new Date().toISOString()
   };
   writePublishedPlans(plans);
 

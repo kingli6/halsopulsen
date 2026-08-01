@@ -3,18 +3,22 @@ name: Published plan sharing
 description: The durable boundary and security limitations for personal plan links.
 ---
 
-Published plans should be immutable snapshots once participant activity exists.
-Before the first log or moved/skipped assignment, the owner may update the
-current published version in place and keep its share token; after activity,
-edits must create a new server-stored version.
+Published plans keep their version and share token while ongoing edits update
+the current program. Completed, skipped, moved, and logged records stay
+unchanged; future planned assignments are rebuilt from the updated program.
+Creating a new version remains available for intentional branching or for
+archived snapshots.
 
-**Why:** Early plan corrections should not create needless versions, but after
-activity the published program must remain an accurate record of what happened.
+**Why:** A coach needs to correct or extend an active plan without forcing a
+new version for every small adjustment, while the participant's past activity
+must remain accurate.
 
-**How to apply:** Expose “Edit current plan” only while the server reports no
-participant activity. Otherwise expose “Edit as new version.” Keep the
-participant route read-only for program structure, persist logs against the
-snapshot, and replace the browser-held owner key before production use.
+**How to apply:** Expose “Edit current plan” for the current library item and
+“Edit as new version” for archived items. On current-plan save, let the server
+preserve non-planned activity and regenerate only future planned assignments.
+Keep the participant route read-only for program structure, persist logs
+against the snapshot, and replace the browser-held owner key before production
+use.
 
 When creating a new version from an older plan, the server must re-read the
 parent snapshot and make its assignments and logs authoritative. The editor's
