@@ -26,3 +26,9 @@ strength exercise, cardio activity, and guided session. Keep workout structure
 **Why:** A run is an activity, intervals are a structure, and intensity is an
 effort target. Separating them makes the editor understandable while still
 covering running, cycling, classes, videos, mobility, and timed strength work.
+
+Strength tempo uses four numbers in the order eccentric/lowering, bottom pause,
+concentric/lifting, and top pause; `3-1-1-0` is the canonical example.
+
+**Why:** The four-part notation removes ambiguity about pauses and keeps tempo
+distinct from rest between sets.

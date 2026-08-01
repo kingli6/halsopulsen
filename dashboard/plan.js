@@ -385,7 +385,7 @@ function updateActivityRow(row, activity = readActivityRow(row)) {
       <label>Load<input data-field="load" type="number" min="0" step="0.5" value="${activity.load ?? ""}" placeholder="Optional" /></label>
       <label>Load unit<select data-field="loadUnit">${selectOptions([["kg", "kg"], ["lb", "lb"]], activity.loadUnit || "kg")}</select></label>
       <label>${infoLabel("Rest", "The planned rest between sets.")}<input data-field="restSeconds" type="number" min="0" max="3600" value="${activity.restSeconds || 0}" placeholder="Seconds" /></label>
-      <label>Tempo<input data-field="tempo" maxlength="20" value="${escapePlanHtml(activity.tempo || "")}" placeholder="e.g. 3-1-1" /></label>
+      <label>${infoLabel("Tempo", "Use four numbers in this order: eccentric/lowering time, pause at the bottom, concentric/lifting time, pause at the top. Example: 3-1-1-0 means lower for 3 seconds, pause for 1, lift for 1, then pause for 0. Tempo controls each repetition; rest is the recovery between sets.")}<input data-field="tempo" maxlength="20" value="${escapePlanHtml(activity.tempo || "")}" placeholder="e.g. 3-1-1-0" /></label>
       <label class="full-field">${infoLabel("Notes", "Coaching cues, setup instructions, range of motion, or substitutions.")}<textarea data-field="notes" maxlength="500" rows="2" placeholder="e.g. Keep ribs down and move smoothly.">${escapePlanHtml(activity.notes || "")}</textarea></label>
       ${resource}
     `;
