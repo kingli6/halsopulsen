@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 const ws = require('ws');
@@ -16,9 +18,157 @@ const supabase = SUPABASE_READY
 const OPENAI_READY = !!process.env.OPENAI_API_KEY;
 const openai = OPENAI_READY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'halsopulsen2026';
+const PLAN_STORAGE_DIR = path.join(__dirname, 'storage');
+const PLAN_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'published-plans.json');
 
 if (!SUPABASE_READY) console.warn('⚠  SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY not set — challenge features disabled.');
 if (!OPENAI_READY)  console.warn('⚠  OPENAI_API_KEY not set — AI commentary disabled.');
+
+function hashOwnerKey(ownerKey) {
+  return crypto.createHash('sha256').update(String(ownerKey || '')).digest('hex');
+}
+
+function readPublishedPlans() {
+  try {
+    if (!fs.existsSync(PLAN_STORAGE_PATH)) return [];
+    const value = JSON.parse(fs.readFileSync(PLAN_STORAGE_PATH, 'utf8'));
+    return Array.isArray(value) ? value : [];
+  } catch (error) {
+    console.error('Could not read published plans:', error.message);
+    return [];
+  }
+}
+
+function writePublishedPlans(plans) {
+  fs.mkdirSync(PLAN_STORAGE_DIR, { recursive: true });
+  const temporaryPath = `${PLAN_STORAGE_PATH}.tmp`;
+  fs.writeFileSync(temporaryPath, JSON.stringify(plans, null, 2));
+  fs.renameSync(temporaryPath, PLAN_STORAGE_PATH);
+}
+
+function publicPlanSummary(plan) {
+  return {
+    id: plan.id,
+    name: plan.name,
+    personName: plan.personName || 'Participant',
+    goal: plan.goal,
+    description: plan.description,
+    version: plan.version,
+    publishedAt: plan.publishedAt,
+    sharePath: `/dashboard/share/${plan.shareToken}/`
+  };
+}
+
+function validatePlanPayload(body) {
+  if (!body || typeof body.ownerKey !== 'string' || body.ownerKey.length < 16) {
+    return 'A valid owner key is required.';
+  }
+  if (!body.program || !Array.isArray(body.program.days) || body.program.days.length !== 7) {
+    return 'A complete seven-day program is required.';
+  }
+  if (JSON.stringify(body.program).length > 150000) {
+    return 'The program is too large.';
+  }
+  return null;
+}
+
+// ── Published personal training plans ─────────────────────────────
+// This is deliberately small prototype storage. The owner key is a
+// browser-held bearer key until proper authentication is added.
+app.post('/api/plans/publish', (req, res) => {
+  const validationError = validatePlanPayload(req.body);
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+
+  const plan = {
+    id: crypto.randomUUID(),
+    shareToken: crypto.randomBytes(24).toString('base64url'),
+    ownerKeyHash: hashOwnerKey(req.body.ownerKey),
+    name: String(req.body.program.name || 'Training plan').slice(0, 100),
+    personName: String(req.body.personName || 'Participant').slice(0, 100),
+    goal: String(req.body.goal || '').slice(0, 160),
+    description: String(req.body.program.description || '').slice(0, 300),
+    version: Number(req.body.program.version) || 1,
+    program: req.body.program,
+    assignments: Array.isArray(req.body.assignments) ? req.body.assignments : [],
+    logs: Array.isArray(req.body.logs) ? req.body.logs : [],
+    publishedAt: new Date().toISOString()
+  };
+  const plans = readPublishedPlans();
+  plans.push(plan);
+  writePublishedPlans(plans);
+  res.status(201).json({
+    ok: true,
+    plan: {
+      ...publicPlanSummary(plan),
+      program: plan.program,
+      personName: plan.personName,
+      goal: plan.goal,
+      assignments: plan.assignments,
+      logs: plan.logs
+    }
+  });
+});
+
+app.get('/api/plans/owner', (req, res) => {
+  const ownerKey = String(req.get('x-owner-key') || req.query.ownerKey || '');
+  if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
+  const ownerKeyHash = hashOwnerKey(ownerKey);
+  const plans = readPublishedPlans()
+    .filter(plan => plan.ownerKeyHash === ownerKeyHash)
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  res.json({ ok: true, plans: plans.map(publicPlanSummary) });
+});
+
+app.get('/api/plans/owner/:id', (req, res) => {
+  const ownerKey = String(req.get('x-owner-key') || req.query.ownerKey || '');
+  const plan = readPublishedPlans().find(item => item.id === req.params.id && item.ownerKeyHash === hashOwnerKey(ownerKey));
+  if (!plan) return res.status(404).json({ ok: false, error: 'Plan not found.' });
+  res.json({
+    ok: true,
+    plan: {
+      ...publicPlanSummary(plan),
+      program: plan.program,
+      personName: plan.personName,
+      goal: plan.goal,
+      assignments: plan.assignments,
+      logs: plan.logs
+    }
+  });
+});
+
+app.get('/api/plans/share/:token', (req, res) => {
+  const plan = readPublishedPlans().find(item => item.shareToken === req.params.token);
+  if (!plan) return res.status(404).json({ ok: false, error: 'Shared plan not found.' });
+  res.json({
+    ok: true,
+    plan: {
+      id: plan.id,
+      name: plan.name,
+      personName: plan.personName || 'Participant',
+      goal: plan.goal,
+      description: plan.description,
+      version: plan.version,
+      publishedAt: plan.publishedAt,
+      program: plan.program,
+      assignments: plan.assignments,
+      logs: plan.logs
+    }
+  });
+});
+
+app.put('/api/plans/share/:token/state', (req, res) => {
+  const plans = readPublishedPlans();
+  const planIndex = plans.findIndex(item => item.shareToken === req.params.token);
+  if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Shared plan not found.' });
+  const { assignments, logs } = req.body || {};
+  if (!Array.isArray(assignments) || !Array.isArray(logs) || JSON.stringify({ assignments, logs }).length > 250000) {
+    return res.status(400).json({ ok: false, error: 'Invalid plan state.' });
+  }
+  plans[planIndex].assignments = assignments;
+  plans[planIndex].logs = logs;
+  writePublishedPlans(plans);
+  res.json({ ok: true });
+});
 
 // ── Admin: verify password ───────────────────────────────────────
 app.post('/api/admin/verify', (req, res) => {
@@ -148,6 +298,10 @@ Write an exciting, entertaining Week ${weekNumber} sports commentary (2–3 shor
 // ── SPA fallback: challenge/* → challenge/index.html ─────────────
 app.get('/challenge', (req, res) => {
   res.sendFile(path.join(__dirname, 'challenge', 'index.html'));
+});
+
+app.get(['/dashboard/share/:token', '/dashboard/share/:token/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'index.html'));
 });
 
 app.listen(5000, '0.0.0.0', () => {

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="A private training log for following a published weekly plan." />
   <title>Log training — HälsoPulsen</title>
-  <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="portal.css" />
+  <link rel="stylesheet" href="/dashboard/portal.css" />
 </head>
 <body>
   <header class="topbar">
@@ -20,7 +20,7 @@
       </a>
       <nav class="topnav" aria-label="Main navigation">
         <a class="topnav-link active" href="/dashboard/">Log training</a>
-        <a class="topnav-link owner-link" href="/dashboard/plan/">Plan program</a>
+        <a class="topnav-link owner-link" data-owner-only href="/dashboard/plan/">Plan program</a>
         <a class="topnav-link" href="/">Main site</a>
         <a class="topnav-link legacy-link" href="/challenge/">Group challenge</a>
       </nav>
@@ -36,7 +36,7 @@
       </div>
       <div class="intro-actions">
         <button class="button button-secondary" id="exportBtn" type="button">Export CSV <span aria-hidden="true">↓</span></button>
-        <a class="button button-primary" href="/dashboard/plan/">Open plan workspace</a>
+        <a class="button button-primary" data-owner-only href="/dashboard/plan/">Open plan workspace</a>
       </div>
     </section>
 
@@ -79,7 +79,7 @@
         <h2 id="insightHeading">The log is your record.</h2>
         <p id="insightText">The plan stays separate from the work you record. If the plan needs changing, use the owner planning workspace.</p>
         <div class="insight-rule"></div>
-        <p class="insight-footnote">Your data is stored in this browser in this first prototype.</p>
+        <p class="insight-footnote" id="storageNote">Your data is stored in this browser in this first prototype.</p>
       </aside>
     </section>
 
@@ -145,7 +145,7 @@
         <h2 id="publishedHeading">No program published yet</h2>
         <p id="publishedSummary">The owner can create a week with different workouts for different days.</p>
       </div>
-      <div class="published-meta">
+      <div class="published-meta" data-owner-only>
         <span id="publishedVersion">Waiting for a plan</span>
         <a class="button button-secondary" href="/dashboard/plan/">View plan workspace</a>
       </div>
@@ -200,7 +200,7 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="data.js"></script>
-  <script src="log.js"></script>
+  <script src="/dashboard/data.js"></script>
+  <script src="/dashboard/log.js"></script>
 </body>
 </html>

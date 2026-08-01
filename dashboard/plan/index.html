@@ -35,7 +35,7 @@
       </div>
       <div class="intro-actions">
         <span class="local-owner-badge">Local prototype · not access controlled</span>
-        <a class="button button-primary" href="/dashboard/">Preview logging page</a>
+        <a class="button button-primary" id="previewLoggingLink" href="/dashboard/">Preview logging page</a>
       </div>
     </section>
 
@@ -44,18 +44,14 @@
       <div><strong>This is the planning side.</strong><span>In the persistent version, this route should require your admin login. For now it is separated by interface and stored locally in this browser.</span></div>
     </section>
 
-    <section class="plan-overview card">
-      <div class="plan-overview-main">
-        <p class="section-kicker">DRAFT PROGRAM</p>
+    <section class="plan-details-bar card">
+      <div>
+        <p class="section-kicker">PLAN DETAILS</p>
         <h2 id="draftProgramName">Weekly training plan</h2>
+        <p class="plan-person" id="planPerson">For my dashboard</p>
         <p id="draftProgramDescription">Build a plan around the person’s goal.</p>
       </div>
-      <div class="plan-overview-fields">
-        <label><span>Goal</span><input id="goalInput" maxlength="120" /></label>
-        <label><span>Program name</span><input id="programNameInput" maxlength="80" /></label>
-        <label class="full-field"><span>Short description <em>(optional)</em></span><textarea id="programDescriptionInput" rows="2" maxlength="220"></textarea></label>
-        <button class="button button-secondary" id="saveDetailsBtn" type="button">Save program details</button>
-      </div>
+      <button class="button button-secondary" id="editDetailsBtn" type="button">Edit plan details</button>
     </section>
 
     <section class="section-block" aria-labelledby="weekBuilderHeading">
@@ -77,8 +73,20 @@
       </div>
       <div class="publish-actions">
         <span class="published-detail" id="publishedDetail">No published version yet</span>
+        <a class="share-link-button" id="currentShareLink" href="#" target="_blank" rel="noopener" hidden>Open current share link ↗</a>
         <button class="button button-primary" id="publishBtn" type="button">Publish plan</button>
       </div>
+    </section>
+
+    <section class="section-block library-block" aria-labelledby="libraryHeading">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">YOUR PUBLISHED PLANS</p>
+          <h2 id="libraryHeading">Plan library</h2>
+        </div>
+        <span class="library-note">Share links stay attached to each version</span>
+      </div>
+      <div class="plan-library" id="planLibrary"></div>
     </section>
 
     <section class="section-block published-preview-block" aria-labelledby="publishedPreviewHeading">
@@ -98,6 +106,29 @@
     </footer>
   </main>
 
+  <div class="modal-backdrop" id="detailsModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="section-kicker">PLAN DETAILS</p>
+          <h2 id="detailsModalTitle">Name this plan</h2>
+        </div>
+        <button class="modal-close" id="closeDetailsModal" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="modal-context">These details are part of the next version you publish. The live logging page changes only after publishing.</p>
+      <form id="detailsForm">
+        <label><span>Person</span><input id="personNameInput" maxlength="100" required placeholder="e.g. Alex" /></label>
+        <label><span>Goal</span><input id="goalInput" maxlength="120" required /></label>
+        <label><span>Plan name</span><input id="programNameInput" maxlength="80" required /></label>
+        <label><span>Short description <em>(optional)</em></span><textarea id="programDescriptionInput" rows="3" maxlength="220"></textarea></label>
+        <div class="modal-actions">
+          <button class="button button-secondary" id="cancelDetailsBtn" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Save details</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="workoutModal" hidden>
     <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="workoutModalTitle">
       <div class="modal-header">
@@ -110,12 +141,12 @@
       <p class="modal-context">This workout belongs only to the selected day. Other days keep their own structure.</p>
       <form id="workoutForm">
         <div class="form-grid">
-          <label><span>Workout name</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A" /></label>
+          <label><span>Workout name</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A or Easy run" /></label>
           <label><span>Day note <em>(optional)</em></span><input id="workoutDescriptionInput" maxlength="160" placeholder="e.g. Keep two reps in reserve" /></label>
         </div>
         <div class="exercise-editor-header">
-          <div><span class="form-label">Exercises</span><p class="field-help">Set the target for every exercise in this day’s workout.</p></div>
-          <button class="button button-secondary button-small" id="addExerciseBtn" type="button">+ Add exercise</button>
+          <div><span class="form-label">Activities</span><p class="field-help">Add exercises, runs, or other work to this day.</p></div>
+          <button class="button button-secondary button-small" id="addExerciseBtn" type="button">+ Add activity</button>
         </div>
         <div class="exercise-editor-list" id="exerciseEditorList"></div>
         <div class="modal-actions">

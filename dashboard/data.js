@@ -1,7 +1,9 @@
 const TrackerData = (() => {
   const STORAGE_KEY = "halsopulsen.personal-tracker.v2";
   const LEGACY_STORAGE_KEY = "halsopulsen.personal-tracker.v1";
+  const OWNER_KEY_STORAGE_KEY = "halsopulsen.owner-key.v1";
   const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   function clone(value) {
@@ -61,6 +63,20 @@ const TrackerData = (() => {
     return `${seconds} sec`;
   }
 
+  function formatNumber(value) {
+    return Number.isInteger(Number(value)) ? String(Number(value)) : Number(value).toFixed(1).replace(/\.0$/, "");
+  }
+
+  function targetLabel(exercise) {
+    const value = formatNumber(exercise?.targetValue ?? exercise?.reps ?? 0);
+    const unit = exercise?.targetUnit || exercise?.unit || "reps";
+    return `${value} ${unit}`;
+  }
+
+  function intensityLabel(exercise) {
+    return exercise?.intensity ? ` · ${exercise.intensity}` : "";
+  }
+
   function emptyDay(weekday) {
     return { weekday, enabled: false, name: "", description: "", exercises: [] };
   }
@@ -71,24 +87,32 @@ const TrackerData = (() => {
       description: "A balanced week with clear sessions and room to move them.",
       version: 1,
       days: [
-        { weekday: 0, enabled: true, name: "Easy recovery", description: "Keep this relaxed and leave fresh.", exercises: [{ name: "Brisk walk", sets: 1, reps: 30, restSeconds: 0, unit: "minutes" }] },
-        { weekday: 1, enabled: true, name: "Strength A", description: "Smooth, controlled repetitions.", exercises: [{ name: "Bodyweight squats", sets: 3, reps: 12, restSeconds: 120 }, { name: "Incline push-ups", sets: 3, reps: 8, restSeconds: 90 }] },
+        { weekday: 0, enabled: true, name: "Easy recovery", description: "Keep this relaxed and leave fresh.", exercises: [{ name: "Brisk walk", activityType: "exercise", sets: 1, targetValue: 30, targetUnit: "minutes", restSeconds: 0 }] },
+        { weekday: 1, enabled: true, name: "Strength A", description: "Smooth, controlled repetitions.", exercises: [{ name: "Bodyweight squats", activityType: "exercise", sets: 3, targetValue: 12, targetUnit: "reps", restSeconds: 120 }, { name: "Incline push-ups", activityType: "exercise", sets: 3, targetValue: 8, targetUnit: "reps", restSeconds: 90 }] },
         emptyDay(2),
-        { weekday: 3, enabled: true, name: "Mobility", description: "Move through a comfortable range.", exercises: [{ name: "Hip mobility flow", sets: 2, reps: 8, restSeconds: 60 }, { name: "Dead hang", sets: 3, reps: 20, restSeconds: 90, unit: "seconds" }] },
+        { weekday: 3, enabled: true, name: "Mobility", description: "Move through a comfortable range.", exercises: [{ name: "Hip mobility flow", activityType: "exercise", sets: 2, targetValue: 8, targetUnit: "reps", restSeconds: 60 }, { name: "Dead hang", activityType: "exercise", sets: 3, targetValue: 20, targetUnit: "seconds", restSeconds: 90 }] },
         emptyDay(4),
-        { weekday: 5, enabled: true, name: "Strength B", description: "Keep one or two good repetitions in reserve.", exercises: [{ name: "Reverse lunges", sets: 3, reps: 8, restSeconds: 120 }, { name: "Backpack rows", sets: 3, reps: 10, restSeconds: 90 }] },
+        { weekday: 5, enabled: true, name: "Strength B", description: "Keep one or two good repetitions in reserve.", exercises: [{ name: "Reverse lunges", activityType: "exercise", sets: 3, targetValue: 8, targetUnit: "reps", restSeconds: 120 }, { name: "Backpack rows", activityType: "exercise", sets: 3, targetValue: 10, targetUnit: "reps", restSeconds: 90 }] },
         emptyDay(6)
       ]
     };
   }
 
   function normalizeExercise(exercise) {
+    const activityType = exercise?.activityType || (exercise?.unit === "km" || exercise?.distanceKm != null ? "run" : "exercise");
+    const targetUnit = exercise?.targetUnit
+      || (activityType === "run" ? "km" : exercise?.unit || "reps");
+    const legacyTarget = exercise?.targetValue ?? (targetUnit === "km" ? exercise?.distanceKm : exercise?.reps);
     return {
       name: String(exercise?.name || "Exercise"),
-      sets: Math.max(1, Number(exercise?.sets) || 1),
+      activityType,
+      sets: activityType === "run" ? 1 : Math.max(1, Number(exercise?.sets) || 1),
+      targetValue: Math.max(0.1, Number(legacyTarget) || 1),
+      targetUnit,
+      intensity: String(exercise?.intensity || ""),
       reps: Math.max(1, Number(exercise?.reps) || 1),
       restSeconds: Math.max(0, Number(exercise?.restSeconds) || 0),
-      unit: exercise?.unit === "minutes" || exercise?.unit === "seconds" ? exercise.unit : "reps"
+      unit: targetUnit
     };
   }
 
@@ -147,6 +171,9 @@ const TrackerData = (() => {
         publishedGoal: String(raw.publishedGoal || raw.goal || draftGoal),
         draftProgram,
         publishedProgram: raw.publishedProgram ? normalizeProgram(raw.publishedProgram) : clone(draftProgram),
+        publishedPlanId: raw.publishedPlanId || null,
+        publishedSharePath: raw.publishedSharePath || "",
+        publishedPlans: Array.isArray(raw.publishedPlans) ? raw.publishedPlans : [],
         assignments: (raw.assignments || []).map(normalizeAssignment),
         logs: Array.isArray(raw.logs) ? raw.logs : []
       };
@@ -162,6 +189,9 @@ const TrackerData = (() => {
       publishedGoal: goal,
       draftProgram,
       publishedProgram: clone(draftProgram),
+      publishedPlanId: null,
+      publishedSharePath: "",
+      publishedPlans: [],
       assignments: (raw?.assignments || []).map(normalizeAssignment),
       logs: Array.isArray(raw?.logs) ? raw.logs : []
     };
@@ -186,23 +216,29 @@ const TrackerData = (() => {
 
   function defaultData() {
     const program = defaultProgram();
+    const normalizedProgram = normalizeProgram(program);
     return {
       schemaVersion: 2,
       person: { name: "My dashboard" },
       goal: "Build a consistent training habit",
       draftGoal: "Build a consistent training habit",
       publishedGoal: "Build a consistent training habit",
-      draftProgram: clone(program),
-      publishedProgram: clone(program),
+      draftProgram: clone(normalizedProgram),
+      publishedProgram: clone(normalizedProgram),
+      publishedPlanId: null,
+      publishedSharePath: "",
+      publishedPlans: [],
       assignments: [],
       logs: []
     };
   }
 
-  function load() {
+  function load(storageKey = STORAGE_KEY) {
     try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        || JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+      const stored = JSON.parse(localStorage.getItem(storageKey))
+        || (storageKey === STORAGE_KEY
+          ? JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY))
+          : null);
       return stored ? migrate(stored) : defaultData();
     } catch (error) {
       console.warn("Could not load tracker data", error);
@@ -210,8 +246,37 @@ const TrackerData = (() => {
     }
   }
 
-  function save(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  function save(data, storageKey = STORAGE_KEY) {
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  }
+
+  function getOwnerKey() {
+    let ownerKey = localStorage.getItem(OWNER_KEY_STORAGE_KEY);
+    if (!ownerKey) {
+      ownerKey = window.crypto?.randomUUID?.()
+        || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(OWNER_KEY_STORAGE_KEY, ownerKey);
+    }
+    return ownerKey;
+  }
+
+  function fromPublishedPlan(plan) {
+    const program = normalizeProgram(plan?.program);
+    const goal = String(plan?.goal || "Build a consistent training habit");
+    return {
+      schemaVersion: 2,
+      person: { name: String(plan?.personName || "Shared plan") },
+      goal,
+      draftGoal: goal,
+      publishedGoal: goal,
+      draftProgram: clone(program),
+      publishedProgram: clone(program),
+      publishedPlanId: plan?.id || null,
+      publishedSharePath: "",
+      publishedPlans: [],
+      assignments: Array.isArray(plan?.assignments) ? plan.assignments.map(normalizeAssignment) : [],
+      logs: Array.isArray(plan?.logs) ? plan.logs : []
+    };
   }
 
   function assignmentForDate(data, date) {
@@ -247,14 +312,16 @@ const TrackerData = (() => {
   }
 
   function hasDraftChanges(data) {
-    if (!data.publishedProgram) return true;
+    if (!data.publishedProgram || !data.publishedPlanId) return true;
     return data.draftGoal !== data.publishedGoal
       || JSON.stringify(data.draftProgram) !== JSON.stringify(data.publishedProgram);
   }
 
   return {
     STORAGE_KEY,
+    OWNER_KEY_STORAGE_KEY,
     DAY_NAMES,
+    WEEKDAYS,
     clone,
     todayISO,
     toISO,
@@ -266,12 +333,16 @@ const TrackerData = (() => {
     formatShortDate,
     formatDateRange,
     formatRest,
+    targetLabel,
+    intensityLabel,
     emptyDay,
     defaultProgram,
     normalizeExercise,
     normalizeProgram,
     load,
     save,
+    getOwnerKey,
+    fromPublishedPlan,
     assignmentForDate,
     logForAssignment,
     ensureAssignments,
