@@ -6,6 +6,7 @@ const planState = {
   selectedWeekIndex: 0,
   toastTimer: null,
   publishing: false,
+  showProgress: false,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
 
@@ -55,6 +56,24 @@ function workoutSummary(workout) {
 function formatPublishedDate(value) {
   if (!value) return "Date not available";
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function formatProgressDate(value) {
+  if (!value) return "No sessions yet";
+  const date = String(value).slice(0, 10);
+  return formatPublishedDate(date);
+}
+
+function renderLibrarySummary() {
+  const summary = document.getElementById("librarySummary");
+  if (!summary) return;
+  const linkedRecords = planState.library.reduce((total, plan) => total + (Number(plan.linkedParticipantCount) || 0), 0);
+  const sessions = planState.library.reduce((total, plan) => total + (Number(plan.completedSessions) || 0), 0);
+  summary.innerHTML = `
+    <span><strong>${planState.library.length}</strong> published ${planState.library.length === 1 ? "snapshot" : "snapshots"}</span>
+    <span><strong>${linkedRecords}</strong> linked ${linkedRecords === 1 ? "participant record" : "participant records"}</span>
+    <span><strong>${sessions}</strong> logged ${sessions === 1 ? "session" : "sessions"}</span>
+  `;
 }
 
 function renderPlanOverview() {
@@ -294,6 +313,7 @@ function renderPublishedPreview() {
 
 function renderLibrary() {
   const container = document.getElementById("planLibrary");
+  renderLibrarySummary();
   if (!planState.library.length) {
     container.innerHTML = `<div class="empty-panel">Your published versions will appear here after you publish the first program.</div>`;
     return;
@@ -303,6 +323,18 @@ function renderLibrary() {
       <div class="library-item-main">
         <div class="library-item-title"><strong>${escapePlanHtml(plan.name)}</strong><span class="${plan.id === planState.data.publishedPlanId ? "current-tag" : "archived-tag"}">${plan.id === planState.data.publishedPlanId ? "Current" : "Archived"}</span></div>
         <span>For ${escapePlanHtml(plan.personName || "Participant")} · ${escapePlanHtml(plan.goal || "No goal")} · ${escapePlanHtml(plan.phase || "Foundation")} · Week ${plan.weekNumber || 1} · Version ${plan.version} · ${formatPublishedDate(plan.publishedAt)}</span>
+        <div class="library-usage">
+          <span>${plan.linkedParticipantCount || 0} linked ${plan.linkedParticipantCount === 1 ? "participant" : "participants"}</span>
+          <span>${plan.shareLinkActive ? "Share link active" : "No share link"}</span>
+          <span>${plan.completedSessions || 0}/${plan.plannedSessions || 0} sessions logged</span>
+        </div>
+        ${planState.showProgress ? `
+          <div class="library-progress" aria-label="Participant progress">
+            <div class="library-progress-heading"><strong>Participant progress</strong><span>${plan.completedSessions || 0}/${plan.plannedSessions || 0} completed · ${plan.completionRate || 0}%</span></div>
+            <div class="library-progress-track"><span style="width:${Math.min(100, Math.max(0, Number(plan.completionRate) || 0))}%"></span></div>
+            <div class="library-progress-meta"><span>${plan.skippedSessions || 0} skipped</span><span>Last activity: ${formatProgressDate(plan.lastActivityAt)}</span></div>
+          </div>
+        ` : ""}
       </div>
       <div class="library-actions">
         <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open</button>
@@ -750,6 +782,10 @@ function bindPlanEvents() {
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);
   document.getElementById("cancelDetailsBtn").addEventListener("click", closeDetailsModal);
   document.getElementById("publishBtn").addEventListener("click", publishPlan);
+  document.getElementById("showProgressToggle").addEventListener("change", event => {
+    planState.showProgress = event.target.checked;
+    renderLibrary();
+  });
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
     if (tab) selectDraftWeek(tab.dataset.weekIndex);
