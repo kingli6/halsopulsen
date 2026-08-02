@@ -84,11 +84,56 @@
         <div class="week-tabs" id="weekTabs" role="tablist" aria-label="Program weeks"></div>
         <div class="week-actions">
           <button class="button button-secondary button-small" id="duplicateWeekBtn" type="button">Duplicate current week</button>
+          <button class="button button-secondary button-small" id="saveWeekTemplateBtn" type="button">Save week to library</button>
+          <label class="template-inline-picker"><span class="sr-only">Saved weeks</span><select id="weekTemplateSelect" aria-label="Saved weeks"><option value="">Use saved week…</option></select></label>
+          <button class="button button-secondary button-small" id="loadWeekTemplateBtn" type="button">Load week</button>
           <button class="button button-primary button-small" id="addWeekBtn" type="button">+ Add blank week</button>
           <button class="button button-danger button-small" id="removeWeekBtn" type="button">Remove current week</button>
         </div>
       </div>
       <div class="builder-grid" id="builderGrid"></div>
+    </section>
+
+    <section class="section-block template-library-panel card" id="templateLibraryPanel" aria-labelledby="templateLibraryHeading">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">REUSABLE LIBRARY</p>
+          <h2 id="templateLibraryHeading">Save it once. Use it again.</h2>
+          <p class="template-library-intro">Keep favourite activities, complete day workouts, and proven weeks ready for another plan. Library items are saved separately from this draft.</p>
+        </div>
+        <span class="draft-status is-current" id="templateLibrarySummary">0 saved items</span>
+      </div>
+      <div class="template-library-grid">
+        <article class="template-library-box">
+          <p class="section-kicker">ACTIVITIES</p>
+          <h3>Exercises and sessions</h3>
+          <p>Save sets, reps, load, distance, duration, and coaching notes from any activity.</p>
+          <div class="template-use-row">
+            <select id="activityTemplateLibrarySelect" aria-label="Saved activity"></select>
+            <select id="activityTemplateTargetWeekday" aria-label="Day to paste activity into"></select>
+            <button class="button button-secondary button-small" id="useActivityTemplateBtn" type="button">Paste activity</button>
+          </div>
+          <div class="template-list" id="activityTemplateList"></div>
+        </article>
+        <article class="template-library-box">
+          <p class="section-kicker">DAY WORKOUTS</p>
+          <h3>Complete sessions</h3>
+          <p>Reuse a whole day with its title, warm-up, cool-down, activities, and prescriptions.</p>
+          <div class="template-use-row">
+            <select id="workoutTemplateLibrarySelect" aria-label="Saved day workout"></select>
+            <select id="workoutTemplateTargetWeekday" aria-label="Day to paste workout into"></select>
+            <button class="button button-secondary button-small" id="useWorkoutTemplateBtn" type="button">Paste day</button>
+          </div>
+          <div class="template-list" id="workoutTemplateList"></div>
+        </article>
+        <article class="template-library-box">
+          <p class="section-kicker">WEEKS</p>
+          <h3>Repeatable schedules</h3>
+          <p>Save all seven days, including open days and weekly guidance, for a future program.</p>
+          <div class="template-list" id="weekTemplateList"></div>
+          <p class="template-library-hint">Use the saved-week selector above to replace the current week.</p>
+        </article>
+      </div>
     </section>
 
     <section class="publish-panel card">
@@ -190,6 +235,7 @@
          </section>
         <div class="modal-actions">
           <button class="button button-secondary" id="cancelWorkoutBtn" type="button">Cancel</button>
+           <button class="button button-secondary" id="saveDayTemplateBtn" type="button">Save day to library</button>
           <button class="button button-primary" type="submit">Save day workout</button>
         </div>
       </form>

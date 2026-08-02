@@ -246,3 +246,40 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
   .add-activity-footer { align-items: flex-start; flex-direction: column; }
   .add-activity-footer .button { width: 100%; }
 }
+
+.template-library-panel { padding: 24px 25px; margin-bottom: 49px; }
+.template-library-intro { max-width: 680px; margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.template-library-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.template-library-box { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 13px; background: #fbfdfb; }
+.template-library-box h3 { margin: 2px 0 5px; font-size: 17px; }
+.template-library-box > p:not(.section-kicker):not(.template-library-hint) { min-height: 48px; margin-bottom: 14px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.template-use-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; margin-bottom: 13px; }
+.template-use-row select, .template-inline-picker select { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font-size: 11px; }
+.template-use-row select:nth-child(2) { grid-column: 1; }
+.template-use-row button { grid-column: 2; grid-row: 1 / span 2; }
+.template-inline-picker { display: inline-flex; align-items: center; }
+.template-inline-picker select { max-width: 170px; }
+.template-list { display: flex; flex-direction: column; gap: 7px; }
+.template-list-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 9px; border: 1px solid #e8f0e9; border-radius: 8px; background: #fff; }
+.template-list-item > div { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.template-list-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.template-list-item span, .template-empty, .template-library-hint { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.4; }
+.template-list-item .text-button { flex-shrink: 0; font-size: 10px; }
+.template-library-hint { margin-top: 13px; }
+.activity-editor-head { grid-template-columns: minmax(0, 1.5fr) minmax(190px, .8fr) auto 32px; }
+.activity-save-template { padding: 0 4px; margin-bottom: 7px; font-size: 10px; white-space: nowrap; }
+@media (max-width: 980px) {
+  .template-library-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .template-library-panel { padding: 19px; }
+  .template-use-row { grid-template-columns: 1fr; }
+  .template-use-row select:nth-child(2), .template-use-row button { grid-column: auto; grid-row: auto; }
+  .template-use-row button { width: 100%; }
+  .template-inline-picker { width: 100%; }
+  .template-inline-picker select { max-width: none; width: 100%; }
+  .activity-editor-head { grid-template-columns: 1fr 1fr; }
+  .activity-editor-head .activity-name { grid-column: 1 / -1; }
+  .activity-editor-head .activity-save-template { grid-column: 1; justify-self: start; margin: 0; }
+  .activity-editor-head .remove-exercise { grid-column: 2; justify-self: end; }
+}
