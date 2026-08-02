@@ -173,6 +173,187 @@ function assignmentsForUpdatedProgram(program, existingAssignments, assignmentPr
   return [...preserved, ...generated].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
 }
 
+function demoExercise(name, activityType, targetValue, targetUnit, options = {}) {
+  return {
+    name,
+    activityType,
+    format: activityType === 'strength' ? 'sets' : 'continuous',
+    sets: Number(options.sets) || 1,
+    targetValue,
+    targetUnit,
+    load: options.load || '',
+    loadUnit: options.loadUnit || 'kg',
+    intensity: options.intensity || '',
+    goal: options.goal || '',
+    description: options.description || '',
+    notes: options.notes || '',
+    restSeconds: Number(options.restSeconds) || 0
+  };
+}
+
+function demoDay(weekday, name, sessionType, exercises, options = {}) {
+  return {
+    weekday,
+    enabled: Boolean(name),
+    name: name || '',
+    description: options.description || '',
+    sessionType: sessionType || 'Rest / open day',
+    warmup: options.warmup || '',
+    cooldown: options.cooldown || '',
+    exercises: exercises || []
+  };
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function jerryDemoPlan(ownerKey) {
+  const weekSpecs = [
+    {
+      phase: 'Base build',
+      progressionNotes: 'Keep two reps in reserve and leave the gym feeling ready to return.',
+      successMetric: 'Complete three focused sessions without rushing the final set.',
+      load: 42.5,
+      runMinutes: 28
+    },
+    {
+      phase: 'Base build',
+      progressionNotes: 'Add one small amount of load where the final set stayed controlled.',
+      successMetric: 'Complete the planned work and finish with steady energy.',
+      load: 45,
+      runMinutes: 30
+    },
+    {
+      phase: 'Build',
+      progressionNotes: 'Keep the same rhythm; progress only if technique stays consistent.',
+      successMetric: 'Keep the Wednesday effort conversational and complete Friday strong.',
+      load: 47.5,
+      runMinutes: 32
+    },
+    {
+      phase: 'Build',
+      progressionNotes: 'Consolidate the work before the next training block.',
+      successMetric: 'Finish the week feeling more capable, not depleted.',
+      load: 50,
+      runMinutes: 35
+    }
+  ];
+  const weeks = weekSpecs.map((spec, index) => ({
+    weekNumber: index + 1,
+    phase: spec.phase,
+    progressionNotes: spec.progressionNotes,
+    successMetric: spec.successMetric,
+    days: [
+      demoDay(0, '', 'Rest / open day', []),
+      demoDay(1, 'Full-body strength', 'Strength', [
+        demoExercise('Goblet squat', 'strength', 8, 'reps', { sets: 3, load: spec.load, goal: 'Smooth, controlled reps', restSeconds: 90 }),
+        demoExercise('Dumbbell row', 'strength', 10, 'reps', { sets: 3, load: 16, restSeconds: 75 }),
+        demoExercise('Dead bug', 'strength', 8, 'reps / side', { sets: 2, restSeconds: 45 })
+      ], { warmup: '5 min easy bike + hip mobility', cooldown: '2 min easy breathing' }),
+      demoDay(2, '', 'Rest / open day', []),
+      demoDay(3, 'Easy run', 'Cardio', [
+        demoExercise('Easy run', 'cardio', spec.runMinutes, 'minutes', { intensity: 'Conversational', goal: 'Finish with steady breathing' })
+      ], { warmup: '5 min walk', cooldown: '3 min walk' }),
+      demoDay(4, '', 'Rest / open day', []),
+      demoDay(5, 'Strength and carry', 'Strength', [
+        demoExercise('Romanian deadlift', 'strength', 8, 'reps', { sets: 3, load: spec.load + 7.5, restSeconds: 100 }),
+        demoExercise('Incline push-up', 'strength', 10, 'reps', { sets: 3, restSeconds: 60 }),
+        demoExercise('Suitcase carry', 'strength', 30, 'seconds / side', { sets: 2, load: 18, restSeconds: 45 })
+      ], { warmup: '5 min brisk walk + shoulder circles', cooldown: 'Calf and chest stretch' }),
+      demoDay(6, 'Mobility reset', 'Guided', [
+        demoExercise('Mobility flow', 'guided', 18, 'minutes', { intensity: 'Easy', goal: 'Leave feeling looser' })
+      ], { warmup: 'Quiet space and a mat', cooldown: 'One minute of relaxed breathing' })
+    ]
+  }));
+  const program = {
+    name: 'Jerry · Consistent base',
+    description: 'A four-week foundation block built around strength, easy running, and recovery.',
+    version: 1,
+    phase: weeks[0].phase,
+    weekNumber: 1,
+    durationWeeks: weeks.length,
+    startDate: '2026-07-13',
+    progressionNotes: weeks[0].progressionNotes,
+    successMetric: weeks[0].successMetric,
+    weeks
+  };
+  const assignments = [];
+  const start = '2026-07-13';
+  const end = addDaysISO(start, weeks.length * 7 - 1);
+  for (let index = 0; index <= daysBetweenISO(start, end); index += 1) {
+    const date = addDaysISO(start, index);
+    const scheduled = workoutForProgramDate(program, date);
+    if (!scheduled) continue;
+    assignments.push({
+      id: `v1-assignment-${date}`,
+      date,
+      recommendedDate: date,
+      status: 'planned',
+      moved: false,
+      weekNumber: Number(scheduled.week.weekNumber) || 1,
+      workout: cloneJson(scheduled.day)
+    });
+  }
+  const completedDates = new Map([
+    ['2026-07-13', { difficulty: 6, energy: 7, note: 'Good first session. Kept everything controlled.' }],
+    ['2026-07-15', { difficulty: 5, energy: 8, note: 'Easy pace as planned; breathing stayed relaxed.' }],
+    ['2026-07-17', { difficulty: 7, energy: 6, note: 'Last set was challenging but technique stayed solid.' }],
+    ['2026-07-19', { sourceDate: '2026-07-18', difficulty: 4, energy: 7, note: 'Moved one day to make room for the weekend. Felt restorative.' }],
+    ['2026-07-20', { difficulty: 7, energy: 7, note: 'Added a little load and still had room in reserve.' }],
+    ['2026-07-22', { difficulty: 6, energy: 6, note: 'Steady run. The final five minutes felt smoother.' }],
+    ['2026-07-24', { difficulty: 8, energy: 5, note: 'Busy week, but completed the key work. Took longer rests.' }],
+    ['2026-07-26', { sourceDate: '2026-07-25', difficulty: 5, energy: 8, note: 'Short mobility reset after a long day. Helped a lot.' }],
+    ['2026-07-27', { difficulty: 7, energy: 7, note: 'Good return after the weekend. Reps felt more confident.' }],
+    ['2026-07-29', { difficulty: 6, energy: 7, note: 'Comfortable conversational pace from start to finish.' }]
+  ]);
+  const logs = [];
+  for (const [date, details] of completedDates) {
+    const assignment = assignments.find(item => item.recommendedDate === (details.sourceDate || date));
+    if (!assignment) continue;
+    assignment.date = date;
+    assignment.status = 'completed';
+    assignment.moved = assignment.recommendedDate !== date;
+    const exercises = assignment.workout.exercises.map((activity, activityIndex) => ({
+      ...cloneJson(activity),
+      sets: Array.from({ length: Number(activity.sets) || 1 }, (_, setIndex) => ({
+        planned: activity.targetValue,
+        completed: activity.targetValue,
+        intensity: activity.intensity || (activityIndex === 0 && setIndex === 0 ? 'Steady' : '')
+      }))
+    }));
+    logs.push({
+      id: `log-jerry-${date}`,
+      assignmentId: assignment.id,
+      workoutName: assignment.workout.name,
+      date,
+      exercises,
+      difficulty: String(details.difficulty),
+      energy: String(details.energy),
+      note: details.note,
+      createdAt: `${date}T18:30:00.000Z`
+    });
+  }
+  assignments.sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    id: crypto.randomUUID(),
+    shareToken: crypto.randomBytes(24).toString('base64url'),
+    ownerKeyHash: hashOwnerKey(ownerKey),
+    name: program.name,
+    personName: 'Jerry',
+    goal: 'Build a consistent training rhythm',
+    description: program.description,
+    version: 1,
+    program,
+    assignments,
+    logs,
+    history: [],
+    parentPlanId: null,
+    demoKey: 'jerry',
+    publishedAt: new Date().toISOString()
+  };
+}
+
 // ── Published personal training plans ─────────────────────────────
 // This is deliberately small prototype storage. The owner key is a
 // browser-held bearer key until proper authentication is added.
@@ -217,6 +398,48 @@ app.post('/api/plans/publish', (req, res) => {
   writePublishedPlans(plans);
   res.status(201).json({
     ok: true,
+    plan: {
+      ...publicPlanSummary(plan),
+      program: plan.program,
+      personName: plan.personName,
+      goal: plan.goal,
+      assignments: plan.assignments,
+      logs: plan.logs,
+      history: plan.history
+    }
+  });
+});
+
+app.post('/api/plans/demo/jerry', (req, res) => {
+  const ownerKey = String(req.get('x-owner-key') || '');
+  if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
+  const plans = readPublishedPlans();
+  const existing = plans.find(item =>
+    !item.deletedAt &&
+    item.ownerKeyHash === hashOwnerKey(ownerKey) &&
+    item.demoKey === 'jerry'
+  );
+  if (existing) {
+    return res.json({
+      ok: true,
+      created: false,
+      plan: {
+        ...publicPlanSummary(existing),
+        program: existing.program,
+        personName: existing.personName,
+        goal: existing.goal,
+        assignments: existing.assignments,
+        logs: existing.logs,
+        history: existing.history
+      }
+    });
+  }
+  const plan = jerryDemoPlan(ownerKey);
+  plans.push(plan);
+  writePublishedPlans(plans);
+  res.status(201).json({
+    ok: true,
+    created: true,
     plan: {
       ...publicPlanSummary(plan),
       program: plan.program,
