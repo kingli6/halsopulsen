@@ -27,13 +27,11 @@ function escapeLogHtml(value) {
   }[character]));
 }
 
-function safeResourceUrl(value) {
-  try {
-    const url = new URL(String(value || ""), window.location.origin);
-    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
-  } catch {
-    return "";
-  }
+function exerciseVideoSearchUrl(activity) {
+  const name = String(activity?.name || "").trim();
+  if (!name) return "";
+  const query = `how to do ${name} exercise proper form`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
 function showLogToast(message) {
@@ -438,7 +436,7 @@ function renderPlannedLogFields(assignment) {
   document.getElementById("logActivityFields").innerHTML = "";
   document.getElementById("logExerciseFields").innerHTML = assignment.workout.exercises.map((activity, activityIndex) => `
     <div class="log-exercise">
-      <div class="log-exercise-heading"><div><h3>${escapeLogHtml(activity.name)}</h3><span>${escapeLogHtml(activitySummary(activity))}</span></div>${safeResourceUrl(activity.resourceUrl) ? `<a class="resource-link" href="${escapeLogHtml(safeResourceUrl(activity.resourceUrl))}" target="_blank" rel="noopener">Open resource ↗</a>` : ""}</div>
+      <div class="log-exercise-heading"><div><h3>${escapeLogHtml(activity.name)}</h3><span>${escapeLogHtml(activitySummary(activity))}</span></div>${exerciseVideoSearchUrl(activity) ? `<a class="resource-link" href="${escapeLogHtml(exerciseVideoSearchUrl(activity))}" target="_blank" rel="noopener" aria-label="Find a video demo for ${escapeLogHtml(activity.name)}">Find a video demo ↗</a>` : ""}</div>
       ${activity.goal ? `<p class="log-activity-goal"><strong>Goal:</strong> ${escapeLogHtml(activity.goal)}</p>` : ""}
       ${activity.description ? `<p class="log-activity-goal">${escapeLogHtml(activity.description)}</p>` : ""}
       ${Array.from({ length: activity.sets }, (_, setIndex) => `<div class="set-row">
