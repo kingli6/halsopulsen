@@ -133,6 +133,7 @@ app.use(express.static(path.join(__dirname)));
 
 const PLAN_STORAGE_DIR = path.join(__dirname, 'storage');
 const PLAN_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'published-plans.json');
+const TEMPLATE_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'template-library.json');
 
 if (!process.env.ADMIN_PASSWORD) console.warn('⚠  ADMIN_PASSWORD not set — admin sign-in disabled until configured.');
 
@@ -160,6 +161,89 @@ function writePublishedPlans(plans) {
   fs.writeFileSync(temporaryPath, JSON.stringify(plans, null, 2));
   fs.renameSync(temporaryPath, PLAN_STORAGE_PATH);
 }
+
+function readTemplates() {
+  try {
+    if (!fs.existsSync(TEMPLATE_STORAGE_PATH)) return [];
+    const value = JSON.parse(fs.readFileSync(TEMPLATE_STORAGE_PATH, 'utf8'));
+    return Array.isArray(value) ? value.filter(template => !template.deletedAt) : [];
+  } catch (error) {
+    console.error('Could not read template library:', error.message);
+    return [];
+  }
+}
+
+function writeTemplates(templates) {
+  fs.mkdirSync(PLAN_STORAGE_DIR, { recursive: true });
+  const temporaryPath = `${TEMPLATE_STORAGE_PATH}.tmp`;
+  fs.writeFileSync(temporaryPath, JSON.stringify(templates, null, 2));
+  fs.renameSync(temporaryPath, TEMPLATE_STORAGE_PATH);
+}
+
+function publicTemplate(template) {
+  return {
+    id: template.id,
+    type: template.type,
+    name: template.name,
+    data: template.data,
+    createdAt: template.createdAt,
+    updatedAt: template.updatedAt || template.createdAt
+  };
+}
+
+function validateTemplatePayload(body) {
+  const type = String(body?.type || '');
+  const allowedTypes = new Set(['activity', 'workout', 'week']);
+  if (!allowedTypes.has(type)) return 'Choose an activity, day workout, or week template.';
+  if (!body?.data || typeof body.data !== 'object' || Array.isArray(body.data)) {
+    return 'A template snapshot is required.';
+  }
+  if (JSON.stringify(body.data).length > 120000) return 'That template is too large.';
+  if (type === 'activity' && !String(body.data.name || '').trim()) return 'An activity needs a name.';
+  if (type === 'workout' && (!String(body.data.name || '').trim() || !Array.isArray(body.data.exercises) || !body.data.exercises.length)) {
+    return 'A workout needs a name and at least one activity.';
+  }
+  if (type === 'week' && (!Array.isArray(body.data.days) || body.data.days.length !== 7)) {
+    return 'A week template must contain seven days.';
+  }
+  return null;
+}
+
+app.get('/api/templates', (req, res) => {
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  const templates = readTemplates()
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  res.json({ ok: true, templates: templates.map(publicTemplate) });
+});
+
+app.post('/api/templates', (req, res) => {
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  const validationError = validateTemplatePayload(req.body);
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+
+  const now = new Date().toISOString();
+  const template = {
+    id: crypto.randomUUID(),
+    type: String(req.body.type),
+    name: String(req.body.name || req.body.data.name || 'Untitled template').trim().slice(0, 100),
+    data: cloneJson(req.body.data),
+    createdAt: now,
+    updatedAt: now
+  };
+  const templates = readTemplates();
+  templates.push(template);
+  writeTemplates(templates);
+  res.status(201).json({ ok: true, template: publicTemplate(template) });
+});
+
+app.delete('/api/templates/:id', (req, res) => {
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  const templates = readTemplates();
+  const template = templates.find(item => item.id === req.params.id);
+  if (!template) return res.status(404).json({ ok: false, error: 'Template not found.' });
+  writeTemplates(templates.filter(item => item.id !== req.params.id));
+  res.json({ ok: true, id: req.params.id });
+});
 
 function publicPlanSummary(plan) {
   const program = plan.program || {};

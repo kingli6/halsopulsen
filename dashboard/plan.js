@@ -1,6 +1,7 @@
 const planState = {
   data: TrackerData.load(),
   library: [],
+  templates: [],
   selectedWeekday: null,
   selectedWeekIndex: 0,
   toastTimer: null,
@@ -26,6 +27,66 @@ function showPlanToast(message) {
   toast.classList.add("visible");
   clearTimeout(planState.toastTimer);
   planState.toastTimer = setTimeout(() => toast.classList.remove("visible"), 3200);
+}
+
+function templateTypeLabel(type) {
+  return type === "activity" ? "Activity" : type === "workout" ? "Day workout" : "Week";
+}
+
+function templateDataSummary(template) {
+  if (template.type === "activity") return activitySummary(template.data);
+  if (template.type === "workout") return `${template.data.exercises?.length || 0} activities · ${template.data.sessionType || "Workout"}`;
+  const activeDays = (template.data.days || []).filter(day => day.enabled && day.exercises?.length).length;
+  return `${activeDays} training ${activeDays === 1 ? "day" : "days"} · 7-day schedule`;
+}
+
+function templateSelectOptions(type, emptyLabel) {
+  const items = planState.templates.filter(template => template.type === type);
+  return [`<option value="">${emptyLabel}</option>`, ...items.map(template =>
+    `<option value="${escapePlanHtml(template.id)}">${escapePlanHtml(template.name)}</option>`
+  )].join("");
+}
+
+function weekdaySelectOptions() {
+  return TrackerData.WEEKDAYS.map(weekday =>
+    `<option value="${weekday}">${TrackerData.DAY_NAMES[weekday]}</option>`
+  ).join("");
+}
+
+function renderTemplateLibrary() {
+  const templates = planState.templates;
+  const summary = document.getElementById("templateLibrarySummary");
+  if (summary) summary.textContent = `${templates.length} saved ${templates.length === 1 ? "item" : "items"}`;
+
+  const activitySelect = document.getElementById("activityTemplateLibrarySelect");
+  const workoutSelect = document.getElementById("workoutTemplateLibrarySelect");
+  const weekSelect = document.getElementById("weekTemplateSelect");
+  if (activitySelect) activitySelect.innerHTML = templateSelectOptions("activity", "Choose saved activity…");
+  if (workoutSelect) workoutSelect.innerHTML = templateSelectOptions("workout", "Choose saved day…");
+  if (weekSelect) weekSelect.innerHTML = templateSelectOptions("week", "Use saved week…");
+
+  for (const id of ["activityTemplateTargetWeekday", "workoutTemplateTargetWeekday"]) {
+    const select = document.getElementById(id);
+    if (select && !select.options.length) select.innerHTML = weekdaySelectOptions();
+  }
+
+  const renderList = (type, id, emptyMessage) => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    const items = templates.filter(template => template.type === type);
+    container.innerHTML = items.length ? items.map(template => `
+      <div class="template-list-item">
+        <div>
+          <strong>${escapePlanHtml(template.name)}</strong>
+          <span>${escapePlanHtml(templateDataSummary(template))}</span>
+        </div>
+        <button class="text-button danger-button" type="button" data-delete-template="${escapePlanHtml(template.id)}" aria-label="Delete ${escapePlanHtml(template.name)}">Delete</button>
+      </div>
+    `).join("") : `<p class="template-empty">${emptyMessage}</p>`;
+  };
+  renderList("activity", "activityTemplateList", "Saved activities will appear here.");
+  renderList("workout", "workoutTemplateList", "Saved day workouts will appear here.");
+  renderList("week", "weekTemplateList", "Saved weeks will appear here.");
 }
 
 function activitySummary(activity) {
@@ -172,6 +233,146 @@ function duplicateCurrentWeek() {
   planState.selectedWeekIndex = program.weeks.length - 1;
   TrackerData.save(planState.data);
   showPlanToast(`Week ${copy.weekNumber} duplicated. Adjust its workouts as needed.`);
+  renderAllPlan();
+}
+
+function templateById(id) {
+  return planState.templates.find(template => template.id === id) || null;
+}
+
+function askTemplateName(defaultName) {
+  const value = window.prompt("Name this reusable template:", defaultName || "");
+  if (value == null) return null;
+  const name = value.trim();
+  if (!name) {
+    showPlanToast("Give the template a name first.");
+    return null;
+  }
+  return name;
+}
+
+async function saveTemplate(type, name, data) {
+  try {
+    const response = await fetch("/api/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, name, data })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not save that template.");
+    planState.templates = [result.template, ...planState.templates];
+    renderTemplateLibrary();
+    showPlanToast(`${templateTypeLabel(type)} saved to your library.`);
+    return result.template;
+  } catch (error) {
+    showPlanToast(error.message || "Could not save that template.");
+    return null;
+  }
+}
+
+async function deleteTemplate(templateId) {
+  const template = templateById(templateId);
+  if (!template) return;
+  if (!window.confirm(`Delete "${template.name}" from the reusable library?`)) return;
+  try {
+    const response = await fetch(`/api/templates/${encodeURIComponent(templateId)}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not delete that template.");
+    planState.templates = planState.templates.filter(item => item.id !== templateId);
+    renderTemplateLibrary();
+    showPlanToast("Template removed from the library.");
+  } catch (error) {
+    showPlanToast(error.message || "Could not delete that template.");
+  }
+}
+
+function saveWeekTemplate() {
+  const week = currentDraftWeek();
+  if (!week) return;
+  const name = askTemplateName(`Week ${week.weekNumber} · ${week.phase || "Foundation"}`);
+  if (!name) return;
+  saveTemplate("week", name, TrackerData.clone(week));
+}
+
+function saveDayTemplate(weekday) {
+  const week = currentDraftWeek();
+  const day = week?.days.find(item => item.weekday === weekday);
+  if (!day?.enabled || !day.exercises?.length) {
+    showPlanToast("Add a workout to this day before saving it.");
+    return;
+  }
+  const name = askTemplateName(day.name);
+  if (name) saveTemplate("workout", name, TrackerData.clone(day));
+}
+
+function workoutForTargetWeekday(weekday) {
+  const week = currentDraftWeek();
+  if (!week) return null;
+  return week.days.find(item => Number(item.weekday) === Number(weekday))
+    || TrackerData.emptyDay(Number(weekday));
+}
+
+function useActivityTemplate() {
+  const template = templateById(document.getElementById("activityTemplateLibrarySelect")?.value);
+  const weekday = Number(document.getElementById("activityTemplateTargetWeekday")?.value);
+  if (!template) {
+    showPlanToast("Choose a saved activity first.");
+    return;
+  }
+  const week = currentDraftWeek();
+  const target = workoutForTargetWeekday(weekday);
+  if (!week || !target) return;
+  const activity = TrackerData.normalizeExercise(TrackerData.clone(template.data));
+  target.exercises = [...(target.exercises || []), activity];
+  target.enabled = true;
+  target.weekday = weekday;
+  if (!target.name || target.name === "Workout") target.name = activity.name;
+  week.days[weekday] = target;
+  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
+  TrackerData.save(planState.data);
+  showPlanToast(`"${template.name}" added to ${TrackerData.DAY_NAMES[weekday]}.`);
+  renderAllPlan();
+}
+
+function useWorkoutTemplate() {
+  const template = templateById(document.getElementById("workoutTemplateLibrarySelect")?.value);
+  const weekday = Number(document.getElementById("workoutTemplateTargetWeekday")?.value);
+  if (!template) {
+    showPlanToast("Choose a saved day workout first.");
+    return;
+  }
+  const week = currentDraftWeek();
+  const target = workoutForTargetWeekday(weekday);
+  if (!week || !target) return;
+  const hasExisting = target.enabled && target.exercises?.length;
+  if (hasExisting && !window.confirm(`Replace the ${TrackerData.DAY_NAMES[weekday]} workout with "${template.name}"?`)) return;
+  const replacement = TrackerData.clone(template.data);
+  replacement.weekday = weekday;
+  const replacementDays = Array.from({ length: 7 }, (_, index) =>
+    index === weekday ? replacement : TrackerData.emptyDay(index)
+  );
+  week.days[weekday] = TrackerData.normalizeProgram({ weeks: [{ days: replacementDays }] }).weeks[0].days[weekday];
+  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
+  TrackerData.save(planState.data);
+  showPlanToast(`"${template.name}" added to ${TrackerData.DAY_NAMES[weekday]}.`);
+  renderAllPlan();
+}
+
+function loadWeekTemplate() {
+  const select = document.getElementById("weekTemplateSelect");
+  const template = templateById(select?.value);
+  const target = currentDraftWeek();
+  if (!template || !target) {
+    showPlanToast("Choose a saved week first.");
+    return;
+  }
+  if (!window.confirm(`Replace Week ${target.weekNumber} with "${template.name}"? The current week's workouts and guidance will be replaced in this draft.`)) return;
+  const replacement = TrackerData.clone(template.data);
+  replacement.weekNumber = target.weekNumber;
+  planState.data.draftProgram.weeks[planState.selectedWeekIndex] = replacement;
+  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
+  TrackerData.save(planState.data);
+  showPlanToast(`"${template.name}" loaded into Week ${target.weekNumber}.`);
   renderAllPlan();
 }
 
@@ -346,6 +547,7 @@ function renderBuilder() {
           </div>
           <div class="builder-actions">
             <button class="button button-secondary button-small" type="button" data-edit-day="${weekday}">Edit workout</button>
+            <button class="text-button" type="button" data-save-day-template="${weekday}">Save day to library</button>
             <button class="text-button danger-button" type="button" data-clear-day="${weekday}">Clear day</button>
           </div>
         ` : `
@@ -411,6 +613,7 @@ function renderAllPlan() {
     renderBuilder();
     renderPublishedPreview();
   }
+  renderTemplateLibrary();
   renderLibrary();
   setPlanView();
 }
@@ -616,6 +819,7 @@ function updateActivityRow(row, activity = readActivityRow(row)) {
     <div class="activity-editor-head">
       <label class="activity-name">${infoLabel("Activity", "Name the movement, sport, class, video, or session.")}<input data-field="name" required maxlength="80" value="${escapePlanHtml(activity.name)}" placeholder="${strength ? "e.g. Goblet squat" : cardio ? "e.g. Running or cycling" : "e.g. SOMA Move or Zumba"}" /></label>
       <label>${infoLabel("Prescription format", "Choose the kind of instructions this activity needs. The fields below will adapt.")}<select data-field="activityType">${typeOptions}</select></label>
+      <button class="text-button activity-save-template" type="button" aria-label="Save activity to library">Save</button>
       <button class="remove-exercise" type="button" aria-label="Remove activity">×</button>
     </div>
     <div class="activity-editor-fields">${fields}</div>
@@ -644,6 +848,15 @@ function updateActivityRow(row, activity = readActivityRow(row)) {
       return;
     }
     row.remove();
+  };
+  row.querySelector(".activity-save-template").onclick = () => {
+    const current = TrackerData.normalizeExercise(readActivityRow(row));
+    if (!current.name) {
+      showPlanToast("Name the activity before saving it.");
+      return;
+    }
+    const name = askTemplateName(current.name);
+    if (name) saveTemplate("activity", name, current);
   };
 }
 
@@ -678,32 +891,45 @@ function openWorkoutModal(weekday) {
   document.getElementById("workoutModal").hidden = false;
 }
 
-function saveWorkout(event) {
-  event.preventDefault();
+function readWorkoutForm(weekday = planState.selectedWeekday) {
   const rows = [...document.querySelectorAll("#exerciseEditorList .activity-editor")];
   const activities = rows.map(row => TrackerData.normalizeExercise(readActivityRow(row)))
     .filter(activity => activity.name && activity.targetValue > 0);
-  const name = document.getElementById("workoutNameInput").value.trim();
-  if (!name || !activities.length) {
-    showPlanToast("Add a workout name and at least one activity.");
-    return;
-  }
-  const weekday = planState.selectedWeekday;
-  const week = currentDraftWeek();
-  week.days[weekday] = {
+  return {
     weekday,
     enabled: true,
-    name,
+    name: document.getElementById("workoutNameInput").value.trim(),
     description: document.getElementById("workoutDescriptionInput").value.trim(),
     sessionType: document.getElementById("sessionTypeInput").value,
     warmup: document.getElementById("warmupInput").value.trim(),
     cooldown: document.getElementById("cooldownInput").value.trim(),
-    exercises: activities.map(TrackerData.normalizeExercise)
+    exercises: activities
   };
+}
+
+function saveDayTemplateFromModal() {
+  const workout = readWorkoutForm();
+  if (!workout.name || !workout.exercises.length) {
+    showPlanToast("Add a workout name and at least one activity before saving the day.");
+    return;
+  }
+  const name = askTemplateName(workout.name);
+  if (name) saveTemplate("workout", name, workout);
+}
+
+function saveWorkout(event) {
+  event.preventDefault();
+  const workout = readWorkoutForm();
+  if (!workout.name || !workout.exercises.length) {
+    showPlanToast("Add a workout name and at least one activity.");
+    return;
+  }
+  const week = currentDraftWeek();
+  week.days[planState.selectedWeekday] = workout;
   planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
   TrackerData.save(planState.data);
   document.getElementById("workoutModal").hidden = true;
-  showPlanToast(`${TrackerData.DAY_NAMES[weekday]} workout saved to the draft.`);
+  showPlanToast(`${TrackerData.DAY_NAMES[planState.selectedWeekday]} workout saved to the draft.`);
   renderAllPlan();
 }
 
@@ -845,6 +1071,18 @@ async function loadLibrary() {
   }
 }
 
+async function loadTemplates() {
+  try {
+    const response = await fetch("/api/templates");
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load reusable templates.");
+    planState.templates = Array.isArray(result.templates) ? result.templates : [];
+    renderTemplateLibrary();
+  } catch (error) {
+    console.warn("Could not load reusable template library", error);
+  }
+}
+
 async function seedRequestedDemo() {
   if (new URLSearchParams(window.location.search).get("demo") !== "jerry") return;
   try {
@@ -892,12 +1130,20 @@ function bindPlanEvents() {
   });
   document.getElementById("addWeekBtn").addEventListener("click", addBlankWeek);
   document.getElementById("duplicateWeekBtn").addEventListener("click", duplicateCurrentWeek);
+  document.getElementById("saveWeekTemplateBtn").addEventListener("click", saveWeekTemplate);
+  document.getElementById("loadWeekTemplateBtn").addEventListener("click", loadWeekTemplate);
   document.getElementById("removeWeekBtn").addEventListener("click", removeCurrentWeek);
   document.getElementById("builderGrid").addEventListener("click", event => {
     const edit = event.target.closest("[data-edit-day]");
     const clear = event.target.closest("[data-clear-day]");
+    const saveDay = event.target.closest("[data-save-day-template]");
     if (edit) openWorkoutModal(Number(edit.dataset.editDay));
     if (clear) clearDay(Number(clear.dataset.clearDay));
+    if (saveDay) saveDayTemplate(Number(saveDay.dataset.saveDayTemplate));
+  });
+  document.getElementById("templateLibraryPanel").addEventListener("click", event => {
+    const remove = event.target.closest("[data-delete-template]");
+    if (remove) deleteTemplate(remove.dataset.deleteTemplate);
   });
   document.getElementById("planLibrary").addEventListener("click", event => {
     const preview = event.target.closest("[data-preview-plan]");
@@ -916,6 +1162,9 @@ function bindPlanEvents() {
     startNewDraft();
   });
   document.getElementById("addExerciseBtn").addEventListener("click", () => addActivityRow(undefined, { focus: true }));
+  document.getElementById("useActivityTemplateBtn").addEventListener("click", useActivityTemplate);
+  document.getElementById("useWorkoutTemplateBtn").addEventListener("click", useWorkoutTemplate);
+  document.getElementById("saveDayTemplateBtn").addEventListener("click", saveDayTemplateFromModal);
   document.getElementById("workoutForm").addEventListener("submit", saveWorkout);
   document.getElementById("closeWorkoutModal").addEventListener("click", () => { document.getElementById("workoutModal").hidden = true; });
   document.getElementById("cancelWorkoutBtn").addEventListener("click", () => { document.getElementById("workoutModal").hidden = true; });
@@ -936,4 +1185,4 @@ TrackerData.ensureAssignments(planState.data);
 TrackerData.save(planState.data);
 bindPlanEvents();
 renderAllPlan();
-seedRequestedDemo().then(loadLibrary);
+seedRequestedDemo().then(() => Promise.all([loadLibrary(), loadTemplates()]));
