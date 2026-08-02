@@ -51,3 +51,16 @@ soft-delete policy would retain data without a restore feature.
 logs before deletion. Treat CSV as a human-readable export, not a reliable
 backup format. If import or restart becomes necessary, define a versioned
 private backup format separately.
+
+The owner's logging-page preview must be visibly marked read-only and must not
+persist edits. A real shared participant page must identify whose record is
+open and confirm the first session save.
+
+**Why:** The owner can accidentally mistake a participant's shared log for a
+personal log, especially while previewing the page. A persistent mode reminder
+and one deliberate first-save confirmation reduce accidental records without
+adding confirmation friction to every session.
+
+**How to apply:** Use a persistent banner for shared and preview routes. In
+preview mode disable logging, skipping, moving, clearing, and persistence. On
+the shared route confirm the first save with the participant name.

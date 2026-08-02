@@ -1,14 +1,17 @@
 const sharedTokenMatch = window.location.pathname.match(/^\/dashboard\/share\/([^/]+)\/?$/);
+const logQuery = new URLSearchParams(window.location.search);
 const logState = {
   data: null,
   isShared: Boolean(sharedTokenMatch),
+  isPreview: !sharedTokenMatch && logQuery.get("preview") === "1",
   shareToken: sharedTokenMatch?.[1] || "",
   selectedDate: TrackerData.todayISO(),
   selectedAssignmentId: null,
   editingAssignmentId: null,
   weekOffset: 0,
   toastTimer: null,
-  saving: false
+  saving: false,
+  sharedSaveConfirmed: false
 };
 
 function setLogText(id, value) {
@@ -41,9 +44,18 @@ function showLogToast(message) {
 
 function setPageMode() {
   document.querySelectorAll("[data-owner-only]").forEach(element => {
-    element.hidden = logState.isShared;
+    element.hidden = logState.isShared || logState.isPreview;
   });
-  if (logState.isShared) {
+  const clearLogsButton = document.getElementById("clearLogsBtn");
+  if (clearLogsButton) clearLogsButton.disabled = logState.isShared || logState.isPreview;
+  if (logState.isPreview) {
+    document.title = "Preview training log — HälsoPulsen";
+    setLogText("storageNote", "Preview mode is read-only. Nothing you do here will be saved.");
+    setLogText("insightHeading", "Preview only.");
+    setLogText("insightText", "You are viewing the participant logging page as the owner. Logging, skipping, moving, and clearing sessions are disabled.");
+    const eyebrow = document.querySelector(".page-intro .eyebrow");
+    if (eyebrow) eyebrow.textContent = "PREVIEW LOGGING PAGE";
+  } else if (logState.isShared) {
     document.title = "Shared training plan — HälsoPulsen";
     setLogText("storageNote", "This shared plan is saved with the link so the owner can access the same record.");
     setLogText("insightHeading", "Your shared training log.");
@@ -51,10 +63,25 @@ function setPageMode() {
     const eyebrow = document.querySelector(".page-intro .eyebrow");
     if (eyebrow) eyebrow.textContent = "SHARED TRAINING LOG";
   }
+  renderModeBanner();
+}
+
+function renderModeBanner() {
+  const banner = document.getElementById("modeBanner");
+  if (!banner || (!logState.isShared && !logState.isPreview)) return;
+  const personName = logState.data?.person?.name || "this participant";
+  const preview = logState.isPreview;
+  banner.hidden = false;
+  banner.className = `mode-banner ${preview ? "mode-banner-preview" : "mode-banner-shared"}`;
+  setLogText("modeBannerTitle", preview ? "Preview only — no changes will be saved." : `Shared participant log — ${personName}`);
+  setLogText("modeBannerText", preview
+    ? `You are viewing ${personName}'s logging page as the owner. Logging, skipping, moving, and clearing are disabled.`
+    : `You are viewing ${personName}'s training record. Anything you save here is added to this participant's history.`);
 }
 
 async function persistState() {
   if (!logState.data) return;
+  if (logState.isPreview) return;
   if (!logState.isShared) {
     TrackerData.save(logState.data);
     return;
@@ -192,9 +219,9 @@ function renderToday() {
     : `<div class="empty-history">Nothing planned here yet.</div>`;
   const logButton = document.getElementById("logAssignmentBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
-  logButton.disabled = !assignment || Boolean(log);
-  logButton.textContent = log ? "Session logged ✓" : "Log this session";
-  skipButton.disabled = !assignment || Boolean(log);
+  logButton.disabled = logState.isPreview || !assignment || Boolean(log);
+  logButton.textContent = logState.isPreview ? "Preview only" : log ? "Session logged ✓" : "Log this session";
+  skipButton.disabled = logState.isPreview || !assignment || Boolean(log);
   logState.selectedAssignmentId = assignment?.id || null;
 }
 
@@ -341,6 +368,10 @@ function renderAllLog() {
 }
 
 function moveSelectedAssignment(targetDate) {
+  if (logState.isPreview) {
+    showLogToast("Preview only. Moving workouts is disabled.");
+    return;
+  }
   const current = currentAssignment();
   if (!current) {
     showLogToast("There is no unfinished workout to move.");
@@ -370,6 +401,10 @@ function moveSelectedAssignment(targetDate) {
 }
 
 function openLogModal() {
+  if (logState.isPreview) {
+    showLogToast("Preview only. Logging is disabled.");
+    return;
+  }
   const assignment = currentAssignment();
   if (!assignment || TrackerData.logForAssignment(logState.data, assignment.id)) return;
   logState.editingAssignmentId = assignment.id;
@@ -397,6 +432,15 @@ function openLogModal() {
 
 function saveLog(event) {
   event.preventDefault();
+  if (logState.isPreview) {
+    showLogToast("Preview only. Nothing will be saved.");
+    return;
+  }
+  if (logState.isShared && !logState.sharedSaveConfirmed) {
+    const personName = logState.data?.person?.name || "this participant";
+    if (!window.confirm(`Save this session to ${personName}'s training record?\n\nThe saved session will be visible to the owner through the shared plan link.`)) return;
+    logState.sharedSaveConfirmed = true;
+  }
   const assignment = logState.data.assignments.find(item => item.id === logState.editingAssignmentId);
   if (!assignment) return;
   const exercises = assignment.workout.exercises.map((activity, activityIndex) => ({
@@ -427,6 +471,10 @@ function saveLog(event) {
 }
 
 function skipAssignment() {
+  if (logState.isPreview) {
+    showLogToast("Preview only. Skipping workouts is disabled.");
+    return;
+  }
   const assignment = currentAssignment();
   if (!assignment || TrackerData.logForAssignment(logState.data, assignment.id)) return;
   assignment.status = assignment.status === "skipped" ? "planned" : "skipped";
@@ -472,7 +520,10 @@ function exportCsv() {
 }
 
 function clearLogs() {
-  if (logState.isShared) return;
+  if (logState.isShared || logState.isPreview) {
+    showLogToast("This page is read-only.");
+    return;
+  }
   if (!logState.data.logs.length || !window.confirm("Clear all logged sessions? Your program and assignments will remain.")) return;
   logState.data.logs = [];
   logState.data.assignments.forEach(assignment => {
@@ -525,6 +576,7 @@ async function bootstrapLog() {
       if (!response.ok || !result.ok) throw new Error(result.error || "This shared plan could not be loaded.");
       logState.data = TrackerData.fromPublishedPlan(result.plan);
       TrackerData.ensureAssignments(logState.data);
+       renderModeBanner();
       renderAllLog();
       persistState();
     } catch (error) {
@@ -536,7 +588,8 @@ async function bootstrapLog() {
   }
   logState.data = TrackerData.load();
   TrackerData.ensureAssignments(logState.data);
-  TrackerData.save(logState.data);
+  if (!logState.isPreview) TrackerData.save(logState.data);
+  renderModeBanner();
   renderAllLog();
 }
 
