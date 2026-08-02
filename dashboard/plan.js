@@ -401,7 +401,6 @@ function renderLibrary() {
       </div>
       <div class="library-actions">
         <button class="button button-secondary button-small" type="button" data-preview-plan="${escapePlanHtml(plan.sharePath)}">Preview</button>
-        <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open participant page</button>
         ${plan.isCurrent
           ? `<button class="button button-primary button-small" type="button" data-edit-current-plan="${escapePlanHtml(plan.id)}">Edit current plan</button>`
           : `<button class="button button-primary button-small" type="button" data-edit-plan="${escapePlanHtml(plan.id)}">Edit as new version</button>`}
@@ -426,11 +425,9 @@ function setPlanView() {
   const libraryView = document.getElementById("libraryView");
   const editorView = document.getElementById("editorView");
   const editorBackLink = document.getElementById("editorBackLink");
-  const previewLoggingLink = document.getElementById("previewLoggingLink");
   if (libraryView) libraryView.hidden = planState.editorMode;
   if (editorView) editorView.hidden = !planState.editorMode;
   if (editorBackLink) editorBackLink.hidden = !planState.editorMode;
-  if (previewLoggingLink) previewLoggingLink.hidden = planState.editorMode;
 }
 
 function openDetailsModal() {
@@ -892,13 +889,11 @@ function bindPlanEvents() {
   });
   document.getElementById("planLibrary").addEventListener("click", event => {
     const preview = event.target.closest("[data-preview-plan]");
-    const open = event.target.closest("[data-open-plan]");
     const edit = event.target.closest("[data-edit-plan]");
     const editCurrent = event.target.closest("[data-edit-current-plan]");
     const copy = event.target.closest("[data-copy-plan]");
     const remove = event.target.closest("[data-delete-plan]");
     if (preview) previewPlan(preview.dataset.previewPlan);
-    if (open) window.open(open.dataset.openPlan, "_blank", "noopener");
     if (edit) editPublishedPlan(edit.dataset.editPlan);
     if (editCurrent) editCurrentPlan(editCurrent.dataset.editCurrentPlan);
     if (copy) copyPlanLink(copy.dataset.copyPlan);
