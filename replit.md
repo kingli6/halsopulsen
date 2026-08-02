@@ -26,8 +26,8 @@ Build the first version for the owner and their partner:
   open day.
 - The person logs planned versus completed work.
 - The logging workspace includes history, graphs, and CSV export.
-- A later version can add real authentication, private links, and multiple
-  people.
+- The owner area uses a secure admin session; participant pages use bearer links
+  for this prototype.
 
 Start with a structured squat workout as the example, but keep the data model
 general enough for multiple workouts, running, hangs, mobility, and habits.

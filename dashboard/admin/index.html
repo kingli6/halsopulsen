@@ -43,6 +43,10 @@
       <h1 id="adminLoginHeading">Sign in to plan.</h1>
       <p class="admin-login-copy">Create programs, publish participant links, and review the owner planning library.</p>
       <form class="admin-login-form" id="adminLoginForm">
+        <label class="sr-only">
+          Username
+          <input type="text" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" />
+        </label>
         <label>
           Admin password
           <input id="adminPassword" type="password" autocomplete="current-password" required autofocus />

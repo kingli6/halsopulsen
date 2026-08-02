@@ -17,8 +17,8 @@ must remain accurate.
 “Edit as new version” for archived items. On current-plan save, let the server
 preserve non-planned activity and regenerate only future planned assignments.
 Keep the participant route read-only for program structure, persist logs
-against the snapshot, and replace the browser-held owner key before production
-use.
+against the snapshot, and protect owner plan operations with a server-side
+admin session rather than a browser-held owner key.
 
 When creating a new version from an older plan, the server must re-read the
 parent snapshot and make its assignments and logs authoritative. The editor's
