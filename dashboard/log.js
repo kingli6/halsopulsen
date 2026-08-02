@@ -155,12 +155,45 @@ function planVersionForAssignment(assignmentId) {
   return historical?.version || "—";
 }
 
-function totalPlanned(workout) {
-  return workout.exercises.reduce((total, activity) => total + Number(activity.targetValue || activity.reps || 0) * Number(activity.sets || 1), 0);
+function workCompletionRatio(assignment, log) {
+  const plannedActivities = assignment?.workout?.exercises || [];
+  if (!plannedActivities.length) return null;
+  const ratios = [];
+  plannedActivities.forEach((plannedActivity, activityIndex) => {
+    const target = Number(plannedActivity.targetValue || plannedActivity.reps || 0);
+    const setCount = Math.max(1, Number(plannedActivity.sets) || 1);
+    const loggedActivity = log?.exercises?.[activityIndex];
+    for (let setIndex = 0; setIndex < setCount; setIndex += 1) {
+      const completed = Number(loggedActivity?.sets?.[setIndex]?.completed || 0);
+      ratios.push(target > 0 ? Math.min(1, Math.max(0, completed / target)) : completed > 0 ? 1 : 0);
+    }
+  });
+  return ratios.length ? ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length : null;
 }
 
 function totalCompleted(exercises) {
   return exercises.reduce((total, activity) => total + activity.sets.reduce((sum, set) => sum + Number(set.completed || 0), 0), 0);
+}
+
+function isInRecentWindow(date) {
+  const age = TrackerData.daysBetween(date, TrackerData.todayISO());
+  return age >= 0 && age <= 13;
+}
+
+function recentAssignments() {
+  if (!logState.data) return [];
+  const byDate = new Map();
+  TrackerData.allAssignments(logState.data)
+    .filter(assignment => isInRecentWindow(assignment.date))
+    .forEach(assignment => byDate.set(assignment.date, assignment));
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function assignmentForDateIncludingHistory(date) {
+  if (!logState.data) return null;
+  return TrackerData.assignmentForDate(logState.data, date)
+    || TrackerData.allAssignments(logState.data).find(assignment => assignment.date === date)
+    || null;
 }
 
 function intensityOptions(selected = "") {
@@ -291,24 +324,25 @@ function weekAssignments() {
 
 function renderStats() {
   if (!logState.data) return;
-  const assignments = weekAssignments();
+  const assignments = recentAssignments();
   const completed = assignments.filter(assignment => Boolean(TrackerData.logForAssignment(logState.data, assignment.id))).length;
-  const activeWeek = logState.data.publishedProgram
-    ? TrackerData.programWeekForDate(logState.data.publishedProgram, TrackerData.todayISO())
-    : null;
-  const activeDays = activeWeek?.days.filter(day => day.enabled && day.exercises.length).length || 0;
-  const plannedCount = Math.max(assignments.length, activeDays);
-  const rate = plannedCount ? Math.round((completed / plannedCount) * 100) : 0;
-  setLogText("weekCompletion", `${completed}/${plannedCount}`);
-  document.getElementById("weekProgressBar").style.width = `${Math.min(100, rate)}%`;
-  const recentLogs = TrackerData.allLogs(logState.data).filter(log => {
-    const age = TrackerData.daysBetween(log.date, TrackerData.todayISO());
-    return age >= 0 && age <= 13;
-  });
-  setLogText("completedCount", recentLogs.length);
-  setLogText("completionRate", `${rate}%`);
-  const difficultyValues = recentLogs.map(log => Number(log.difficulty)).filter(Boolean);
+  const plannedRatios = assignments.map(assignment => workCompletionRatio(assignment, TrackerData.logForAssignment(logState.data, assignment.id)) || 0);
+  const workRate = plannedRatios.length
+    ? `${Math.round((plannedRatios.reduce((sum, ratio) => sum + ratio, 0) / plannedRatios.length) * 100)}%`
+    : "—";
+  const recentLogs = TrackerData.allLogs(logState.data).filter(log => isInRecentWindow(log.date));
+  const plannedLogs = recentLogs.filter(log => !TrackerData.isStandaloneLog(log));
+  setLogText("weekCompletion", `${weekAssignments().filter(assignment => Boolean(TrackerData.logForAssignment(logState.data, assignment.id))).length}/${weekAssignments().length}`);
+  const currentWeekRate = weekAssignments().length
+    ? Math.round((weekAssignments().filter(assignment => Boolean(TrackerData.logForAssignment(logState.data, assignment.id))).length / weekAssignments().length) * 100)
+    : 0;
+  document.getElementById("weekProgressBar").style.width = `${Math.min(100, currentWeekRate)}%`;
+  setLogText("plannedSessions", `${completed}/${assignments.length}`);
+  setLogText("workCompletion", workRate);
+  const difficultyValues = plannedLogs.map(log => Number(log.difficulty)).filter(Boolean);
   setLogText("averageDifficulty", difficultyValues.length ? (difficultyValues.reduce((sum, value) => sum + value, 0) / difficultyValues.length).toFixed(1) : "—");
+  const energyValues = plannedLogs.map(log => Number(log.energy)).filter(Boolean);
+  setLogText("averageEnergy", energyValues.length ? (energyValues.reduce((sum, value) => sum + value, 0) / energyValues.length).toFixed(1) : "—");
 }
 
 function renderChart() {
@@ -317,25 +351,25 @@ function renderChart() {
   const start = TrackerData.addDays(TrackerData.todayISO(), -13);
   const values = Array.from({ length: 14 }, (_, index) => {
     const date = TrackerData.addDays(start, index);
-    const assignment = TrackerData.assignmentForDate(logState.data, date);
+    const assignment = assignmentForDateIncludingHistory(date);
     const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
     const otherLogs = TrackerData.standaloneLogsForDate(logState.data, date);
-    const target = assignment ? totalPlanned(assignment.workout) : 0;
-    const actual = log ? totalCompleted(log.exercises) : 0;
-    return { date, assignment, log, otherLogs, target, actual };
+    const ratio = assignment ? workCompletionRatio(assignment, log) : null;
+    return { date, assignment, log, otherLogs, ratio };
   });
   chart.innerHTML = values.map(value => {
-    const ratio = value.target ? Math.min(100, Math.round((value.actual / value.target) * 100)) : 0;
-    const title = `${TrackerData.formatShortDate(value.date)}${value.log ? `: ${ratio}% completed` : value.assignment ? ": planned" : ": open"}${value.otherLogs.length ? ` · ${value.otherLogs.length} other activity` : ""}`;
+    const ratio = value.ratio == null ? 0 : Math.round(value.ratio * 100);
+    const title = `${TrackerData.formatShortDate(value.date)}${value.log ? `: ${ratio}% planned work completed` : value.assignment ? ": planned session not logged" : ": open"}${value.otherLogs.length ? ` · ${value.otherLogs.length} extra activity` : ""}`;
     return `<div class="chart-column ${value.assignment && !value.log ? "planned" : ""} ${value.otherLogs.length && !value.log ? "other" : ""}" title="${escapeLogHtml(title)}">
       <span class="chart-track"></span><span class="chart-bar" style="height:${value.log ? Math.max(5, ratio) : value.otherLogs.length ? 22 : 0}%"></span><span class="chart-label">${TrackerData.fromISO(value.date).getDate()}</span>
     </div>`;
   }).join("");
   setLogText("chartStart", TrackerData.formatShortDate(start));
   setLogText("chartEnd", TrackerData.formatShortDate(TrackerData.todayISO()));
-  setLogText("chartNote", values.some(value => value.log || value.otherLogs.length)
-    ? "Green bars show planned work; blue bars show other activity."
-    : "Log sessions to see actual work compared with planned work.");
+  const extraCount = values.reduce((total, value) => total + value.otherLogs.length, 0);
+  setLogText("chartNote", values.some(value => value.log || value.otherLogs.length || value.assignment)
+    ? `Green bars show the share of planned work completed; dashed columns are planned sessions not logged.${extraCount ? " Blue bars show extra activity, which is not included in planned metrics." : ""}`
+    : "Your planned work and extra activities will appear here.");
 }
 
 function renderHistory() {
