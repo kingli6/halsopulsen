@@ -400,7 +400,8 @@ function renderLibrary() {
         <span>For ${escapePlanHtml(plan.personName || "Participant")} · ${escapePlanHtml(plan.goal || "No goal")} · ${escapePlanHtml(plan.phase || "Foundation")} · Week ${plan.weekNumber || 1} · Version ${plan.version} · ${formatPublishedDate(plan.publishedAt)}</span>
       </div>
       <div class="library-actions">
-        <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open</button>
+        <button class="button button-secondary button-small" type="button" data-preview-plan="${escapePlanHtml(plan.sharePath)}">Preview</button>
+        <button class="button button-secondary button-small" type="button" data-open-plan="${escapePlanHtml(plan.sharePath)}">Open participant page</button>
         ${plan.isCurrent
           ? `<button class="button button-primary button-small" type="button" data-edit-current-plan="${escapePlanHtml(plan.id)}">Edit current plan</button>`
           : `<button class="button button-primary button-small" type="button" data-edit-plan="${escapePlanHtml(plan.id)}">Edit as new version</button>`}
@@ -864,6 +865,12 @@ async function copyPlanLink(path) {
   }
 }
 
+function previewPlan(path) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("preview", "1");
+  window.open(url.href, "_blank", "noopener");
+}
+
 function bindPlanEvents() {
   document.getElementById("editDetailsBtn").addEventListener("click", openDetailsModal);
   document.getElementById("detailsForm").addEventListener("submit", saveDetails);
@@ -884,11 +891,13 @@ function bindPlanEvents() {
     if (clear) clearDay(Number(clear.dataset.clearDay));
   });
   document.getElementById("planLibrary").addEventListener("click", event => {
+    const preview = event.target.closest("[data-preview-plan]");
     const open = event.target.closest("[data-open-plan]");
     const edit = event.target.closest("[data-edit-plan]");
     const editCurrent = event.target.closest("[data-edit-current-plan]");
     const copy = event.target.closest("[data-copy-plan]");
     const remove = event.target.closest("[data-delete-plan]");
+    if (preview) previewPlan(preview.dataset.previewPlan);
     if (open) window.open(open.dataset.openPlan, "_blank", "noopener");
     if (edit) editPublishedPlan(edit.dataset.editPlan);
     if (editCurrent) editCurrentPlan(editCurrent.dataset.editCurrentPlan);
