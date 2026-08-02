@@ -1,4 +1,4 @@
-const sharedTokenMatch = window.location.pathname.match(/^\/dashboard\/share\/([^/]+)\/?$/);
+const sharedTokenMatch = window.location.pathname.match(/^\/(?:p|dashboard\/share)\/([^/]+)\/?$/);
 const logQuery = new URLSearchParams(window.location.search);
 const logState = {
   data: null,

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="The owner workspace for creating and publishing a personal training program." />
   <title>Plan program — HälsoPulsen</title>
-  <link rel="icon" type="image/svg+xml" href="../../images/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../portal.css" />
+  <link rel="stylesheet" href="/dashboard/portal.css" />
 </head>
 <body>
   <header class="topbar">
@@ -19,9 +19,9 @@
         <span>Hälso<span class="brand-accent">Pulsen</span></span>
       </a>
       <nav class="topnav" aria-label="Main navigation">
-        <a class="topnav-link" href="/dashboard/">Log training</a>
-        <a class="topnav-link active" href="/dashboard/plan/">Plan program</a>
+        <a class="topnav-link active" href="/admin/plans/">Plan programs</a>
         <a class="topnav-link" href="/">Main site</a>
+        <button class="topnav-link topnav-button" id="adminLogoutBtn" type="button">Sign out</button>
       </nav>
     </div>
   </header>
@@ -34,14 +34,14 @@
         <p class="intro-copy">Browse published programs in the library, or open a separate editor to create a new plan and publish an immutable version for logging.</p>
       </div>
       <div class="intro-actions">
-        <span class="local-owner-badge">Owner workspace · sign-in not enabled yet</span>
-        <a class="button button-primary" id="editorBackLink" href="/dashboard/plan/" hidden>Back to library</a>
+        <span class="local-owner-badge">Admin workspace · signed in</span>
+        <a class="button button-primary" id="editorBackLink" href="/admin/plans/" hidden>Back to library</a>
       </div>
     </section>
 
     <section class="owner-notice">
       <span class="notice-icon">i</span>
-      <div><strong>This is the planning side.</strong><span>This workspace is not protected by a sign-in yet. It is separated by interface, and its owner access is stored locally in this browser for now.</span></div>
+      <div><strong>This is the planning side.</strong><span>Only the signed-in owner can edit, publish, or delete programs. Participant links expose logging only.</span></div>
     </section>
 
     <section class="library-view card" id="libraryView" aria-labelledby="libraryHeading">
@@ -51,7 +51,7 @@
           <h2 id="libraryHeading">Plan library</h2>
           <p>Edit the current plan while it is ongoing. Existing participant records stay intact, and future planned assignments use your updates. Archived versions can still be used to create a new version.</p>
         </div>
-        <a class="button button-primary" href="/dashboard/plan/?view=editor" id="createPlanBtn">+ Create new plan</a>
+         <a class="button button-primary" href="/admin/plans/?view=editor" id="createPlanBtn">+ Create new plan</a>
       </div>
       <div class="library-toolbar">
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
@@ -110,7 +110,7 @@
           <p class="section-kicker">CURRENTLY LIVE</p>
           <h2 id="publishedPreviewHeading">Published program preview</h2>
         </div>
-        <a class="text-button" href="/dashboard/">Open logging page ↗</a>
+         <span class="text-button">Open a participant link from the library ↗</span>
       </div>
       <div class="published-preview" id="publishedPreview"></div>
     </section>
@@ -197,7 +197,7 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="../data.js"></script>
-  <script src="../plan.js"></script>
+  <script src="/dashboard/data.js"></script>
+  <script src="/dashboard/plan.js"></script>
 </body>
 </html>
