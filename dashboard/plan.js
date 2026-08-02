@@ -852,6 +852,22 @@ async function loadLibrary() {
   }
 }
 
+async function seedRequestedDemo() {
+  if (new URLSearchParams(window.location.search).get("demo") !== "jerry") return;
+  try {
+    const response = await fetch("/api/plans/demo/jerry", {
+      method: "POST",
+      headers: { "X-Owner-Key": planState.ownerKey }
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not create Jerry's sample plan.");
+    window.history.replaceState({}, "", "/dashboard/plan/");
+    showPlanToast(result.created ? "Jerry's sample plan was added." : "Jerry's sample plan is already in the library.");
+  } catch (error) {
+    showPlanToast(error.message);
+  }
+}
+
 async function copyPlanLink(path) {
   const link = new URL(path, window.location.origin).href;
   try {
@@ -924,4 +940,4 @@ TrackerData.ensureAssignments(planState.data);
 TrackerData.save(planState.data);
 bindPlanEvents();
 renderAllPlan();
-loadLibrary();
+seedRequestedDemo().then(loadLibrary);
