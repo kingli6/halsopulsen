@@ -32,6 +32,7 @@ a { color: inherit; text-decoration: none; }
 .brand-accent { color: var(--green-2); }
 .topnav { display: flex; align-items: center; gap: 24px; margin-left: auto; }
 .topnav-link { color: var(--muted); font-size: 13px; font-weight: 600; }
+.topnav-button { padding: 0; border: 0; background: transparent; }
 .topnav-link:hover, .topnav-link.active { color: var(--green); }
 .owner-link { color: var(--orange); }
 .legacy-link { color: #9ba69e; }

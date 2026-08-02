@@ -43,25 +43,29 @@ function showLogToast(message) {
 }
 
 function setPageMode() {
+  const personName = logState.data?.person?.name || "";
   document.querySelectorAll("[data-owner-only]").forEach(element => {
     element.hidden = logState.isShared || logState.isPreview;
   });
   const clearLogsButton = document.getElementById("clearLogsBtn");
   if (clearLogsButton) clearLogsButton.disabled = logState.isShared || logState.isPreview;
   if (logState.isPreview) {
-    document.title = "Preview training log — HälsoPulsen";
+    document.title = `${personName || "Participant"} preview — HälsoPulsen`;
     setLogText("storageNote", "Preview mode is read-only. Nothing you do here will be saved.");
     setLogText("insightHeading", "Preview only.");
     setLogText("insightText", "You are viewing the participant logging page as the owner. Logging, skipping, moving, and clearing sessions are disabled.");
-    const eyebrow = document.querySelector(".page-intro .eyebrow");
-    if (eyebrow) eyebrow.textContent = "PREVIEW LOGGING PAGE";
+    setLogText("participantEyebrow", `${personName || "PARTICIPANT"} · PREVIEW`);
+    setLogText("participantPageHeading", `${personName || "Participant"}'s training plan`);
   } else if (logState.isShared) {
-    document.title = "Shared training plan — HälsoPulsen";
+    document.title = `${personName || "Participant"}'s training log — HälsoPulsen`;
     setLogText("storageNote", "This shared plan is saved with the link so the owner can access the same record.");
     setLogText("insightHeading", "Your shared training log.");
     setLogText("insightText", "This page shows the published plan. Record the work here; changes to the program itself belong to the owner planning workspace.");
-    const eyebrow = document.querySelector(".page-intro .eyebrow");
-    if (eyebrow) eyebrow.textContent = "SHARED TRAINING LOG";
+    setLogText("participantEyebrow", `${personName || "PARTICIPANT"}'S TRAINING LOG`);
+    setLogText("participantPageHeading", `${personName || "Your"} training plan`);
+  } else {
+    setLogText("participantEyebrow", "PERSONAL TRAINING LOG");
+    setLogText("participantPageHeading", "Follow the plan. Record what happened.");
   }
 }
 
@@ -765,7 +769,8 @@ async function bootstrapLog() {
       if (!response.ok || !result.ok) throw new Error(result.error || "This shared plan could not be loaded.");
       logState.data = TrackerData.fromPublishedPlan(result.plan);
       TrackerData.ensureAssignments(logState.data);
-       renderModeBanner();
+      setPageMode();
+      renderModeBanner();
       renderAllLog();
       persistState();
     } catch (error) {

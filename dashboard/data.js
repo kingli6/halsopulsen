@@ -1,7 +1,6 @@
 const TrackerData = (() => {
   const STORAGE_KEY = "halsopulsen.personal-tracker.v2";
   const LEGACY_STORAGE_KEY = "halsopulsen.personal-tracker.v1";
-  const OWNER_KEY_STORAGE_KEY = "halsopulsen.owner-key.v1";
   const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -380,16 +379,6 @@ const TrackerData = (() => {
     localStorage.setItem(storageKey, JSON.stringify(data));
   }
 
-  function getOwnerKey() {
-    let ownerKey = localStorage.getItem(OWNER_KEY_STORAGE_KEY);
-    if (!ownerKey) {
-      ownerKey = window.crypto?.randomUUID?.()
-        || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-      localStorage.setItem(OWNER_KEY_STORAGE_KEY, ownerKey);
-    }
-    return ownerKey;
-  }
-
   function fromPublishedPlan(plan) {
     const program = normalizeProgram(plan?.program);
     const goal = String(plan?.goal || "Build a consistent training habit");
@@ -500,7 +489,6 @@ const TrackerData = (() => {
 
   return {
     STORAGE_KEY,
-    OWNER_KEY_STORAGE_KEY,
     DAY_NAMES,
     WEEKDAYS,
     clone,
@@ -523,7 +511,6 @@ const TrackerData = (() => {
     normalizeProgram,
     load,
     save,
-    getOwnerKey,
     fromPublishedPlan,
     assignmentForDate,
     assignmentForId,
