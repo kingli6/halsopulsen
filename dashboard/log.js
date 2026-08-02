@@ -10,8 +10,7 @@ const logState = {
   editingAssignmentId: null,
   weekOffset: 0,
   toastTimer: null,
-  saving: false,
-  sharedSaveConfirmed: false
+  saving: false
 };
 
 function setLogText(id, value) {
@@ -73,13 +72,10 @@ function renderModeBanner() {
     return;
   }
   const personName = logState.data?.person?.name || "this participant";
-  const preview = logState.isPreview;
   banner.hidden = false;
-  banner.className = `mode-banner ${preview ? "mode-banner-preview" : "mode-banner-shared"}`;
-  setLogText("modeBannerTitle", preview ? "Preview only — no changes will be saved." : `Shared participant log — ${personName}`);
-  setLogText("modeBannerText", preview
-    ? `You are viewing ${personName}'s logging page as the owner. Logging, skipping, moving, and clearing are disabled.`
-    : `You are viewing ${personName}'s training record. Anything you save here is added to this participant's history.`);
+  banner.className = "mode-banner";
+  setLogText("modeBannerTitle", "Preview only — no changes will be saved.");
+  setLogText("modeBannerText", `You are viewing ${personName}'s logging page as the owner. Logging, skipping, moving, and clearing are disabled.`);
 }
 
 async function persistState() {
@@ -438,11 +434,6 @@ function saveLog(event) {
   if (logState.isPreview) {
     showLogToast("Preview only. Nothing will be saved.");
     return;
-  }
-  if (logState.isShared && !logState.sharedSaveConfirmed) {
-    const personName = logState.data?.person?.name || "this participant";
-    if (!window.confirm(`Save this session to ${personName}'s training record?\n\nThe saved session will be visible to the owner through the shared plan link.`)) return;
-    logState.sharedSaveConfirmed = true;
   }
   const assignment = logState.data.assignments.find(item => item.id === logState.editingAssignmentId);
   if (!assignment) return;

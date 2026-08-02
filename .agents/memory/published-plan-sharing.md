@@ -53,14 +53,14 @@ backup format. If import or restart becomes necessary, define a versioned
 private backup format separately.
 
 The owner's logging-page preview must be visibly marked read-only and must not
-persist edits. A real shared participant page must identify whose record is
-open and confirm the first session save.
+persist edits. The real shared participant page should stay a normal logging
+page without owner-oriented warnings or extra save confirmations.
 
-**Why:** The owner can accidentally mistake a participant's shared log for a
-personal log, especially while previewing the page. A persistent mode reminder
-and one deliberate first-save confirmation reduce accidental records without
-adding confirmation friction to every session.
+**Why:** The library already identifies each plan and participant. One
+plan-specific preview boundary solves accidental owner edits without adding
+role-specific UI or confirmation friction to the participant workflow.
 
-**How to apply:** Use a persistent banner for shared and preview routes. In
-preview mode disable logging, skipping, moving, clearing, and persistence. On
-the shared route confirm the first save with the participant name.
+**How to apply:** Keep one Preview action per library row. Add `?preview=1`
+only to the preview URL; disable logging, skipping, moving, clearing, and
+persistence there. Keep the copied shared URL as the participant's normal
+logging route.

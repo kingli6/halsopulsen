@@ -105,16 +105,12 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .round-button:hover { border-color: var(--green-2); color: var(--green); background: var(--green-3); }
 .week-notice, .owner-notice { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #f4dac7; border-radius: 10px; background: #fffaf6; color: #765e4e; font-size: 12px; }
 .notice-icon { display: grid; width: 22px; height: 22px; place-items: center; flex-shrink: 0; border-radius: 50%; background: var(--orange-soft); color: var(--orange); font-weight: 700; }
-.mode-banner { position: sticky; top: 73px; z-index: 15; display: flex; align-items: center; gap: 11px; margin-bottom: 20px; padding: 13px 15px; border: 1px solid #edc59e; border-radius: 12px; background: #fff8ef; color: #76533e; box-shadow: 0 6px 18px rgba(72, 49, 29, .08); font-size: 12px; }
+.mode-banner { position: sticky; top: 73px; z-index: 15; display: flex; align-items: center; gap: 11px; margin-bottom: 20px; padding: 13px 15px; border: 1px solid #b8dfc4; border-radius: 12px; background: #f2fbf5; color: var(--green); box-shadow: 0 6px 18px rgba(26, 57, 39, .08); font-size: 12px; }
 .mode-banner[hidden] { display: none !important; }
 .mode-banner > div { display: flex; flex-direction: column; gap: 2px; }
-.mode-banner strong { color: #603f2b; font-size: 12px; }
-.mode-banner span:last-child { color: #765e4e; }
-.mode-banner-icon { display: grid; width: 24px; height: 24px; place-items: center; flex-shrink: 0; border-radius: 50%; background: #f7dcbf; color: #a75522; font-weight: 800; }
-.mode-banner-preview { border-color: #b8dfc4; background: #f2fbf5; color: var(--green); }
-.mode-banner-preview strong { color: var(--green); }
-.mode-banner-preview span:last-child { color: #4f705c; }
-.mode-banner-preview .mode-banner-icon { background: var(--green-3); color: var(--green); }
+.mode-banner strong { color: var(--green); font-size: 12px; }
+.mode-banner span:last-child { color: #4f705c; }
+.mode-banner-icon { display: grid; width: 24px; height: 24px; place-items: center; flex-shrink: 0; border-radius: 50%; background: var(--green-3); color: var(--green); font-weight: 800; }
 .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .day-tile { position: relative; min-height: 138px; padding: 12px 10px; text-align: left; border: 1px solid var(--line); border-radius: 13px; background: var(--paper); color: var(--ink); transition: .18s ease; }
 .day-tile:hover { border-color: var(--green-2); transform: translateY(-2px); box-shadow: var(--shadow-small); }
