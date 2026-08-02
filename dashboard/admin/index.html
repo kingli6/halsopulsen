@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Owner sign-in for HälsoPulsen." />
+  <title>Admin sign in — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/dashboard/portal.css" />
+  <style>
+    .admin-login-shell { min-height: calc(100vh - 72px); display: grid; place-items: center; padding: 48px 0; }
+    .admin-login-card { width: min(470px, 100%); padding: 32px; }
+    .admin-login-card h1 { margin-bottom: 12px; font-size: clamp(32px, 6vw, 48px); }
+    .admin-login-copy { margin-bottom: 28px; color: var(--muted); }
+    .admin-login-form { display: flex; flex-direction: column; gap: 16px; }
+    .admin-login-form label { display: flex; flex-direction: column; gap: 7px; color: var(--ink); font-size: 12px; font-weight: 700; }
+    .admin-login-form input { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 10px; outline: none; background: #fbfdfb; color: var(--ink); }
+    .admin-login-form input:focus { border-color: var(--green-2); box-shadow: 0 0 0 3px rgba(76,175,125,.12); }
+    .admin-login-form .button { width: 100%; margin-top: 3px; }
+    .admin-login-error { min-height: 20px; margin: 0; color: var(--red); font-size: 12px; font-weight: 600; }
+    .admin-login-footer { margin-top: 22px; color: var(--muted); font-size: 11px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">H</span>
+        <span>Hälso<span class="brand-accent">Pulsen</span></span>
+      </a>
+      <nav class="topnav" aria-label="Main navigation">
+        <a class="topnav-link" href="/">Main site</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell admin-login-shell">
+    <section class="admin-login-card card" aria-labelledby="adminLoginHeading">
+      <p class="eyebrow">OWNER AREA</p>
+      <h1 id="adminLoginHeading">Sign in to plan.</h1>
+      <p class="admin-login-copy">Create programs, publish participant links, and review the owner planning library.</p>
+      <form class="admin-login-form" id="adminLoginForm">
+        <label>
+          Admin password
+          <input id="adminPassword" type="password" autocomplete="current-password" required autofocus />
+        </label>
+        <p class="admin-login-error" id="adminLoginError" role="alert" aria-live="polite"></p>
+        <button class="button button-primary" id="adminLoginButton" type="submit">Sign in</button>
+      </form>
+      <p class="admin-login-footer">Participant pages use their own shared link and never expose these controls.</p>
+    </section>
+  </main>
+
+  <script>
+    const loginForm = document.getElementById("adminLoginForm");
+    const passwordInput = document.getElementById("adminPassword");
+    const errorText = document.getElementById("adminLoginError");
+    const loginButton = document.getElementById("adminLoginButton");
+    const query = new URLSearchParams(window.location.search);
+    const requestedNext = query.get("next") || "/admin/plans/";
+    const nextPath = requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/admin/plans/";
+
+    loginForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      errorText.textContent = "";
+      loginButton.disabled = true;
+      loginButton.textContent = "Signing in…";
+      try {
+        const response = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: passwordInput.value })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Could not sign in.");
+        window.location.assign(nextPath);
+      } catch (error) {
+        errorText.textContent = error.message || "Could not sign in.";
+        passwordInput.select();
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Sign in";
+      }
+    });
+  </script>
+</body>
+</html>

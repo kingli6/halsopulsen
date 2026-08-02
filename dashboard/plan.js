@@ -1,6 +1,5 @@
 const planState = {
   data: TrackerData.load(),
-  ownerKey: TrackerData.getOwnerKey(),
   library: [],
   selectedWeekday: null,
   selectedWeekIndex: 0,
@@ -104,7 +103,7 @@ function renderPlanOverview() {
 
 function enterEditor() {
   planState.editorMode = true;
-  window.history.pushState({}, "", "/dashboard/plan/?view=editor");
+  window.history.pushState({}, "", "/admin/plans/?view=editor");
   renderAllPlan();
 }
 
@@ -206,9 +205,7 @@ function removeCurrentWeek() {
 
 async function editPublishedPlan(planId) {
   try {
-    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
-      headers: { "X-Owner-Key": planState.ownerKey }
-    });
+    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`);
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
     const source = result.plan;
@@ -224,7 +221,7 @@ async function editPublishedPlan(planId) {
     planState.editingCurrentPlanId = null;
     planState.data = nextData;
     planState.editorMode = true;
-    window.history.pushState({}, "", "/dashboard/plan/?view=editor");
+    window.history.pushState({}, "", "/admin/plans/?view=editor");
     TrackerData.save(planState.data);
     renderAllPlan();
     showPlanToast(`Editing a new draft from Version ${source.version}.`);
@@ -238,9 +235,7 @@ async function editCurrentPlan(planId) {
   if (!libraryPlan) return;
 
   try {
-    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
-      headers: { "X-Owner-Key": planState.ownerKey }
-    });
+    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`);
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
     const source = result.plan;
@@ -256,7 +251,7 @@ async function editCurrentPlan(planId) {
     planState.editingCurrentPlanId = source.id;
     planState.data = nextData;
     planState.editorMode = true;
-    window.history.pushState({}, "", "/dashboard/plan/?view=editor");
+    window.history.pushState({}, "", "/admin/plans/?view=editor");
     TrackerData.save(planState.data);
     renderAllPlan();
     showPlanToast(`Editing current Version ${source.version}.`);
@@ -280,8 +275,7 @@ async function deletePublishedPlan(planId) {
 
   try {
     const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
-      method: "DELETE",
-      headers: { "X-Owner-Key": planState.ownerKey }
+      method: "DELETE"
     });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || "Could not delete that plan.");
@@ -792,9 +786,8 @@ async function publishPlan() {
         : "/api/plans/publish",
       {
       method: updatingCurrent ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json", "X-Owner-Key": planState.ownerKey },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ownerKey: planState.ownerKey,
         personName: nextData.person?.name || "Participant",
         goal: nextData.publishedGoal,
         program: nextData.publishedProgram,
@@ -836,7 +829,7 @@ async function publishPlan() {
 
 async function loadLibrary() {
   try {
-    const response = await fetch("/api/plans/owner", { headers: { "X-Owner-Key": planState.ownerKey } });
+    const response = await fetch("/api/plans/owner");
     const result = await response.json();
     if (response.ok && result.ok) {
       planState.library = result.plans;
@@ -856,12 +849,11 @@ async function seedRequestedDemo() {
   if (new URLSearchParams(window.location.search).get("demo") !== "jerry") return;
   try {
     const response = await fetch("/api/plans/demo/jerry", {
-      method: "POST",
-      headers: { "X-Owner-Key": planState.ownerKey }
+      method: "POST"
     });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || "Could not create Jerry's sample plan.");
-    window.history.replaceState({}, "", "/dashboard/plan/");
+    window.history.replaceState({}, "", "/admin/plans/");
     showPlanToast(result.created ? "Jerry's sample plan was added." : "Jerry's sample plan is already in the library.");
   } catch (error) {
     showPlanToast(error.message);
@@ -885,6 +877,10 @@ function previewPlan(path) {
 }
 
 function bindPlanEvents() {
+  document.getElementById("adminLogoutBtn").addEventListener("click", async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    window.location.assign("/admin");
+  });
   document.getElementById("editDetailsBtn").addEventListener("click", openDetailsModal);
   document.getElementById("detailsForm").addEventListener("submit", saveDetails);
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);

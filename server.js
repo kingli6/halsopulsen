@@ -7,7 +7,127 @@ const OpenAI = require('openai');
 const ws = require('ws');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
+
+const SESSION_COOKIE_NAME = 'halsopulsen_admin_session';
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
+const adminSessions = new Map();
+
+function parseCookies(req) {
+  return String(req.headers.cookie || '').split(';').reduce((cookies, part) => {
+    const separator = part.indexOf('=');
+    if (separator === -1) return cookies;
+    const key = part.slice(0, separator).trim();
+    const value = decodeURIComponent(part.slice(separator + 1).trim());
+    cookies[key] = value;
+    return cookies;
+  }, {});
+}
+
+function sessionSignature(token) {
+  return crypto.createHmac('sha256', SESSION_SECRET).update(token).digest('base64url');
+}
+
+function readAdminSession(req) {
+  const raw = parseCookies(req)[SESSION_COOKIE_NAME] || '';
+  const separator = raw.lastIndexOf('.');
+  if (separator < 1) return null;
+  const token = raw.slice(0, separator);
+  const signature = raw.slice(separator + 1);
+  const expected = sessionSignature(token);
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  const session = adminSessions.get(token);
+  if (!session || session.expiresAt <= Date.now()) {
+    adminSessions.delete(token);
+    return null;
+  }
+  session.expiresAt = Date.now() + SESSION_TTL_MS;
+  return session;
+}
+
+function setAdminCookie(res, token) {
+  const secure = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
+  const attributes = [
+    `${SESSION_COOKIE_NAME}=${encodeURIComponent(`${token}.${sessionSignature(token)}`)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`
+  ];
+  if (secure) attributes.push('Secure');
+  res.setHeader('Set-Cookie', attributes.join('; '));
+}
+
+function clearAdminCookie(res) {
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+}
+
+function requireAdmin(req, res, next) {
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  next();
+}
+
+function sameSecret(left, right) {
+  const leftBuffer = Buffer.from(String(left || ''));
+  const rightBuffer = Buffer.from(String(right || ''));
+  return leftBuffer.length > 0
+    && leftBuffer.length === rightBuffer.length
+    && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function adminRedirectPath(req) {
+  const originalUrl = String(req.originalUrl || '');
+  const queryStart = originalUrl.indexOf('?');
+  return `/admin/plans${queryStart === -1 ? '' : originalUrl.slice(queryStart)}`;
+}
+
+app.get('/api/admin/session', (req, res) => {
+  res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
+});
+
+app.post('/api/admin/login', (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(503).json({ ok: false, error: 'Admin sign-in has not been configured yet.' });
+  }
+  if (!sameSecret(req.body?.password, ADMIN_PASSWORD)) {
+    return res.status(401).json({ ok: false, error: 'That password is not correct.' });
+  }
+  const token = crypto.randomBytes(32).toString('base64url');
+  adminSessions.set(token, {
+    ownerHash: adminOwnerHash(),
+    expiresAt: Date.now() + SESSION_TTL_MS
+  });
+  setAdminCookie(res, token);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  const raw = parseCookies(req)[SESSION_COOKIE_NAME] || '';
+  const separator = raw.lastIndexOf('.');
+  if (separator > 0) adminSessions.delete(raw.slice(0, separator));
+  clearAdminCookie(res);
+  res.json({ ok: true });
+});
+
+// Keep the old planner and generic dashboard URLs from looking like participant
+// accounts now that the product has explicit admin and participant boundaries.
+app.get(['/dashboard', '/dashboard/'], (req, res) => res.redirect('/admin'));
+app.get(['/dashboard/index.html'], (req, res) => res.redirect('/admin'));
+app.get(['/dashboard/plan', '/dashboard/plan/'], (req, res) => res.redirect(adminRedirectPath(req)));
+app.get(['/dashboard/plan/index.html'], (req, res) => res.redirect('/admin/plans'));
+app.get('/admin', (req, res) => {
+  if (readAdminSession(req)) return res.redirect('/admin/plans');
+  res.sendFile(path.join(__dirname, 'dashboard', 'admin', 'index.html'));
+});
+app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
+  if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
+  res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
+});
+app.get(['/p/:token', '/p/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
+
 app.use(express.static(path.join(__dirname)));
 
 const SUPABASE_READY = !!(process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY);
@@ -17,15 +137,15 @@ const supabase = SUPABASE_READY
 
 const OPENAI_READY = !!process.env.OPENAI_API_KEY;
 const openai = OPENAI_READY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'halsopulsen2026';
 const PLAN_STORAGE_DIR = path.join(__dirname, 'storage');
 const PLAN_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'published-plans.json');
 
 if (!SUPABASE_READY) console.warn('⚠  SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY not set — challenge features disabled.');
 if (!OPENAI_READY)  console.warn('⚠  OPENAI_API_KEY not set — AI commentary disabled.');
+if (!process.env.ADMIN_PASSWORD) console.warn('⚠  ADMIN_PASSWORD not set — admin sign-in disabled until configured.');
 
-function hashOwnerKey(ownerKey) {
-  return crypto.createHash('sha256').update(String(ownerKey || '')).digest('hex');
+function adminOwnerHash() {
+  return crypto.createHash('sha256').update('halsopulsen-admin-owner').digest('hex');
 }
 
 function readPublishedPlans() {
@@ -67,7 +187,7 @@ function publicPlanSummary(plan) {
     progressionNotes: program.progressionNotes || '',
     successMetric: program.successMetric || '',
     publishedAt: plan.publishedAt,
-    sharePath: plan.shareToken ? `/dashboard/share/${plan.shareToken}/` : '',
+    sharePath: plan.shareToken ? `/p/${plan.shareToken}/` : '',
     hasParticipantActivity: logs.length > 0 || assignments.some(assignment =>
       assignment?.moved || (assignment?.status && assignment.status !== 'planned')
     )
@@ -83,9 +203,7 @@ function ownerPlanSummaries(plans) {
 }
 
 function validatePlanPayload(body) {
-  if (!body || typeof body.ownerKey !== 'string' || body.ownerKey.length < 16) {
-    return 'A valid owner key is required.';
-  }
+  if (!body) return 'A plan payload is required.';
   const program = body.program;
   const hasWeeks = Array.isArray(program?.weeks) && program.weeks.length > 0;
   const hasLegacyDays = Array.isArray(program?.days) && program.days.length === 7;
@@ -208,7 +326,7 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function jerryDemoPlan(ownerKey) {
+function jerryDemoPlan() {
   const weekSpecs = [
     {
       phase: 'Base build',
@@ -338,7 +456,7 @@ function jerryDemoPlan(ownerKey) {
   return {
     id: crypto.randomUUID(),
     shareToken: crypto.randomBytes(24).toString('base64url'),
-    ownerKeyHash: hashOwnerKey(ownerKey),
+    ownerKeyHash: adminOwnerHash(),
     name: program.name,
     personName: 'Jerry',
     goal: 'Build a consistent training rhythm',
@@ -355,15 +473,14 @@ function jerryDemoPlan(ownerKey) {
 }
 
 // ── Published personal training plans ─────────────────────────────
-// This is deliberately small prototype storage. The owner key is a
-// browser-held bearer key until proper authentication is added.
 app.post('/api/plans/publish', (req, res) => {
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
   const validationError = validatePlanPayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
 
   const plans = readPublishedPlans();
   const parentPlan = req.body.parentPlanId
-    ? plans.find(item => item.id === req.body.parentPlanId && !item.deletedAt && item.ownerKeyHash === hashOwnerKey(req.body.ownerKey))
+    ? plans.find(item => item.id === req.body.parentPlanId && !item.deletedAt)
     : null;
   const submittedHistory = Array.isArray(req.body.history) ? req.body.history : [];
   const history = submittedHistory.filter(item => item?.planId !== parentPlan?.id);
@@ -381,7 +498,7 @@ app.post('/api/plans/publish', (req, res) => {
   const plan = {
     id: crypto.randomUUID(),
     shareToken: crypto.randomBytes(24).toString('base64url'),
-    ownerKeyHash: hashOwnerKey(req.body.ownerKey),
+    ownerKeyHash: adminOwnerHash(),
     name: String(req.body.program.name || 'Training plan').slice(0, 100),
     personName: String(req.body.personName || 'Participant').slice(0, 100),
     goal: String(req.body.goal || '').slice(0, 160),
@@ -411,12 +528,10 @@ app.post('/api/plans/publish', (req, res) => {
 });
 
 app.post('/api/plans/demo/jerry', (req, res) => {
-  const ownerKey = String(req.get('x-owner-key') || '');
-  if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
   const plans = readPublishedPlans();
   const existing = plans.find(item =>
     !item.deletedAt &&
-    item.ownerKeyHash === hashOwnerKey(ownerKey) &&
     item.demoKey === 'jerry'
   );
   if (existing) {
@@ -434,7 +549,7 @@ app.post('/api/plans/demo/jerry', (req, res) => {
       }
     });
   }
-  const plan = jerryDemoPlan(ownerKey);
+  const plan = jerryDemoPlan(adminOwnerHash());
   plans.push(plan);
   writePublishedPlans(plans);
   res.status(201).json({
@@ -453,18 +568,16 @@ app.post('/api/plans/demo/jerry', (req, res) => {
 });
 
 app.get('/api/plans/owner', (req, res) => {
-  const ownerKey = String(req.get('x-owner-key') || req.query.ownerKey || '');
-  if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
-  const ownerKeyHash = hashOwnerKey(ownerKey);
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
   const plans = readPublishedPlans()
-    .filter(plan => !plan.deletedAt && plan.ownerKeyHash === ownerKeyHash)
+    .filter(plan => !plan.deletedAt)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   res.json({ ok: true, plans: ownerPlanSummaries(plans) });
 });
 
 app.get('/api/plans/owner/:id', (req, res) => {
-  const ownerKey = String(req.get('x-owner-key') || req.query.ownerKey || '');
-  const plan = readPublishedPlans().find(item => item.id === req.params.id && !item.deletedAt && item.ownerKeyHash === hashOwnerKey(ownerKey));
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  const plan = readPublishedPlans().find(item => item.id === req.params.id && !item.deletedAt);
   if (!plan) return res.status(404).json({ ok: false, error: 'Plan not found.' });
   res.json({
     ok: true,
@@ -481,15 +594,14 @@ app.get('/api/plans/owner/:id', (req, res) => {
 });
 
 app.put('/api/plans/owner/:id', (req, res) => {
-  const ownerKey = String(req.get('x-owner-key') || '');
-  const validationError = validatePlanPayload({ ...req.body, ownerKey });
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  const validationError = validatePlanPayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
 
   const plans = readPublishedPlans();
   const planIndex = plans.findIndex(item =>
     item.id === req.params.id &&
-    !item.deletedAt &&
-    item.ownerKeyHash === hashOwnerKey(ownerKey)
+    !item.deletedAt
   );
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Plan not found.' });
 
@@ -533,14 +645,12 @@ app.put('/api/plans/owner/:id', (req, res) => {
 });
 
 app.delete('/api/plans/owner/:id', (req, res) => {
-  const ownerKey = String(req.get('x-owner-key') || '');
-  if (ownerKey.length < 16) return res.status(400).json({ ok: false, error: 'A valid owner key is required.' });
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
 
   const plans = readPublishedPlans();
   const planIndex = plans.findIndex(item =>
     item.id === req.params.id &&
-    !item.deletedAt &&
-    item.ownerKeyHash === hashOwnerKey(ownerKey)
+    !item.deletedAt
   );
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Plan not found.' });
 
@@ -548,7 +658,6 @@ app.delete('/api/plans/owner/:id', (req, res) => {
   const remainingPlans = plans
     .filter((_, index) => index !== planIndex)
     .map(plan => {
-      if (plan.ownerKeyHash !== deletedPlan.ownerKeyHash) return plan;
       return {
         ...plan,
         parentPlanId: plan.parentPlanId === deletedPlan.id ? null : plan.parentPlanId,
@@ -604,7 +713,7 @@ app.put('/api/plans/share/:token/state', (req, res) => {
 // ── Admin: verify password ───────────────────────────────────────
 app.post('/api/admin/verify', (req, res) => {
   const { password } = req.body;
-  res.json({ ok: password === ADMIN_PASSWORD });
+  res.json({ ok: Boolean(ADMIN_PASSWORD) && sameSecret(password, ADMIN_PASSWORD) });
 });
 
 // ── Generate AI commentary ───────────────────────────────────────
@@ -732,7 +841,8 @@ app.get('/challenge', (req, res) => {
 });
 
 app.get(['/dashboard/share/:token', '/dashboard/share/:token/'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard', 'index.html'));
+  const query = new URLSearchParams(req.query).toString();
+  res.redirect(308, `/p/${encodeURIComponent(req.params.token)}${query ? `?${query}` : ''}`);
 });
 
 app.listen(5000, '0.0.0.0', () => {
