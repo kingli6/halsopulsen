@@ -30,7 +30,7 @@ function showPlanToast(message) {
 }
 
 function templateTypeLabel(type) {
-  return type === "activity" ? "Activity" : type === "workout" ? "Day workout" : "Week";
+  return type === "activity" ? "Activity" : type === "workout" ? "Individual workout" : "Week";
 }
 
 function templateDataSummary(template) {
