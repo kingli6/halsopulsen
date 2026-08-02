@@ -106,6 +106,7 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .week-notice, .owner-notice { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #f4dac7; border-radius: 10px; background: #fffaf6; color: #765e4e; font-size: 12px; }
 .notice-icon { display: grid; width: 22px; height: 22px; place-items: center; flex-shrink: 0; border-radius: 50%; background: var(--orange-soft); color: var(--orange); font-weight: 700; }
 .mode-banner { position: sticky; top: 73px; z-index: 15; display: flex; align-items: center; gap: 11px; margin-bottom: 20px; padding: 13px 15px; border: 1px solid #edc59e; border-radius: 12px; background: #fff8ef; color: #76533e; box-shadow: 0 6px 18px rgba(72, 49, 29, .08); font-size: 12px; }
+.mode-banner[hidden] { display: none !important; }
 .mode-banner > div { display: flex; flex-direction: column; gap: 2px; }
 .mode-banner strong { color: #603f2b; font-size: 12px; }
 .mode-banner span:last-child { color: #765e4e; }

@@ -3,7 +3,7 @@ const logQuery = new URLSearchParams(window.location.search);
 const logState = {
   data: null,
   isShared: Boolean(sharedTokenMatch),
-  isPreview: !sharedTokenMatch && logQuery.get("preview") === "1",
+  isPreview: logQuery.get("preview") === "1",
   shareToken: sharedTokenMatch?.[1] || "",
   selectedDate: TrackerData.todayISO(),
   selectedAssignmentId: null,
@@ -63,12 +63,15 @@ function setPageMode() {
     const eyebrow = document.querySelector(".page-intro .eyebrow");
     if (eyebrow) eyebrow.textContent = "SHARED TRAINING LOG";
   }
-  renderModeBanner();
 }
 
 function renderModeBanner() {
   const banner = document.getElementById("modeBanner");
-  if (!banner || (!logState.isShared && !logState.isPreview)) return;
+  if (!banner) return;
+  if (!logState.isPreview) {
+    banner.hidden = true;
+    return;
+  }
   const personName = logState.data?.person?.name || "this participant";
   const preview = logState.isPreview;
   banner.hidden = false;
