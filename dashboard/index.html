@@ -72,10 +72,11 @@
         <p class="today-subtitle" id="todaySubtitle">Select a day below to see its workout.</p>
         <div class="assignment-preview" id="assignmentPreview"></div>
         <div class="today-actions">
-          <button class="button button-primary" id="logAssignmentBtn" type="button">Log this session</button>
+          <button class="button button-primary" id="logAssignmentBtn" type="button">Log activity</button>
           <button class="button button-quiet" id="skipAssignmentBtn" type="button">Skip for now</button>
+          <button class="button button-quiet move-assignment-button" id="moveAssignmentBtn" type="button" hidden>Move unfinished workout here</button>
         </div>
-        <p class="helper-text"><span class="helper-dot"></span> Click an open day to move this unfinished assignment.</p>
+        <p class="helper-text"><span class="helper-dot"></span> Select any date to log planned work or something else you did.</p>
       </div>
 
       <aside class="insight-card card" aria-labelledby="insightHeading">
@@ -98,17 +99,19 @@
           <button class="round-button" id="previousWeekBtn" type="button" aria-label="Previous week">←</button>
           <span id="weekLabel">This week</span>
           <button class="round-button" id="nextWeekBtn" type="button" aria-label="Next week">→</button>
+            <button class="button button-small button-secondary" id="todayBtn" type="button">Today</button>
         </div>
       </div>
       <div class="week-notice">
         <span class="notice-icon">↗</span>
-        <span><strong>Recommended days are guides.</strong> Select another open day to move an unfinished workout. We keep the original recommendation.</span>
+          <span><strong>Select a date to log what happened.</strong> You can backfill planned work or record something else you did.</span>
       </div>
       <div class="day-grid" id="dayGrid" role="list" aria-label="Days in selected week"></div>
       <div class="legend">
         <span><i class="legend-swatch recommended"></i> Recommended</span>
         <span><i class="legend-swatch moved"></i> Moved</span>
         <span><i class="legend-swatch complete"></i> Completed</span>
+          <span><i class="legend-swatch other"></i> Other activity</span>
         <span><i class="legend-swatch open"></i> Open day</span>
       </div>
     </section>
@@ -123,7 +126,7 @@
           <span class="range-label">Last 14 days</span>
         </div>
         <div class="metric-row">
-          <div class="metric"><strong id="completedCount">0</strong><span>completed</span></div>
+            <div class="metric"><strong id="completedCount">0</strong><span>logged · last 14 days</span></div>
           <div class="metric"><strong id="completionRate">0%</strong><span>follow-through</span></div>
           <div class="metric"><strong id="averageDifficulty">—</strong><span>avg difficulty</span></div>
         </div>
@@ -168,12 +171,17 @@
       <div class="modal-header">
         <div>
           <p class="section-kicker">SESSION LOG</p>
-          <h2 id="logModalTitle">Log your session</h2>
+          <h2 id="logModalTitle">Log activity</h2>
         </div>
         <button class="modal-close" id="closeLogModal" type="button" aria-label="Close">×</button>
       </div>
       <p class="modal-context" id="logModalContext"></p>
       <form id="logForm">
+        <div class="log-mode-switch" id="logModeSwitch" role="group" aria-label="Activity source">
+          <button class="log-mode-button is-selected" id="plannedLogModeBtn" type="button" data-log-mode="planned" aria-pressed="true">Planned workout</button>
+          <button class="log-mode-button" id="otherLogModeBtn" type="button" data-log-mode="other" aria-pressed="false">Something else</button>
+        </div>
+        <div id="logActivityFields"></div>
         <div id="logExerciseFields"></div>
         <div class="form-grid">
           <label>
@@ -199,7 +207,7 @@
         </label>
         <div class="modal-actions">
           <button class="button button-secondary" id="cancelLogBtn" type="button">Cancel</button>
-          <button class="button button-primary" type="submit">Save session</button>
+          <button class="button button-primary" type="submit">Save activity</button>
         </div>
       </form>
     </div>

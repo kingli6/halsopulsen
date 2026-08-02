@@ -440,6 +440,18 @@ const TrackerData = (() => {
     return allLogs(data).find(log => log.assignmentId === id) || null;
   }
 
+  function logsForDate(data, date) {
+    return allLogs(data).filter(log => log.date === date);
+  }
+
+  function isStandaloneLog(log) {
+    return !log?.assignmentId || log.source === "other";
+  }
+
+  function standaloneLogsForDate(data, date) {
+    return logsForDate(data, date).filter(isStandaloneLog);
+  }
+
   function programWeekIndexForDate(program, date) {
     const weeks = Array.isArray(program?.weeks) && program.weeks.length ? program.weeks : [program];
     const start = startOfWeek(program?.startDate || todayISO());
@@ -518,6 +530,9 @@ const TrackerData = (() => {
     allAssignments,
     allLogs,
     logForAssignment,
+    logsForDate,
+    isStandaloneLog,
+    standaloneLogsForDate,
     programWeekIndexForDate,
     programWeekForDate,
     ensureAssignments,

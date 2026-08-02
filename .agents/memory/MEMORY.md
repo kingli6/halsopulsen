@@ -1,2 +1,3 @@
 - [Personal coaching direction](personal-coaching-direction.md) — build a simple individual tracker first; keep AI external until the structured data loop proves useful.
 - [Published plan sharing](published-plan-sharing.md) — published versions are immutable server snapshots with random participant links; owner keys are prototype-only.
+- [Logging flow](logging-flow.md) — planned sessions, backfilled dates, and extra activities share one history without changing the plan implicitly.
