@@ -138,6 +138,75 @@ idea. When the tracker is ready to show publicly, replace that space with a
 small, truthful example of logging a workout and using the resulting history
 and statistics—not an admin link or a promise of public competition.
 
+## Status snapshot — August 3, 2026
+
+### Working now
+
+- The owner can create structured goals, multi-week programs, weekday workouts,
+  exercises, progression guidance, and recommended assignments.
+- The owner can publish a version, preview the participant view, revise a draft,
+  and reuse saved activity, day-workout, and week snapshots.
+- Participants use a separate logging workspace through a private published
+  link. They can log planned sessions, backfill a date, move unfinished work,
+  mark a workout skipped, or record an extra activity without changing the
+  plan.
+- Logs include planned versus completed values, intensity, difficulty, energy,
+  and notes. History, progress summaries, charts, and CSV export are available.
+- Current planned sessions and extra activities can be edited or deleted.
+  Deleting a planned log reopens its assignment. Archived plan history remains
+  immutable.
+- Shared participant saves use a revision number and request ID. Duplicate
+  requests are idempotent, stale updates are rejected, and the participant is
+  offered an explicit reload after a conflict.
+- The local Express app has bounded request bodies, lightweight API/login rate
+  limits, collection limits, generic API errors, and non-cacheable private
+  responses.
+
+### Recent reliability work
+
+- Added `npm run test:shared-log`, a repeatable regression check for legacy
+  revision zero, first save, duplicate replay, stale conflict, sequential saves,
+  and preservation of stored assignments/logs.
+- Fixed the new-session logging button so it opens a new log instead of passing
+  the browser click event into the edit-session path.
+- The workflow is currently running cleanly on port 5000 with syntax, route,
+  served-asset, regression, and diff checks passing.
+
+### Prototype boundaries
+
+- Owner drafts still use browser storage.
+- Published plans and shared participant state still use local JSON files behind
+  the Express server.
+- Admin authentication and bearer links are prototype access controls, not a
+  production identity and permissions system.
+- There is not yet a production database, Row Level Security, deployment
+  pipeline, or full browser end-to-end test suite.
+- Time-zone and local-date behavior still needs focused automated checks before
+  the tracker is trusted with longer-running real use.
+
+## Where we are going next
+
+Work in this order:
+
+1. Use the planner and logger with a small amount of realistic training data.
+   Confirm that assignments, moved sessions, backfilled dates, corrections,
+   history, charts, and CSV export reflect actual use.
+2. Add focused automated checks for participant corrections and local-date/time-
+   zone edge cases, alongside the existing shared-save regression test.
+3. Protect participant data and admin controls before inviting more people:
+   move authorization and private persistence out of browser/local JSON
+   assumptions and define the owner/participant access boundary.
+4. Design the production Supabase schema and migration for identities, plan
+   versions, assignments, logs, reusable templates, and asset metadata. Import
+   and verify the current local examples before changing hosting.
+5. Move the static frontend and protected API path toward GitHub/GitHub Pages
+   plus Supabase Auth/RLS or protected server/Edge Functions.
+6. Add optional Gemini coaching only after the structured planning, logging, and
+   statistics loop is stable. The tracker must remain useful when AI is absent.
+7. Keep group challenges, leaderboards, chat, rewards, and social features
+   deferred until individual use shows which comparison or community behaviors
+   are genuinely valuable.
+
 ## Architecture decision — August 3, 2026
 
 Keep the product simple and continue with this split:
