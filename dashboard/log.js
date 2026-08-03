@@ -346,9 +346,13 @@ function renderToday() {
         ${assignment.workout.cooldown ? `<p class="workout-note"><strong>Cool-down</strong> ${escapeLogHtml(assignment.workout.cooldown)}</p>` : ""}
       </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
-  const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong><span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span></div>`).join("");
+  const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip">
+    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong><button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Adjust</button></div>
+    <span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span>
+  </div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
   const logButton = document.getElementById("logAssignmentBtn");
+  const adjustButton = document.getElementById("adjustLogBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
   logButton.disabled = logIsReadOnly();
   logButton.textContent = logIsReadOnly()
@@ -358,6 +362,7 @@ function renderToday() {
       : assignment
         ? (isToday ? "Log today's workout" : "Log this workout")
         : "Log something else";
+  adjustButton.hidden = logIsReadOnly() || !log;
   skipButton.disabled = logIsReadOnly() || !assignment || Boolean(log);
   const moveButton = document.getElementById("moveAssignmentBtn");
   moveButton.hidden = logIsReadOnly() || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
@@ -941,7 +946,16 @@ function bindLogEvents() {
     if (deltaX > 0 && atStart) shiftWeek(-1);
     if (deltaX < 0 && atEnd) shiftWeek(1);
   }, { passive: true });
+  document.getElementById("assignmentPreview").addEventListener("click", event => {
+    const editButton = event.target.closest("[data-edit-log]");
+    if (editButton) openLogModal(editButton.dataset.editLog);
+  });
   document.getElementById("logAssignmentBtn").addEventListener("click", () => openLogModal());
+  document.getElementById("adjustLogBtn").addEventListener("click", () => {
+    const assignment = currentAssignment();
+    const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
+    if (log) openLogModal(log.id);
+  });
   document.getElementById("skipAssignmentBtn").addEventListener("click", skipAssignment);
   document.getElementById("moveAssignmentBtn").addEventListener("click", () => moveSelectedAssignment(logState.selectedDate));
   document.getElementById("previousWeekBtn").addEventListener("click", () => shiftWeek(-1));

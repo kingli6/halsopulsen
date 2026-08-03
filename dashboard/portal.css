@@ -87,6 +87,8 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .assignment-main-chip { display: flex; flex-direction: column; gap: 4px; width: fit-content; max-width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdfb; }
 .assignment-main-chip strong { font-size: 14px; }
 .assignment-main-chip span { color: var(--muted); font-size: 11px; }
+.other-activity-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.other-activity-heading .text-button { flex-shrink: 0; font-size: 10px; }
 .today-actions { display: flex; align-items: center; gap: 13px; margin-top: 21px; }
 .helper-text { display: flex; align-items: center; gap: 7px; margin: 16px 0 0; color: var(--muted); font-size: 11px; }
 .helper-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
