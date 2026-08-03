@@ -436,7 +436,7 @@ function renderToday() {
       </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
   const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip">
-    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${isEditableLog(otherLog) ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Edit</button>` : ""}</div>
+    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${isEditableLog(otherLog) ? `<span class="activity-actions"><button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Edit</button>${isDeletableLog(otherLog) ? `<button class="text-button danger-button" type="button" data-delete-log="${escapeLogHtml(otherLog.id)}">Delete</button>` : ""}</span>` : ""}</div>
     <span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span>
   </div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
@@ -1192,6 +1192,8 @@ function bindLogEvents() {
   document.getElementById("assignmentPreview").addEventListener("click", event => {
     const editButton = event.target.closest("[data-edit-log]");
     if (editButton) openLogModal(editButton.dataset.editLog);
+    const deleteButton = event.target.closest("[data-delete-log]");
+    if (deleteButton) deleteLog(deleteButton.dataset.deleteLog);
     const workoutButton = event.target.closest("[data-open-workout]");
     if (workoutButton) openLogModal(null, "planned");
   });
