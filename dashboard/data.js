@@ -72,10 +72,6 @@ const TrackerData = (() => {
     return `${value} ${unit}`;
   }
 
-  function intensityLabel(exercise) {
-    return exercise?.intensity ? ` · ${exercise.intensity}` : "";
-  }
-
   function emptyDay(weekday) {
     return {
       weekday,
@@ -503,7 +499,6 @@ const TrackerData = (() => {
     formatDateRange,
     formatRest,
     targetLabel,
-    intensityLabel,
     emptyDay,
     defaultProgram,
     defaultData,
