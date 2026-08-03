@@ -184,6 +184,33 @@ and statistics—not an admin link or a promise of public competition.
 - Time-zone and local-date behavior still needs focused automated checks before
   the tracker is trusted with longer-running real use.
 
+### Participant logging page design direction
+
+The participant's primary job is simple:
+
+> See what I need to do today → understand the workout → log what happened.
+
+The current page is visually polished, but its hierarchy is too dashboard-like.
+The goal strip comes first, the “Up next” card is only part of a two-column
+section, and the dark explanatory card competes strongly for attention. In the
+first viewport, the actual workout details are pushed low and compressed into a
+single summary line. That makes the important task feel secondary.
+
+The recommended order is:
+
+1. A compact page header with the plan name and weekly progress.
+2. A prominent, full-width **Today’s workout** section with the workout title,
+   clear task rows, prescription details, and one obvious **Log workout** action.
+3. The week view for choosing another date, moving unfinished work, or
+   backfilling.
+4. Progress and recent history.
+5. Explanatory notes and storage/link information as secondary content.
+
+Use familiar task and training-app conventions rather than inventing a new
+interaction model: “Today,” a scannable checklist or activity list, a clear
+start/log action, and compact status labels. Keep the custom visual style, but
+do not let decorative cards or aggregate metrics outrank the next action.
+
 ## Where we are going next
 
 Work in this order:
