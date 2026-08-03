@@ -422,8 +422,17 @@ function validateSharedStatePayload(body) {
 function parseISODate(value) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime()) ? null : date;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    Number.isNaN(date.getTime())
+    || date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+  ) return null;
+  return date;
 }
 
 function formatISODate(date) {
@@ -902,6 +911,8 @@ app.get('/api/plans/share/:token', (req, res) => {
 });
 
 app.put('/api/plans/share/:token/state', (req, res) => {
+  // The JSON file is a single-process prototype store. Its synchronous read/modify/write
+  // is not safe across multiple Node instances; use a transactional store before scaling out.
   const plans = readPublishedPlans();
   const planIndex = plans.findIndex(item => item.shareToken === req.params.token);
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Shared plan not found.' });
