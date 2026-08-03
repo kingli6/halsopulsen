@@ -162,6 +162,13 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .history-item:last-child { border-bottom: 0; }
 .history-check { display: grid; width: 25px; height: 25px; place-items: center; flex-shrink: 0; border-radius: 8px; background: var(--green-3); color: var(--green); font-size: 13px; }
 .history-details { flex: 1; min-width: 0; }.history-title { display: block; overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }.history-meta { display: block; color: var(--muted); font-size: 10px; }.history-value { color: var(--green); font-size: 11px; font-weight: 700; }.history-actions { display: flex; flex-shrink: 0; gap: 8px; }.history-actions .text-button { font-size: 10px; }
+.version-history { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
+.version-history-title { margin: 0 0 2px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.version-history-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; color: var(--muted); font-size: 10px; }
+.version-history-item > div { min-width: 0; }
+.version-history-item strong, .version-history-item span { display: block; }
+.version-history-item strong { overflow: hidden; color: var(--ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.version-history-item b { flex-shrink: 0; color: var(--green); font-size: 10px; }
 .empty-history, .empty-panel { padding: 45px 10px; color: var(--muted); text-align: center; font-size: 12px; }
 .published-card { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 25px; margin-bottom: 45px; }
 .published-card h2 { margin-bottom: 4px; font-size: 20px; }.published-card p { margin-bottom: 0; color: var(--muted); font-size: 12px; }.published-meta { display: flex; align-items: flex-end; gap: 20px; color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; }

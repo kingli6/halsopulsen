@@ -220,10 +220,6 @@ function activitySummary(activity) {
   return `${target}${intensity}${heartRate}`;
 }
 
-function workoutTarget(workout) {
-  return workout.exercises.map(activity => `${activity.name} · ${activitySummary(activity)}${activity.notes ? ` · ${activity.notes}` : ""}`).join(" · ");
-}
-
 function standaloneLogTitle(log) {
   return log?.activity?.name || log?.workoutName || "Other activity";
 }
@@ -1019,10 +1015,10 @@ function bindLogEvents() {
       logState.suppressWeekClick = false;
       return;
     }
-    const tile = event.target.closest("[data-date]");
-    if (!tile) return;
+    const tile = event.target.closest(".day-tile");
+    if (!tile || !dayGrid.contains(tile)) return;
     const date = tile.dataset.date;
-    const assignment = TrackerData.assignmentForDate(logState.data, date);
+    const assignment = assignmentForDisplayDate(date);
     logState.selectedDate = date;
     if (assignment) {
       logState.selectedAssignmentId = assignment.id;
@@ -1037,13 +1033,13 @@ function bindLogEvents() {
   });
   dayGrid.addEventListener("pointerdown", event => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    logState.suppressWeekClick = false;
     logState.weekPointerId = event.pointerId;
     logState.weekPointerStartX = event.clientX;
     logState.weekPointerStartY = event.clientY;
     logState.weekPointerStartScrollLeft = dayGrid.scrollLeft;
     logState.weekPointerMoved = false;
     dayGrid.classList.add("is-dragging");
-    dayGrid.setPointerCapture?.(event.pointerId);
   });
   dayGrid.addEventListener("pointermove", event => {
     if (event.pointerId !== logState.weekPointerId) return;
@@ -1053,6 +1049,7 @@ function bindLogEvents() {
       if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return;
       if (Math.abs(deltaX) <= Math.abs(deltaY)) return;
       logState.weekPointerMoved = true;
+      dayGrid.setPointerCapture?.(event.pointerId);
     }
     event.preventDefault();
     dayGrid.scrollLeft = logState.weekPointerStartScrollLeft - deltaX;
