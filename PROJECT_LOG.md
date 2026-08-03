@@ -198,13 +198,18 @@ single summary line. That makes the important task feel secondary.
 
 The recommended order is:
 
-1. A compact page header with the plan name and weekly progress.
-2. A prominent, full-width **Today’s workout** section with the workout title,
+1. A compact page header, followed immediately by the **week selector**.
+2. A prominent, full-width selected-day workout section with the workout title,
    clear task rows, prescription details, and one obvious **Log workout** action.
-3. The week view for choosing another date, moving unfinished work, or
-   backfilling.
+3. The current goal and weekly progress summary.
 4. Progress and recent history.
 5. Explanatory notes and storage/link information as secondary content.
+
+The week selector keeps explicit previous/next arrows and a Today button. On
+mobile, the seven day cards form a horizontal touch strip with snap points.
+Swiping across the visible strip selects days; swiping beyond its left or right
+edge changes the week. This keeps the familiar week controls while making the
+day-to-workout relationship obvious on a narrow screen.
 
 Use familiar task and training-app conventions rather than inventing a new
 interaction model: “Today,” a scannable checklist or activity list, a clear
