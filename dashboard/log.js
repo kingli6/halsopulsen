@@ -274,7 +274,7 @@ function renderGoal() {
   setLogText("goalHeading", logState.data.publishedGoal || logState.data.goal);
   setLogText("weekHeading", activeWeek ? `Week ${activeWeek.weekNumber} · choose a day` : "Choose a day");
   setLogText("goalText", published
-    ? `${activeWeek?.phase || "Foundation"} · Week ${activeWeek?.weekNumber || 1} of ${weeks.length}${published.startDate ? ` · Starts ${TrackerData.formatShortDate(published.startDate)}` : ""}. ${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Recommended days are a starting point, not a pass/fail test.`
+    ? `${activeWeek?.phase || "Foundation"} · Week ${activeWeek?.weekNumber || 1} of ${weeks.length}${published.startDate ? ` · Starts ${TrackerData.formatShortDate(published.startDate)}` : ""}. ${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Planned days are a starting point, not a pass/fail test.`
     : "The owner has not published a program yet.");
   setLogText("publishedHeading", published?.name || "No program published yet");
   setLogText("publishedSummary", published
@@ -299,7 +299,7 @@ function renderToday() {
     ? (isToday ? "Today's workout" : "Selected workout")
     : (date === TrackerData.todayISO() ? "Today's activities" : "Selected date"));
   setLogText("todaySubtitle", assignment
-    ? (assignment.moved ? `Moved from ${TrackerData.formatShortDate(assignment.recommendedDate)} so it fits your week.` : "This workout was recommended for this day.")
+    ? (assignment.moved ? `Moved from ${TrackerData.formatShortDate(assignment.recommendedDate)} so it fits your week.` : "This workout is planned for this day.")
     : "Nothing was planned here. You can still record something you did.");
   const statusElement = document.getElementById("todayStatus");
   statusElement.className = "status-pill";
@@ -316,8 +316,8 @@ function renderToday() {
     statusElement.classList.add("status-moved");
     statusElement.textContent = "Moved";
   } else {
-    statusElement.classList.add(assignment ? "status-recommended" : "status-open");
-    statusElement.textContent = assignment ? "Recommended" : "Open day";
+    statusElement.classList.add(assignment ? "status-planned" : "status-open");
+    statusElement.textContent = assignment ? "Planned" : "Open day";
   }
 
   const preview = document.getElementById("assignmentPreview");
@@ -406,10 +406,9 @@ function renderWeek() {
       : otherLogs.length
         ? `<strong>${escapeLogHtml(standaloneLogTitle(otherLogs[0]))}</strong><span>${otherLogs.length > 1 ? `+${otherLogs.length - 1} other · ` : ""}Other activity</span>`
         : `<span>Rest / open day</span>`;
-    const footer = assignment && !log && !assignment.moved ? `<span class="day-recommendation">recommended</span>` : "";
     return `<button class="${classes.join(" ")}" type="button" role="listitem" data-date="${date}" aria-label="${TrackerData.formatLongDate(date)}${assignment ? ", assignment" : otherLogs.length ? ", other activity logged" : ", rest or open day"}">
       ${marker}${date === TrackerData.todayISO() ? '<span class="today-badge">TODAY</span>' : ""}<span class="day-label">${TrackerData.DAY_NAMES[dateObject.getDay()]}</span><span class="day-number">${dateObject.getDate()}</span>
-      <span class="day-content">${content}</span>${footer}</button>`;
+      <span class="day-content">${content}</span></button>`;
   }).join("");
   if (window.matchMedia("(max-width: 620px)").matches) {
     requestAnimationFrame(() => {

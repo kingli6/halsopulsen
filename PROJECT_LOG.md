@@ -210,7 +210,9 @@ seven day cards form a horizontal draggable strip on desktop and mobile. A
 mouse or finger can grab and drag the strip; clicking a card still selects the
 day. Dragging beyond its left or right edge changes the week. This keeps the
 familiar week controls while making the day-to-workout relationship obvious on
-a narrow screen.
+a narrow screen. Day tiles show the workout name and activity count without a
+redundant “recommended” footer; the participant-facing state is **Planned**
+because the day is a suggested schedule, not a deadline.
 
 Use familiar task and training-app conventions rather than inventing a new
 interaction model: “Today,” a scannable checklist or activity list, a clear
