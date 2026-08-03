@@ -21,11 +21,12 @@ through the same shared revision/request-ID save contract as new activity.
 When the source assignment is archived, write the corrected log into current
 state while leaving its historical assignment and original snapshot unchanged.
 
-On a selected current-plan day, the primary action edits an existing planned log
-or creates the planned log when none exists; a separate secondary action records
-standalone activity. Standalone entries expose their own Edit action. A past
-current-plan and archived-plan sessions remain editable when they are saved
-records; only the archived prescription stays read-only.
+On a selected planned day in the past, the primary action is always an explicit
+Edit workout action: it edits the saved planned log when one exists or opens the
+planned-workout form when the day has not been logged yet. A separate secondary
+action records standalone activity. Standalone entries expose their own Edit
+action. The archived prescription stays read-only, but its past session remains
+correctable.
 
 **Why:** “Add another activity” made the existing planned record feel immutable,
 which encouraged duplicate logs instead of correcting yesterday’s entry.

@@ -217,6 +217,10 @@ function isEditableLog(log) {
   );
 }
 
+function canEditWorkout(assignment) {
+  return Boolean(assignment && !logIsReadOnly() && !isFutureDate(assignment.date));
+}
+
 function assignmentIsMissed(assignment) {
   return assignment?.status === "missed" || assignment?.status === "skipped";
 }
@@ -413,8 +417,10 @@ function renderToday() {
       ${completion}
     </div>`;
   }).join("");
-  const plannedEditButton = log && isEditableLog(log)
-    ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(log.id)}">Edit logged workout</button>`
+  const plannedEditButton = canEditWorkout(assignment)
+    ? log
+      ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(log.id)}">Edit logged workout</button>`
+      : `<button class="text-button" type="button" data-open-workout="${escapeLogHtml(assignment.id)}">Edit workout</button>`
     : "";
   const plannedPreview = assignment
     ? `<div class="workout-summary">
@@ -445,10 +451,8 @@ function renderToday() {
       ? "Logging opens later"
       : canEditPlannedLog
           ? "Edit logged workout"
-          : isArchivedAssignment
-            ? "Log other activity"
-            : assignment
-            ? (isToday ? "Log today's workout" : "Log this workout")
+          : assignment
+            ? "Edit workout"
             : "Log other activity";
   otherActivityButton.hidden = logIsReadOnly() || isFuture || !assignment || isArchivedAssignment;
   otherActivityButton.disabled = logIsReadOnly() || isFuture;
@@ -462,7 +466,9 @@ function renderToday() {
   setLogText("todayHelperCopy", isFuture
     ? "Logging is disabled until this day arrives. You can review the planned workout now."
     : isArchivedAssignment
-      ? "The archived workout prescription stays unchanged, but you can correct the recorded session or add other activity on this date."
+      ? log
+        ? "The archived workout prescription stays unchanged, but you can edit the recorded session or add other activity on this date."
+        : "The archived workout prescription stays unchanged, but you can edit and record what happened on this past date."
       : assignmentIsMissed(assignment)
         ? "This workout is marked as missed. Restore it if you decide to complete it."
         : "Planned days are a guide. Move unfinished work when real life gets in the way.");
@@ -815,7 +821,7 @@ function setLogMode(mode) {
   const editingExisting = Boolean(logState.editingLogId);
   const plannedAllowed = editingExisting
     ? Boolean(existingLog?.assignmentId && assignment)
-    : Boolean(assignment && isCurrentAssignment(assignment) && !plannedLog);
+    : Boolean(assignment && !plannedLog && !isFutureDate(assignment.date));
   const otherAllowed = !editingExisting || !existingLog?.assignmentId;
   logState.logMode = mode === "planned" && plannedAllowed ? "planned" : "other";
   const plannedButton = document.getElementById("plannedLogModeBtn");
@@ -854,7 +860,7 @@ function openLogModal(logId = null, requestedMode = null) {
   }
   const plannedAssignment = existingLog?.assignmentId
     ? assignment
-    : isCurrentAssignment(assignment)
+    : assignment && !isFutureDate(assignment.date)
       ? assignment
       : null;
   const plannedLog = plannedAssignment ? TrackerData.logForAssignment(logState.data, plannedAssignment.id) : null;
@@ -1186,6 +1192,8 @@ function bindLogEvents() {
   document.getElementById("assignmentPreview").addEventListener("click", event => {
     const editButton = event.target.closest("[data-edit-log]");
     if (editButton) openLogModal(editButton.dataset.editLog);
+    const workoutButton = event.target.closest("[data-open-workout]");
+    if (workoutButton) openLogModal(null, "planned");
   });
   document.getElementById("logAssignmentBtn").addEventListener("click", () => {
     const assignment = assignmentForDisplayDate(logState.selectedDate);
@@ -1194,7 +1202,7 @@ function bindLogEvents() {
       openLogModal(log.id);
       return;
     }
-    const mode = assignment && isCurrentAssignment(assignment) ? "planned" : "other";
+    const mode = assignment ? "planned" : "other";
     openLogModal(null, mode);
   });
   document.getElementById("logOtherActivityBtn").addEventListener("click", () => {
