@@ -67,6 +67,8 @@
         <span><i class="legend-swatch planned"></i> Planned</span>
         <span><i class="legend-swatch moved"></i> Moved</span>
         <span><i class="legend-swatch complete"></i> Completed</span>
+        <span><i class="legend-swatch recorded"></i> Recorded</span>
+        <span><i class="legend-swatch missed"></i> Missed</span>
         <span><i class="legend-swatch other"></i> Other activity</span>
         <span><i class="legend-swatch open"></i> Open day</span>
       </div>
@@ -87,7 +89,7 @@
         <div class="today-actions">
           <button class="button button-primary" id="logAssignmentBtn" type="button">Log activity</button>
           <button class="button button-secondary" id="logOtherActivityBtn" type="button" hidden>Log other activity</button>
-          <button class="button button-quiet" id="skipAssignmentBtn" type="button" title="Mark this planned workout as skipped without recording a session">Skip for now</button>
+          <button class="button button-quiet" id="skipAssignmentBtn" type="button" title="Mark this planned workout as missed without recording it as complete">Mark as missed</button>
           <button class="button button-quiet move-assignment-button" id="moveAssignmentBtn" type="button" hidden>Move unfinished workout here</button>
         </div>
         <p class="helper-text" id="todayHelperText"><span class="helper-dot"></span> <span id="todayHelperCopy">Planned days are a guide. Move unfinished work when real life gets in the way.</span></p>
@@ -186,6 +188,15 @@
         </div>
         <div id="logActivityFields"></div>
         <div id="logExerciseFields"></div>
+        <div class="completion-field" id="plannedCompletionField">
+          <label class="completion-toggle">
+            <input id="markWorkoutComplete" type="checkbox" />
+            <span>
+              <strong>Mark workout as complete</strong>
+              <small>Tick this after you have filled in the workout details and want it counted as done.</small>
+            </span>
+          </label>
+        </div>
         <div class="form-grid">
           <label>
             <span>How difficult was it?</span>
