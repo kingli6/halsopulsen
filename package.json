@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "audit:footprint": "node scripts/audit-footprint.js"
+    "audit:footprint": "node scripts/audit-footprint.js",
+    "test:shared-log": "node scripts/test-shared-log-concurrency.js"
   },
   "dependencies": {
     "express": "^4.19.2"
