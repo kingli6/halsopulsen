@@ -49,3 +49,6 @@ general enough for multiple workouts, running, hangs, mobility, and habits.
   and what the trends mean.
 - Prefer practical anti-abuse limits and clear monitoring over elaborate
   security infrastructure while the product is a small personal service.
+- Be constructively critical of product and design ideas. Prefer familiar,
+  proven patterns from tools people already understand, and avoid reinventing
+  standard interactions or adding complexity without a clear user benefit.

@@ -9,3 +9,4 @@
 - [Public homepage direction](public-homepage-direction.md) — sell current practice services now; show the tracker later as a truthful log/statistics example.
 - [Future group challenge](future-group-challenge.md) — preserve the idea as an archived future mode built on the individual tracker, not the old prototype.
 - [Cleanup policy](cleanup-policy.md) — remove only proven dead references; retain compatibility migrations, redirects, demos, and internal reference material until explicitly retired.
+- [Critical product decisions](critical-product-decisions.md) — challenge ideas honestly, prefer familiar proven patterns, and avoid overengineering the MVP.
