@@ -14,6 +14,7 @@ const MAX_ASSIGNMENTS = 1000;
 const MAX_LOGS = 1500;
 const MAX_HISTORY = 100;
 const MAX_TEMPLATES = 500;
+const MAX_STATE_REQUEST_IDS = 50;
 
 function requestAddress(req) {
   return String(req.ip || req.socket?.remoteAddress || 'unknown');
@@ -329,6 +330,9 @@ function publicPlanSummary(plan) {
   const program = plan.program || {};
   const assignments = Array.isArray(plan.assignments) ? plan.assignments : [];
   const logs = Array.isArray(plan.logs) ? plan.logs : [];
+  const stateRevision = Number.isInteger(plan.stateRevision) && plan.stateRevision >= 0
+    ? plan.stateRevision
+    : 0;
   return {
     id: plan.id,
     name: plan.name,
@@ -343,6 +347,7 @@ function publicPlanSummary(plan) {
     progressionNotes: program.progressionNotes || '',
     successMetric: program.successMetric || '',
     publishedAt: plan.publishedAt,
+    stateRevision,
     sharePath: plan.shareToken ? `/p/${plan.shareToken}/` : '',
     hasParticipantActivity: logs.length > 0 || assignments.some(assignment =>
       assignment?.moved || (assignment?.status && assignment.status !== 'planned')
@@ -398,6 +403,13 @@ function validateSharedStatePayload(body) {
   const assignments = body?.assignments;
   const logs = body?.logs;
   if (!Array.isArray(assignments) || !Array.isArray(logs)) return 'Invalid plan state.';
+  if (!Number.isInteger(body?.stateRevision) || body.stateRevision < 0) {
+    return 'A valid shared plan revision is required.';
+  }
+  const requestId = String(body?.requestId || '').trim();
+  if (!requestId || requestId.length > 120) {
+    return 'A valid shared save request ID is required.';
+  }
   if (assignments.length > MAX_ASSIGNMENTS || logs.length > MAX_LOGS) {
     return 'The shared plan contains too many records.';
   }
@@ -655,6 +667,8 @@ function jerryDemoPlan() {
     logs,
     history: [],
     parentPlanId: null,
+    stateRevision: 0,
+    stateRequestIds: [],
     demoKey: 'jerry',
     publishedAt: new Date().toISOString()
   };
@@ -697,6 +711,8 @@ app.post('/api/plans/publish', (req, res) => {
     logs: Array.isArray(req.body.logs) ? req.body.logs : [],
     history,
     parentPlanId: req.body.parentPlanId || null,
+    stateRevision: 0,
+    stateRequestIds: [],
     publishedAt: new Date().toISOString()
   };
   plans.push(plan);
@@ -879,7 +895,8 @@ app.get('/api/plans/share/:token', (req, res) => {
       program: plan.program,
       assignments: plan.assignments,
       logs: plan.logs,
-      history: plan.history
+      history: plan.history,
+      stateRevision: Number.isInteger(plan.stateRevision) && plan.stateRevision >= 0 ? plan.stateRevision : 0
     }
   });
 });
@@ -890,11 +907,41 @@ app.put('/api/plans/share/:token/state', (req, res) => {
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Shared plan not found.' });
   const validationError = validateSharedStatePayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
+  const plan = plans[planIndex];
+  const currentRevision = Number.isInteger(plan.stateRevision) && plan.stateRevision >= 0
+    ? plan.stateRevision
+    : 0;
+  const requestId = String(req.body.requestId).trim();
+  const stateRequestIds = Array.isArray(plan.stateRequestIds)
+    ? plan.stateRequestIds.filter(item => typeof item === 'string')
+    : [];
+
+  if (stateRequestIds.includes(requestId)) {
+    return res.json({
+      ok: true,
+      duplicate: true,
+      stateRevision: currentRevision
+    });
+  }
+
+  if (req.body.stateRevision !== currentRevision) {
+    return res.status(409).json({
+      ok: false,
+      conflict: true,
+      stateRevision: currentRevision,
+      error: 'This training log changed elsewhere. Reload the latest log before saving.'
+    });
+  }
+
   const { assignments, logs } = req.body;
-  plans[planIndex].assignments = assignments;
-  plans[planIndex].logs = logs;
+  const nextRevision = currentRevision + 1;
+  plan.assignments = assignments;
+  plan.logs = logs;
+  plan.stateRevision = nextRevision;
+  plan.stateRequestIds = [...stateRequestIds, requestId].slice(-MAX_STATE_REQUEST_IDS);
+  plan.updatedAt = new Date().toISOString();
   writePublishedPlans(plans);
-  res.json({ ok: true });
+  res.json({ ok: true, duplicate: false, stateRevision: nextRevision });
 });
 
 app.get(['/dashboard/share/:token', '/dashboard/share/:token/'], (req, res) => {
