@@ -133,6 +133,11 @@ activities, complete day workouts, and seven-day weeks. The original group
 challenge remains in the repository as reference material, but its route is
 retired.
 
+The public homepage no longer promotes the tracker or the old group-challenge
+idea. When the tracker is ready to show publicly, replace that space with a
+small, truthful example of logging a workout and using the resulting history
+and statistics—not an admin link or a promise of public competition.
+
 ## Architecture decision — August 3, 2026
 
 Keep the product simple and continue with this split:
@@ -183,3 +188,23 @@ edge-level rate limiting once the app is deployed publicly.
 
 The current local JSON files remain development storage until the Supabase
 migration is deliberately implemented and verified.
+
+## Homepage trimming notes
+
+Keep the public page focused on the current practice offer:
+
+- Hero and booking call to action.
+- Current services and the reason they are free.
+- About, qualifications, and contact options.
+
+Review these items before the next public refresh:
+
+- Remove or simplify the progress tracker when the practice-period numbers are
+  no longer useful.
+- Consider moving the free workout-tools promotion off the homepage if it does
+  not produce bookings.
+- Replace the third-party contact form with a protected or simpler contact path
+  if spam becomes a problem; the current static form disables the provider's
+  CAPTCHA and should not be treated as a strong anti-bot boundary.
+- Keep `/admin` and participant tracker routes out of public navigation unless a
+  visitor-facing explanation and access flow exists.
