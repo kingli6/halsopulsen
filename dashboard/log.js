@@ -8,6 +8,7 @@ const logState = {
   selectedDate: TrackerData.todayISO(),
   selectedAssignmentId: null,
   editingAssignmentId: null,
+  editingLogId: null,
   editingDate: null,
   moveSourceAssignmentId: null,
   logMode: "planned",
@@ -106,16 +107,15 @@ async function persistState() {
   }
   if (logState.conflict) return false;
 
-  const snapshot = TrackerData.clone({
-    assignments: logState.data.assignments,
-    logs: logState.data.logs
-  });
-  const requestId = window.crypto?.randomUUID
-    ? window.crypto.randomUUID()
-    : `save-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
   logState.saveQueue = logState.saveQueue.then(async () => {
     if (logState.conflict) return false;
+    const snapshot = TrackerData.clone({
+      assignments: logState.data.assignments,
+      logs: logState.data.logs
+    });
+    const requestId = window.crypto?.randomUUID
+      ? window.crypto.randomUUID()
+      : `save-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
       logState.saving = true;
       const response = await fetch(`/api/plans/share/${encodeURIComponent(logState.shareToken)}/state`, {
@@ -434,11 +434,15 @@ function renderHistory() {
     return;
   }
   list.innerHTML = logs.map(log => {
+    const editable = logState.data.logs.some(item => item.id === log.id) && !logIsReadOnly();
+    const actions = editable
+      ? `<div class="history-actions"><button class="text-button" type="button" data-edit-log="${escapeLogHtml(log.id)}">Edit</button><button class="text-button danger-button" type="button" data-delete-log="${escapeLogHtml(log.id)}">Delete</button></div>`
+      : "";
     if (TrackerData.isStandaloneLog(log)) {
       return `<div class="history-item"><span class="history-check other-history-check">+</span><div class="history-details">
         <span class="history-title">${escapeLogHtml(standaloneLogTitle(log))}</span>
         <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Other activity${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}</span>
-      </div><span class="history-value">${escapeLogHtml(standaloneLogSummary(log))}</span></div>`;
+      </div><span class="history-value">${escapeLogHtml(standaloneLogSummary(log))}</span>${actions}</div>`;
     }
     const assignment = TrackerData.assignmentForId(logState.data, log.assignmentId);
     const completed = totalCompleted(log.exercises);
@@ -446,7 +450,7 @@ function renderHistory() {
     return `<div class="history-item"><span class="history-check">✓</span><div class="history-details">
       <span class="history-title">${escapeLogHtml(workoutTitle(assignment) || log.workoutName || "Training session")}</span>
       <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Version ${planVersionForAssignment(log.assignmentId)}${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}</span>
-    </div><span class="history-value">${TrackerData.targetLabel({ targetValue: completed, targetUnit: "reps" })}/${TrackerData.targetLabel({ targetValue: planned, targetUnit: "reps" })}</span></div>`;
+    </div><span class="history-value">${TrackerData.targetLabel({ targetValue: completed, targetUnit: "reps" })}/${TrackerData.targetLabel({ targetValue: planned, targetUnit: "reps" })}</span>${actions}</div>`;
   }).join("");
   renderVersionHistory();
 }
@@ -520,7 +524,7 @@ function moveSelectedAssignment(targetDate) {
   renderAllLog();
 }
 
-function renderPlannedLogFields(assignment) {
+function renderPlannedLogFields(assignment, existingLog = null) {
   document.getElementById("logExerciseFields").hidden = false;
   document.getElementById("logActivityFields").innerHTML = "";
   document.getElementById("logExerciseFields").innerHTML = assignment.workout.exercises.map((activity, activityIndex) => `
@@ -531,13 +535,16 @@ function renderPlannedLogFields(assignment) {
       ${Array.from({ length: activity.sets }, (_, setIndex) => `<div class="set-row">
         <span>${activity.activityType === "strength" ? `Set ${setIndex + 1}` : activity.format === "intervals" ? "Rounds" : activity.activityType === "guided" ? "Session" : "Completed"}</span>
         <label><span class="sr-only">Planned target</span><input value="${escapeLogHtml(TrackerData.targetLabel(activity))}" disabled /></label>
-        <label><span class="sr-only">Completed target</span><input type="number" min="0" step="${activity.activityType === "strength" && activity.targetUnit === "reps" ? "1" : "0.1"}" value="${activity.targetValue}" data-completed-activity="${activityIndex}" data-completed-set="${setIndex}" /></label>
+        <label><span class="sr-only">Completed target</span><input type="number" min="0" step="${activity.activityType === "strength" && activity.targetUnit === "reps" ? "1" : "0.1"}" value="${existingLog?.exercises?.[activityIndex]?.sets?.[setIndex]?.completed ?? activity.targetValue}" data-completed-activity="${activityIndex}" data-completed-set="${setIndex}" /></label>
       </div>`).join("")}
-      <label class="actual-intensity"><span>How did it feel? <em>(optional)</em></span><select data-actual-intensity="${activityIndex}">${intensityOptions(activity.intensity)}</select></label>
+      <label class="actual-intensity"><span>How did it feel? <em>(optional)</em></span><select data-actual-intensity="${activityIndex}">${intensityOptions(existingLog?.exercises?.[activityIndex]?.sets?.[0]?.intensity || activity.intensity)}</select></label>
     </div>`).join("");
 }
 
-function renderOtherLogFields() {
+function renderOtherLogFields(existingLog = null) {
+  const activity = existingLog?.activity || {};
+  const type = activity.activityType || "cardio";
+  const unit = activity.targetUnit || "minutes";
   document.getElementById("logExerciseFields").hidden = true;
   document.getElementById("logExerciseFields").innerHTML = "";
   document.getElementById("logActivityFields").innerHTML = `
@@ -545,35 +552,35 @@ function renderOtherLogFields() {
     <div class="form-grid">
       <label class="full-field">
         <span>What did you do?</span>
-        <input id="otherActivityName" type="text" maxlength="100" placeholder="Evening bike ride" required />
+        <input id="otherActivityName" type="text" maxlength="100" placeholder="Evening bike ride" value="${escapeLogHtml(activity.name || existingLog?.workoutName || "")}" required />
       </label>
       <label>
         <span>Type</span>
         <select id="otherActivityType">
-          <option value="strength">Strength</option>
-          <option value="cardio" selected>Cardio</option>
-          <option value="guided">Mobility</option>
-          <option value="other">Sport / other</option>
+          <option value="strength" ${type === "strength" ? "selected" : ""}>Strength</option>
+          <option value="cardio" ${type === "cardio" ? "selected" : ""}>Cardio</option>
+          <option value="guided" ${type === "guided" ? "selected" : ""}>Mobility</option>
+          <option value="other" ${type === "other" ? "selected" : ""}>Sport / other</option>
         </select>
       </label>
       <label>
         <span>Amount <em>(optional)</em></span>
-        <input id="otherActivityValue" type="number" min="0" step="0.1" placeholder="35" />
+        <input id="otherActivityValue" type="number" min="0" step="0.1" placeholder="35" value="${activity.targetValue ?? ""}" />
       </label>
       <label>
         <span>Unit</span>
         <select id="otherActivityUnit">
-          <option value="minutes" selected>minutes</option>
-          <option value="km">kilometres</option>
-          <option value="miles">miles</option>
-          <option value="reps">reps</option>
-          <option value="steps">steps</option>
-          <option value="sessions">sessions</option>
+          <option value="minutes" ${unit === "minutes" ? "selected" : ""}>minutes</option>
+          <option value="km" ${unit === "km" ? "selected" : ""}>kilometres</option>
+          <option value="miles" ${unit === "miles" ? "selected" : ""}>miles</option>
+          <option value="reps" ${unit === "reps" ? "selected" : ""}>reps</option>
+          <option value="steps" ${unit === "steps" ? "selected" : ""}>steps</option>
+          <option value="sessions" ${unit === "sessions" ? "selected" : ""}>sessions</option>
         </select>
       </label>
       <label>
         <span>Intensity <em>(optional)</em></span>
-        <select id="otherActivityIntensity">${intensityOptions()}</select>
+        <select id="otherActivityIntensity">${intensityOptions(activity.intensity || "")}</select>
       </label>
     </div>`;
 }
@@ -581,38 +588,55 @@ function renderOtherLogFields() {
 function setLogMode(mode) {
   const assignment = logState.data?.assignments.find(item => item.id === logState.editingAssignmentId) || null;
   const plannedLog = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
-  logState.logMode = mode === "planned" && assignment && !plannedLog ? "planned" : "other";
+  const existingLog = logState.data?.logs.find(item => item.id === logState.editingLogId) || null;
+  const editingExisting = Boolean(logState.editingLogId);
+  const plannedAllowed = editingExisting
+    ? Boolean(existingLog?.assignmentId && assignment)
+    : Boolean(assignment && !plannedLog);
+  const otherAllowed = !editingExisting || !existingLog?.assignmentId;
+  logState.logMode = mode === "planned" && plannedAllowed ? "planned" : "other";
   const plannedButton = document.getElementById("plannedLogModeBtn");
   const otherButton = document.getElementById("otherLogModeBtn");
-  const plannedAllowed = Boolean(assignment && !plannedLog);
   plannedButton.disabled = !plannedAllowed;
+  otherButton.disabled = !otherAllowed;
   plannedButton.classList.toggle("is-selected", logState.logMode === "planned");
   plannedButton.setAttribute("aria-pressed", String(logState.logMode === "planned"));
   otherButton.classList.toggle("is-selected", logState.logMode === "other");
   otherButton.setAttribute("aria-pressed", String(logState.logMode === "other"));
-  if (logState.logMode === "planned") renderPlannedLogFields(assignment);
-  else renderOtherLogFields();
+  if (logState.logMode === "planned") renderPlannedLogFields(assignment, existingLog);
+  else renderOtherLogFields(existingLog);
 }
 
-function openLogModal() {
+function openLogModal(logId = null) {
   if (logIsReadOnly()) {
     showLogToast(logState.conflict ? "Reload the latest log before recording activity." : "Preview only. Logging is disabled.");
     return;
   }
-  const assignment = currentAssignment();
+  const existingLog = logId ? logState.data.logs.find(item => item.id === logId) : null;
+  if (logId && !existingLog) {
+    showLogToast("That session is no longer available to edit.");
+    return;
+  }
+  const assignment = existingLog?.assignmentId
+    ? TrackerData.assignmentForId(logState.data, existingLog.assignmentId)
+    : currentAssignment();
   const plannedLog = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
+  logState.editingLogId = existingLog?.id || null;
   logState.editingAssignmentId = assignment?.id || null;
-  logState.editingDate = logState.selectedDate || TrackerData.todayISO();
-  setLogText("logModalTitle", "Log activity");
-  setLogText("logModalContext", assignment && !plannedLog
+  logState.editingDate = existingLog?.date || logState.selectedDate || TrackerData.todayISO();
+  setLogText("logModalTitle", existingLog ? "Edit activity" : "Log activity");
+  setLogText("logModalContext", existingLog
+    ? `Correct the details for ${TrackerData.formatLongDate(logState.editingDate)}.`
+    : assignment && !plannedLog
     ? `Selected date: ${TrackerData.formatLongDate(logState.editingDate)}. Record what you actually completed.`
     : assignment
       ? `The planned workout is already logged for ${TrackerData.formatLongDate(logState.editingDate)}. Add another activity if you did more.`
       : `No workout was planned for ${TrackerData.formatLongDate(logState.editingDate)}. Record something else you did.`);
-  setLogMode(assignment && !plannedLog ? "planned" : "other");
-  document.getElementById("difficulty").value = "";
-  document.getElementById("energy").value = "";
-  document.getElementById("sessionNote").value = "";
+  setLogMode(existingLog?.assignmentId ? "planned" : assignment && !plannedLog ? "planned" : "other");
+  document.getElementById("difficulty").value = existingLog?.difficulty || "";
+  document.getElementById("energy").value = existingLog?.energy || "";
+  document.getElementById("sessionNote").value = existingLog?.note || "";
+  document.getElementById("saveLogBtn").textContent = existingLog ? "Update activity" : "Save activity";
   document.getElementById("logModal").hidden = false;
 }
 
@@ -623,7 +647,14 @@ function saveLog(event) {
     return;
   }
   const assignment = logState.data.assignments.find(item => item.id === logState.editingAssignmentId) || null;
+  const existingLog = logState.editingLogId
+    ? logState.data.logs.find(item => item.id === logState.editingLogId)
+    : null;
   if (logState.logMode === "planned" && !assignment) return;
+  if (existingLog && Boolean(existingLog.assignmentId) !== (logState.logMode === "planned")) {
+    showLogToast("Keep the activity type unchanged when editing a saved entry.");
+    return;
+  }
   let log;
   if (logState.logMode === "planned") {
     const exercises = assignment.workout.exercises.map((activity, activityIndex) => ({
@@ -635,6 +666,7 @@ function saveLog(event) {
       }))
     }));
     log = {
+      ...(existingLog || {}),
       id: `log-${Date.now()}`,
       assignmentId: assignment.id,
       source: "planned",
@@ -642,7 +674,8 @@ function saveLog(event) {
       date: assignment.date,
       exercises
     };
-    logState.data.logs = logState.data.logs.filter(item => item.assignmentId !== assignment.id);
+    log.id = existingLog?.id || log.id;
+    logState.data.logs = logState.data.logs.filter(item => item.assignmentId !== assignment.id && item.id !== existingLog?.id);
     assignment.status = "completed";
   } else {
     const name = document.getElementById("otherActivityName")?.value.trim();
@@ -653,6 +686,7 @@ function saveLog(event) {
     const type = document.getElementById("otherActivityType").value;
     const value = Number(document.getElementById("otherActivityValue").value);
     log = {
+      ...(existingLog || {}),
       id: `log-${Date.now()}`,
       assignmentId: null,
       source: "other",
@@ -673,12 +707,47 @@ function saveLog(event) {
   log.difficulty = document.getElementById("difficulty").value;
   log.energy = document.getElementById("energy").value;
   log.note = document.getElementById("sessionNote").value.trim();
-  log.createdAt = new Date().toISOString();
-  logState.data.logs.push(log);
+  log.id = existingLog?.id || log.id;
+  log.createdAt = existingLog?.createdAt || new Date().toISOString();
+  log.updatedAt = new Date().toISOString();
+  if (existingLog) {
+    logState.data.logs = logState.data.logs.map(item => item.id === existingLog.id ? log : item);
+  } else {
+    logState.data.logs.push(log);
+  }
+  const savedMessage = logState.logMode === "planned" ? "Planned session updated." : existingLog ? "Activity updated." : "Other activity saved.";
+  logState.editingLogId = null;
   document.getElementById("logModal").hidden = true;
+  document.getElementById("saveLogBtn").textContent = "Save activity";
   renderAllLog();
   persistState().then(saved => {
-    if (saved) showLogToast(logState.logMode === "planned" ? "Planned session saved. Nice work." : "Other activity saved.");
+    if (saved) showLogToast(savedMessage);
+  });
+}
+
+function deleteLog(logId) {
+  if (logIsReadOnly()) {
+    showLogToast(logState.conflict ? "Reload the latest log before deleting." : "Preview only. Sessions cannot be deleted.");
+    return;
+  }
+  const log = logState.data.logs.find(item => item.id === logId);
+  if (!log) {
+    showLogToast("That session is no longer available.");
+    return;
+  }
+  const assignment = log.assignmentId ? TrackerData.assignmentForId(logState.data, log.assignmentId) : null;
+  const title = standaloneLogTitle(log);
+  const message = assignment
+    ? `Delete the logged ${title} session? The workout will be marked as planned again.`
+    : `Delete ${title} from your history?`;
+  if (!window.confirm(message)) return;
+  logState.data.logs = logState.data.logs.filter(item => item.id !== logId);
+  if (assignment && !TrackerData.logForAssignment(logState.data, assignment.id)) {
+    assignment.status = "planned";
+  }
+  renderAllLog();
+  persistState().then(saved => {
+    if (saved) showLogToast(assignment ? "Session deleted. The workout is planned again." : "Activity deleted.");
   });
 }
 
@@ -802,6 +871,15 @@ function bindLogEvents() {
   document.getElementById("otherLogModeBtn").addEventListener("click", () => setLogMode("other"));
   document.getElementById("exportBtn").addEventListener("click", exportCsv);
   document.getElementById("clearLogsBtn").addEventListener("click", clearLogs);
+  document.getElementById("historyList").addEventListener("click", event => {
+    const editButton = event.target.closest("[data-edit-log]");
+    if (editButton) {
+      openLogModal(editButton.dataset.editLog);
+      return;
+    }
+    const deleteButton = event.target.closest("[data-delete-log]");
+    if (deleteButton) deleteLog(deleteButton.dataset.deleteLog);
+  });
   document.getElementById("reloadLogBtn").addEventListener("click", () => window.location.reload());
   document.getElementById("closeLogModal").addEventListener("click", () => { document.getElementById("logModal").hidden = true; });
   document.getElementById("cancelLogBtn").addEventListener("click", () => { document.getElementById("logModal").hidden = true; });
