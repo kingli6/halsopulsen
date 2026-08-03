@@ -201,10 +201,39 @@ Review these items before the next public refresh:
 
 - Remove or simplify the progress tracker when the practice-period numbers are
   no longer useful.
-- Consider moving the free workout-tools promotion off the homepage if it does
-  not produce bookings.
+- The free workout-tools promotion now lives on the training guide rather than
+  taking space on the homepage.
 - Replace the third-party contact form with a protected or simpler contact path
   if spam becomes a problem; the current static form disables the provider's
   CAPTCHA and should not be treated as a strong anti-bot boundary.
 - Keep `/admin` and participant tracker routes out of public navigation unless a
   visitor-facing explanation and access flow exists.
+
+The free workout-tools promotion has been removed from the homepage and moved
+to the training guide. The homepage otherwise remains focused on the current
+practice offer.
+
+## Future group challenge direction
+
+The old group-challenge prototype is no longer a public product or public link.
+Its route redirects to the homepage, crawlers are asked not to index it, and the
+obsolete implementation has been removed from the served repository.
+
+The idea is worth preserving, but it should not be polished by extending the
+old implementation as-is. A future version should be built on the individual
+tracker foundation and add only the group features that are actually wanted:
+
+- A challenge has a clear goal, dates, rules, and activity definition.
+- Participants use stable accounts or invite links with explicit privacy
+  expectations.
+- Personal logs remain the source data; rankings are a separate presentation.
+- Participants can see their own history even if they hide from rankings.
+- Leaderboards have clear tie handling, time-zone rules, and anti-spam limits.
+- Community chat is optional and moderated rather than assumed.
+- Owner controls include pause, close, corrections, and data export.
+- The challenge must work without AI commentary; Gemini can remain optional.
+
+The best sequence is: finish the individual plan/log/statistics loop, observe
+what people actually want to compare, then design a small challenge mode around
+those proven behaviors. Do not reuse the old open Supabase tables or its
+leaderboard/chat model for real participant data.
