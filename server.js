@@ -5,7 +5,67 @@ const crypto = require('crypto');
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(express.json({ limit: '512kb', strict: true }));
+
+const MAX_PROGRAM_WEEKS = 52;
+const MAX_DAY_ACTIVITIES = 30;
+const MAX_ASSIGNMENTS = 1000;
+const MAX_LOGS = 1500;
+const MAX_HISTORY = 100;
+const MAX_TEMPLATES = 500;
+
+function requestAddress(req) {
+  return String(req.ip || req.socket?.remoteAddress || 'unknown');
+}
+
+function createRateLimiter({ name, windowMs, max }) {
+  const buckets = new Map();
+  const cleanup = setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of buckets) {
+      if (bucket.resetAt <= now) buckets.delete(key);
+    }
+  }, Math.min(windowMs, 60 * 1000));
+  cleanup.unref?.();
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = `${name}:${requestAddress(req)}`;
+    const previous = buckets.get(key);
+    const bucket = previous && previous.resetAt > now
+      ? previous
+      : { count: 0, resetAt: now + windowMs };
+    bucket.count += 1;
+    buckets.set(key, bucket);
+
+    if (bucket.count > max) {
+      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        ok: false,
+        error: 'Too many requests. Please wait a moment and try again.'
+      });
+    }
+    next();
+  };
+}
+
+const apiRateLimiter = createRateLimiter({
+  name: 'api',
+  windowMs: 60 * 1000,
+  max: 180
+});
+const mutationRateLimiter = createRateLimiter({
+  name: 'mutation',
+  windowMs: 60 * 1000,
+  max: 90
+});
+const loginRateLimiter = createRateLimiter({
+  name: 'login',
+  windowMs: 15 * 60 * 1000,
+  max: 12
+});
 
 const SESSION_COOKIE_NAME = 'halsopulsen_admin_session';
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
@@ -81,11 +141,20 @@ function adminRedirectPath(req) {
   return `/admin/plans${queryStart === -1 ? '' : originalUrl.slice(queryStart)}`;
 }
 
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  apiRateLimiter(req, res, next);
+});
+app.use('/api', (req, res, next) => {
+  if (!['POST', 'PUT', 'DELETE'].includes(req.method)) return next();
+  mutationRateLimiter(req, res, next);
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
 });
 
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', loginRateLimiter, (req, res) => {
   if (!ADMIN_PASSWORD) {
     return res.status(503).json({ ok: false, error: 'Admin sign-in has not been configured yet.' });
   }
@@ -198,13 +267,22 @@ function validateTemplatePayload(body) {
   if (!body?.data || typeof body.data !== 'object' || Array.isArray(body.data)) {
     return 'A template snapshot is required.';
   }
+  if (String(body.name || body.data.name || '').trim().length > 100) {
+    return 'Template names must be 100 characters or fewer.';
+  }
   if (JSON.stringify(body.data).length > 120000) return 'That template is too large.';
   if (type === 'activity' && !String(body.data.name || '').trim()) return 'An activity needs a name.';
   if (type === 'workout' && (!String(body.data.name || '').trim() || !Array.isArray(body.data.exercises) || !body.data.exercises.length)) {
     return 'A workout needs a name and at least one activity.';
   }
+  if (type === 'workout' && body.data.exercises.length > MAX_DAY_ACTIVITIES) {
+    return `A workout cannot contain more than ${MAX_DAY_ACTIVITIES} activities.`;
+  }
   if (type === 'week' && (!Array.isArray(body.data.days) || body.data.days.length !== 7)) {
     return 'A week template must contain seven days.';
+  }
+  if (type === 'week' && body.data.days.some(day => Array.isArray(day?.exercises) && day.exercises.length > MAX_DAY_ACTIVITIES)) {
+    return `A day cannot contain more than ${MAX_DAY_ACTIVITIES} activities.`;
   }
   return null;
 }
@@ -231,6 +309,9 @@ app.post('/api/templates', (req, res) => {
     updatedAt: now
   };
   const templates = readTemplates();
+  if (templates.length >= MAX_TEMPLATES) {
+    return res.status(429).json({ ok: false, error: 'The reusable library has reached its limit. Delete an old template before adding another.' });
+  }
   templates.push(template);
   writeTemplates(templates);
   res.status(201).json({ ok: true, template: publicTemplate(template) });
@@ -279,18 +360,50 @@ function ownerPlanSummaries(plans) {
 }
 
 function validatePlanPayload(body) {
-  if (!body) return 'A plan payload is required.';
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return 'A plan payload is required.';
   const program = body.program;
   const hasWeeks = Array.isArray(program?.weeks) && program.weeks.length > 0;
   const hasLegacyDays = Array.isArray(program?.days) && program.days.length === 7;
   if (!hasWeeks && !hasLegacyDays) {
     return 'A complete program with at least one seven-day week is required.';
   }
+  const weeks = hasWeeks ? program.weeks : [program];
+  if (weeks.length > MAX_PROGRAM_WEEKS) {
+    return `A program cannot contain more than ${MAX_PROGRAM_WEEKS} weeks.`;
+  }
   if (hasWeeks && program.weeks.some(week => !Array.isArray(week?.days) || week.days.length !== 7)) {
     return 'Every program week must contain seven days.';
   }
+  if (weeks.some(week => {
+    const days = Array.isArray(week?.days) ? week.days : [];
+    return days.some(day => Array.isArray(day?.exercises) && day.exercises.length > MAX_DAY_ACTIVITIES);
+  })) {
+    return `A day cannot contain more than ${MAX_DAY_ACTIVITIES} activities.`;
+  }
   if (JSON.stringify(program).length > 150000) {
     return 'The program is too large.';
+  }
+  if (Array.isArray(body.assignments) && body.assignments.length > MAX_ASSIGNMENTS) {
+    return 'The plan contains too many assignments.';
+  }
+  if (Array.isArray(body.logs) && body.logs.length > MAX_LOGS) {
+    return 'The plan contains too many log entries.';
+  }
+  if (Array.isArray(body.history) && body.history.length > MAX_HISTORY) {
+    return 'The plan contains too many historical versions.';
+  }
+  return null;
+}
+
+function validateSharedStatePayload(body) {
+  const assignments = body?.assignments;
+  const logs = body?.logs;
+  if (!Array.isArray(assignments) || !Array.isArray(logs)) return 'Invalid plan state.';
+  if (assignments.length > MAX_ASSIGNMENTS || logs.length > MAX_LOGS) {
+    return 'The shared plan contains too many records.';
+  }
+  if (JSON.stringify({ assignments, logs }).length > 250000) {
+    return 'The shared plan state is too large.';
   }
   return null;
 }
@@ -776,10 +889,9 @@ app.put('/api/plans/share/:token/state', (req, res) => {
   const plans = readPublishedPlans();
   const planIndex = plans.findIndex(item => item.shareToken === req.params.token);
   if (planIndex === -1) return res.status(404).json({ ok: false, error: 'Shared plan not found.' });
-  const { assignments, logs } = req.body || {};
-  if (!Array.isArray(assignments) || !Array.isArray(logs) || JSON.stringify({ assignments, logs }).length > 250000) {
-    return res.status(400).json({ ok: false, error: 'Invalid plan state.' });
-  }
+  const validationError = validateSharedStatePayload(req.body);
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+  const { assignments, logs } = req.body;
   plans[planIndex].assignments = assignments;
   plans[planIndex].logs = logs;
   writePublishedPlans(plans);
@@ -789,6 +901,20 @@ app.put('/api/plans/share/:token/state', (req, res) => {
 app.get(['/dashboard/share/:token', '/dashboard/share/:token/'], (req, res) => {
   const query = new URLSearchParams(req.query).toString();
   res.redirect(308, `/p/${encodeURIComponent(req.params.token)}${query ? `?${query}` : ''}`);
+});
+
+app.use((error, req, res, next) => {
+  if (error?.type === 'entity.too.large') {
+    return res.status(413).json({ ok: false, error: 'That request is too large.' });
+  }
+  if (error instanceof SyntaxError && error.status === 400 && Object.prototype.hasOwnProperty.call(error, 'body')) {
+    return res.status(400).json({ ok: false, error: 'The request body is not valid JSON.' });
+  }
+  if (req.path.startsWith('/api')) {
+    console.error('API request failed:', error?.message || error);
+    return res.status(500).json({ ok: false, error: 'The server could not complete that request.' });
+  }
+  next(error);
 });
 
 app.listen(5000, '0.0.0.0', () => {

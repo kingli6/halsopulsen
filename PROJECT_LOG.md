@@ -127,8 +127,59 @@ not replace authentication, access control, or safe handling of API keys.
 
 The first personal tracker foundation now lives at `/dashboard/`. The logging
 workspace is separate from the owner planning workspace at `/dashboard/plan/`.
-It is a local-first browser prototype with weekday-specific workouts, draft and
-published program versions, flexible day tiles, completion logging, progress
-visualisation, and CSV export. The original group challenge remains available
-at `/challenge/` as reference material. The next phase can decide whether to
-persist multiple people, authentication, and private links in Supabase.
+The current prototype now has server-backed admin sessions, published participant
+links, owner previews, plan lifecycle controls, and a reusable library for
+activities, complete day workouts, and seven-day weeks. The original group
+challenge remains in the repository as reference material, but its route is
+retired.
+
+## Architecture decision — August 3, 2026
+
+Keep the product simple and continue with this split:
+
+- **GitHub/GitHub Pages:** frontend code and small public assets.
+- **Supabase:** the planned production home for authentication, plans,
+  assignments, logs, reusable templates, and file metadata/storage.
+- **Gemini API:** optional and non-critical; add it only for useful coaching
+  assistance, and call it from a protected server-side function rather than
+  browser code.
+
+Do not add the owner's always-on computer to the first production path. It may
+be reconsidered later if large-file storage becomes a real cost or capacity
+problem.
+
+## Current implementation milestone
+
+The local Express prototype now has practical anti-abuse guardrails:
+
+- Bounded JSON request bodies.
+- Basic per-IP limits for API traffic, mutations, and admin login attempts.
+- `413` responses for oversized requests and `429` responses for rate limits.
+- Limits on program weeks, activities per day, assignments, logs, history, and
+  reusable templates.
+- Generic API error responses that do not expose server details.
+- API responses marked as non-cacheable while the prototype contains private
+  records.
+
+These are deliberately lightweight protections for the current single-process
+prototype. They are not a replacement for Supabase Row Level Security or
+edge-level rate limiting once the app is deployed publicly.
+
+## Planned path from here
+
+1. Finish and use the planning, publishing, reusable-library, and logging MVP.
+2. Add focused behavior checks for duplicate/stale participant updates and
+   time-zone/date handling.
+3. Design the Supabase schema for owner identity, plan versions, assignments,
+   logs, templates, and asset metadata.
+4. Move authentication and private persistence behind Supabase Auth/RLS or
+   protected server/Edge Function operations.
+5. Import the existing local JSON plans/templates and verify the published-link
+   lifecycle.
+6. Point the static frontend at the Supabase-backed API and then use GitHub
+   Pages for production hosting.
+7. Add Gemini only after the structured training loop is stable; keep the core
+   tracker functional when Gemini is unavailable.
+
+The current local JSON files remain development storage until the Supabase
+migration is deliberately implemented and verified.
