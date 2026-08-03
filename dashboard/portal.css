@@ -273,3 +273,241 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
   .activity-editor-head .activity-save-template { grid-column: 1; justify-self: start; margin: 0; }
   .activity-editor-head .remove-exercise { grid-column: 2; justify-self: end; }
 }
+
+/* Participant logging hierarchy: today's task comes before dashboard context. */
+.today-layout {
+  display: block;
+  margin-bottom: 39px;
+}
+
+.today-card {
+  min-height: 315px;
+  padding: 29px 31px 25px;
+  border-color: #b8dfc4;
+  box-shadow: 0 10px 30px rgba(30,107,69,.09);
+}
+
+.today-card h2 {
+  margin: 23px 0 5px;
+  font-size: 30px;
+}
+
+.workout-summary {
+  padding: 15px 17px 13px;
+  border: 1px solid #d5e7da;
+  border-radius: 13px;
+  background: #fbfefc;
+}
+
+.workout-summary-topline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 9px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.workout-name {
+  min-width: 0;
+  margin-right: auto;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.workout-type {
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.today-activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.today-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 0;
+  border-top: 1px solid #e8f0e9;
+}
+
+.today-activity-number {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--green-3);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.today-activity-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.today-activity-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.today-activity-copy > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.today-activity-copy small {
+  color: #7a887e;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.today-activity-status {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  border-radius: 99px;
+  background: var(--green-3);
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workout-note {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.workout-note strong {
+  color: var(--ink);
+}
+
+.insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  position: relative;
+  overflow: hidden;
+  padding: 18px 22px;
+  margin-bottom: 39px;
+  border-color: #cfe5d5;
+  background: #f5fbf6;
+  color: var(--ink);
+}
+
+.insight-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--green);
+  background: var(--green-3);
+  font-size: 16px;
+}
+
+.insight-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 10px;
+  flex: 1;
+}
+
+.insight-card .section-kicker {
+  grid-column: 1 / -1;
+  margin-bottom: 3px;
+}
+
+.insight-card h2 {
+  grid-column: 1;
+  margin: 0;
+  font-size: 16px;
+}
+
+.insight-card p {
+  grid-column: 2;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.insight-card .insight-footnote {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  color: #87958b;
+  font-size: 10px;
+}
+
+@media (max-width: 820px) {
+  .today-layout {
+    display: block;
+  }
+}
+
+@media (max-width: 620px) {
+  .today-card {
+    padding: 19px;
+  }
+
+  .today-card h2 {
+    font-size: 25px;
+  }
+
+  .today-activity-row {
+    gap: 8px;
+  }
+
+  .today-activity-copy strong {
+    font-size: 12px;
+  }
+
+  .today-activity-status {
+    padding: 3px 5px;
+    font-size: 9px;
+  }
+
+  .workout-summary-topline {
+    flex-wrap: wrap;
+  }
+
+  .today-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .today-actions .button {
+    width: 100%;
+  }
+
+  .insight-card {
+    padding: 16px 18px;
+  }
+
+  .insight-copy {
+    display: block;
+  }
+
+  .insight-card h2 {
+    margin-bottom: 5px;
+  }
+
+  .insight-card p {
+    margin-bottom: 5px;
+  }
+}

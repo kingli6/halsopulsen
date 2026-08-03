@@ -286,9 +286,11 @@ function renderToday() {
   const date = assignment?.date || logState.selectedDate || TrackerData.todayISO();
   const otherLogs = TrackerData.standaloneLogsForDate(logState.data, date);
   const moveSource = logState.data.assignments.find(item => item.id === logState.moveSourceAssignmentId);
+  const isToday = date === TrackerData.todayISO();
+  setLogText("todayKicker", isToday ? "TODAY'S WORKOUT" : "SELECTED WORKOUT");
   setLogText("todayDate", TrackerData.formatLongDate(date));
   setLogText("todayHeading", assignment
-    ? (date === TrackerData.todayISO() ? "Today's assignment" : "Selected assignment")
+    ? (isToday ? "Today's workout" : "Selected workout")
     : (date === TrackerData.todayISO() ? "Today's activities" : "Selected date"));
   setLogText("todaySubtitle", assignment
     ? (assignment.moved ? `Moved from ${TrackerData.formatShortDate(assignment.recommendedDate)} so it fits your week.` : "This workout was recommended for this day.")
@@ -313,15 +315,47 @@ function renderToday() {
   }
 
   const preview = document.getElementById("assignmentPreview");
+  const activityRows = assignment?.workout?.exercises?.map((activity, activityIndex) => {
+    const loggedActivity = log?.exercises?.[activityIndex];
+    const loggedCompleted = loggedActivity?.sets?.reduce((total, set) => total + Number(set.completed || 0), 0);
+    const loggedPlanned = loggedActivity?.sets?.reduce((total, set) => total + Number(set.planned || 0), 0);
+    const completion = log && loggedActivity
+      ? `<span class="today-activity-status">${loggedCompleted}/${loggedPlanned || loggedCompleted} logged</span>`
+      : "";
+    return `<div class="today-activity-row">
+      <span class="today-activity-number">${activityIndex + 1}</span>
+      <div class="today-activity-copy">
+        <strong>${escapeLogHtml(activity.name)}</strong>
+        <span>${escapeLogHtml(activitySummary(activity))}</span>
+        ${activity.goal ? `<small>${escapeLogHtml(activity.goal)}</small>` : activity.description ? `<small>${escapeLogHtml(activity.description)}</small>` : ""}
+      </div>
+      ${completion}
+    </div>`;
+  }).join("");
   const plannedPreview = assignment
-    ? `<div class="assignment-main-chip"><strong>${escapeLogHtml(workoutTitle(assignment))}</strong><span>${escapeLogHtml(assignment.workout.sessionType || "Training")}${assignment.workout.warmup ? ` · Warm-up: ${escapeLogHtml(assignment.workout.warmup)}` : ""}</span><span>${escapeLogHtml(workoutTarget(assignment.workout))}</span>${assignment.workout.cooldown ? `<span>Cool-down: ${escapeLogHtml(assignment.workout.cooldown)}</span>` : ""}</div>`
+    ? `<div class="workout-summary">
+        <div class="workout-summary-topline">
+          <strong class="workout-name">${escapeLogHtml(workoutTitle(assignment))}</strong>
+          <span class="workout-type">${escapeLogHtml(assignment.workout.sessionType || "Training")}</span>
+          <span>${assignment.workout.exercises.length} ${assignment.workout.exercises.length === 1 ? "activity" : "activities"}</span>
+        </div>
+        ${assignment.workout.warmup ? `<p class="workout-note"><strong>Warm-up</strong> ${escapeLogHtml(assignment.workout.warmup)}</p>` : ""}
+        <div class="today-activity-list">${activityRows || `<p class="empty-history">No activities have been added to this workout yet.</p>`}</div>
+        ${assignment.workout.cooldown ? `<p class="workout-note"><strong>Cool-down</strong> ${escapeLogHtml(assignment.workout.cooldown)}</p>` : ""}
+      </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
   const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong><span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span></div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
   const logButton = document.getElementById("logAssignmentBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
   logButton.disabled = logIsReadOnly();
-  logButton.textContent = logIsReadOnly() ? "Read-only" : log ? "Log another activity" : "Log activity";
+  logButton.textContent = logIsReadOnly()
+    ? "Read-only"
+    : log
+      ? "Add another activity"
+      : assignment
+        ? (isToday ? "Log today's workout" : "Log this workout")
+        : "Log something else";
   skipButton.disabled = logIsReadOnly() || !assignment || Boolean(log);
   const moveButton = document.getElementById("moveAssignmentBtn");
   moveButton.hidden = logIsReadOnly() || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
