@@ -197,6 +197,13 @@ function isCurrentLog(log) {
   return Boolean(log && logState.data?.logs.some(item => item.id === log.id));
 }
 
+function isDeletableLog(log) {
+  if (!isCurrentLog(log)) return false;
+  if (!log?.assignmentId) return true;
+  const assignment = TrackerData.assignmentForId(logState.data, log.assignmentId);
+  return Boolean(assignment && isCurrentAssignment(assignment));
+}
+
 function logIsComplete(log) {
   return Boolean(log) && log.completed !== false;
 }
@@ -206,7 +213,7 @@ function isEditableLog(log) {
     log
     && !logIsReadOnly()
     && !isFutureDate(log.date)
-    && isCurrentLog(log)
+    && TrackerData.allLogs(logState.data).some(item => item === log || (item.id && item.id === log.id))
   );
 }
 
@@ -423,7 +430,7 @@ function renderToday() {
       </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
   const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip">
-    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${!isFuture && isCurrentLog(otherLog) && !logIsReadOnly() ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Edit</button>` : ""}</div>
+    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${isEditableLog(otherLog) ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Edit</button>` : ""}</div>
     <span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span>
   </div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
@@ -455,7 +462,7 @@ function renderToday() {
   setLogText("todayHelperCopy", isFuture
     ? "Logging is disabled until this day arrives. You can review the planned workout now."
     : isArchivedAssignment
-      ? "The archived workout prescription and recorded session are read-only. You can still add other activity on this date."
+      ? "The archived workout prescription stays unchanged, but you can correct the recorded session or add other activity on this date."
       : assignmentIsMissed(assignment)
         ? "This workout is marked as missed. Restore it if you decide to complete it."
         : "Planned days are a guide. Move unfinished work when real life gets in the way.");
@@ -634,9 +641,15 @@ function renderHistory() {
   }
   list.innerHTML = logs.map(log => {
     const editable = isEditableLog(log);
-    const archivedNote = isCurrentLog(log) ? "" : " · Archived plan · Read-only";
+    const assignment = log.assignmentId ? TrackerData.assignmentForId(logState.data, log.assignmentId) : null;
+    const archivedNote = log.assignmentId && assignment && !isCurrentAssignment(assignment)
+      ? " · Archived plan"
+      : "";
+    const deleteAction = isDeletableLog(log)
+      ? `<button class="text-button danger-button" type="button" data-delete-log="${escapeLogHtml(log.id)}">Delete</button>`
+      : "";
     const actions = editable
-      ? `<div class="history-actions"><button class="text-button" type="button" data-edit-log="${escapeLogHtml(log.id)}">Edit</button><button class="text-button danger-button" type="button" data-delete-log="${escapeLogHtml(log.id)}">Delete</button></div>`
+      ? `<div class="history-actions"><button class="text-button" type="button" data-edit-log="${escapeLogHtml(log.id)}">Edit</button>${deleteAction}</div>`
       : "";
     if (TrackerData.isStandaloneLog(log)) {
       return `<div class="history-item"><span class="history-check other-history-check">+</span><div class="history-details">
@@ -644,7 +657,6 @@ function renderHistory() {
         <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Other activity${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}${archivedNote}</span>
       </div><span class="history-value">${escapeLogHtml(standaloneLogSummary(log))}</span>${actions}</div>`;
     }
-    const assignment = TrackerData.assignmentForId(logState.data, log.assignmentId);
     const completed = totalCompleted(log.exercises);
     const planned = log.exercises.reduce((total, activity) => total + activity.sets.reduce((sum, set) => sum + Number(set.planned || 0), 0), 0);
     const markedComplete = logIsComplete(log);
@@ -797,7 +809,9 @@ function setLogMode(mode) {
     ? TrackerData.assignmentForId(logState.data, logState.editingAssignmentId)
     : null;
   const plannedLog = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
-  const existingLog = logState.data?.logs.find(item => item.id === logState.editingLogId) || null;
+  const existingLog = logState.data
+    ? TrackerData.allLogs(logState.data).find(item => item.id === logState.editingLogId) || null
+    : null;
   const editingExisting = Boolean(logState.editingLogId);
   const plannedAllowed = editingExisting
     ? Boolean(existingLog?.assignmentId && assignment)
@@ -988,6 +1002,10 @@ function deleteLog(logId) {
     showLogToast("That session is no longer available.");
     return;
   }
+  if (!isDeletableLog(log)) {
+    showLogToast("Archived plan sessions can be corrected but not deleted.");
+    return;
+  }
   const assignment = log.assignmentId ? TrackerData.assignmentForId(logState.data, log.assignmentId) : null;
   const title = standaloneLogTitle(log);
   const message = assignment
@@ -1172,7 +1190,7 @@ function bindLogEvents() {
   document.getElementById("logAssignmentBtn").addEventListener("click", () => {
     const assignment = assignmentForDisplayDate(logState.selectedDate);
     const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
-    if (log && isCurrentAssignment(assignment) && isCurrentLog(log)) {
+    if (log && isEditableLog(log)) {
       openLogModal(log.id);
       return;
     }
