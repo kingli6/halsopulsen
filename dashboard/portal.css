@@ -453,6 +453,16 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
   font-size: 10px;
 }
 
+.week-section {
+  margin-bottom: 24px;
+}
+
+.week-swipe-hint {
+  display: none;
+  color: #92745f;
+  font-style: normal;
+}
+
 @media (max-width: 820px) {
   .today-layout {
     display: block;
@@ -493,6 +503,49 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 
   .today-actions .button {
     width: 100%;
+  }
+
+  .week-section {
+    margin-bottom: 24px;
+  }
+
+  .week-section .section-heading-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .week-navigation {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .week-navigation #weekLabel {
+    flex: 1;
+    text-align: center;
+  }
+
+  .week-notice {
+    align-items: flex-start;
+  }
+
+  .week-swipe-hint {
+    display: inline;
+  }
+
+  .day-grid {
+    grid-template-columns: repeat(7, minmax(116px, 1fr));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 2px 3px 10px;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    touch-action: pan-x;
+  }
+
+  .day-tile {
+    scroll-snap-align: center;
   }
 
   .insight-card {

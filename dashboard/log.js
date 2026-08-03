@@ -13,6 +13,8 @@ const logState = {
   moveSourceAssignmentId: null,
   logMode: "planned",
   weekOffset: 0,
+  weekTouchStartX: null,
+  weekTouchStartY: null,
   toastTimer: null,
   saving: false,
   saveQueue: Promise.resolve(),
@@ -266,7 +268,7 @@ function renderGoal() {
   const activeWeek = published ? (TrackerData.programWeekForDate(published, TrackerData.todayISO()) || weeks[0]) : null;
   const activeDays = activeWeek?.days.filter(day => day.enabled && day.exercises.length) || [];
   setLogText("goalHeading", logState.data.publishedGoal || logState.data.goal);
-  setLogText("weekHeading", activeWeek ? `Week ${activeWeek.weekNumber} · choose a workout` : "Choose a workout");
+  setLogText("weekHeading", activeWeek ? `Week ${activeWeek.weekNumber} · choose a day` : "Choose a day");
   setLogText("goalText", published
     ? `${activeWeek?.phase || "Foundation"} · Week ${activeWeek?.weekNumber || 1} of ${weeks.length}${published.startDate ? ` · Starts ${TrackerData.formatShortDate(published.startDate)}` : ""}. ${activeDays.length} planned workout ${activeDays.length === 1 ? "day" : "days"} this week. Recommended days are a starting point, not a pass/fail test.`
     : "The owner has not published a program yet.");
@@ -371,6 +373,7 @@ function renderWeek() {
   setLogText("weekLabel", activeWeek
     ? `Week ${activeWeek.weekNumber} · ${TrackerData.formatDateRange(weekStart, weekEnd)}`
     : (logState.weekOffset === 0 ? "This week" : TrackerData.formatDateRange(weekStart, weekEnd)));
+  setLogText("weekHeading", activeWeek ? `Week ${activeWeek.weekNumber} · choose a day` : "Choose a day");
   document.getElementById("dayGrid").innerHTML = Array.from({ length: 7 }, (_, index) => {
     const date = TrackerData.addDays(weekStart, index);
     const assignment = TrackerData.assignmentForDate(logState.data, date);
@@ -399,6 +402,37 @@ function renderWeek() {
       ${marker}${date === TrackerData.todayISO() ? '<span class="today-badge">TODAY</span>' : ""}<span class="day-label">${TrackerData.DAY_NAMES[dateObject.getDay()]}</span><span class="day-number">${dateObject.getDate()}</span>
       <span class="day-content">${content}</span>${footer}</button>`;
   }).join("");
+  if (window.matchMedia("(max-width: 620px)").matches) {
+    requestAnimationFrame(() => {
+      const selected = document.querySelector(".day-tile.selected");
+      if (selected) {
+        const dayGrid = document.getElementById("dayGrid");
+        const targetLeft = selected.offsetLeft - Math.max(0, (dayGrid.clientWidth - selected.offsetWidth) / 2);
+        dayGrid.scrollTo({ left: targetLeft, behavior: "smooth" });
+      }
+    });
+  }
+}
+
+function weekStartForOffset(offset) {
+  return TrackerData.addDays(TrackerData.startOfWeek(TrackerData.todayISO()), offset * 7);
+}
+
+function selectFirstDateInWeek(offset) {
+  const start = weekStartForOffset(offset);
+  const end = TrackerData.addDays(start, 6);
+  const assignment = logState.data.assignments
+    .filter(item => item.date >= start && item.date <= end)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  logState.selectedDate = assignment?.date || start;
+  logState.selectedAssignmentId = assignment?.id || null;
+  logState.moveSourceAssignmentId = null;
+}
+
+function shiftWeek(amount) {
+  logState.weekOffset += amount;
+  selectFirstDateInWeek(logState.weekOffset);
+  renderAllLog();
 }
 
 function weekAssignments() {
@@ -872,7 +906,8 @@ function clearLogs() {
 }
 
 function bindLogEvents() {
-  document.getElementById("dayGrid").addEventListener("click", event => {
+  const dayGrid = document.getElementById("dayGrid");
+  dayGrid.addEventListener("click", event => {
     const tile = event.target.closest("[data-date]");
     if (!tile) return;
     const date = tile.dataset.date;
@@ -889,11 +924,28 @@ function bindLogEvents() {
       renderAllLog();
     }
   });
+  dayGrid.addEventListener("touchstart", event => {
+    if (event.touches.length !== 1) return;
+    logState.weekTouchStartX = event.touches[0].clientX;
+    logState.weekTouchStartY = event.touches[0].clientY;
+  }, { passive: true });
+  dayGrid.addEventListener("touchend", event => {
+    if (logState.weekTouchStartX == null || !event.changedTouches.length) return;
+    const deltaX = event.changedTouches[0].clientX - logState.weekTouchStartX;
+    const deltaY = event.changedTouches[0].clientY - logState.weekTouchStartY;
+    const atStart = dayGrid.scrollLeft <= 4;
+    const atEnd = dayGrid.scrollLeft + dayGrid.clientWidth >= dayGrid.scrollWidth - 4;
+    logState.weekTouchStartX = null;
+    logState.weekTouchStartY = null;
+    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+    if (deltaX > 0 && atStart) shiftWeek(-1);
+    if (deltaX < 0 && atEnd) shiftWeek(1);
+  }, { passive: true });
   document.getElementById("logAssignmentBtn").addEventListener("click", () => openLogModal());
   document.getElementById("skipAssignmentBtn").addEventListener("click", skipAssignment);
   document.getElementById("moveAssignmentBtn").addEventListener("click", () => moveSelectedAssignment(logState.selectedDate));
-  document.getElementById("previousWeekBtn").addEventListener("click", () => { logState.weekOffset -= 1; renderWeek(); });
-  document.getElementById("nextWeekBtn").addEventListener("click", () => { logState.weekOffset += 1; renderWeek(); });
+  document.getElementById("previousWeekBtn").addEventListener("click", () => shiftWeek(-1));
+  document.getElementById("nextWeekBtn").addEventListener("click", () => shiftWeek(1));
   document.getElementById("todayBtn").addEventListener("click", () => {
     logState.weekOffset = 0;
     logState.selectedDate = TrackerData.todayISO();
