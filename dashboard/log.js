@@ -855,7 +855,7 @@ function bindLogEvents() {
       renderAllLog();
     }
   });
-  document.getElementById("logAssignmentBtn").addEventListener("click", openLogModal);
+  document.getElementById("logAssignmentBtn").addEventListener("click", () => openLogModal());
   document.getElementById("skipAssignmentBtn").addEventListener("click", skipAssignment);
   document.getElementById("moveAssignmentBtn").addEventListener("click", () => moveSelectedAssignment(logState.selectedDate));
   document.getElementById("previousWeekBtn").addEventListener("click", () => { logState.weekOffset -= 1; renderWeek(); });
