@@ -460,9 +460,25 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 }
 
 .week-swipe-hint {
-  display: none;
+  display: inline;
   color: #92745f;
   font-style: normal;
+}
+
+.day-grid {
+  grid-template-columns: repeat(7, minmax(220px, 1fr));
+  overflow-x: auto;
+  cursor: grab;
+  padding-bottom: 10px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.day-grid.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
 }
 
 @media (max-width: 820px) {
@@ -537,13 +553,9 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 
   .day-grid {
     grid-template-columns: repeat(7, minmax(116px, 1fr));
-    overflow-x: auto;
     overscroll-behavior-x: contain;
     padding: 2px 3px 10px;
-    scroll-behavior: smooth;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
-    touch-action: pan-x;
+    touch-action: pan-y;
   }
 
   .day-tile {

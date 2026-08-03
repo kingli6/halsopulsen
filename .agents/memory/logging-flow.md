@@ -9,8 +9,8 @@ Selecting a date is a logging action, not a planning action. A participant can c
 
 **How to apply:** Keep planned logs linked to assignments; keep standalone logs unlinked and marked as other activity. Planned completion metrics should count only assignment-linked logs, while history and export can include both. Summary metrics should use one clearly labeled date window and avoid adding incompatible units such as reps, minutes, and kilometres into one total.
 
-The participant page should put week navigation before the selected-day workout. Desktop uses explicit previous/next week controls and Today; mobile adds a horizontally scrollable day strip with edge swipes for adjacent weeks.
+The participant page should put week navigation before the selected-day workout. Desktop and mobile use explicit previous/next week controls and Today plus a horizontally draggable day strip. Mouse or finger dragging browses the days; clicking a card selects it, and dragging beyond either edge moves to an adjacent week.
 
 **Why:** The participant needs to choose a day and immediately see the corresponding work below it. A week-first layout makes that relationship clearer without inventing a separate calendar screen.
 
-**How to apply:** Keep the selected day synchronized with the workout card. Preserve the explicit arrows and Today button as the dependable controls; treat touch swiping as a convenience, not the only navigation path.
+**How to apply:** Keep the selected day synchronized with the workout card. Preserve the explicit arrows and Today button as the dependable controls; treat dragging as a convenience, not the only navigation path.

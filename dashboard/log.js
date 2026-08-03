@@ -13,8 +13,12 @@ const logState = {
   moveSourceAssignmentId: null,
   logMode: "planned",
   weekOffset: 0,
-  weekTouchStartX: null,
-  weekTouchStartY: null,
+  weekPointerId: null,
+  weekPointerStartX: null,
+  weekPointerStartY: null,
+  weekPointerStartScrollLeft: 0,
+  weekPointerMoved: false,
+  suppressWeekClick: false,
   toastTimer: null,
   saving: false,
   saveQueue: Promise.resolve(),
@@ -913,6 +917,10 @@ function clearLogs() {
 function bindLogEvents() {
   const dayGrid = document.getElementById("dayGrid");
   dayGrid.addEventListener("click", event => {
+    if (logState.suppressWeekClick) {
+      logState.suppressWeekClick = false;
+      return;
+    }
     const tile = event.target.closest("[data-date]");
     if (!tile) return;
     const date = tile.dataset.date;
@@ -929,23 +937,48 @@ function bindLogEvents() {
       renderAllLog();
     }
   });
-  dayGrid.addEventListener("touchstart", event => {
-    if (event.touches.length !== 1) return;
-    logState.weekTouchStartX = event.touches[0].clientX;
-    logState.weekTouchStartY = event.touches[0].clientY;
-  }, { passive: true });
-  dayGrid.addEventListener("touchend", event => {
-    if (logState.weekTouchStartX == null || !event.changedTouches.length) return;
-    const deltaX = event.changedTouches[0].clientX - logState.weekTouchStartX;
-    const deltaY = event.changedTouches[0].clientY - logState.weekTouchStartY;
+  dayGrid.addEventListener("pointerdown", event => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    logState.weekPointerId = event.pointerId;
+    logState.weekPointerStartX = event.clientX;
+    logState.weekPointerStartY = event.clientY;
+    logState.weekPointerStartScrollLeft = dayGrid.scrollLeft;
+    logState.weekPointerMoved = false;
+    dayGrid.classList.add("is-dragging");
+    dayGrid.setPointerCapture?.(event.pointerId);
+  });
+  dayGrid.addEventListener("pointermove", event => {
+    if (event.pointerId !== logState.weekPointerId) return;
+    const deltaX = event.clientX - logState.weekPointerStartX;
+    const deltaY = event.clientY - logState.weekPointerStartY;
+    if (!logState.weekPointerMoved) {
+      if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) return;
+      logState.weekPointerMoved = true;
+    }
+    event.preventDefault();
+    dayGrid.scrollLeft = logState.weekPointerStartScrollLeft - deltaX;
+  });
+  const finishWeekPointer = event => {
+    if (event.pointerId !== logState.weekPointerId) return;
+    const deltaX = event.clientX - logState.weekPointerStartX;
+    const horizontalDrag = logState.weekPointerMoved && Math.abs(deltaX) > 40;
     const atStart = dayGrid.scrollLeft <= 4;
     const atEnd = dayGrid.scrollLeft + dayGrid.clientWidth >= dayGrid.scrollWidth - 4;
-    logState.weekTouchStartX = null;
-    logState.weekTouchStartY = null;
-    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
-    if (deltaX > 0 && atStart) shiftWeek(-1);
-    if (deltaX < 0 && atEnd) shiftWeek(1);
-  }, { passive: true });
+    const shouldGoPrevious = horizontalDrag && deltaX > 0 && atStart;
+    const shouldGoNext = horizontalDrag && deltaX < 0 && atEnd;
+    logState.suppressWeekClick = logState.weekPointerMoved;
+    dayGrid.classList.remove("is-dragging");
+    dayGrid.releasePointerCapture?.(event.pointerId);
+    logState.weekPointerId = null;
+    logState.weekPointerStartX = null;
+    logState.weekPointerStartY = null;
+    logState.weekPointerMoved = false;
+    if (shouldGoPrevious) shiftWeek(-1);
+    if (shouldGoNext) shiftWeek(1);
+  };
+  dayGrid.addEventListener("pointerup", finishWeekPointer);
+  dayGrid.addEventListener("pointercancel", finishWeekPointer);
   document.getElementById("assignmentPreview").addEventListener("click", event => {
     const editButton = event.target.closest("[data-edit-log]");
     if (editButton) openLogModal(editButton.dataset.editLog);
