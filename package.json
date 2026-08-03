@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "audit:footprint": "node scripts/audit-footprint.js"
   },
   "dependencies": {
     "express": "^4.19.2"
