@@ -193,8 +193,7 @@ app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
 });
 app.get(['/p/:token', '/p/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
-// The old group-challenge files remain in the repository as reference material,
-// but the retired route no longer exposes a second active product.
+// Keep legacy challenge URLs redirected after retiring the old implementation.
 app.get(['/challenge', '/challenge/'], (req, res) => res.redirect('/'));
 app.get('/challenge/*', (req, res) => res.redirect('/'));
 

@@ -8,9 +8,9 @@ logs, visualizes progress, and keeps the planning and logging experiences
 separate.
 
 The current repository is an imported HTML/CSS/JavaScript website with a
-Node.js/Express server and an older Supabase-backed group challenge prototype.
-The existing challenge code is reference material for the redesign, not the
-final product model.
+Node.js/Express server. The former Supabase-backed group challenge has been
+retired; its idea is documented for a possible future mode, but its obsolete
+implementation is no longer served.
 
 ## Product direction
 

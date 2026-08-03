@@ -5,3 +5,4 @@
 - [Resource storage policy](resource-storage-policy.md) — keep public assets in GitHub, structured private data in Supabase, and make cleanup reference-aware.
 - [Lean production architecture](lean-production-architecture.md) — use GitHub, Supabase, and optional server-side Gemini; defer home file storage.
 - [Public homepage direction](public-homepage-direction.md) — sell current practice services now; show the tracker later as a truthful log/statistics example.
+- [Future group challenge](future-group-challenge.md) — preserve the idea as an archived future mode built on the individual tracker, not the old prototype.

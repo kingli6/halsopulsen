@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
-Disallow:
+Disallow: /challenge
+Disallow: /challenge/
 
 Sitemap: https://halsopulsen.se/sitemap.xml
