@@ -22,8 +22,18 @@ const logState = {
   toastTimer: null,
   saving: false,
   saveQueue: Promise.resolve(),
-  conflict: false
+  conflict: false,
+  modalReturnFocus: null
 };
+
+function closeLogModal() {
+  const modal = document.getElementById("logModal");
+  if (modal) modal.hidden = true;
+  if (logState.modalReturnFocus && typeof logState.modalReturnFocus.focus === "function") {
+    logState.modalReturnFocus.focus();
+  }
+  logState.modalReturnFocus = null;
+}
 
 function setLogText(id, value) {
   const element = document.getElementById(id);
@@ -172,6 +182,21 @@ function currentAssignment() {
   return TrackerData.assignmentForDate(logState.data, logState.selectedDate);
 }
 
+function assignmentForDisplayDate(date) {
+  if (!logState.data) return null;
+  return TrackerData.assignmentForDate(logState.data, date)
+    || TrackerData.allAssignments(logState.data).find(assignment => assignment.date === date)
+    || null;
+}
+
+function isCurrentAssignment(assignment) {
+  return Boolean(assignment && logState.data?.assignments.some(item => item.id === assignment.id));
+}
+
+function isCurrentLog(log) {
+  return Boolean(log && logState.data?.logs.some(item => item.id === log.id));
+}
+
 function workoutTitle(assignment) {
   return assignment?.workout?.name || "Training session";
 }
@@ -292,7 +317,8 @@ function renderGoal() {
 
 function renderToday() {
   if (!logState.data) return;
-  const assignment = currentAssignment();
+  const assignment = assignmentForDisplayDate(logState.selectedDate);
+  const isArchivedAssignment = Boolean(assignment && !isCurrentAssignment(assignment));
   const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
   const date = logState.selectedDate || TrackerData.todayISO();
   const otherLogs = TrackerData.standaloneLogsForDate(logState.data, date);
@@ -315,7 +341,10 @@ function renderToday() {
       : "Nothing was planned here. You can still record something you did.");
   const statusElement = document.getElementById("todayStatus");
   statusElement.className = "status-pill";
-  if (log || assignment?.status === "completed") {
+  if (isArchivedAssignment) {
+    statusElement.classList.add("status-archived");
+    statusElement.textContent = "Archived plan";
+  } else if (log || assignment?.status === "completed") {
     statusElement.classList.add("status-completed");
     statusElement.textContent = "Completed";
   } else if (otherLogs.length) {
@@ -366,7 +395,7 @@ function renderToday() {
       </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
   const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip">
-    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${isFuture ? "" : `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Adjust</button>`}</div>
+    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${!isFuture && isCurrentLog(otherLog) && !logIsReadOnly() ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Adjust</button>` : ""}</div>
     <span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span>
   </div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
@@ -378,18 +407,22 @@ function renderToday() {
     ? "Read-only"
     : isFuture
       ? "Logging opens later"
-    : log
-      ? "Add another activity"
-      : assignment
-        ? (isToday ? "Log today's workout" : "Log this workout")
-        : "Log something else";
-  adjustButton.hidden = logIsReadOnly() || isFuture || !log;
-  skipButton.disabled = logIsReadOnly() || isFuture || !assignment || Boolean(log);
+      : isArchivedAssignment
+        ? "Log other activity"
+        : log
+          ? "Add another activity"
+          : assignment
+            ? (isToday ? "Log today's workout" : "Log this workout")
+            : "Log something else";
+  adjustButton.hidden = logIsReadOnly() || isFuture || isArchivedAssignment || !log || !isCurrentLog(log);
+  skipButton.disabled = logIsReadOnly() || isFuture || isArchivedAssignment || !assignment || Boolean(log);
   const moveButton = document.getElementById("moveAssignmentBtn");
   moveButton.hidden = logIsReadOnly() || isFuture || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
   setLogText("todayHelperCopy", isFuture
-    ? `Logging is disabled until this day arrives. You can review the planned workout now.`
-    : "Planned days are a guide. Move unfinished work when real life gets in the way.");
+    ? "Logging is disabled until this day arrives. You can review the planned workout now."
+    : isArchivedAssignment
+      ? "The archived planned workout is read-only. You can still record other activity on this date."
+      : "Planned days are a guide. Move unfinished work when real life gets in the way.");
   logState.selectedAssignmentId = assignment?.id || null;
 }
 
@@ -405,11 +438,12 @@ function renderWeek() {
   setLogText("weekHeading", activeWeek ? `Week ${activeWeek.weekNumber} · choose a day` : "Choose a day");
   document.getElementById("dayGrid").innerHTML = Array.from({ length: 7 }, (_, index) => {
     const date = TrackerData.addDays(weekStart, index);
-    const assignment = TrackerData.assignmentForDate(logState.data, date);
+    const assignment = assignmentForDisplayDate(date);
     const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
     const otherLogs = TrackerData.standaloneLogsForDate(logState.data, date);
     const dateObject = TrackerData.fromISO(date);
     const isSelected = logState.selectedDate === date;
+    const isArchivedAssignment = Boolean(assignment && !isCurrentAssignment(assignment));
     const classes = ["day-tile"];
     if (date === TrackerData.todayISO()) classes.push("is-today");
     if (date < TrackerData.todayISO()) classes.push("is-past");
@@ -418,6 +452,19 @@ function renderWeek() {
     else if (assignment?.moved) classes.push("is-moved");
     else if (otherLogs.length) classes.push("is-other");
     else if (!assignment) classes.push("is-open");
+    const status = isArchivedAssignment
+      ? `Archived plan${log || assignment?.status === "completed" ? " · completed" : ""}`
+      : log || assignment?.status === "completed"
+        ? "Completed"
+      : assignment?.status === "skipped"
+        ? "Skipped"
+        : assignment?.moved
+          ? "Moved"
+          : assignment
+            ? isArchivedAssignment ? "Archived plan" : "Planned"
+            : otherLogs.length
+              ? "Other activity"
+              : "Open day";
     const marker = log || assignment?.status === "completed"
       ? `<span class="day-marker complete">✓</span>`
       : assignment?.moved ? `<span class="day-marker moved"></span>` : otherLogs.length ? `<span class="day-marker other"></span>` : assignment ? `<span class="day-marker"></span>` : "";
@@ -426,7 +473,7 @@ function renderWeek() {
       : otherLogs.length
         ? `<strong>${escapeLogHtml(standaloneLogTitle(otherLogs[0]))}</strong><span>${otherLogs.length > 1 ? `+${otherLogs.length - 1} other · ` : ""}Other activity</span>`
         : `<span>Rest / open day</span>`;
-    return `<button class="${classes.join(" ")}" type="button" role="listitem" data-date="${date}" aria-label="${TrackerData.formatLongDate(date)}${assignment ? ", assignment" : otherLogs.length ? ", other activity logged" : ", rest or open day"}">
+    return `<button class="${classes.join(" ")}" type="button" data-date="${date}" aria-pressed="${isSelected}" ${date === TrackerData.todayISO() ? 'aria-current="date"' : ""} aria-label="${TrackerData.formatLongDate(date)}, ${status}${assignment ? `, ${escapeLogHtml(workoutTitle(assignment))}` : otherLogs.length ? ", other activity logged" : ", rest or open day"}">
       ${marker}${date === TrackerData.todayISO() ? '<span class="today-badge">TODAY</span>' : ""}<span class="day-label">${TrackerData.DAY_NAMES[dateObject.getDay()]}</span><span class="day-number">${dateObject.getDate()}</span>
       <span class="day-content">${content}</span></button>`;
   }).join("");
@@ -449,10 +496,12 @@ function weekStartForOffset(offset) {
 function selectFirstDateInWeek(offset) {
   const start = weekStartForOffset(offset);
   const end = TrackerData.addDays(start, 6);
-  const assignment = logState.data.assignments
+  const dates = [...new Set(TrackerData.allAssignments(logState.data)
     .filter(item => item.date >= start && item.date <= end)
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
-  logState.selectedDate = assignment?.date || start;
+    .map(item => item.date))].sort();
+  const selectedDate = dates[0] || start;
+  const assignment = assignmentForDisplayDate(selectedDate);
+  logState.selectedDate = selectedDate;
   logState.selectedAssignmentId = assignment?.id || null;
   logState.moveSourceAssignmentId = null;
 }
@@ -530,14 +579,15 @@ function renderHistory() {
     return;
   }
   list.innerHTML = logs.map(log => {
-    const editable = logState.data.logs.some(item => item.id === log.id) && !logIsReadOnly();
+    const editable = isCurrentLog(log) && !logIsReadOnly();
+    const archivedNote = isCurrentLog(log) ? "" : " · Archived plan · Read-only";
     const actions = editable
       ? `<div class="history-actions"><button class="text-button" type="button" data-edit-log="${escapeLogHtml(log.id)}">Edit</button><button class="text-button danger-button" type="button" data-delete-log="${escapeLogHtml(log.id)}">Delete</button></div>`
       : "";
     if (TrackerData.isStandaloneLog(log)) {
       return `<div class="history-item"><span class="history-check other-history-check">+</span><div class="history-details">
         <span class="history-title">${escapeLogHtml(standaloneLogTitle(log))}</span>
-        <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Other activity${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}</span>
+        <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Other activity${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}${archivedNote}</span>
       </div><span class="history-value">${escapeLogHtml(standaloneLogSummary(log))}</span>${actions}</div>`;
     }
     const assignment = TrackerData.assignmentForId(logState.data, log.assignmentId);
@@ -545,7 +595,7 @@ function renderHistory() {
     const planned = log.exercises.reduce((total, activity) => total + activity.sets.reduce((sum, set) => sum + Number(set.planned || 0), 0), 0);
     return `<div class="history-item"><span class="history-check">✓</span><div class="history-details">
       <span class="history-title">${escapeLogHtml(workoutTitle(assignment) || log.workoutName || "Training session")}</span>
-      <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Version ${planVersionForAssignment(log.assignmentId)}${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}</span>
+      <span class="history-meta">${TrackerData.formatLongDate(log.date)} · Version ${planVersionForAssignment(log.assignmentId)}${log.difficulty ? ` · Difficulty ${log.difficulty}/10` : ""}${archivedNote}</span>
     </div><span class="history-value">${TrackerData.targetLabel({ targetValue: completed, targetUnit: "reps" })}/${TrackerData.targetLabel({ targetValue: planned, targetUnit: "reps" })}</span>${actions}</div>`;
   }).join("");
   renderVersionHistory();
@@ -724,25 +774,32 @@ function openLogModal(logId = null) {
   }
   const assignment = existingLog?.assignmentId
     ? TrackerData.assignmentForId(logState.data, existingLog.assignmentId)
-    : currentAssignment();
-  const plannedLog = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
+    : assignmentForDisplayDate(logState.selectedDate);
+  if (existingLog?.assignmentId && !isCurrentAssignment(assignment)) {
+    showLogToast("Archived plan entries are read-only.");
+    return;
+  }
+  const plannedAssignment = isCurrentAssignment(assignment) ? assignment : null;
+  const plannedLog = plannedAssignment ? TrackerData.logForAssignment(logState.data, plannedAssignment.id) : null;
   logState.editingLogId = existingLog?.id || null;
-  logState.editingAssignmentId = assignment?.id || null;
+  logState.editingAssignmentId = plannedAssignment?.id || null;
   logState.editingDate = modalDate;
+  logState.modalReturnFocus = document.activeElement;
   setLogText("logModalTitle", existingLog ? "Edit activity" : "Log activity");
   setLogText("logModalContext", existingLog
     ? `Correct the details for ${TrackerData.formatLongDate(logState.editingDate)}.`
-    : assignment && !plannedLog
+    : plannedAssignment && !plannedLog
     ? `Selected date: ${TrackerData.formatLongDate(logState.editingDate)}. Record what you actually completed.`
-    : assignment
+    : plannedAssignment
       ? `The planned workout is already logged for ${TrackerData.formatLongDate(logState.editingDate)}. Add another activity if you did more.`
       : `No workout was planned for ${TrackerData.formatLongDate(logState.editingDate)}. Record something else you did.`);
-  setLogMode(existingLog?.assignmentId ? "planned" : assignment && !plannedLog ? "planned" : "other");
+  setLogMode(existingLog?.assignmentId ? "planned" : plannedAssignment && !plannedLog ? "planned" : "other");
   document.getElementById("difficulty").value = existingLog?.difficulty || "";
   document.getElementById("energy").value = existingLog?.energy || "";
   document.getElementById("sessionNote").value = existingLog?.note || "";
   document.getElementById("saveLogBtn").textContent = existingLog ? "Update activity" : "Save activity";
   document.getElementById("logModal").hidden = false;
+  document.getElementById("closeLogModal").focus();
 }
 
 function saveLog(event) {
@@ -827,7 +884,7 @@ function saveLog(event) {
   }
   const savedMessage = logState.logMode === "planned" ? "Planned session updated." : existingLog ? "Activity updated." : "Other activity saved.";
   logState.editingLogId = null;
-  document.getElementById("logModal").hidden = true;
+  closeLogModal();
   document.getElementById("saveLogBtn").textContent = "Save activity";
   renderAllLog();
   persistState().then(saved => {
@@ -868,6 +925,10 @@ function skipAssignment() {
   }
   const assignment = currentAssignment();
   if (!assignment || TrackerData.logForAssignment(logState.data, assignment.id)) return;
+  if (!isCurrentAssignment(assignment)) {
+    showLogToast("Archived plan entries are read-only.");
+    return;
+  }
   if (isFutureDate(assignment.date)) {
     showLogToast(futureLoggingMessage(assignment.date));
     return;
@@ -940,14 +1001,14 @@ function clearLogs() {
     showLogToast(logState.conflict ? "Reload the latest log before clearing sessions." : "This page is read-only.");
     return;
   }
-  if (!logState.data.logs.length || !window.confirm("Clear all logged sessions? Your program and assignments will remain.")) return;
+  if (!logState.data.logs.length || !window.confirm("Clear current-plan logs? Archived plan history will remain read-only.")) return;
   logState.data.logs = [];
   logState.data.assignments.forEach(assignment => {
     if (assignment.status === "completed") assignment.status = "planned";
   });
   renderAllLog();
   persistState().then(saved => {
-    if (saved) showLogToast("Session logs cleared.");
+    if (saved) showLogToast("Current-plan session logs cleared.");
   });
 }
 
@@ -1022,7 +1083,7 @@ function bindLogEvents() {
   });
   document.getElementById("logAssignmentBtn").addEventListener("click", () => openLogModal());
   document.getElementById("adjustLogBtn").addEventListener("click", () => {
-    const assignment = currentAssignment();
+    const assignment = assignmentForDisplayDate(logState.selectedDate);
     const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
     if (log) openLogModal(log.id);
   });
@@ -1033,7 +1094,7 @@ function bindLogEvents() {
   document.getElementById("todayBtn").addEventListener("click", () => {
     logState.weekOffset = 0;
     logState.selectedDate = TrackerData.todayISO();
-    logState.selectedAssignmentId = TrackerData.assignmentForDate(logState.data, logState.selectedDate)?.id || null;
+    logState.selectedAssignmentId = assignmentForDisplayDate(logState.selectedDate)?.id || null;
     logState.moveSourceAssignmentId = null;
     renderAllLog();
   });
@@ -1051,8 +1112,8 @@ function bindLogEvents() {
     if (deleteButton) deleteLog(deleteButton.dataset.deleteLog);
   });
   document.getElementById("reloadLogBtn").addEventListener("click", () => window.location.reload());
-  document.getElementById("closeLogModal").addEventListener("click", () => { document.getElementById("logModal").hidden = true; });
-  document.getElementById("cancelLogBtn").addEventListener("click", () => { document.getElementById("logModal").hidden = true; });
+  document.getElementById("closeLogModal").addEventListener("click", closeLogModal);
+  document.getElementById("cancelLogBtn").addEventListener("click", closeLogModal);
   document.getElementById("logForm").addEventListener("submit", saveLog);
   document.getElementById("logModal").addEventListener("click", event => {
     if (event.target.id === "logModal") event.target.hidden = true;

@@ -53,16 +53,16 @@
         </div>
         <div class="week-navigation">
           <button class="round-button" id="previousWeekBtn" type="button" aria-label="Previous week">←</button>
-          <span id="weekLabel">This week</span>
+          <span id="weekLabel" aria-live="polite">This week</span>
           <button class="round-button" id="nextWeekBtn" type="button" aria-label="Next week">→</button>
           <button class="button button-small button-secondary" id="todayBtn" type="button">Today</button>
         </div>
       </div>
       <div class="week-notice">
         <span class="notice-icon">↗</span>
-        <span><strong>Choose a day to see the workout below.</strong> You can backfill planned work or record something else you did. <em class="week-swipe-hint">Drag or swipe through days.</em></span>
+        <span><strong>Choose a day to see the workout below.</strong> You can backfill planned work or record something else you did. <em class="week-swipe-hint">Drag or swipe through days; keyboard users can tab through them.</em></span>
       </div>
-      <div class="day-grid" id="dayGrid" role="list" aria-label="Days in selected week"></div>
+      <div class="day-grid" id="dayGrid" role="group" aria-label="Days in selected week"></div>
       <div class="legend">
         <span><i class="legend-swatch planned"></i> Planned</span>
         <span><i class="legend-swatch moved"></i> Moved</span>
@@ -81,7 +81,7 @@
           </div>
           <span class="status-pill status-planned" id="todayStatus">Planned</span>
         </div>
-        <h2 id="todayHeading">Today's workout</h2>
+        <h2 id="todayHeading" aria-live="polite">Today's workout</h2>
         <p class="today-subtitle" id="todaySubtitle">Select a day below to see its workout.</p>
         <div class="assignment-preview" id="assignmentPreview"></div>
         <div class="today-actions">
@@ -134,7 +134,7 @@
             <p class="section-kicker">WHAT HAPPENED</p>
             <h2 id="historyHeading">Recent sessions</h2>
           </div>
-          <button class="text-button" id="clearLogsBtn" type="button">Clear logs</button>
+          <button class="text-button" id="clearLogsBtn" type="button">Clear current-plan logs</button>
         </div>
         <div class="history-list" id="historyList"></div>
         <div class="version-history" id="versionHistory" aria-label="Plan version history"></div>
@@ -170,7 +170,7 @@
   </main>
 
   <div class="modal-backdrop" id="logModal" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logModalTitle" aria-describedby="logModalContext">
       <div class="modal-header">
         <div>
           <p class="section-kicker">SESSION LOG</p>
