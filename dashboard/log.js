@@ -78,13 +78,11 @@ function setPageMode() {
   document.querySelectorAll("[data-owner-only]").forEach(element => {
     element.hidden = logState.isShared || logState.isPreview;
   });
-  const clearLogsButton = document.getElementById("clearLogsBtn");
-  if (clearLogsButton) clearLogsButton.disabled = logState.isShared || logIsReadOnly();
   if (logState.isPreview) {
     document.title = `${personName || "Participant"} preview — HälsoPulsen`;
     setLogText("storageNote", "Preview mode is read-only. Nothing you do here will be saved.");
     setLogText("insightHeading", "Preview only.");
-    setLogText("insightText", "You are viewing the participant logging page as the owner. Logging, skipping, moving, and clearing sessions are disabled.");
+    setLogText("insightText", "You are viewing the participant logging page as the owner. Logging, skipping, moving, and editing sessions are disabled.");
     setLogText("participantEyebrow", `${personName || "PARTICIPANT"} · PREVIEW`);
     setLogText("participantPageHeading", `${personName || "Participant"}'s training plan`);
   } else if (logState.isShared) {
@@ -118,7 +116,7 @@ function renderModeBanner() {
     return;
   }
   setLogText("modeBannerTitle", "Preview only — no changes will be saved.");
-  setLogText("modeBannerText", `You are viewing ${personName}'s logging page as the owner. Logging, skipping, moving, and clearing are disabled.`);
+  setLogText("modeBannerText", `You are viewing ${personName}'s logging page as the owner. Logging, skipping, moving, and editing are disabled.`);
   if (reloadButton) reloadButton.hidden = true;
 }
 
@@ -1107,22 +1105,6 @@ function exportCsv() {
   showLogToast("CSV exported.");
 }
 
-function clearLogs() {
-  if (logState.isShared || logIsReadOnly()) {
-    showLogToast(logState.conflict ? "Reload the latest log before clearing sessions." : "This page is read-only.");
-    return;
-  }
-  if (!logState.data.logs.length || !window.confirm("Clear current-plan logs? Archived plan history will remain read-only.")) return;
-  logState.data.logs = [];
-  logState.data.assignments.forEach(assignment => {
-    if (assignment.status === "completed") assignment.status = "planned";
-  });
-  renderAllLog();
-  persistState().then(saved => {
-    if (saved) showLogToast("Current-plan session logs cleared.");
-  });
-}
-
 function bindLogEvents() {
   const dayGrid = document.getElementById("dayGrid");
   dayGrid.addEventListener("click", event => {
@@ -1224,7 +1206,6 @@ function bindLogEvents() {
   document.getElementById("plannedLogModeBtn").addEventListener("click", () => setLogMode("planned"));
   document.getElementById("otherLogModeBtn").addEventListener("click", () => setLogMode("other"));
   document.getElementById("exportBtn").addEventListener("click", exportCsv);
-  document.getElementById("clearLogsBtn").addEventListener("click", clearLogs);
   document.getElementById("historyList").addEventListener("click", event => {
     const editButton = event.target.closest("[data-edit-log]");
     if (editButton) {
