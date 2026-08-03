@@ -18,7 +18,8 @@ Build the first version for the owner and their partner:
 
 - An owner/admin creates goals and structured exercise programs in a private
   planning workspace.
-- The first prototype stores one person's program and logs in the browser.
+- The local prototype stores owner drafts in browser storage and published plans
+  plus shared participant state in local JSON behind the Express server.
 - The owner plans each weekday separately, then publishes a version.
 - A program can contain multiple independently editable weeks; one publish creates the complete multi-week snapshot.
 - Reusable activity, day-workout, and week snapshots live in a separate owner library and can be inserted into future drafts.
