@@ -14,3 +14,9 @@ The participant page should put week navigation before the selected-day workout.
 **Why:** The participant needs to choose a day and immediately see the corresponding work below it. A week-first layout makes that relationship clearer without inventing a separate calendar screen.
 
 **How to apply:** Keep the selected day synchronized with the workout card. Preserve the explicit arrows and Today button as the dependable controls; treat dragging as a convenience, not the only navigation path.
+
+The selected date controls the workout panel. Past dates remain loggable for backfill, while future dates are review-only until they arrive.
+
+**Why:** A participant may forget to record a completed session, but recording a future session would make the history and completion metrics misleading.
+
+**How to apply:** Resolve the selected assignment by date on every render. Disable and guard logging, editing, skipping, and moving for dates after the participant's local today; keep the planned workout visible for preparation.
