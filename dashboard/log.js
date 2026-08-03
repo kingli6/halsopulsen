@@ -13,7 +13,9 @@ const logState = {
   logMode: "planned",
   weekOffset: 0,
   toastTimer: null,
-  saving: false
+  saving: false,
+  saveQueue: Promise.resolve(),
+  conflict: false
 };
 
 function setLogText(id, value) {
@@ -42,13 +44,17 @@ function showLogToast(message) {
   logState.toastTimer = setTimeout(() => toast.classList.remove("visible"), 3200);
 }
 
+function logIsReadOnly() {
+  return logState.isPreview || logState.conflict;
+}
+
 function setPageMode() {
   const personName = logState.data?.person?.name || "";
   document.querySelectorAll("[data-owner-only]").forEach(element => {
     element.hidden = logState.isShared || logState.isPreview;
   });
   const clearLogsButton = document.getElementById("clearLogsBtn");
-  if (clearLogsButton) clearLogsButton.disabled = logState.isShared || logState.isPreview;
+  if (clearLogsButton) clearLogsButton.disabled = logState.isShared || logIsReadOnly();
   if (logState.isPreview) {
     document.title = `${personName || "Participant"} preview — HälsoPulsen`;
     setLogText("storageNote", "Preview mode is read-only. Nothing you do here will be saved.");
@@ -71,16 +77,24 @@ function setPageMode() {
 
 function renderModeBanner() {
   const banner = document.getElementById("modeBanner");
+  const reloadButton = document.getElementById("reloadLogBtn");
   if (!banner) return;
-  if (!logState.isPreview) {
+  if (!logState.isPreview && !logState.conflict) {
     banner.hidden = true;
     return;
   }
   const personName = logState.data?.person?.name || "this participant";
   banner.hidden = false;
   banner.className = "mode-banner";
+  if (logState.conflict) {
+    setLogText("modeBannerTitle", "This training log changed elsewhere.");
+    setLogText("modeBannerText", "Reload the latest version before saving so no session is lost.");
+    if (reloadButton) reloadButton.hidden = false;
+    return;
+  }
   setLogText("modeBannerTitle", "Preview only — no changes will be saved.");
   setLogText("modeBannerText", `You are viewing ${personName}'s logging page as the owner. Logging, skipping, moving, and clearing are disabled.`);
+  if (reloadButton) reloadButton.hidden = true;
 }
 
 async function persistState() {
@@ -88,21 +102,55 @@ async function persistState() {
   if (logState.isPreview) return;
   if (!logState.isShared) {
     TrackerData.save(logState.data);
-    return;
+    return true;
   }
-  try {
-    logState.saving = true;
-    const response = await fetch(`/api/plans/share/${encodeURIComponent(logState.shareToken)}/state`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignments: logState.data.assignments, logs: logState.data.logs })
-    });
-    if (!response.ok) throw new Error("The shared log could not be saved.");
-  } catch (error) {
-    showLogToast(error.message);
-  } finally {
-    logState.saving = false;
-  }
+  if (logState.conflict) return false;
+
+  const snapshot = TrackerData.clone({
+    assignments: logState.data.assignments,
+    logs: logState.data.logs
+  });
+  const requestId = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `save-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  logState.saveQueue = logState.saveQueue.then(async () => {
+    if (logState.conflict) return false;
+    try {
+      logState.saving = true;
+      const response = await fetch(`/api/plans/share/${encodeURIComponent(logState.shareToken)}/state`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignments: snapshot.assignments,
+          logs: snapshot.logs,
+          stateRevision: logState.data.stateRevision,
+          requestId
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 409 && result.conflict) {
+        logState.conflict = true;
+        renderModeBanner();
+        renderAllLog();
+        showLogToast(result.error || "This training log changed elsewhere. Reload the latest log.");
+        return false;
+      }
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "The shared log could not be saved.");
+      }
+      logState.data.stateRevision = Number(result.stateRevision) >= 0
+        ? Number(result.stateRevision)
+        : logState.data.stateRevision;
+      return true;
+    } catch (error) {
+      showLogToast(error.message);
+      return false;
+    } finally {
+      logState.saving = false;
+    }
+  });
+  return logState.saveQueue;
 }
 
 function currentAssignment() {
@@ -272,11 +320,11 @@ function renderToday() {
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
   const logButton = document.getElementById("logAssignmentBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
-  logButton.disabled = logState.isPreview;
-  logButton.textContent = logState.isPreview ? "Preview only" : log ? "Log another activity" : "Log activity";
-  skipButton.disabled = logState.isPreview || !assignment || Boolean(log);
+  logButton.disabled = logIsReadOnly();
+  logButton.textContent = logIsReadOnly() ? "Read-only" : log ? "Log another activity" : "Log activity";
+  skipButton.disabled = logIsReadOnly() || !assignment || Boolean(log);
   const moveButton = document.getElementById("moveAssignmentBtn");
-  moveButton.hidden = logState.isPreview || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
+  moveButton.hidden = logIsReadOnly() || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
   logState.selectedAssignmentId = assignment?.id || null;
 }
 
@@ -438,8 +486,8 @@ function renderAllLog() {
 }
 
 function moveSelectedAssignment(targetDate) {
-  if (logState.isPreview) {
-    showLogToast("Preview only. Moving workouts is disabled.");
+  if (logIsReadOnly()) {
+    showLogToast(logState.conflict ? "Reload the latest log before moving workouts." : "Preview only. Moving workouts is disabled.");
     return;
   }
   const current = logState.data.assignments.find(item => item.id === logState.moveSourceAssignmentId);
@@ -464,8 +512,11 @@ function moveSelectedAssignment(targetDate) {
   logState.selectedAssignmentId = current.id;
   logState.moveSourceAssignmentId = null;
   logState.data.assignments.sort((a, b) => a.date.localeCompare(b.date));
-  persistState();
-  showLogToast(oldDate === targetDate ? "Workout selected." : `Moved from ${TrackerData.formatShortDate(oldDate)} to ${TrackerData.formatShortDate(targetDate)}.`);
+  persistState().then(saved => {
+    if (saved) {
+      showLogToast(oldDate === targetDate ? "Workout selected." : `Moved from ${TrackerData.formatShortDate(oldDate)} to ${TrackerData.formatShortDate(targetDate)}.`);
+    }
+  });
   renderAllLog();
 }
 
@@ -544,8 +595,8 @@ function setLogMode(mode) {
 }
 
 function openLogModal() {
-  if (logState.isPreview) {
-    showLogToast("Preview only. Logging is disabled.");
+  if (logIsReadOnly()) {
+    showLogToast(logState.conflict ? "Reload the latest log before recording activity." : "Preview only. Logging is disabled.");
     return;
   }
   const assignment = currentAssignment();
@@ -567,8 +618,8 @@ function openLogModal() {
 
 function saveLog(event) {
   event.preventDefault();
-  if (logState.isPreview) {
-    showLogToast("Preview only. Nothing will be saved.");
+  if (logIsReadOnly()) {
+    showLogToast(logState.conflict ? "Reload the latest log before saving." : "Preview only. Nothing will be saved.");
     return;
   }
   const assignment = logState.data.assignments.find(item => item.id === logState.editingAssignmentId) || null;
@@ -624,23 +675,25 @@ function saveLog(event) {
   log.note = document.getElementById("sessionNote").value.trim();
   log.createdAt = new Date().toISOString();
   logState.data.logs.push(log);
-  persistState();
   document.getElementById("logModal").hidden = true;
-  showLogToast(logState.logMode === "planned" ? "Planned session saved. Nice work." : "Other activity saved.");
   renderAllLog();
+  persistState().then(saved => {
+    if (saved) showLogToast(logState.logMode === "planned" ? "Planned session saved. Nice work." : "Other activity saved.");
+  });
 }
 
 function skipAssignment() {
-  if (logState.isPreview) {
-    showLogToast("Preview only. Skipping workouts is disabled.");
+  if (logIsReadOnly()) {
+    showLogToast(logState.conflict ? "Reload the latest log before changing this workout." : "Preview only. Skipping workouts is disabled.");
     return;
   }
   const assignment = currentAssignment();
   if (!assignment || TrackerData.logForAssignment(logState.data, assignment.id)) return;
   assignment.status = assignment.status === "skipped" ? "planned" : "skipped";
-  persistState();
-  showLogToast(assignment.status === "skipped" ? "Marked as skipped. You can still log it later." : "Workout reopened.");
   renderAllLog();
+  persistState().then(saved => {
+    if (saved) showLogToast(assignment.status === "skipped" ? "Marked as skipped. You can still log it later." : "Workout reopened.");
+  });
 }
 
 function exportCsv() {
@@ -700,8 +753,8 @@ function exportCsv() {
 }
 
 function clearLogs() {
-  if (logState.isShared || logState.isPreview) {
-    showLogToast("This page is read-only.");
+  if (logState.isShared || logIsReadOnly()) {
+    showLogToast(logState.conflict ? "Reload the latest log before clearing sessions." : "This page is read-only.");
     return;
   }
   if (!logState.data.logs.length || !window.confirm("Clear all logged sessions? Your program and assignments will remain.")) return;
@@ -709,9 +762,10 @@ function clearLogs() {
   logState.data.assignments.forEach(assignment => {
     if (assignment.status === "completed") assignment.status = "planned";
   });
-  persistState();
-  showLogToast("Session logs cleared.");
   renderAllLog();
+  persistState().then(saved => {
+    if (saved) showLogToast("Session logs cleared.");
+  });
 }
 
 function bindLogEvents() {
@@ -748,6 +802,7 @@ function bindLogEvents() {
   document.getElementById("otherLogModeBtn").addEventListener("click", () => setLogMode("other"));
   document.getElementById("exportBtn").addEventListener("click", exportCsv);
   document.getElementById("clearLogsBtn").addEventListener("click", clearLogs);
+  document.getElementById("reloadLogBtn").addEventListener("click", () => window.location.reload());
   document.getElementById("closeLogModal").addEventListener("click", () => { document.getElementById("logModal").hidden = true; });
   document.getElementById("cancelLogBtn").addEventListener("click", () => { document.getElementById("logModal").hidden = true; });
   document.getElementById("logForm").addEventListener("submit", saveLog);
@@ -768,11 +823,13 @@ async function bootstrapLog() {
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || "This shared plan could not be loaded.");
       logState.data = TrackerData.fromPublishedPlan(result.plan);
+       logState.data.stateRevision = Number(result.plan.stateRevision) >= 0
+         ? Number(result.plan.stateRevision)
+         : 0;
       TrackerData.ensureAssignments(logState.data);
       setPageMode();
       renderModeBanner();
       renderAllLog();
-      persistState();
     } catch (error) {
       showLogToast(error.message);
       setLogText("todayHeading", "Shared plan unavailable");

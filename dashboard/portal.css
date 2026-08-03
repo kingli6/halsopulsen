@@ -113,6 +113,7 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .mode-banner strong { color: var(--green); font-size: 12px; }
 .mode-banner span:last-child { color: #4f705c; }
 .mode-banner-icon { display: grid; width: 24px; height: 24px; place-items: center; flex-shrink: 0; border-radius: 50%; background: var(--green-3); color: var(--green); font-weight: 800; }
+.mode-banner-action { margin-left: auto; flex-shrink: 0; }
 .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .day-tile { position: relative; min-height: 138px; padding: 12px 10px; text-align: left; border: 1px solid var(--line); border-radius: 13px; background: var(--paper); color: var(--ink); transition: .18s ease; }
 .day-tile:hover { border-color: var(--green-2); transform: translateY(-2px); box-shadow: var(--shadow-small); }
@@ -219,7 +220,7 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .move-assignment-button { color: #a75522; }
 .move-assignment-button:hover { color: #8d451d; background: var(--orange-soft); }
 @media (max-width: 980px) { .library-view-header { align-items: flex-start; flex-direction: column; }.plan-details-bar { align-items: flex-start; flex-direction: column; }.library-toolbar { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 620px) { .library-item { align-items: flex-start; flex-direction: column; }.library-actions { width: 100%; flex-wrap: wrap; }.library-actions .button { flex: 1; }.library-note { display: none; }.publish-actions { gap: 7px; }.log-exercise-heading { align-items: flex-start; flex-direction: column; gap: 2px; } }
+@media (max-width: 620px) { .library-item { align-items: flex-start; flex-direction: column; }.library-actions { width: 100%; flex-wrap: wrap; }.library-actions .button { flex: 1; }.library-note { display: none; }.publish-actions { gap: 7px; }.log-exercise-heading { align-items: flex-start; flex-direction: column; gap: 2px; }.mode-banner { align-items: flex-start; flex-wrap: wrap; }.mode-banner > div { flex: 1; min-width: 0; }.mode-banner-action { width: 100%; margin: 2px 0 0 35px; } }
 
 .workout-overview-section, .workout-activities-section { padding: 15px; border: 1px solid var(--line); border-radius: 13px; background: #fbfdfb; }
 .form-section-heading { margin-bottom: 14px; }

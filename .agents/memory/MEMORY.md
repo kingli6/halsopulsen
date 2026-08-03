@@ -1,5 +1,6 @@
 - [Personal coaching direction](personal-coaching-direction.md) — build a simple individual tracker first; keep AI external until the structured data loop proves useful.
 - [Published plan sharing](published-plan-sharing.md) — published versions are immutable server snapshots with random participant links; owner keys are prototype-only.
+- [Shared log concurrency](shared-log-concurrency.md) — shared participant saves use revisions and request IDs; stale writes must be rejected instead of overwriting history.
 - [Logging flow](logging-flow.md) — planned sessions, backfilled dates, and extra activities share one history without changing the plan implicitly.
 - [Reusable template library](reusable-template-library.md) — normalized server snapshots support activity, day-workout, and week reuse without changing saved items.
 - [Resource storage policy](resource-storage-policy.md) — keep public assets in GitHub, structured private data in Supabase, and make cleanup reference-aware.
