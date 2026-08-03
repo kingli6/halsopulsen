@@ -3,3 +3,4 @@
 - [Logging flow](logging-flow.md) — planned sessions, backfilled dates, and extra activities share one history without changing the plan implicitly.
 - [Reusable template library](reusable-template-library.md) — normalized server snapshots support activity, day-workout, and week reuse without changing saved items.
 - [Resource storage policy](resource-storage-policy.md) — keep public assets in GitHub, structured private data in Supabase, and make cleanup reference-aware.
+- [Lean production architecture](lean-production-architecture.md) — use GitHub, Supabase, and optional server-side Gemini; defer home file storage.

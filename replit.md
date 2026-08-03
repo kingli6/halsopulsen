@@ -29,6 +29,11 @@ Build the first version for the owner and their partner:
 - The logging workspace includes history, graphs, and CSV export.
 - The owner area uses a secure admin session; participant pages use bearer links
   for this prototype.
+- The lean production direction is GitHub/GitHub Pages for the frontend,
+  Supabase for private structured data and access control, and Gemini only as an
+  optional server-side coaching feature.
+- Large-file storage on an always-on personal computer is deferred until there
+  is a demonstrated need; it is not part of the first production path.
 
 Start with a structured squat workout as the example, but keep the data model
 general enough for multiple workouts, running, hangs, mobility, and habits.
@@ -41,3 +46,5 @@ general enough for multiple workouts, running, hangs, mobility, and habits.
 - Keep the existing stack where practical instead of migrating without a need.
 - Make the interface useful for checking what was planned, what was completed,
   and what the trends mean.
+- Prefer practical anti-abuse limits and clear monitoring over elaborate
+  security infrastructure while the product is a small personal service.
