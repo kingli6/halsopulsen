@@ -55,6 +55,14 @@ function logIsReadOnly() {
   return logState.isPreview || logState.conflict;
 }
 
+function isFutureDate(date) {
+  return String(date || "") > TrackerData.todayISO();
+}
+
+function futureLoggingMessage(date) {
+  return `Logging opens on ${TrackerData.formatLongDate(date)}.`;
+}
+
 function setPageMode() {
   const personName = logState.data?.person?.name || "";
   document.querySelectorAll("[data-owner-only]").forEach(element => {
@@ -161,8 +169,6 @@ async function persistState() {
 
 function currentAssignment() {
   if (!logState.data) return null;
-  const byId = logState.data.assignments.find(assignment => assignment.id === logState.selectedAssignmentId);
-  if (byId && byId.date === logState.selectedDate) return byId;
   return TrackerData.assignmentForDate(logState.data, logState.selectedDate);
 }
 
@@ -287,20 +293,26 @@ function renderGoal() {
 function renderToday() {
   if (!logState.data) return;
   const assignment = currentAssignment();
-  if (assignment) logState.selectedDate = assignment.date;
   const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
-  const date = assignment?.date || logState.selectedDate || TrackerData.todayISO();
+  const date = logState.selectedDate || TrackerData.todayISO();
   const otherLogs = TrackerData.standaloneLogsForDate(logState.data, date);
   const moveSource = logState.data.assignments.find(item => item.id === logState.moveSourceAssignmentId);
   const isToday = date === TrackerData.todayISO();
-  setLogText("todayKicker", isToday ? "TODAY'S WORKOUT" : "SELECTED WORKOUT");
+  const isFuture = isFutureDate(date);
+  setLogText("todayKicker", isToday ? "TODAY'S WORKOUT" : isFuture ? "UPCOMING WORKOUT" : "SELECTED WORKOUT");
   setLogText("todayDate", TrackerData.formatLongDate(date));
   setLogText("todayHeading", assignment
-    ? (isToday ? "Today's workout" : "Selected workout")
+    ? (isToday ? "Today's workout" : isFuture ? "Upcoming workout" : "Selected workout")
     : (date === TrackerData.todayISO() ? "Today's activities" : "Selected date"));
   setLogText("todaySubtitle", assignment
-    ? (assignment.moved ? `Moved from ${TrackerData.formatShortDate(assignment.recommendedDate)} so it fits your week.` : "This workout is planned for this day.")
-    : "Nothing was planned here. You can still record something you did.");
+    ? (isFuture
+      ? `This workout is planned for ${TrackerData.formatLongDate(date)}. ${futureLoggingMessage(date)}`
+      : assignment.moved
+        ? `Moved from ${TrackerData.formatShortDate(assignment.recommendedDate)} so it fits your week.`
+        : "This workout is planned for this day.")
+    : isFuture
+      ? `Nothing is planned here. ${futureLoggingMessage(date)}`
+      : "Nothing was planned here. You can still record something you did.");
   const statusElement = document.getElementById("todayStatus");
   statusElement.className = "status-pill";
   if (log || assignment?.status === "completed") {
@@ -315,6 +327,9 @@ function renderToday() {
   } else if (assignment?.moved) {
     statusElement.classList.add("status-moved");
     statusElement.textContent = "Moved";
+  } else if (isFuture) {
+    statusElement.classList.add("status-upcoming");
+    statusElement.textContent = "Upcoming";
   } else {
     statusElement.classList.add(assignment ? "status-planned" : "status-open");
     statusElement.textContent = assignment ? "Planned" : "Open day";
@@ -351,25 +366,30 @@ function renderToday() {
       </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
   const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip">
-    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong><button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Adjust</button></div>
+    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${isFuture ? "" : `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Adjust</button>`}</div>
     <span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span>
   </div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
   const logButton = document.getElementById("logAssignmentBtn");
   const adjustButton = document.getElementById("adjustLogBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
-  logButton.disabled = logIsReadOnly();
+  logButton.disabled = logIsReadOnly() || isFuture;
   logButton.textContent = logIsReadOnly()
     ? "Read-only"
+    : isFuture
+      ? "Logging opens later"
     : log
       ? "Add another activity"
       : assignment
         ? (isToday ? "Log today's workout" : "Log this workout")
         : "Log something else";
-  adjustButton.hidden = logIsReadOnly() || !log;
-  skipButton.disabled = logIsReadOnly() || !assignment || Boolean(log);
+  adjustButton.hidden = logIsReadOnly() || isFuture || !log;
+  skipButton.disabled = logIsReadOnly() || isFuture || !assignment || Boolean(log);
   const moveButton = document.getElementById("moveAssignmentBtn");
-  moveButton.hidden = logIsReadOnly() || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
+  moveButton.hidden = logIsReadOnly() || isFuture || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
+  setLogText("todayHelperCopy", isFuture
+    ? `Logging is disabled until this day arrives. You can review the planned workout now.`
+    : "Planned days are a guide. Move unfinished work when real life gets in the way.");
   logState.selectedAssignmentId = assignment?.id || null;
 }
 
@@ -570,6 +590,10 @@ function moveSelectedAssignment(targetDate) {
     showLogToast(logState.conflict ? "Reload the latest log before moving workouts." : "Preview only. Moving workouts is disabled.");
     return;
   }
+  if (isFutureDate(targetDate)) {
+    showLogToast(futureLoggingMessage(targetDate));
+    return;
+  }
   const current = logState.data.assignments.find(item => item.id === logState.moveSourceAssignmentId);
   if (!current) {
     showLogToast("Select an unfinished workout first.");
@@ -693,13 +717,18 @@ function openLogModal(logId = null) {
     showLogToast("That session is no longer available to edit.");
     return;
   }
+  const modalDate = existingLog?.date || logState.selectedDate || TrackerData.todayISO();
+  if (isFutureDate(modalDate)) {
+    showLogToast(futureLoggingMessage(modalDate));
+    return;
+  }
   const assignment = existingLog?.assignmentId
     ? TrackerData.assignmentForId(logState.data, existingLog.assignmentId)
     : currentAssignment();
   const plannedLog = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
   logState.editingLogId = existingLog?.id || null;
   logState.editingAssignmentId = assignment?.id || null;
-  logState.editingDate = existingLog?.date || logState.selectedDate || TrackerData.todayISO();
+  logState.editingDate = modalDate;
   setLogText("logModalTitle", existingLog ? "Edit activity" : "Log activity");
   setLogText("logModalContext", existingLog
     ? `Correct the details for ${TrackerData.formatLongDate(logState.editingDate)}.`
@@ -720,6 +749,11 @@ function saveLog(event) {
   event.preventDefault();
   if (logIsReadOnly()) {
     showLogToast(logState.conflict ? "Reload the latest log before saving." : "Preview only. Nothing will be saved.");
+    return;
+  }
+  const saveDate = logState.editingDate || logState.selectedDate || TrackerData.todayISO();
+  if (isFutureDate(saveDate)) {
+    showLogToast(futureLoggingMessage(saveDate));
     return;
   }
   const assignment = logState.data.assignments.find(item => item.id === logState.editingAssignmentId) || null;
@@ -834,6 +868,10 @@ function skipAssignment() {
   }
   const assignment = currentAssignment();
   if (!assignment || TrackerData.logForAssignment(logState.data, assignment.id)) return;
+  if (isFutureDate(assignment.date)) {
+    showLogToast(futureLoggingMessage(assignment.date));
+    return;
+  }
   assignment.status = assignment.status === "skipped" ? "planned" : "skipped";
   renderAllLog();
   persistState().then(saved => {

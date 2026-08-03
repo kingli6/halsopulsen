@@ -214,6 +214,12 @@ a narrow screen. Day tiles show the workout name and activity count without a
 redundant “recommended” footer; the participant-facing state is **Planned**
 because the day is a suggested schedule, not a deadline.
 
+Selecting a day is the source of truth for the workout panel. The panel shows
+the selected day's workout instead of continuing to show the previous day.
+Today and earlier dates allow logging and backfilling; tomorrow and later dates
+remain available for review but keep logging, editing, skipping, moving, and
+extra-activity adjustments disabled until the date arrives.
+
 Use familiar task and training-app conventions rather than inventing a new
 interaction model: “Today,” a scannable checklist or activity list, a clear
 start/log action, and compact status labels. Keep the custom visual style, but

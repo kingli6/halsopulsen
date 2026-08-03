@@ -76,6 +76,7 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .today-date { margin: 0; color: var(--muted); font-size: 13px; }
 .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 99px; font-size: 10px; font-weight: 700; }
 .status-planned { background: var(--green-3); color: var(--green); }
+.status-upcoming { background: #f0f3f1; color: var(--muted); }
 .status-open { background: #f0f3f1; color: var(--muted); }
 .status-other { background: #e8f1fb; color: #2d628e; }
 .status-moved { background: var(--orange-soft); color: #a75522; }
