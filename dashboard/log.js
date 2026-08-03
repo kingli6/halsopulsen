@@ -391,12 +391,12 @@ function renderToday() {
       </div>`
     : `<div class="empty-history">No planned workout on this date.</div>`;
   const otherPreview = otherLogs.map(otherLog => `<div class="assignment-main-chip other-activity-chip">
-    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${!isFuture && isCurrentLog(otherLog) && !logIsReadOnly() ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Adjust</button>` : ""}</div>
+    <div class="other-activity-heading"><strong>${escapeLogHtml(standaloneLogTitle(otherLog))}</strong>${!isFuture && isCurrentLog(otherLog) && !logIsReadOnly() ? `<button class="text-button" type="button" data-edit-log="${escapeLogHtml(otherLog.id)}">Edit</button>` : ""}</div>
     <span>Other activity · ${escapeLogHtml(standaloneLogSummary(otherLog))}</span>
   </div>`).join("");
   preview.innerHTML = `${plannedPreview}${otherPreview}`;
   const logButton = document.getElementById("logAssignmentBtn");
-  const adjustButton = document.getElementById("adjustLogBtn");
+  const otherActivityButton = document.getElementById("logOtherActivityBtn");
   const skipButton = document.getElementById("skipAssignmentBtn");
   logButton.disabled = logIsReadOnly() || isFuture;
   logButton.textContent = logIsReadOnly()
@@ -406,11 +406,16 @@ function renderToday() {
       : isArchivedAssignment
         ? "Log other activity"
         : log
-          ? "Add another activity"
+          ? "Edit logged workout"
           : assignment
             ? (isToday ? "Log today's workout" : "Log this workout")
-            : "Log something else";
-  adjustButton.hidden = logIsReadOnly() || isFuture || isArchivedAssignment || !log || !isCurrentLog(log);
+            : "Log other activity";
+  otherActivityButton.hidden = logIsReadOnly() || isFuture || !assignment || isArchivedAssignment;
+  otherActivityButton.disabled = logIsReadOnly() || isFuture;
+  skipButton.textContent = assignment?.status === "skipped" ? "Reopen workout" : "Skip for now";
+  skipButton.title = assignment?.status === "skipped"
+    ? "Put this planned workout back on your active schedule"
+    : "Mark this planned workout as skipped without recording a session";
   skipButton.disabled = logIsReadOnly() || isFuture || isArchivedAssignment || !assignment || Boolean(log);
   const moveButton = document.getElementById("moveAssignmentBtn");
   moveButton.hidden = logIsReadOnly() || isFuture || Boolean(assignment) || !moveSource || Boolean(TrackerData.logForAssignment(logState.data, moveSource.id));
@@ -418,7 +423,9 @@ function renderToday() {
     ? "Logging is disabled until this day arrives. You can review the planned workout now."
     : isArchivedAssignment
       ? "The archived planned workout is read-only. You can still record other activity on this date."
-      : "Planned days are a guide. Move unfinished work when real life gets in the way.");
+      : assignment?.status === "skipped"
+        ? "This workout is marked skipped for now. Reopen it if you decide to complete it."
+        : "Planned days are a guide. Move unfinished work when real life gets in the way.");
   logState.selectedAssignmentId = assignment?.id || null;
 }
 
@@ -753,7 +760,7 @@ function setLogMode(mode) {
   else renderOtherLogFields(existingLog);
 }
 
-function openLogModal(logId = null) {
+function openLogModal(logId = null, requestedMode = null) {
   if (logIsReadOnly()) {
     showLogToast(logState.conflict ? "Reload the latest log before recording activity." : "Preview only. Logging is disabled.");
     return;
@@ -770,7 +777,7 @@ function openLogModal(logId = null) {
   }
   const assignment = existingLog?.assignmentId
     ? TrackerData.assignmentForId(logState.data, existingLog.assignmentId)
-    : assignmentForDisplayDate(logState.selectedDate);
+    : assignmentForDisplayDate(modalDate);
   if (existingLog?.assignmentId && !isCurrentAssignment(assignment)) {
     showLogToast("Archived plan entries are read-only.");
     return;
@@ -781,15 +788,22 @@ function openLogModal(logId = null) {
   logState.editingAssignmentId = plannedAssignment?.id || null;
   logState.editingDate = modalDate;
   logState.modalReturnFocus = document.activeElement;
-  setLogText("logModalTitle", existingLog ? "Edit activity" : "Log activity");
+  const openingOtherActivity = requestedMode === "other" || (existingLog && !existingLog.assignmentId);
+  setLogText("logModalTitle", existingLog
+    ? (existingLog.assignmentId ? "Edit logged workout" : "Edit other activity")
+    : openingOtherActivity ? "Log other activity" : "Log planned workout");
   setLogText("logModalContext", existingLog
     ? `Correct the details for ${TrackerData.formatLongDate(logState.editingDate)}.`
+    : openingOtherActivity
+      ? `Selected date: ${TrackerData.formatLongDate(logState.editingDate)}. Record activity that was not part of the planned workout.`
     : plannedAssignment && !plannedLog
     ? `Selected date: ${TrackerData.formatLongDate(logState.editingDate)}. Record what you actually completed.`
     : plannedAssignment
       ? `The planned workout is already logged for ${TrackerData.formatLongDate(logState.editingDate)}. Add another activity if you did more.`
       : `No workout was planned for ${TrackerData.formatLongDate(logState.editingDate)}. Record something else you did.`);
-  setLogMode(existingLog?.assignmentId ? "planned" : plannedAssignment && !plannedLog ? "planned" : "other");
+  setLogMode(existingLog
+    ? (existingLog.assignmentId ? "planned" : "other")
+    : requestedMode || (plannedAssignment && !plannedLog ? "planned" : "other"));
   document.getElementById("difficulty").value = existingLog?.difficulty || "";
   document.getElementById("energy").value = existingLog?.energy || "";
   document.getElementById("sessionNote").value = existingLog?.note || "";
@@ -1078,11 +1092,18 @@ function bindLogEvents() {
     const editButton = event.target.closest("[data-edit-log]");
     if (editButton) openLogModal(editButton.dataset.editLog);
   });
-  document.getElementById("logAssignmentBtn").addEventListener("click", () => openLogModal());
-  document.getElementById("adjustLogBtn").addEventListener("click", () => {
+  document.getElementById("logAssignmentBtn").addEventListener("click", () => {
     const assignment = assignmentForDisplayDate(logState.selectedDate);
     const log = assignment ? TrackerData.logForAssignment(logState.data, assignment.id) : null;
-    if (log) openLogModal(log.id);
+    if (log && isCurrentAssignment(assignment) && isCurrentLog(log)) {
+      openLogModal(log.id);
+      return;
+    }
+    const mode = assignment && isCurrentAssignment(assignment) ? "planned" : "other";
+    openLogModal(null, mode);
+  });
+  document.getElementById("logOtherActivityBtn").addEventListener("click", () => {
+    openLogModal(null, "other");
   });
   document.getElementById("skipAssignmentBtn").addEventListener("click", skipAssignment);
   document.getElementById("moveAssignmentBtn").addEventListener("click", () => moveSelectedAssignment(logState.selectedDate));
