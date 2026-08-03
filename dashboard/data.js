@@ -414,10 +414,22 @@ const TrackerData = (() => {
   }
 
   function allLogs(data) {
-    return [
-      ...(Array.isArray(data?.history) ? data.history.flatMap(item => item.logs || []) : []),
-      ...(data?.logs || [])
-    ];
+    const currentLogs = Array.isArray(data?.logs) ? data.logs : [];
+    const archivedLogs = Array.isArray(data?.history)
+      ? data.history.flatMap(item => item.logs || [])
+      : [];
+    const seenIds = new Set();
+    const seenAssignmentIds = new Set();
+    return [...currentLogs, ...archivedLogs].filter(log => {
+      const id = String(log?.id || "");
+      const assignmentId = String(log?.assignmentId || "");
+      if ((id && seenIds.has(id)) || (assignmentId && seenAssignmentIds.has(assignmentId))) {
+        return false;
+      }
+      if (id) seenIds.add(id);
+      if (assignmentId) seenAssignmentIds.add(assignmentId);
+      return true;
+    });
   }
 
   function assignmentForId(data, id) {
