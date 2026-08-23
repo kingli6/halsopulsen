@@ -120,7 +120,7 @@
 
     .block-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto 36px;
+      grid-template-columns: 28px minmax(0, 1fr) auto 36px;
       align-items: center;
       gap: var(--space-3);
       background: var(--color-bg);
@@ -129,6 +129,27 @@
       padding: var(--space-3) var(--space-4);
       position: relative;
     }
+    .block-row.dragging {
+      opacity: 0.45;
+      box-shadow: 0 8px 20px rgba(20, 45, 32, 0.16);
+    }
+    .block-row.drop-target {
+      border-top: 3px solid var(--color-primary);
+    }
+    .block-drag-handle {
+      width: 28px;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-muted);
+      cursor: grab;
+      font-size: var(--size-lg);
+      letter-spacing: -0.18em;
+      touch-action: none;
+      user-select: none;
+    }
+    .block-drag-handle:active { cursor: grabbing; }
     .block-row.work { border-left: 4px solid var(--color-primary); }
     .block-row.rest { border-left: 4px solid var(--color-accent); }
 
@@ -222,6 +243,30 @@
 
     .timer-start-wrap { margin-top: var(--space-5); }
     .btn-timer-start  { width: 100%; font-size: var(--size-base); }
+    .sequence-total {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-4);
+      background: var(--color-primary-light);
+      border: 1px solid rgba(30,107,69,0.2);
+      border-radius: var(--radius-sm);
+      padding: var(--space-4) var(--space-5);
+      margin-bottom: var(--space-4);
+    }
+    .sequence-total-label {
+      color: var(--color-primary);
+      font-size: var(--size-xs);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .sequence-total-value {
+      color: var(--color-primary);
+      font-size: var(--size-2xl);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
 
     .timer-settings-row {
       display: flex;
@@ -324,6 +369,30 @@
       font-size: var(--size-sm);
     }
     .timer-next-section strong { color: var(--color-text); }
+    .timer-total-time {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-bg);
+      padding: var(--space-3) var(--space-5);
+      margin: 0 auto var(--space-5);
+      cursor: pointer;
+      color: var(--color-text-muted);
+      font-size: var(--size-sm);
+      transition: border-color var(--transition), color var(--transition);
+    }
+    .timer-total-time:hover, .timer-total-time:focus-visible {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      outline: none;
+    }
+    .timer-total-time strong {
+      color: var(--color-text);
+      font-size: var(--size-xl);
+      font-variant-numeric: tabular-nums;
+    }
 
     .timer-run-controls {
       display: flex;
@@ -810,7 +879,7 @@
     @media (max-width: 480px) {
       .ss-inputs { grid-template-columns: 1fr; }
       .ss-input-full { max-width: 100%; }
-      .block-row { grid-template-columns: minmax(0, 1fr) 36px; }
+      .block-row { grid-template-columns: 28px minmax(0, 1fr) 36px; }
       .block-dur-ctrl {
         grid-column: 1 / -1;
         justify-content: center;
@@ -1127,9 +1196,13 @@
             <button class="preset-chip" onclick="loadPreset('tabata')">⚡ Tabata</button>
             <button class="preset-chip" onclick="loadPreset('hiit')">🔥 HIIT 40/20</button>
             <button class="preset-chip" onclick="loadPreset('amrap')">⏱ AMRAP-vila</button>
-            <button class="preset-chip" onclick="loadPreset('massage')">💆 Massage · 46 min</button>
+           <button class="preset-chip" onclick="loadPreset('massage')">💆 Massage</button>
           </div>
 
+           <div class="sequence-total" id="sequenceTotal" style="display:none;">
+             <span class="sequence-total-label">Total tid</span>
+             <strong class="sequence-total-value" id="sequenceTotalValue">0:00</strong>
+           </div>
           <div class="timer-sequence" id="timerSequence"></div>
 
           <div id="emptyMsg" class="empty-blocks-msg" style="display:none;">
@@ -1212,6 +1285,11 @@
             <div class="timer-next-section" id="timerNextSection" style="display:none;">
               Nästa: <strong id="timerNextBlock"></strong>
             </div>
+             <button class="timer-total-time" id="timerTotalTime" type="button"
+                     onclick="cycleTotalTime()" aria-label="Växla visning av totaltid">
+               <span id="timerTotalTimeLabel">Återstår</span>
+               <strong id="timerTotalTimeValue">0:00</strong>
+             </button>
             <div class="timer-run-controls">
               <button class="timer-ctrl-btn primary" onclick="pauseResumeTimer()" id="pauseBtn">⏸ Paus</button>
               <button class="timer-ctrl-btn" onclick="previousSection()">← Föregående</button>
@@ -1508,6 +1586,16 @@
     return m + ':' + String(sec).padStart(2, '0');
   }
 
+  function formatDuration(s) {
+    const total = Math.max(0, Math.round(s));
+    if (total >= 3600) {
+      const hours = Math.floor(total / 3600);
+      return hours + ':' + String(Math.floor((total % 3600) / 60)).padStart(2, '0') + ':' +
+        String(total % 60).padStart(2, '0');
+    }
+    return fmt(total);
+  }
+
   /* ═══════════════════════════════════════════════════════
      AUDIO
   ═══════════════════════════════════════════════════════ */
@@ -1653,6 +1741,8 @@
     previousPressAt: 0,
     previousPressBlockIdx: -1,
     previousWasRestart: false,
+    totalDisplayMode: 0,
+    touchDrag: null,
   };
 
   if (_savedTimer?.signals) {
@@ -1732,6 +1822,18 @@
   function removeBlock(id) {
     timerState.blocks = timerState.blocks.filter(b => b.id !== id);
     saveTimerState(); saveMassageConfig(); renderBlocks();
+  }
+
+  function reorderBlocks(fromId, toId) {
+    if (fromId === toId) return;
+    const from = timerState.blocks.findIndex(b => b.id === fromId);
+    const to = timerState.blocks.findIndex(b => b.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [moved] = timerState.blocks.splice(from, 1);
+    timerState.blocks.splice(to, 0, moved);
+    saveTimerState();
+    saveMassageConfig();
+    renderBlocks();
   }
 
   function adjustDuration(id, delta) {
@@ -1845,15 +1947,23 @@
   function renderBlocks() {
     const seq = document.getElementById('timerSequence');
     const empty = document.getElementById('emptyMsg');
+    const totalBox = document.getElementById('sequenceTotal');
+    const totalValue = document.getElementById('sequenceTotalValue');
+    if (totalBox) totalBox.style.display = timerState.activePreset === 'massage' ? 'flex' : 'none';
+    if (totalValue) totalValue.textContent = formatDuration(timerState.blocks.reduce((sum, b) => sum + b.duration, 0));
     if (timerState.blocks.length === 0) {
       seq.innerHTML = '';
       empty.style.display = 'block';
       return;
     }
     empty.style.display = 'none';
-    seq.innerHTML = timerState.blocks.map(b => `
-      <div class="block-row ${b.type}" data-id="${b.id}">
-        <input class="block-label-input" value="${esc(b.label)}" onchange="updateLabel(${b.id}, this.value)" />
+     seq.innerHTML = timerState.blocks.map((b, index) => `
+       <div class="block-row ${b.type}" data-id="${b.id}">
+         <div class="block-drag-handle" draggable="true" title="Dra för att flytta" aria-label="Flytta ${esc(b.label)}">⋮⋮</div>
+         <div>
+           <div style="font-size:var(--size-xs);color:var(--color-text-muted);margin-bottom:2px;">${index + 1}</div>
+           <input class="block-label-input" value="${esc(b.label)}" onchange="updateLabel(${b.id}, this.value)" />
+         </div>
         <div class="block-dur-ctrl">
           <button class="block-dur-btn" onclick="adjustDuration(${b.id}, -5)" title="−5 sekunder">−5s</button>
           <button class="block-dur-btn fine" onclick="adjustDuration(${b.id}, -1)" title="−1 sekund">−1</button>
@@ -1862,8 +1972,60 @@
           <button class="block-dur-btn" onclick="adjustDuration(${b.id}, 5)" title="+5 sekunder">+5s</button>
         </div>
         <button class="block-remove" onclick="removeBlock(${b.id})" title="Ta bort">✕</button>
-      </div>
-    `).join('');
+       </div>
+     `).join('');
+
+    seq.querySelectorAll('.block-row').forEach(row => {
+      const handle = row.querySelector('.block-drag-handle');
+      handle.addEventListener('dragstart', event => {
+        event.stopPropagation();
+        row.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', row.dataset.id);
+      });
+      handle.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        seq.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+      });
+      row.addEventListener('dragover', event => {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+        if (row.dataset.id !== seq.querySelector('.dragging')?.dataset.id) row.classList.add('drop-target');
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+      row.addEventListener('drop', event => {
+        event.preventDefault();
+        row.classList.remove('drop-target');
+        const source = Number(event.dataTransfer.getData('text/plain'));
+        reorderBlocks(source, Number(row.dataset.id));
+      });
+      handle.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'mouse') return;
+        timerState.touchDrag = { id: Number(row.dataset.id), pointerId: event.pointerId, moved: false };
+        handle.setPointerCapture?.(event.pointerId);
+      });
+      handle.addEventListener('pointermove', event => {
+        const drag = timerState.touchDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        drag.moved = true;
+        row.classList.add('dragging');
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.block-row');
+        seq.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+        if (target && target.dataset.id !== String(drag.id)) target.classList.add('drop-target');
+      });
+      handle.addEventListener('pointerup', event => {
+        const drag = timerState.touchDrag;
+        timerState.touchDrag = null;
+        row.classList.remove('dragging');
+        if (!drag || drag.pointerId !== event.pointerId || !drag.moved) return;
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.block-row');
+        if (target) reorderBlocks(drag.id, Number(target.dataset.id));
+      });
+      handle.addEventListener('pointercancel', () => {
+        timerState.touchDrag = null;
+        row.classList.remove('dragging');
+      });
+    });
   }
 
   /* ── Timer control ── */
@@ -1878,6 +2040,26 @@
     timerState.previousWasRestart = false;
   }
 
+  function getSequenceTotalSeconds() {
+    return timerState.blocks.reduce((sum, block) => sum + block.duration, 0) * timerState.rounds;
+  }
+
+  function getTotalRemainingSeconds() {
+    if (timerState.status === 'done' || timerState.blocks.length === 0) return 0;
+    const current = Math.max(0, timerState.timeLeft);
+    const laterThisRound = timerState.blocks
+      .slice(timerState.blockIdx + 1)
+      .reduce((sum, block) => sum + block.duration, 0);
+    const laterRounds = Math.max(0, timerState.rounds - timerState.round) *
+      timerState.blocks.reduce((sum, block) => sum + block.duration, 0);
+    return current + laterThisRound + laterRounds;
+  }
+
+  function cycleTotalTime() {
+    timerState.totalDisplayMode = (timerState.totalDisplayMode + 1) % 3;
+    updateTimerDisplay();
+  }
+
   function startTimer() {
     if (timerState.blocks.length === 0) {
       alert('Lägg till minst ett block för att starta.');
@@ -1885,6 +2067,7 @@
     }
     // Unlock AudioContext immediately on user gesture
     getCtx();
+    timerState.totalDisplayMode = 0;
 
     document.getElementById('timerBuilder').style.display   = 'none';
     document.getElementById('timerDisplay').style.display   = 'block';
@@ -2060,6 +2243,19 @@
     const name     = block ? block.label.toUpperCase() : '';
     const elapsed  = (timerState.blockDuration - timerState.timeLeft);
     const progress = timerState.blockDuration > 0 ? (elapsed / timerState.blockDuration) * 100 : 0;
+    const total = getSequenceTotalSeconds();
+    const remaining = getTotalRemainingSeconds();
+    const totalTimeLabel = document.getElementById('timerTotalTimeLabel');
+    const totalTimeValue = document.getElementById('timerTotalTimeValue');
+    if (totalTimeLabel && totalTimeValue) {
+      const modes = [
+        ['Återstår', formatDuration(remaining)],
+        ['Totalt', formatDuration(total)],
+        ['Förflutet', formatDuration(Math.max(0, total - remaining))],
+      ];
+      [totalTimeLabel.textContent, totalTimeValue.textContent] = modes[timerState.totalDisplayMode];
+      totalTimeValue.setAttribute('aria-label', modes[timerState.totalDisplayMode][0] + ' ' + modes[timerState.totalDisplayMode][1]);
+    }
 
     document.getElementById('timerBlockName').textContent  = name;
     document.getElementById('timerBlockName').className    = 'timer-run-block-name' + (isRest ? ' rest-mode' : '');
