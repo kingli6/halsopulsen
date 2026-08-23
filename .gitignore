@@ -1,2 +1,35 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Runtime/local data
 storage/
+
+# Replit and other machine-local workspace state
+.cache/
+.upm/
+.local/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary files, logs, and local process artifacts
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.pid
+
+# Development screenshots
+/screenshots/
+
+# Pasted prompts and task notes are not application source
+/attached_assets/Pasted-*.txt
+
+# Generated/search/downloaded attachment output.
+# Keep ordinary attached_assets images trackable in case they are used by the app.
+/attached_assets/generated_*/
+/attached_assets/image_search/
