@@ -1,0 +1,89 @@
+I want to add user accounts and persistent user data to the existing application.
+
+Please inspect the current project first and use the existing authentication/storage infrastructure if there is already something suitable. Don't introduce a second auth system unnecessarily.
+
+### User accounts
+
+Users should be able to:
+
+* Create an account
+* Log in
+* Log out
+* Stay logged in across sessions
+* Have their own private data
+
+Unauthenticated visitors should still be able to use the parts of the timer that are currently publicly available.
+
+### Saved timer presets
+
+Logged-in users should be able to save their own/customized timer presets.
+
+For example, if someone creates a custom timer or modifies Massage/Rehab, they should be able to save it to their account and access it again later.
+
+Their saved presets must belong to their account and must not be visible/editable by other users.
+
+### Workout Planner
+
+The Workout Planner/Creator I recently built should also become user-based.
+
+A logged-in user should be able to:
+
+* Create workout plans
+* Save plans
+* Edit their plans
+* Delete their plans
+* View their saved plans later
+* Use a saved plan
+
+Each user's plans must be private to that user unless we explicitly add a sharing/public feature later.
+
+The existing planner functionality should remain intact.
+
+### Admin access
+
+I should have an administrator account/role.
+
+When I log in as the administrator, I should be able to access the existing Admin page.
+
+Normal users should **not see the Admin page or admin navigation** and should not be able to access admin endpoints simply by manually entering the URL.
+
+Admin authorization must be enforced server-side, not just hidden in the frontend.
+
+Keep the existing `/admin` and planner/admin functionality where possible.
+
+### Data / security
+
+User-owned presets and workout plans should be stored persistently on the server/database rather than only in localStorage.
+
+Users must only be able to access their own data.
+
+Do not expose passwords or sensitive account information.
+
+Please inspect the current JSON storage/database/auth setup and determine the cleanest way to introduce this without breaking the existing application.
+
+### Important
+
+Before implementing, audit the existing project and identify:
+
+* Current authentication/session setup
+* Current data storage
+* Existing admin authentication
+* Existing workout-plan APIs
+* Existing preset/localStorage logic
+
+Then implement the account system around what already exists rather than replacing working functionality unnecessarily.
+
+Keep the existing public timer experience working for people who aren't logged in.
+
+After implementation, report:
+
+1. What authentication/storage system is now being used.
+2. How user accounts are stored.
+3. How saved presets are associated with users.
+4. How workout plans are associated with users.
+5. How the admin role is enforced.
+6. Which files changed.
+7. What tests/checks were performed.
+8. Any decisions or limitations I should know about.
+
+Do not make unrelated UI changes.

@@ -9,6 +9,28 @@ const planState = {
   editingCurrentPlanId: null,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
+const userWorkspace = window.location.pathname.startsWith("/plans");
+
+function userPlanSummary(saved) {
+  const data = saved.data || {};
+  const program = data.program || data.publishedProgram || data.draftProgram || {};
+  return {
+    id: saved.id,
+    name: saved.name || program.name || "Training plan",
+    version: Number(program.version) || 1,
+    personName: data.personName || data.person?.name || "My plan",
+    goal: data.goal || data.publishedGoal || "",
+    description: program.description || "",
+    publishedAt: saved.updatedAt || saved.createdAt,
+    program,
+    assignments: data.assignments || [],
+    logs: data.logs || [],
+    history: data.history || [],
+    sharePath: "",
+    hasParticipantActivity: false,
+    isCurrent: true
+  };
+}
 
 function setPlanText(id, value) {
   const element = document.getElementById(id);
@@ -164,7 +186,7 @@ function renderPlanOverview() {
 
 function enterEditor() {
   planState.editorMode = true;
-  window.history.pushState({}, "", "/admin/plans/?view=editor");
+  window.history.pushState({}, "", `${userWorkspace ? "/plans/" : "/admin/plans/"}?view=editor`);
   renderAllPlan();
 }
 
@@ -406,10 +428,14 @@ function removeCurrentWeek() {
 
 async function editPublishedPlan(planId) {
   try {
-    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`);
-    const result = await response.json();
-    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
-    const source = result.plan;
+    const source = userWorkspace
+      ? planState.library.find(plan => plan.id === planId)
+      : await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`).then(async response => {
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
+        return result.plan;
+      });
+    if (!source) throw new Error("Could not load that plan.");
     const nextData = TrackerData.fromPublishedPlan(source);
     nextData.draftGoal = nextData.goal;
     nextData.publishedGoal = nextData.goal;
@@ -422,7 +448,7 @@ async function editPublishedPlan(planId) {
     planState.editingCurrentPlanId = null;
     planState.data = nextData;
     planState.editorMode = true;
-    window.history.pushState({}, "", "/admin/plans/?view=editor");
+    window.history.pushState({}, "", `${userWorkspace ? "/plans/" : "/admin/plans/"}?view=editor`);
     TrackerData.save(planState.data);
     renderAllPlan();
     showPlanToast(`Editing a new draft from Version ${source.version}.`);
@@ -436,10 +462,13 @@ async function editCurrentPlan(planId) {
   if (!libraryPlan) return;
 
   try {
-    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`);
-    const result = await response.json();
-    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
-    const source = result.plan;
+    const source = userWorkspace
+      ? libraryPlan
+      : await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`).then(async response => {
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Could not load that published version.");
+        return result.plan;
+      });
     const nextData = TrackerData.fromPublishedPlan(source);
     nextData.draftGoal = nextData.goal;
     nextData.publishedGoal = nextData.goal;
@@ -452,7 +481,7 @@ async function editCurrentPlan(planId) {
     planState.editingCurrentPlanId = source.id;
     planState.data = nextData;
     planState.editorMode = true;
-    window.history.pushState({}, "", "/admin/plans/?view=editor");
+    window.history.pushState({}, "", `${userWorkspace ? "/plans/" : "/admin/plans/"}?view=editor`);
     TrackerData.save(planState.data);
     renderAllPlan();
     showPlanToast(`Editing current Version ${source.version}.`);
@@ -466,16 +495,16 @@ async function deletePublishedPlan(planId) {
   if (!plan) return;
 
   const isCurrent = plan.id === planState.data.publishedPlanId;
-  const logWarning = plan.hasParticipantActivity
+  const logWarning = !userWorkspace && plan.hasParticipantActivity
     ? " Participant activity and saved history will also be permanently erased."
     : "";
   const confirmed = window.confirm(
-    `Permanently delete "${plan.name}" Version ${plan.version}? The participant link, plan, logs, and historical references will be erased.${logWarning}`
+    `${userWorkspace ? "Delete" : "Permanently delete"} "${plan.name}"${userWorkspace ? "?" : ` Version ${plan.version}? The participant link, plan, logs, and historical references will be erased.${logWarning}`}`
   );
   if (!confirmed) return;
 
   try {
-    const response = await fetch(`/api/plans/owner/${encodeURIComponent(planId)}`, {
+    const response = await fetch(`${userWorkspace ? "/api/user/plans" : "/api/plans/owner"}/${encodeURIComponent(planId)}`, {
       method: "DELETE"
     });
     const result = await response.json();
@@ -1006,20 +1035,28 @@ async function publishPlan() {
     TrackerData.ensureAssignments(nextData);
   }
   try {
+    const userPayload = {
+      name: nextData.publishedProgram.name,
+      personName: nextData.person?.name || "My plan",
+      goal: nextData.publishedGoal,
+      program: nextData.publishedProgram,
+      assignments: nextData.assignments,
+      logs: nextData.logs,
+      history: nextData.history
+    };
     const response = await fetch(
-      updatingCurrent
-        ? `/api/plans/owner/${encodeURIComponent(planState.editingCurrentPlanId)}`
-        : "/api/plans/publish",
+      userWorkspace
+        ? (updatingCurrent
+          ? `/api/user/plans/${encodeURIComponent(planState.editingCurrentPlanId)}`
+          : "/api/user/plans")
+        : (updatingCurrent
+          ? `/api/plans/owner/${encodeURIComponent(planState.editingCurrentPlanId)}`
+          : "/api/plans/publish"),
       {
       method: updatingCurrent ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        personName: nextData.person?.name || "Participant",
-        goal: nextData.publishedGoal,
-        program: nextData.publishedProgram,
-        assignments: nextData.assignments,
-        logs: nextData.logs,
-        history: nextData.history,
+      body: JSON.stringify(userWorkspace ? userPayload : {
+        ...userPayload,
         parentPlanId: previousPlanId
       })
       }
@@ -1027,7 +1064,7 @@ async function publishPlan() {
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || (updatingCurrent ? "Could not save the current plan." : "Could not publish the plan."));
     nextData.publishedPlanId = result.plan.id;
-    nextData.publishedSharePath = result.plan.sharePath;
+    nextData.publishedSharePath = result.plan.sharePath || "";
     nextData.publishedAt = result.plan.publishedAt;
     nextData.history = Array.isArray(result.plan.history) ? result.plan.history : nextData.history;
     nextData.assignments = Array.isArray(result.plan.assignments) ? result.plan.assignments : nextData.assignments;
@@ -1036,9 +1073,10 @@ async function publishPlan() {
     nextData.draftSourceVersion = null;
     planState.editingCurrentPlanId = null;
     planState.data = nextData;
+    const savedPlan = userWorkspace ? userPlanSummary(result.plan) : result.plan;
     planState.library = updatingCurrent
-      ? planState.library.map(plan => plan.id === result.plan.id ? result.plan : plan)
-      : [result.plan, ...planState.library.filter(plan => plan.id !== result.plan.id)];
+      ? planState.library.map(plan => plan.id === savedPlan.id ? savedPlan : plan)
+      : [savedPlan, ...planState.library.filter(plan => plan.id !== savedPlan.id)];
     TrackerData.save(planState.data);
     showPlanToast(updatingCurrent
       ? `Version ${nextVersion} updated. The share link stayed the same.`
@@ -1055,10 +1093,12 @@ async function publishPlan() {
 
 async function loadLibrary() {
   try {
-    const response = await fetch("/api/plans/owner");
+    const response = await fetch(userWorkspace ? "/api/user/plans" : "/api/plans/owner");
     const result = await response.json();
     if (response.ok && result.ok) {
-      planState.library = result.plans;
+      planState.library = userWorkspace
+        ? result.plans.map(userPlanSummary)
+        : result.plans;
       const current = result.plans.find(plan => plan.id === planState.data.publishedPlanId);
       if (current && !planState.data.publishedSharePath) {
         planState.data.publishedSharePath = current.sharePath;
@@ -1072,6 +1112,7 @@ async function loadLibrary() {
 }
 
 async function loadTemplates() {
+  if (userWorkspace) return;
   try {
     const response = await fetch("/api/templates");
     const result = await response.json();
@@ -1084,6 +1125,7 @@ async function loadTemplates() {
 }
 
 async function seedRequestedDemo() {
+  if (userWorkspace) return;
   if (new URLSearchParams(window.location.search).get("demo") !== "jerry") return;
   try {
     const response = await fetch("/api/plans/demo/jerry", {
@@ -1116,6 +1158,10 @@ function previewPlan(path) {
 
 function bindPlanEvents() {
   document.getElementById("adminLogoutBtn").addEventListener("click", async () => {
+    if (userWorkspace) {
+      window.location.assign("/account");
+      return;
+    }
     await fetch("/api/admin/logout", { method: "POST" });
     window.location.assign("/admin");
   });
