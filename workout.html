@@ -300,6 +300,13 @@
     }
     .timer-run-bar.rest-mode { background: var(--color-accent); }
 
+    .timer-next-section {
+      margin: calc(var(--space-6) * -1) auto var(--space-6);
+      color: var(--color-text-muted);
+      font-size: var(--size-sm);
+    }
+    .timer-next-section strong { color: var(--color-text); }
+
     .timer-run-controls {
       display: flex;
       gap: var(--space-3);
@@ -1097,6 +1104,7 @@
             <button class="preset-chip" onclick="loadPreset('tabata')">⚡ Tabata</button>
             <button class="preset-chip" onclick="loadPreset('hiit')">🔥 HIIT 40/20</button>
             <button class="preset-chip" onclick="loadPreset('amrap')">⏱ AMRAP-vila</button>
+            <button class="preset-chip" onclick="loadPreset('massage')">💆 Massage · 46 min</button>
           </div>
 
           <div class="timer-sequence" id="timerSequence"></div>
@@ -1142,6 +1150,15 @@
                   Spela när <strong>vila</strong> slutar
                 </label>
               </div>
+              <label class="signal-check-label" style="margin-top:var(--space-2);">
+                Halvvägssignal
+                <select class="signal-select" id="signalMidpoint">
+                  <option value="off">Av</option>
+                  <option value="sound">Ljud</option>
+                  <option value="vibrate">Vibration</option>
+                  <option value="both">Ljud + vibration</option>
+                </select>
+              </label>
             </div>
           </div>
 
@@ -1168,6 +1185,9 @@
             <div class="timer-countdown" id="timerCountdown">0:40</div>
             <div class="timer-run-bar-wrap">
               <div class="timer-run-bar" id="timerProgressBar" style="width:0%"></div>
+            </div>
+            <div class="timer-next-section" id="timerNextSection" style="display:none;">
+              Nästa: <strong id="timerNextBlock"></strong>
             </div>
             <div class="timer-run-controls">
               <button class="timer-ctrl-btn primary" onclick="pauseResumeTimer()" id="pauseBtn">⏸ Paus</button>
@@ -1515,6 +1535,19 @@
     playSound(document.getElementById('signalSound').value);
   }
 
+  function vibrate(pattern) {
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(pattern);
+      }
+    } catch(e) {}
+  }
+
+  function playMidpointSignal(mode, sound) {
+    if (mode === 'sound' || mode === 'both') playSound(sound);
+    if (mode === 'vibrate' || mode === 'both') vibrate(180);
+  }
+
   /* ═══════════════════════════════════════════════════════
      TIMER STATE
   ═══════════════════════════════════════════════════════ */
@@ -1533,11 +1566,29 @@
     blockIdx: 0,
     timeLeft: 0,
     blockDuration: 0,
+    blockElapsedMs: 0,
+    blockStartedAt: null,
+    midpointTriggered: false,
     intervalId: null,
+    preIntervalId: null,
+    wakeLock: null,
   };
 
+  if (_savedTimer?.signals) {
+    const savedSignals = _savedTimer.signals;
+    document.getElementById('signalSound').value = savedSignals.sound || 'beep';
+    document.getElementById('sigWork').checked = savedSignals.onWork !== false;
+    document.getElementById('sigRest').checked = savedSignals.onRest !== false;
+    document.getElementById('signalMidpoint').value = savedSignals.midpoint || 'off';
+  }
+
   function saveTimerState() {
-    STORE.save('timer', { blocks: timerState.blocks, nextId: timerState.nextId, rounds: timerState.rounds });
+    STORE.save('timer', {
+      blocks: timerState.blocks,
+      nextId: timerState.nextId,
+      rounds: timerState.rounds,
+      signals: getSignal(),
+    });
   }
 
   function getSignal() {
@@ -1545,8 +1596,38 @@
       sound: document.getElementById('signalSound').value,
       onWork: document.getElementById('sigWork').checked,
       onRest: document.getElementById('sigRest').checked,
+      midpoint: document.getElementById('signalMidpoint').value,
     };
   }
+
+  ['signalSound', 'sigWork', 'sigRest', 'signalMidpoint'].forEach(id => {
+    document.getElementById(id).addEventListener('change', saveTimerState);
+  });
+
+  async function requestWakeLock() {
+    if (timerState.status !== 'running' || !('wakeLock' in navigator)) return;
+    if (timerState.wakeLock) return;
+    try {
+      timerState.wakeLock = await navigator.wakeLock.request('screen');
+      timerState.wakeLock.addEventListener('release', () => {
+        timerState.wakeLock = null;
+      });
+    } catch(e) {}
+  }
+
+  async function releaseWakeLock() {
+    const lock = timerState.wakeLock;
+    timerState.wakeLock = null;
+    if (!lock) return;
+    try { await lock.release(); } catch(e) {}
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && timerState.status === 'running') {
+      requestWakeLock();
+      updateTimerClock();
+    }
+  });
 
   /* ── Block management ── */
   function addBlock(type) {
@@ -1619,6 +1700,19 @@
         { type: 'rest', label: 'Vila',   duration: 30 },
       ],
     },
+    'massage': {
+      rounds: 1,
+      blocks: [
+        { type: 'work', label: 'Right arm',       duration: 180 },
+        { type: 'work', label: 'Left arm',        duration: 180 },
+        { type: 'work', label: 'Right thigh',     duration: 300 },
+        { type: 'work', label: 'Left thigh',      duration: 300 },
+        { type: 'work', label: 'Right glute',     duration: 240 },
+        { type: 'work', label: 'Left glute',      duration: 240 },
+        { type: 'work', label: 'Back',            duration: 900 },
+        { type: 'work', label: 'Neck & shoulders', duration: 420 },
+      ],
+    },
   };
 
   function loadPreset(key) {
@@ -1670,6 +1764,14 @@
   }
 
   /* ── Timer control ── */
+  function setCurrentBlock(block) {
+    timerState.timeLeft = block.duration;
+    timerState.blockDuration = block.duration;
+    timerState.blockElapsedMs = 0;
+    timerState.blockStartedAt = performance.now();
+    timerState.midpointTriggered = false;
+  }
+
   function startTimer() {
     if (timerState.blocks.length === 0) {
       alert('Lägg till minst ett block för att starta.');
@@ -1684,6 +1786,7 @@
     document.getElementById('timerRunning').style.display   = 'none';
     document.getElementById('timerGetReady').style.display  = 'block';
 
+    clearInterval(timerState.preIntervalId);
     let count = 3;
     document.getElementById('timerGetReadyCount').textContent = count;
 
@@ -1691,41 +1794,60 @@
       count--;
       if (count <= 0) {
         clearInterval(preInterval);
+        timerState.preIntervalId = null;
         document.getElementById('timerGetReady').style.display  = 'none';
         document.getElementById('timerRunning').style.display   = 'block';
 
         timerState.status        = 'running';
         timerState.round         = 1;
         timerState.blockIdx      = 0;
-        timerState.timeLeft      = timerState.blocks[0].duration;
-        timerState.blockDuration = timerState.blocks[0].duration;
+        setCurrentBlock(timerState.blocks[0]);
 
         updateTimerDisplay();
-        timerState.intervalId = setInterval(tick, 1000);
+        timerState.intervalId = setInterval(tick, 250);
+        requestWakeLock();
       } else {
         document.getElementById('timerGetReadyCount').textContent = count;
       }
     }, 1000);
+    timerState.preIntervalId = preInterval;
   }
 
   function tick() {
     if (timerState.status !== 'running') return;
-    timerState.timeLeft--;
-
-    if (timerState.timeLeft < 0) {
-      blockFinished();
-    } else {
-      updateTimerDisplay();
-    }
+    updateTimerClock();
   }
 
-  function blockFinished() {
+  function updateTimerClock() {
+    if (timerState.status !== 'running' || timerState.blockStartedAt === null) return;
+
+    timerState.blockElapsedMs = Math.max(0, performance.now() - timerState.blockStartedAt);
+    const midpointMs = timerState.blockDuration * 500;
+    if (!timerState.midpointTriggered && timerState.blockElapsedMs >= midpointMs) {
+      const sig = getSignal();
+      if (sig.midpoint !== 'off') playMidpointSignal(sig.midpoint, sig.sound);
+      timerState.midpointTriggered = true;
+    }
+
+    if (timerState.blockElapsedMs >= timerState.blockDuration * 1000) {
+      timerState.timeLeft = 0;
+      blockFinished(true);
+      return;
+    }
+
+    timerState.timeLeft = Math.max(0, Math.ceil(timerState.blockDuration - timerState.blockElapsedMs / 1000));
+    updateTimerDisplay();
+  }
+
+  function blockFinished(natural = true) {
     const block = timerState.blocks[timerState.blockIdx];
     const sig   = getSignal();
 
-    // Signal on natural end
-    if (block.type === 'work' && sig.onWork) playSound(sig.sound);
-    else if (block.type === 'rest' && sig.onRest) playSound(sig.sound);
+    // Signal only on natural end, never when the block is skipped.
+    if (natural) {
+      if (block.type === 'work' && sig.onWork) playSound(sig.sound);
+      else if (block.type === 'rest' && sig.onRest) playSound(sig.sound);
+    }
 
     // Advance
     timerState.blockIdx++;
@@ -1739,43 +1861,57 @@
     }
 
     const next = timerState.blocks[timerState.blockIdx];
-    timerState.timeLeft      = next.duration;
-    timerState.blockDuration = next.duration;
+    setCurrentBlock(next);
     updateTimerDisplay();
   }
 
   function timerDone() {
     clearInterval(timerState.intervalId);
+    timerState.intervalId = null;
+    timerState.blockStartedAt = null;
     timerState.status = 'done';
     document.getElementById('timerRunning').style.display = 'none';
     document.getElementById('timerDone').style.display    = 'block';
     playDone();
+    releaseWakeLock();
   }
 
   function pauseResumeTimer() {
     if (timerState.status === 'running') {
+      updateTimerClock();
+      if (timerState.status !== 'running') return;
       timerState.status = 'paused';
       clearInterval(timerState.intervalId);
+      timerState.intervalId = null;
+      timerState.blockStartedAt = null;
       document.getElementById('pauseBtn').textContent = '▶ Fortsätt';
+      releaseWakeLock();
     } else if (timerState.status === 'paused') {
       timerState.status = 'running';
-      timerState.intervalId = setInterval(tick, 1000);
+      timerState.blockStartedAt = performance.now() - timerState.blockElapsedMs;
+      timerState.intervalId = setInterval(tick, 250);
       document.getElementById('pauseBtn').textContent = '⏸ Paus';
+      requestWakeLock();
     }
   }
 
   function skipBlock() {
     if (timerState.status === 'idle' || timerState.status === 'done') return;
     timerState.timeLeft = 0;
-    blockFinished();
+    blockFinished(false);
   }
 
   function resetTimer() {
     clearInterval(timerState.intervalId);
+    clearInterval(timerState.preIntervalId);
+    timerState.intervalId = null;
+    timerState.preIntervalId = null;
+    timerState.blockStartedAt = null;
     timerState.status = 'idle';
     document.getElementById('timerDisplay').style.display  = 'none';
     document.getElementById('timerBuilder').style.display  = 'block';
     document.getElementById('pauseBtn').textContent = '⏸ Paus';
+    releaseWakeLock();
   }
 
   function updateTimerDisplay() {
@@ -1793,6 +1929,19 @@
     document.getElementById('timerProgressBar').className  = 'timer-run-bar' + (isRest ? ' rest-mode' : '');
     document.getElementById('timerRoundLabel').textContent = 'Runda ' + timerState.round + '/' + timerState.rounds;
     document.getElementById('timerBlockLabel').textContent = 'Block ' + (timerState.blockIdx + 1) + '/' + timerState.blocks.length;
+
+    const nextSection = document.getElementById('timerNextSection');
+    const nextBlock = document.getElementById('timerNextBlock');
+    const isFinalBlock = timerState.blockIdx === timerState.blocks.length - 1;
+    const hasNextRound = timerState.round < timerState.rounds;
+    if (nextSection && nextBlock && (!isFinalBlock || hasNextRound)) {
+      const nextIdx = isFinalBlock ? 0 : timerState.blockIdx + 1;
+      const upcoming = timerState.blocks[nextIdx];
+      nextBlock.textContent = upcoming.label + ' · ' + fmt(upcoming.duration);
+      nextSection.style.display = 'block';
+    } else if (nextSection) {
+      nextSection.style.display = 'none';
+    }
   }
 
   /* ═══════════════════════════════════════════════════════
