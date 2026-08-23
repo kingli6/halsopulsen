@@ -1196,7 +1196,8 @@
             <button class="preset-chip" onclick="loadPreset('tabata')">⚡ Tabata</button>
             <button class="preset-chip" onclick="loadPreset('hiit')">🔥 HIIT 40/20</button>
             <button class="preset-chip" onclick="loadPreset('amrap')">⏱ AMRAP-vila</button>
-           <button class="preset-chip" onclick="loadPreset('massage')">💆 Massage</button>
+            <button class="preset-chip" onclick="loadPreset('massage')">💆 Massage</button>
+            <button class="preset-chip" onclick="loadPreset('rehab')">🩺 Rehab</button>
           </div>
 
            <div class="sequence-total" id="sequenceTotal" style="display:none;">
@@ -1917,6 +1918,13 @@
       rounds: 1,
       blocks: MASSAGE_DEFAULT.blocks,
     },
+    'rehab': {
+      rounds: 10,
+      blocks: [
+        { type: 'work', label: 'Arbete', duration: 10 },
+        { type: 'rest', label: 'Vila',   duration: 50 },
+      ],
+    },
   };
 
   function loadPreset(key) {
@@ -1949,8 +1957,8 @@
     const empty = document.getElementById('emptyMsg');
     const totalBox = document.getElementById('sequenceTotal');
     const totalValue = document.getElementById('sequenceTotalValue');
-    if (totalBox) totalBox.style.display = timerState.activePreset === 'massage' ? 'flex' : 'none';
-    if (totalValue) totalValue.textContent = formatDuration(timerState.blocks.reduce((sum, b) => sum + b.duration, 0));
+    if (totalBox) totalBox.style.display = timerState.blocks.length > 0 ? 'flex' : 'none';
+    if (totalValue) totalValue.textContent = formatDuration(getSequenceTotalSeconds());
     if (timerState.blocks.length === 0) {
       seq.innerHTML = '';
       empty.style.display = 'block';
