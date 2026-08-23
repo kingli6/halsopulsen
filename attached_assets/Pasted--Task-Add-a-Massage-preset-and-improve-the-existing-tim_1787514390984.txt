@@ -1,0 +1,237 @@
+## Task: Add a Massage preset and improve the existing timer
+
+We have inspected the existing timer implementation in `workout.html`. **Do not create a separate massage timer.** Reuse the existing timer architecture, block system, controls, progress bar, audio system, and localStorage.
+
+The existing timer already supports named blocks, adjustable durations, one or more rounds, sounds, progress, pause, skip, and cancel.
+
+Implement the following changes.
+
+### 1. Add a pre-programmed "Massage" preset
+
+Add **Massage** alongside the existing timer presets such as Box Breathing, Tabata, etc.
+
+When the user selects Massage, populate the existing timer block sequence with:
+
+* Right arm — 3:00
+* Left arm — 3:00
+* Right thigh — 5:00
+* Left thigh — 5:00
+* Right glute — 4:00
+* Left glute — 4:00
+* Back — 15:00
+* Neck & shoulders — 7:00
+
+Total: **46 minutes**
+
+Set:
+
+* Rounds = 1
+
+Do not add feet.
+
+The user must still be able to modify every duration using the existing ±5 second and ±1 second controls.
+
+Do not create a special massage data model. Massage should simply be a preset that populates the existing block array.
+
+### 2. Add a midpoint signal at 50%
+
+Add an optional **midpoint signal** for each block.
+
+When enabled, trigger the midpoint signal once when the current block reaches approximately 50% elapsed.
+
+Requirements:
+
+* It must trigger only once per block.
+* Starting a new block resets the midpoint state.
+* Pausing must not trigger it prematurely.
+* Resuming continues normally.
+* Skipping a block should NOT trigger the midpoint signal.
+* The midpoint signal should use the selected signal mechanism.
+* Do not add 25% or 75% signals at this stage.
+
+Add a setting such as:
+
+**Halvvägssignal**
+
+* Av
+* Ljud
+* Vibration
+* Ljud + vibration
+
+Use the existing sound-selection system for the audio option.
+
+### 3. Add optional vibration
+
+Add support for vibration using the browser/device vibration API where supported.
+
+Vibration must be optional and must never be required for the timer to function.
+
+If vibration is unsupported, fail gracefully without breaking the timer.
+
+The user should be able to select:
+
+* Av
+* Ljud
+* Vibration
+* Ljud + vibration
+
+Do not make vibration the only way to receive the midpoint signal.
+
+### 4. Show the next section
+
+On the running timer screen, add a small secondary display showing the upcoming block.
+
+For example:
+
+**Nästa: Neck & shoulders · 07:00**
+
+The current section and current countdown must remain the dominant information.
+
+If the current block is the final block of the final round, hide the "next" display or show an appropriate final-state message.
+
+Reuse the existing `timerState.blocks`, `blockIdx`, `round`, and `rounds`. Do not create another data structure for this.
+
+### 5. Prevent the screen from sleeping during the timer
+
+Implement the Screen Wake Lock API where supported.
+
+When the timer starts running:
+
+* Request a screen wake lock.
+
+When the timer:
+
+* finishes
+* is cancelled
+* is otherwise no longer running
+
+release the wake lock.
+
+If the browser releases the wake lock while the page becomes hidden/visible again, attempt to reacquire it when appropriate.
+
+Fail gracefully on browsers/devices that don't support Screen Wake Lock.
+
+Do not prevent the normal screen timeout when the timer is not running.
+
+### 6. Improve timer accuracy
+
+The current timer uses:
+
+`setInterval(..., 1000)`
+
+and assumes each callback represents exactly one second.
+
+Change the running timer logic so that elapsed/remaining time is based on timestamps rather than relying solely on the number of interval callbacks.
+
+The display can still update approximately once per second, but the underlying calculation should use actual elapsed time.
+
+This is important because browser timer throttling can otherwise cause the massage timer to drift.
+
+Preserve the existing:
+
+* pause/resume behavior
+* skip behavior
+* cancel behavior
+* block transitions
+* progress bar
+* completion behavior
+
+Make sure pausing freezes the effective elapsed time and resuming continues from the correct remaining time.
+
+### 7. Fix skip/end-signal behavior
+
+Currently `skipBlock()` uses the same transition path as a naturally completed block.
+
+Change this so that:
+
+**Natural block completion**
+→ normal section-end signal can play.
+
+**Hoppa / Skip**
+→ do not play the normal section-end signal.
+
+The timer should simply advance to the next block.
+
+The midpoint signal must also never fire because of a skip.
+
+### 8. Keep the existing UI and architecture
+
+Do not redesign the timer from scratch.
+
+Reuse:
+
+* existing timer builder
+* existing block list
+* existing duration controls
+* existing round controls
+* existing signal selector
+* existing sound test
+* existing progress bar
+* existing Pause button
+* existing Hoppa button
+* existing Avbryt button
+* existing completion screen
+* existing localStorage configuration
+
+Avoid unnecessary refactoring.
+
+The goal is a small, contained improvement to the existing timer.
+
+### 9. Preserve current functionality
+
+Make sure existing presets such as Box Breathing, Tabata, etc. continue working exactly as before.
+
+The Massage preset should not alter their behavior.
+
+Make sure:
+
+* existing work/rest timers still function
+* existing sound options still function
+* one-round timers still function
+* multiple-round timers still function
+* duration adjustment still works
+* pause/resume still works
+* skip still works
+* cancel/reset still works
+
+### 10. Verify before finishing
+
+After implementation:
+
+1. Run the existing project checks/build/type checks available in the project.
+2. Test the Massage preset.
+3. Verify it creates exactly 8 sections and one round.
+4. Verify the total is 46 minutes.
+5. Verify each duration can still be adjusted.
+6. Verify midpoint signal fires once per section.
+7. Verify midpoint does not fire when skipping.
+8. Verify natural section completion still produces the selected end signal.
+9. Verify vibration fails gracefully when unsupported.
+10. Verify Wake Lock is requested while running and released when finished/cancelled.
+11. Verify pause/resume doesn't introduce time drift.
+12. Verify the progress bar still represents progress through the current section.
+13. Verify existing presets still work.
+
+### Important
+
+Before making any broad architectural changes, prefer the smallest implementation that works with the current timer.
+
+Do not create a separate massage timer.
+
+Do not add a database or server-side storage.
+
+Do not add client/session history.
+
+Do not add feet to the Massage preset.
+
+Do not add 25%/75% midpoint options yet.
+
+Do not redesign the timer UI.
+
+After implementation, report:
+
+* files changed
+* what was changed
+* any browser/device limitations
+* test/build results
+* anything that could not be verified
