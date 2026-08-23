@@ -2,10 +2,27 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { clerkMiddleware, getAuth } = require('@clerk/express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+const CLERK_PROXY_PATH = '/api/__clerk';
+if (process.env.NODE_ENV === 'production' && process.env.CLERK_SECRET_KEY) {
+  app.use(CLERK_PROXY_PATH, createProxyMiddleware({
+    target: 'https://frontend-api.clerk.dev',
+    changeOrigin: true,
+    pathRewrite: { [`^${CLERK_PROXY_PATH}`]: '' },
+    onProxyReq(proxyReq, req) {
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+      proxyReq.setHeader('Clerk-Proxy-Url', `${protocol}://${host}${CLERK_PROXY_PATH}`);
+      proxyReq.setHeader('Clerk-Secret-Key', process.env.CLERK_SECRET_KEY);
+    }
+  }));
+}
+app.use(clerkMiddleware());
 app.use(express.json({ limit: '512kb', strict: true }));
 
 const MAX_PROGRAM_WEEKS = 52;
@@ -151,6 +168,17 @@ app.use('/api', (req, res, next) => {
   mutationRateLimiter(req, res, next);
 });
 
+app.get('/api/auth/config', (req, res) => {
+  res.json({ ok: true, publishableKey: process.env.CLERK_PUBLISHABLE_KEY || '' });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const userId = currentUserId(req);
+  if (!userId) return res.json({ ok: true, authenticated: false });
+  const { user } = getOrCreateUser(userId);
+  res.json({ ok: true, authenticated: true, user: { id: user.id } });
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
 });
@@ -189,6 +217,8 @@ app.get('/admin', (req, res) => {
   if (readAdminSession(req)) return res.redirect('/admin/plans');
   res.sendFile(path.join(__dirname, 'dashboard', 'admin', 'index.html'));
 });
+app.get(['/account', '/account/'], (req, res) => res.sendFile(path.join(__dirname, 'account.html')));
+app.get(['/plans', '/plans/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html')));
 app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
@@ -203,6 +233,9 @@ app.use(express.static(path.join(__dirname)));
 const PLAN_STORAGE_DIR = path.join(__dirname, 'storage');
 const PLAN_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'published-plans.json');
 const TEMPLATE_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'template-library.json');
+const USER_STORAGE_PATH = path.join(PLAN_STORAGE_DIR, 'users.json');
+const MAX_USER_PRESETS = 100;
+const MAX_USER_PLANS = 100;
 
 if (!process.env.ADMIN_PASSWORD) console.warn('⚠  ADMIN_PASSWORD not set — admin sign-in disabled until configured.');
 
@@ -248,6 +281,172 @@ function writeTemplates(templates) {
   fs.writeFileSync(temporaryPath, JSON.stringify(templates, null, 2));
   fs.renameSync(temporaryPath, TEMPLATE_STORAGE_PATH);
 }
+
+function readUsers() {
+  try {
+    if (!fs.existsSync(USER_STORAGE_PATH)) return [];
+    const value = JSON.parse(fs.readFileSync(USER_STORAGE_PATH, 'utf8'));
+    return Array.isArray(value) ? value : [];
+  } catch (error) {
+    console.error('Could not read users:', error.message);
+    return [];
+  }
+}
+
+function writeUsers(users) {
+  fs.mkdirSync(PLAN_STORAGE_DIR, { recursive: true });
+  const temporaryPath = `${USER_STORAGE_PATH}.tmp`;
+  fs.writeFileSync(temporaryPath, JSON.stringify(users, null, 2));
+  fs.renameSync(temporaryPath, USER_STORAGE_PATH);
+}
+
+function currentUserId(req) {
+  const auth = getAuth(req);
+  return auth?.userId || auth?.sessionClaims?.userId || null;
+}
+
+function requireUser(req, res, next) {
+  const userId = currentUserId(req);
+  if (!userId) return res.status(401).json({ ok: false, error: 'Sign in required.' });
+  req.userId = userId;
+  next();
+}
+
+function getOrCreateUser(userId) {
+  const users = readUsers();
+  let user = users.find(item => item.id === userId);
+  if (!user) {
+    user = { id: userId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), presets: [], plans: [] };
+    users.push(user);
+    writeUsers(users);
+  }
+  return { users, user };
+}
+
+function safePreset(preset) {
+  return {
+    id: preset.id,
+    name: preset.name,
+    rounds: preset.rounds,
+    blocks: preset.blocks
+  };
+}
+
+function validateUserPreset(body) {
+  const name = String(body?.name || '').trim();
+  const rounds = Number(body?.rounds);
+  const blocks = body?.blocks;
+  if (!name || name.length > 100) return 'Preset name must be between 1 and 100 characters.';
+  if (!Number.isInteger(rounds) || rounds < 1 || rounds > 100) return 'Rounds must be between 1 and 100.';
+  if (!Array.isArray(blocks) || blocks.length < 1 || blocks.length > 100) return 'A preset needs between 1 and 100 blocks.';
+  if (blocks.some(block => !block || !['work', 'rest'].includes(block.type)
+    || !String(block.label || '').trim() || String(block.label).length > 80
+    || !Number.isInteger(Number(block.duration)) || Number(block.duration) < 1 || Number(block.duration) > 3600)) {
+    return 'Each block needs a valid label, type, and duration.';
+  }
+  return null;
+}
+
+function publicUserPlan(plan) {
+  return { id: plan.id, name: plan.name, data: plan.data, createdAt: plan.createdAt, updatedAt: plan.updatedAt };
+}
+
+function validateUserPlan(body) {
+  const validationError = validatePlanPayload(body);
+  if (validationError) return validationError;
+  if (String(body?.name || body?.program?.name || '').trim().length > 100) return 'Plan names must be 100 characters or fewer.';
+  return null;
+}
+
+app.get('/api/user/presets', requireUser, (req, res) => {
+  const { user } = getOrCreateUser(req.userId);
+  res.json({ ok: true, presets: user.presets.map(safePreset) });
+});
+
+app.post('/api/user/presets', requireUser, (req, res) => {
+  const validationError = validateUserPreset(req.body);
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+  const { users, user } = getOrCreateUser(req.userId);
+  if (user.presets.length >= MAX_USER_PRESETS) {
+    return res.status(429).json({ ok: false, error: 'You have reached the saved preset limit.' });
+  }
+  const preset = {
+    id: crypto.randomUUID(),
+    name: String(req.body.name).trim(),
+    rounds: Number(req.body.rounds),
+    blocks: req.body.blocks.map((block, index) => ({
+      id: index + 1,
+      type: block.type,
+      label: String(block.label).trim(),
+      duration: Number(block.duration)
+    })),
+    createdAt: new Date().toISOString()
+  };
+  user.presets.push(preset);
+  user.updatedAt = new Date().toISOString();
+  writeUsers(users);
+  res.status(201).json({ ok: true, preset: safePreset(preset) });
+});
+
+app.delete('/api/user/presets/:id', requireUser, (req, res) => {
+  const { users, user } = getOrCreateUser(req.userId);
+  const before = user.presets.length;
+  user.presets = user.presets.filter(preset => preset.id !== req.params.id);
+  if (before === user.presets.length) return res.status(404).json({ ok: false, error: 'Preset not found.' });
+  user.updatedAt = new Date().toISOString();
+  writeUsers(users);
+  res.json({ ok: true, id: req.params.id });
+});
+
+app.get('/api/user/plans', requireUser, (req, res) => {
+  const { user } = getOrCreateUser(req.userId);
+  res.json({ ok: true, plans: user.plans.map(publicUserPlan) });
+});
+
+app.post('/api/user/plans', requireUser, (req, res) => {
+  const validationError = validateUserPlan(req.body);
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+  const { users, user } = getOrCreateUser(req.userId);
+  if (user.plans.length >= MAX_USER_PLANS) {
+    return res.status(429).json({ ok: false, error: 'You have reached the saved plan limit.' });
+  }
+  const now = new Date().toISOString();
+  const plan = {
+    id: crypto.randomUUID(),
+    name: String(req.body.name || req.body.program.name || 'Training plan').trim().slice(0, 100),
+    data: cloneJson(req.body),
+    createdAt: now,
+    updatedAt: now
+  };
+  user.plans.unshift(plan);
+  user.updatedAt = now;
+  writeUsers(users);
+  res.status(201).json({ ok: true, plan: publicUserPlan(plan) });
+});
+
+app.put('/api/user/plans/:id', requireUser, (req, res) => {
+  const validationError = validateUserPlan(req.body);
+  if (validationError) return res.status(400).json({ ok: false, error: validationError });
+  const { users, user } = getOrCreateUser(req.userId);
+  const plan = user.plans.find(item => item.id === req.params.id);
+  if (!plan) return res.status(404).json({ ok: false, error: 'Plan not found.' });
+  plan.name = String(req.body.name || req.body.program.name || plan.name).trim().slice(0, 100);
+  plan.data = cloneJson(req.body);
+  plan.updatedAt = new Date().toISOString();
+  user.updatedAt = plan.updatedAt;
+  writeUsers(users);
+  res.json({ ok: true, plan: publicUserPlan(plan) });
+});
+
+app.delete('/api/user/plans/:id', requireUser, (req, res) => {
+  const { users, user } = getOrCreateUser(req.userId);
+  const before = user.plans.length;
+  user.plans = user.plans.filter(plan => plan.id !== req.params.id);
+  if (before === user.plans.length) return res.status(404).json({ ok: false, error: 'Plan not found.' });
+  user.updatedAt = new Date().toISOString();
+  writeUsers(users);
+  res.json({ ok: true, id: req.params.id });
+});
 
 function publicTemplate(template) {
   return {

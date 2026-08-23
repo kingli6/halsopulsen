@@ -10,6 +10,9 @@
     "test:shared-log": "node scripts/test-shared-log-concurrency.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "@clerk/express": "^2.1.61",
+    "@clerk/shared": "^4.29.3",
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.7"
   }
 }
