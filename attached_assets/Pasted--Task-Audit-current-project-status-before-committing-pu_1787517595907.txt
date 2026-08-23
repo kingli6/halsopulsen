@@ -1,0 +1,164 @@
+## Task: Audit current project status before committing/pushing to GitHub
+
+I have made a large number of changes in the project, including:
+
+* A major Workout Planner / Workout Creator page
+* A new Admin page
+* Recent improvements to the Massage timer
+* Other changes made during recent development
+
+I am considering pushing all current changes to GitHub.
+
+**Do NOT modify any files.**
+**Do NOT refactor anything.**
+**Do NOT fix anything yet.**
+
+I only want a status/audit so I can decide whether it is safe to commit and push this current state.
+
+### 1. Inspect the current Git state
+
+Report:
+
+* Current branch
+* Whether there are uncommitted changes
+* Number of modified files
+* Number of new/untracked files
+* Number of deleted files
+* Whether there are staged changes
+* Whether there are merge conflicts
+* Whether anything appears accidentally generated or temporary
+
+Do not commit or push anything.
+
+### 2. Check the current application
+
+Run the appropriate existing checks for this project.
+
+At minimum, if available:
+
+* TypeScript/type checking
+* Build
+* Existing tests
+* Existing lint checks
+* Existing audit checks
+* `git diff --check`
+
+Also verify that the application currently starts successfully.
+
+Do not create new tests just for this audit.
+
+### 3. Inspect the major new features
+
+I specifically want a high-level status assessment of:
+
+#### Workout Planner / Workout Creator
+
+Determine:
+
+* Does the page compile?
+* Does the relevant code appear internally consistent?
+* Are there obvious broken imports/references?
+* Are API endpoints it depends on present?
+* Are database/schema dependencies present?
+* Are there obvious unfinished TODOs/placeholders?
+* Are there obvious runtime errors visible from the code/configuration?
+
+Do NOT attempt to redesign or finish the feature.
+
+#### Admin page
+
+Check the same things:
+
+* Compilation
+* Imports
+* Routing
+* API dependencies
+* Database dependencies
+* Obvious unfinished pieces
+* Obvious runtime problems
+
+Again, do not modify anything.
+
+#### Massage timer
+
+Confirm that the recent Massage changes are still present and that the implementation is structurally sound.
+
+Pay particular attention to:
+
+* Editable durations
+* `hp_massage_config_v1`
+* Dynamic section configuration
+* Back navigation
+* Existing signal persistence
+
+Do not make changes.
+
+### 4. Check for accidental breakage
+
+Look for obvious signs that the large recent changes may have broken existing functionality.
+
+Pay particular attention to:
+
+* Existing routes
+* Existing presets
+* Shared components
+* API contracts
+* Database schema expectations
+* Authentication/authorization
+* Imports
+* Build configuration
+
+Do not perform speculative fixes.
+
+### 5. Separate findings into three categories
+
+Please give me a clear report using:
+
+### 🟢 Safe
+
+Things that are working and look good.
+
+### 🟡 Known / acceptable
+
+Things that are incomplete, untested, rough, or known limitations but do not appear to prevent committing the current work.
+
+### 🔴 Blockers
+
+Things that make you recommend **NOT pushing the current changes**.
+
+Be conservative about what you call a blocker.
+
+For example, a feature that is unfinished but compiles should generally be reported as 🟡 rather than treated as a blocker.
+
+### 6. Most important: give me a push recommendation
+
+At the end, give me exactly one of:
+
+**SAFE TO PUSH**
+
+or
+
+**DO NOT PUSH YET**
+
+If you say **SAFE TO PUSH**, explain briefly why the current state is a reasonable checkpoint even if some features are unfinished.
+
+If you say **DO NOT PUSH YET**, identify the specific issue that should be addressed first.
+
+### 7. Important
+
+This is a **status audit only**.
+
+Do not:
+
+* Edit files
+* Commit
+* Push
+* Reset changes
+* Delete files
+* Revert changes
+* Run migrations
+* Change the database
+* Change configuration
+* "Clean up" the code
+
+I want to preserve the current state exactly as it is while we decide whether to create a GitHub checkpoint.
