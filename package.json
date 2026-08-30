@@ -7,12 +7,15 @@
     "start": "node server.js",
     "dev": "node server.js",
     "audit:footprint": "node scripts/audit-footprint.js",
-    "test:shared-log": "node scripts/test-shared-log-concurrency.js"
+    "test:shared-log": "node scripts/test-shared-log-concurrency.js",
+    "db:migrate": "node scripts/db-migrate.js",
+    "test:booking-db": "node scripts/test-booking-db.js"
   },
   "dependencies": {
     "@clerk/express": "^2.1.61",
     "@clerk/shared": "^4.29.3",
     "express": "^4.19.2",
-    "http-proxy-middleware": "^3.0.7"
+    "http-proxy-middleware": "^3.0.7",
+    "pg": "^8.23.0"
   }
 }
