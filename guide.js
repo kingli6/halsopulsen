@@ -151,6 +151,7 @@ function shareSection(hash) {
 (function () {
   const hashMap = {
     'leomoves':  'home-training-content',
+    'additional-resources': 'additional-resources-content',
     'ovningar':  'athlean-content',
     'ppl-program': 'ppl-content',
   };
