@@ -251,6 +251,7 @@ section {
   transition: color var(--transition);
 }
 .nav-links a:hover { color: var(--color-primary); }
+.nav-resource-start { margin-left: var(--space-2); padding-left: var(--space-6); border-left: 1px solid var(--color-border); }
 
 .nav-actions {
   display: flex;
@@ -308,6 +309,8 @@ section {
   gap: var(--space-4);
   box-shadow: var(--shadow-md);
 }
+
+section[id] { scroll-margin-top: 76px; }
 
 
 /* ================================================================
@@ -855,13 +858,47 @@ section {
   line-height: 1.5;
   padding-left: var(--space-1);
 }
-.service-detail--note {
-  color: var(--color-primary) !important;
-  font-weight: 500;
-  background: var(--color-primary-light);
+
+.service-process {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+.service-process summary {
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: var(--size-sm);
+  font-weight: 700;
+  list-style: none;
+  padding: var(--space-1) 0;
+}
+.service-process summary::-webkit-details-marker {
+  display: none;
+}
+.service-process summary::after {
+  content: "＋";
+  float: right;
+  font-size: var(--size-base);
+  line-height: 1;
+}
+.service-process[open] summary::after {
+  content: "−";
+}
+.service-process summary:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
   border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3) !important;
-  margin-top: var(--space-1);
+}
+.service-process-body {
+  padding-top: var(--space-2);
+}
+.service-process-body p {
+  color: var(--color-text-muted);
+  font-size: var(--size-sm);
+  line-height: 1.65;
+  margin-bottom: var(--space-3);
+}
+.service-process-body p:last-child {
+  margin-bottom: 0;
 }
 
 
@@ -1041,6 +1078,14 @@ section {
     width: 280px;
     height: 280px;
     max-width: 280px;
+  }
+}
+
+@media (max-width: 767px) {
+  .nav-resource-start {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 }
 

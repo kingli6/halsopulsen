@@ -62,13 +62,13 @@ const PROGRESS = {
     practiceTotal: 35,  // required total
   },
   nutrition: {
-    clients:       0,
+    clients:       1,
     clientsTotal:  3,
     meetings:      0,
     meetingsTotal: 12,
   },
   pt: {
-    clients:       0,
+    clients:       3,
     clientsTotal:  4,
     sessions:      0,
     sessionsTotal: 16,
