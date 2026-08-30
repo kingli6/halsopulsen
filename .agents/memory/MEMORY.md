@@ -13,3 +13,4 @@
 - [Supabase production booking boundary](supabase-production-booking.md) — production booking data is explicitly Supabase; Replit PostgreSQL remains development-only.
 - [Booking Phase 2 runtime constraints](booking-phase2-runtime.md) — normalize PostgreSQL DATE values and serialize queries on pinned transaction clients.
 - [Production booking test environment](production-booking-test-environment.md) — direct shell runs may not receive the configured Supabase secret even when the workspace reports it exists.
+- [Booking migration portability](booking-migration-portability.md) — schema migrations must tolerate environment-specific constraint names and preserve applied migration history.
