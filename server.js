@@ -225,6 +225,9 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'admin', 'index.html'));
 });
 app.get(['/account', '/account/'], (req, res) => res.sendFile(path.join(__dirname, 'account.html')));
+app.get(['/booking', '/booking/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'booking', 'index.html'));
+});
 app.get(['/plans', '/plans/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html')));
 app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
