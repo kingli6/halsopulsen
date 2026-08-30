@@ -133,19 +133,40 @@ async function loadAvailabilityData(client, fromDate, toDateValue, windowStart, 
     WHERE starts_at < $1 AND ends_at > $2
   `, [windowEnd, windowStart]);
   const appointments = await client.query(`
-    SELECT a.starts_at, a.ends_at, a.break_minutes_override,
+    SELECT
+           CASE
+             WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+             ELSE a.starts_at
+           END AS starts_at,
+           CASE
+             WHEN a.status = 'alternative_suggested' THEN a.alternative_ends_at
+             ELSE a.ends_at
+           END AS ends_at,
+           a.break_minutes_override,
            s.default_break_minutes
     FROM booking.appointments a
     JOIN booking.services s ON s.id = a.service_id
     WHERE (
-      a.status = 'confirmed'
+      (
+        a.status = 'confirmed'
+        AND a.starts_at IS NOT NULL
+        AND a.ends_at IS NOT NULL
+      )
       OR (
-        a.status = 'pending'
-        AND a.created_at >= NOW() - make_interval(hours => $1)
+        a.status = 'alternative_suggested'
+        AND a.alternative_starts_at IS NOT NULL
+        AND a.alternative_ends_at IS NOT NULL
       )
     )
-    AND a.starts_at < $2
-  `, [config.pendingExpirationHours, windowEnd]);
+    AND CASE
+      WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+      ELSE a.starts_at
+    END < $1
+    AND CASE
+      WHEN a.status = 'alternative_suggested' THEN a.alternative_ends_at
+      ELSE a.ends_at
+    END > $2
+  `, [windowEnd, windowStart]);
 
   return {
     rules: rules.rows,
@@ -391,19 +412,30 @@ async function createBookingRequest({
       FROM booking.appointments a
       JOIN booking.services s ON s.id = a.service_id
       WHERE (
-        a.status = 'confirmed'
+        (
+          a.status = 'confirmed'
+          AND a.starts_at IS NOT NULL
+          AND a.ends_at IS NOT NULL
+        )
         OR (
-          a.status = 'pending'
-          AND a.created_at >= NOW() - make_interval(hours => $1)
+          a.status = 'alternative_suggested'
+          AND a.alternative_starts_at IS NOT NULL
+          AND a.alternative_ends_at IS NOT NULL
         )
       )
-      AND a.starts_at < $3
+      AND CASE
+        WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+        ELSE a.starts_at
+      END < $3
       AND (
-        a.ends_at
+        CASE
+          WHEN a.status = 'alternative_suggested' THEN a.alternative_ends_at
+          ELSE a.ends_at
+        END
         + make_interval(mins => COALESCE(a.break_minutes_override, s.default_break_minutes))
       ) > $2
       LIMIT 1
-    `, [config.pendingExpirationHours, startAt, occupiedEnd]);
+    `, [startAt, occupiedEnd, startAt]);
 
     if (conflict.rowCount > 0) {
       throw new BookingError("That time is no longer available.", 409, "slot_unavailable");
@@ -425,7 +457,7 @@ async function createBookingRequest({
         client_action_token_hash,
         client_action_expires_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $5, $6, NULL, 'pending', $7, $8, $9)
+      VALUES ($1, $2, $3, $4, NULL, NULL, $5, $6, NULL, 'pending', $7, $8, $9)
     `, [
       service.id,
       clientInput.name,
@@ -444,8 +476,10 @@ async function createBookingRequest({
       actionToken: actionToken.token,
       serviceName: service.name,
       durationMinutes: service.duration_minutes,
-      startsAt: startAt,
-      endsAt: sessionEnd,
+      startsAt: null,
+      endsAt: null,
+      originalStartsAt: startAt,
+      originalEndsAt: sessionEnd,
       clientName: clientInput.name,
       clientEmail: clientInput.email,
       clientPhone: clientInput.phone
