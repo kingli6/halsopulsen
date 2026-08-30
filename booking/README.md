@@ -64,10 +64,12 @@ GET  /api/booking/availability?service=PT&from=YYYY-MM-DD&to=YYYY-MM-DD
 POST /api/booking/requests
 ```
 
-The availability response contains only public service details and available
-start times. The request body accepts `service`, `startAt` (or `startTime`),
-`clientName`, `email`, and optional `phone` and `notes`. A successful request
-creates a `pending` appointment and returns no appointment or client record.
+The availability response contains only public service details, available start
+times, and private unavailable-slot markers (`booked` or `unavailable`) without
+client information. The request body accepts `service`, `startAt` (or
+`startTime`), `clientName`, `email`, and optional `phone` and `notes`. A
+successful request creates a `pending` appointment and returns no appointment
+or client record.
 
 Availability is calculated on the server in `Europe/Stockholm` by default.
 The default minimum notice is 12 hours, the booking horizon is 60 days, and

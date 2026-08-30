@@ -8,6 +8,7 @@ const {
 } = require("../booking/admin-service");
 const {
   BookingError,
+  calculateAvailability,
   createBookingRequest
 } = require("../booking/service");
 const {
@@ -95,6 +96,32 @@ async function main() {
     const cancelledId = await appointmentId(pool, pendingToCancel.clientEmail);
     const cancelled = await cancelAppointment(pool, cancelledId, config);
     assert.strictEqual(cancelled.booking.status, "cancelled");
+    const availableAfterCancel = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: cancelledDate,
+      toDate: cancelledDate,
+      now,
+      config
+    });
+    assert(
+      availableAfterCancel.dates.some(date => date.times.some(time => time.localTime === "09:00")),
+      "Cancelled appointments should no longer block availability."
+    );
+    const reopened = await confirmAppointment(pool, cancelledId, config);
+    assert.strictEqual(reopened.booking.status, "confirmed");
+    const unavailableAfterReopen = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: cancelledDate,
+      toDate: cancelledDate,
+      now,
+      config
+    });
+    assert(
+      !unavailableAfterReopen.dates.some(date => date.times.some(time => time.localTime === "09:00")),
+      "Reconfirmed appointments should block availability again."
+    );
 
     const acceptedDate = await prepareDay(7);
     const pendingToAccept = await makeBooking(acceptedDate, "09:00", "accept");
@@ -136,6 +163,26 @@ async function main() {
         alternativeStart: "11:00"
       }, config),
       error => assertBookingError(error, "slot_unavailable")
+    );
+
+    const takenDate = await prepareDay(13);
+    await makeBooking(takenDate, "09:00", "taken");
+    const takenAvailability = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: takenDate,
+      toDate: takenDate,
+      now,
+      config
+    });
+    const takenDay = takenAvailability.dates.find(date => date.date === takenDate);
+    assert(
+      takenDay?.unavailableTimes?.some(time => time.localTime === "09:00" && time.reason === "booked"),
+      "Taken appointment times should be returned as private booked slots."
+    );
+    assert(
+      !takenDay?.times?.some(time => time.localTime === "09:00"),
+      "Taken appointment times must not be returned as available slots."
     );
 
     const conflictDate = await prepareDay(10);
