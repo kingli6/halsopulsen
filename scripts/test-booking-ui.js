@@ -147,6 +147,20 @@ async function main() {
   });
   get("client-name").value = "Test customer";
   get("client-email").value = "test@example.test";
+  get("client-notes").value = "x".repeat(1001);
+  await get("client-notes").dispatch("input");
+  assert.strictEqual(get("client-notes-count").textContent, "1001 / 1000");
+  assert(get("client-notes-count").classList.values.has("is-over-limit"));
+  await get("details-form").dispatch("submit");
+  assert.strictEqual(get("step-details").hidden, false, "An over-limit message should not advance to review.");
+  assert(
+    get("booking-message").textContent.includes("1 000 tecken"),
+    "The over-limit message should be clear and localized."
+  );
+  get("client-notes").value = "x".repeat(1000);
+  await get("client-notes").dispatch("input");
+  assert.strictEqual(get("client-notes-count").textContent, "1000 / 1000");
+  assert(!get("client-notes-count").classList.values.has("is-over-limit"));
   await get("details-form").dispatch("submit");
   await get("submit-booking").dispatch("click");
   await flush();
@@ -159,6 +173,7 @@ async function main() {
   assert.strictEqual(get("step-service").hidden, false, "Boka en ny tid should return to service selection.");
   assert.strictEqual(get("step-confirmation").hidden, true, "Confirmation should be hidden after reset.");
   assert.strictEqual(get("client-name").value, "", "Customer name should reset for a new booking.");
+  assert.strictEqual(get("client-notes-count").textContent, "0 / 1000", "The message counter should reset.");
   assert.strictEqual(
     calls.filter(call => call.path === "/api/booking/requests").length,
     1,

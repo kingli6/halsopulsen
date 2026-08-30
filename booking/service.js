@@ -13,6 +13,7 @@ const {
 } = require("./time");
 
 const MINUTES_MS = 60 * 1000;
+const MAX_BOOKING_NOTES_LENGTH = 1000;
 const CALENDAR_LOCK_KEY = "halsopulsen-booking-calendar";
 const CLIENT_ACTION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -361,8 +362,8 @@ function validateClientInput(input) {
   if (phone.length > 40) {
     throw new BookingError("Phone number must be 40 characters or fewer.", 400, "invalid_phone");
   }
-  if (notes.length > 2000) {
-    throw new BookingError("Notes must be 2,000 characters or fewer.", 400, "invalid_notes");
+  if (notes.length > MAX_BOOKING_NOTES_LENGTH) {
+    throw new BookingError("Meddelandet får vara högst 1 000 tecken.", 400, "invalid_notes");
   }
   return { name, email, phone: phone || null, notes };
 }

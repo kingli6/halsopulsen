@@ -75,7 +75,7 @@ async function main() {
       return date;
     }
 
-    async function makeBooking(date, time, label) {
+    async function makeBooking(date, time, label, notes = "") {
       return createBookingRequest({
         pool,
         now,
@@ -85,7 +85,8 @@ async function main() {
           startAt: localDateTimeToDate(date, time, config.timezone).toISOString(),
           clientName: `Phase 5 ${label}`,
           email: `${tag}-${label}@example.test`,
-          phone: "0700000000"
+          phone: "0700000000",
+          notes
         }
       });
     }
@@ -322,6 +323,22 @@ async function main() {
     await assert.rejects(
       makeBooking(conflictDate, "11:00", "conflict-taker"),
       error => assertBookingError(error, "slot_unavailable")
+    );
+
+    const maxNotesBooking = await makeBooking(
+      effectiveBreakDate,
+      "14:00",
+      "max-notes",
+      "x".repeat(1000)
+    );
+    const maxNotesRow = await pool.query(
+      "SELECT notes FROM booking.appointments WHERE client_email = $1",
+      [maxNotesBooking.clientEmail]
+    );
+    assert.strictEqual(maxNotesRow.rows[0].notes.length, 1000, "A 1,000-character message should be accepted.");
+    await assert.rejects(
+      makeBooking(effectiveBreakDate, "14:00", "too-many-notes", "x".repeat(1001)),
+      error => assertBookingError(error, "invalid_notes")
     );
 
     const expiredDate = await prepareDay(11);
