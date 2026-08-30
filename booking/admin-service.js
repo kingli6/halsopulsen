@@ -13,6 +13,7 @@ const {
 const MINUTES_MS = 60 * 1000;
 const CALENDAR_LOCK_KEY = "halsopulsen-booking-calendar";
 const VALID_STATUSES = new Set(["pending", "confirmed", "cancelled", "completed"]);
+const LIST_STATUSES = new Set([...VALID_STATUSES, "alternative_suggested"]);
 
 function requiredText(value, label, maxLength) {
   const text = String(value ?? "").trim();
@@ -550,7 +551,7 @@ async function listAppointments(client, query = {}, config = getBookingConfig())
 
   if (query.status) {
     const status = String(query.status);
-    if (!VALID_STATUSES.has(status)) {
+    if (!LIST_STATUSES.has(status)) {
       throw new BookingError("Appointment status is invalid.", 400, "invalid_status");
     }
     conditions.push(`a.status = ${addParam(status)}`);
@@ -718,6 +719,7 @@ module.exports = {
   createOverride,
   createRule,
   createService,
+  ensureAppointmentRangeIsFree,
   getAppointment,
   listAppointments,
   listBlockedTimes,

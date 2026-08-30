@@ -60,6 +60,7 @@
             <select id="appointment-status">
               <option value="">Alla</option>
               <option value="pending">Väntar</option>
+              <option value="alternative_suggested">Förslag skickat</option>
               <option value="confirmed">Bekräftad</option>
               <option value="cancelled">Avbokad</option>
               <option value="completed">Genomförd</option>
@@ -84,6 +85,15 @@
               <button class="icon-button" id="close-appointment-editor" type="button" aria-label="Stäng">×</button>
             </div>
             <div id="appointment-detail"></div>
+            <div class="alternative-time-box" id="alternative-time-box" hidden>
+              <p class="section-kicker">ALTERNATIV TID</p>
+              <p class="form-help">Föreslå en tid som fortfarande är ledig.</p>
+              <div class="form-grid">
+                <label class="form-label">Datum <input id="alternative-date" type="date"></label>
+                <label class="form-label">Starttid <input id="alternative-time" type="time" step="900"></label>
+              </div>
+              <button class="button button-secondary button-small" data-suggest-alternative type="button">Föreslå ny tid</button>
+            </div>
             <form id="appointment-form" class="stack-form">
               <input id="appointment-id" type="hidden">
               <label class="form-label">Datum <input id="edit-appointment-date" type="date" required></label>
@@ -94,6 +104,7 @@
               <label class="form-label">Status
                 <select id="edit-appointment-status">
                   <option value="pending">Väntar</option>
+                  <option value="alternative_suggested" disabled>Förslag skickat</option>
                   <option value="confirmed">Bekräftad</option>
                   <option value="cancelled">Avbokad</option>
                   <option value="completed">Genomförd</option>

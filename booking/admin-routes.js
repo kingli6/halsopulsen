@@ -1,5 +1,6 @@
 const express = require("express");
 const { getPool } = require("./db");
+const { getBookingConfig } = require("./config");
 const {
   BookingError
 } = require("./service");
@@ -21,6 +22,17 @@ const {
   updateRule,
   updateService
 } = require("./admin-service");
+const {
+  cancelAppointment,
+  confirmAppointment,
+  suggestAlternative
+} = require("./workflow-service");
+const {
+  isTestFixtureEmail,
+  sendAlternativeEmail,
+  sendCancelledEmail,
+  sendConfirmedEmail
+} = require("./email");
 
 const router = express.Router();
 
@@ -134,9 +146,36 @@ router.get("/appointments/:id", asyncRoute(async (req, res) => {
 }));
 
 router.patch("/appointments/:id", asyncRoute(async (req, res) => {
+  const id = parseId(req.params.id);
+  if (req.body?.action === "suggest_alternative") {
+    const result = await suggestAlternative(getPool(), id, req.body, getBookingConfig());
+    sendAlternativeEmail({
+      booking: result.booking,
+      token: result.actionToken,
+      suppress: isTestFixtureEmail(result.booking.clientEmail)
+    }).catch(error => console.error("Alternative-time email failed:", error.message));
+    return res.json({ ok: true, appointment: result.booking });
+  }
+  if (req.body?.status === "confirmed") {
+    const result = await confirmAppointment(getPool(), id, getBookingConfig());
+    sendConfirmedEmail({
+      booking: result.booking,
+      token: result.actionToken,
+      suppress: isTestFixtureEmail(result.booking.clientEmail)
+    }).catch(error => console.error("Booking confirmation email failed:", error.message));
+    return res.json({ ok: true, appointment: result.booking });
+  }
+  if (req.body?.status === "cancelled") {
+    const result = await cancelAppointment(getPool(), id, getBookingConfig());
+    sendCancelledEmail({
+      booking: result.booking,
+      suppress: isTestFixtureEmail(result.booking.clientEmail)
+    }).catch(error => console.error("Booking cancellation email failed:", error.message));
+    return res.json({ ok: true, appointment: result.booking });
+  }
   res.json({
     ok: true,
-    appointment: await updateAppointment(getPool(), parseId(req.params.id), req.body)
+    appointment: await updateAppointment(getPool(), id, req.body)
   });
 }));
 
