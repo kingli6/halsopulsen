@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hantera bokning · HälsoPulsen</title>
+    <link rel="stylesheet" href="/booking/booking.css">
+  </head>
+  <body>
+    <main class="booking-shell">
+      <section class="booking-container manage-card" aria-labelledby="manage-heading">
+        <p class="eyebrow">HÄLSOPULSEN</p>
+        <h1 id="manage-heading">Hantera din bokning</h1>
+        <div id="manage-status" class="booking-message" role="status" aria-live="polite">
+          Laddar bokningen …
+        </div>
+        <div id="manage-details" class="manage-details" hidden></div>
+        <div id="manage-actions" class="manage-actions" hidden>
+          <button class="button button-primary" id="accept-action" type="button" hidden>Acceptera föreslagen tid</button>
+          <button class="button button-secondary" id="decline-action" type="button" hidden>Tacka nej till förslaget</button>
+          <button class="button button-secondary" id="cancel-action" type="button" hidden>Avboka bokningen</button>
+        </div>
+        <p><a class="text-link" href="/booking">Till bokningssidan</a></p>
+      </section>
+    </main>
+    <script src="/booking/manage.js"></script>
+  </body>
+</html>

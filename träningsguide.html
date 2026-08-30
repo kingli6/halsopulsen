@@ -59,6 +59,7 @@
         <a href="#splits" data-sv="📅 Upplägg" data-en="📅 Structure">📅 Upplägg</a>
         <a href="#ovningar" data-sv="🎥 Övningar" data-en="🎥 Exercises">🎥 Övningar</a>
         <a href="#leomoves" data-sv="🏠 Träna hemma" data-en="🏠 Train at Home">🏠 Träna hemma</a>
+        <a href="#additional-resources" data-sv="🎬 Fler videor" data-en="🎬 More videos">🎬 Fler videor</a>
       </nav>
     </div>
   </div>
@@ -948,7 +949,7 @@
   <section id="leomoves" class="guide-section guide-section--alt">
     <div class="container">
 
-      <div class="section-header-toggle" onclick="toggleSection('leo-content', this)">
+      <div class="section-header-toggle" onclick="toggleSection('home-training-content', this)">
         <h2 class="guide-section-title" data-sv="🏠 Träna hemma" data-en="🏠 Train at Home">🏠 Träna hemma</h2>
         <div class="section-header-actions">
           <button class="section-share-btn" onclick="event.stopPropagation(); shareSection('leomoves')" aria-label="Kopiera länk till sektionen" title="Kopiera länk">
@@ -960,9 +961,13 @@
       </div>
       <p class="guide-section-sub" data-sv="Noggrant utvalda videor från LeoMoves-kanalen — hemmaträning utan utrustning. Filtrera på nivå och tid och klicka direkt till följ-med-delen. Fler nivåer tillkommer allt eftersom." data-en="Carefully selected videos from the LeoMoves channel — home workouts without equipment. Filter by level and time and click straight to the follow-along part. More levels added over time.">Noggrant utvalda videor från LeoMoves-kanalen — hemmaträning utan utrustning. Filtrera på nivå och tid och klicka direkt till följ-med-delen. Fler nivåer tillkommer allt eftersom.</p>
 
-      <div id="leo-content" class="section-collapsible hidden">
+      <div id="home-training-content" class="section-collapsible hidden">
+        <div id="leo-content">
 
-        <p class="leo-bio-note" data-sv="&lt;strong&gt;LeoMoves&lt;/strong&gt; — funktionell rörlighet och kroppsvikt utan utrustning. Välförklarade följ-med-videor för alla nivåer." data-en="&lt;strong&gt;LeoMoves&lt;/strong&gt; — functional mobility and bodyweight with zero equipment. Well-explained follow-along videos for all levels."><strong>LeoMoves</strong> — funktionell rörlighet och kroppsvikt utan utrustning. Välförklarade följ-med-videor för alla nivåer.</p>
+        <div class="video-group-header leo-library-heading">
+          <h3 class="video-group-title" data-sv="LeoMoves" data-en="LeoMoves">LeoMoves</h3>
+          <p class="video-group-sub" data-sv="Funktionell rörlighet och kroppsvikt utan utrustning. Välförklarade följ-med-videor för alla nivåer." data-en="Functional mobility and bodyweight with zero equipment. Well-explained follow-along videos for all levels.">Funktionell rörlighet och kroppsvikt utan utrustning. Välförklarade följ-med-videor för alla nivåer.</p>
+        </div>
 
         <div class="leo-filter-bar">
           <div class="leo-filter-group">
@@ -1685,10 +1690,25 @@
 
         <p class="leo-more-note" data-sv="Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar." data-en="More videos on the way — the library grows as difficulty levels expand.">Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar.</p>
 
-        <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-12) 0 var(--space-8);" />
-        <h3 class="resource-category-title" data-sv="Fler videor & rörelsetips" data-en="More Videos & Movement Tips">Fler videor & rörelsetips</h3>
-        <p class="guide-section-sub" style="margin-bottom:var(--space-6);" data-sv="Kanaler och videor jag återkommer till — flödesrörelse, knähälsa, mobilitet, stretching och lite dans." data-en="Channels and videos I keep coming back to — movement flow, knee health, mobility, stretching and a bit of dance.">Kanaler och videor jag återkommer till — flödesrörelse, knähälsa, mobilitet, stretching och lite dans.</p>
+        </div><!-- /#leo-content -->
 
+      </div><!-- /#home-training-content -->
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       ADDITIONAL VIDEO & MOVEMENT RESOURCES
+  ══════════════════════════════════════════ -->
+  <section id="additional-resources" class="guide-section">
+    <div class="container">
+      <div class="section-header-toggle" onclick="toggleSection('additional-resources-content', this)">
+        <h2 class="guide-section-title" data-sv="🎬 Fler videor & rörelsetips" data-en="🎬 More Videos & Movement Tips">🎬 Fler videor & rörelsetips</h2>
+        <span class="section-chevron">›</span>
+      </div>
+      <p class="guide-section-sub" data-sv="Kanaler och videor jag återkommer till — flödesrörelse, knähälsa, mobilitet, stretching och lite dans." data-en="Channels and videos I keep coming back to — movement flow, knee health, mobility, stretching and a bit of dance.">Kanaler och videor jag återkommer till — flödesrörelse, knähälsa, mobilitet, stretching och lite dans.</p>
+
+      <div id="additional-resources-content" class="section-collapsible hidden">
+        <div class="guide-additional-resources">
         <h3 class="resource-category-title" data-sv="🏠 Fler hemmaträningsresurser" data-en="🏠 More Home Training Resources">🏠 Fler hemmaträningsresurser</h3>
         <div class="resource-link-grid">
           <a href="https://www.fitnessblender.com/videos?exclusive[]=0" target="_blank" rel="noopener noreferrer" class="resource-link-card">
@@ -1794,8 +1814,8 @@
         </div><!-- /.video-grid -->
         </div><!-- /#stretch-content -->
 
-      </div><!-- /#leo-content -->
-
+        </div><!-- /.guide-additional-resources -->
+      </div><!-- /#additional-resources-content -->
     </div>
   </section>
 

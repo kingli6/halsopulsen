@@ -150,7 +150,8 @@ function shareSection(hash) {
 /* ── Auto-open section from URL hash ── */
 (function () {
   const hashMap = {
-    'leomoves':  'leo-content',
+    'leomoves':  'home-training-content',
+    'additional-resources': 'additional-resources-content',
     'ovningar':  'athlean-content',
     'ppl-program': 'ppl-content',
   };

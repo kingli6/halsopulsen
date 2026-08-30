@@ -1,4 +1,4 @@
-modules = ["web", "nodejs-20", "python-base-3.13"]
+modules = ["web", "nodejs-20", "python-base-3.13", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
@@ -21,6 +21,7 @@ args = "Start application"
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
+mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

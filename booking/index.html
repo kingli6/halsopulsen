@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Boka en session med HälsoPulsen. Välj tjänst, tid och skicka en bokningsförfrågan.">
+  <title>Boka en session · HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/booking/booking.css">
+</head>
+<body>
+  <a class="skip-link" href="#booking-main">Hoppa till bokningen</a>
+
+  <header class="booking-header">
+    <div class="booking-container header-inner">
+      <a class="brand" href="/" aria-label="HälsoPulsen startsida">
+        <span class="brand-mark">H</span>
+        <span>Hälso<span class="brand-accent">Pulsen</span></span>
+      </a>
+      <a class="back-link" href="/">Till startsidan <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="booking-main">
+    <section class="booking-hero">
+      <div class="booking-container hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">BOKA EN SESSION</p>
+          <h1>En lugn start på något som gör skillnad.</h1>
+          <p>Välj en tjänst och en tid som passar. Din förfrågan behöver granskas innan tiden är bekräftad.</p>
+        </div>
+        <div class="hero-note" aria-label="Bokningsinformation">
+          <span class="hero-note-icon" aria-hidden="true">✦</span>
+          <strong>Enkel bokning</strong>
+          <span>Välj tid · fyll i dina uppgifter · skicka</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="booking-section">
+      <div class="booking-container">
+        <div class="booking-layout">
+          <div class="booking-card" id="booking-app">
+            <div class="progress-header">
+              <div>
+                <p class="section-kicker">BOKNINGSFÖRFRÅGAN</p>
+                <h2 id="step-heading">Välj en tjänst</h2>
+              </div>
+              <span class="step-count" id="step-count">1 av 4</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <span id="progress-bar"></span>
+            </div>
+
+            <div class="booking-message" id="booking-message" role="status" aria-live="polite" hidden></div>
+
+            <section class="booking-step" id="step-service" aria-labelledby="step-heading">
+              <p class="step-intro">Vad vill du boka?</p>
+              <div class="service-list" id="service-list" aria-live="polite">
+                <div class="loading-state"><span class="loader" aria-hidden="true"></span>Laddar tjänster…</div>
+              </div>
+            </section>
+
+            <section class="booking-step" id="step-schedule" aria-labelledby="schedule-heading" hidden>
+              <div class="step-heading-row">
+                <div>
+                  <p class="step-intro">När passar det?</p>
+                  <h3 id="schedule-heading">Välj datum och tid</h3>
+                </div>
+                <button class="text-button" id="back-to-service" type="button">Byt tjänst</button>
+              </div>
+              <div class="selected-service" id="selected-service"></div>
+              <label class="field-label" for="booking-date">Datum
+                <select id="booking-date" required aria-label="Välj bokningsdatum"></select>
+              </label>
+              <div class="availability-heading">
+                <span class="field-label">Lediga tider</span>
+                <span class="availability-caption" id="availability-caption"></span>
+              </div>
+              <div class="time-list" id="time-list" role="listbox" aria-label="Lediga tider" aria-live="polite">
+                <div class="empty-state">Välj ett datum för att se lediga tider.</div>
+              </div>
+            </section>
+
+            <section class="booking-step" id="step-details" aria-labelledby="details-heading" hidden>
+              <div class="step-heading-row">
+                <div>
+                  <p class="step-intro">Nästan klart</p>
+                  <h3 id="details-heading">Dina uppgifter</h3>
+                </div>
+                <button class="text-button" id="back-to-schedule" type="button">Byt tid</button>
+              </div>
+              <div class="selected-service selected-slot" id="selected-slot"></div>
+              <form id="details-form" novalidate>
+                <div class="form-grid">
+                  <label class="field-label" for="client-name">Namn
+                    <input id="client-name" name="clientName" type="text" maxlength="120" autocomplete="name" required>
+                  </label>
+                  <label class="field-label" for="client-email">E-post
+                    <input id="client-email" name="email" type="email" maxlength="254" autocomplete="email" required>
+                  </label>
+                </div>
+                <label class="field-label" for="client-phone">Telefon <span class="optional-label">valfritt</span>
+                  <input id="client-phone" name="phone" type="tel" maxlength="40" autocomplete="tel">
+                </label>
+                <label class="field-label" for="client-notes">Meddelande <span class="optional-label">valfritt</span>
+                  <textarea id="client-notes" name="notes" maxlength="1000" rows="4" aria-describedby="client-notes-count" placeholder="Berätta gärna om något vi behöver veta."></textarea>
+                  <span class="character-count" id="client-notes-count" aria-live="polite">0 / 1000</span>
+                </label>
+                <p class="form-hint">Vi använder uppgifterna för att hantera din bokningsförfrågan.</p>
+                <button class="button button-primary" type="submit">Granska bokning <span aria-hidden="true">→</span></button>
+              </form>
+            </section>
+
+            <section class="booking-step" id="step-review" aria-labelledby="review-heading" hidden>
+              <div class="step-heading-row">
+                <div>
+                  <p class="step-intro">Kontrollera uppgifterna</p>
+                  <h3 id="review-heading">Granska din bokning</h3>
+                </div>
+                <button class="text-button" id="back-to-details" type="button">Redigera</button>
+              </div>
+              <div class="review-summary" id="review-summary"></div>
+              <p class="review-note">Tiden är inte bekräftad ännu. Vi återkommer efter att din förfrågan har granskats.</p>
+              <button class="button button-primary submit-button" id="submit-booking" type="button">
+                <span class="submit-label">Skicka bokningsförfrågan</span>
+                <span class="button-loader" aria-hidden="true"></span>
+              </button>
+            </section>
+
+            <section class="booking-step confirmation-step" id="step-confirmation" aria-labelledby="confirmation-heading" hidden>
+              <div class="confirmation-icon" aria-hidden="true">✓</div>
+              <p class="section-kicker">FÖRFRÅGAN SKICKAD</p>
+              <h2 id="confirmation-heading">Tack för din förfrågan.</h2>
+              <p class="confirmation-copy">Din bokningsförfrågan har tagits emot. Den är inte bekräftad ännu. Du får en bekräftelse efter att den har granskats.</p>
+              <div class="confirmation-details" id="confirmation-details"></div>
+              <span class="pending-status">Status: väntar · inväntar granskning</span>
+              <div class="confirmation-actions">
+                <button class="button button-primary" id="book-another" type="button">Boka en ny tid</button>
+                <a class="button button-secondary" href="/">Tillbaka till HälsoPulsen</a>
+              </div>
+            </section>
+          </div>
+
+          <aside class="booking-aside">
+            <div class="aside-card">
+              <span class="aside-number">01</span>
+              <h2>Du väljer tiden</h2>
+              <p>Alla tider som visas är hämtade direkt från den aktuella kalendern.</p>
+            </div>
+            <div class="aside-card">
+              <span class="aside-number">02</span>
+              <h2>Jag återkommer</h2>
+                <p>En inskickad förfrågan väntar tills den har granskats och bekräftats.</p>
+            </div>
+            <p class="aside-footnote">HälsoPulsen · Europe/Stockholm</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="booking-footer">
+    <div class="booking-container">
+      <span>HälsoPulsen</span>
+      <span>Personlig träning · massage · kostcoaching</span>
+    </div>
+  </footer>
+
+  <script src="/booking/booking.js"></script>
+</body>
+</html>
