@@ -9,7 +9,8 @@
     "audit:footprint": "node scripts/audit-footprint.js",
     "test:shared-log": "node scripts/test-shared-log-concurrency.js",
     "db:migrate": "node scripts/db-migrate.js",
-    "test:booking-db": "node scripts/test-booking-db.js"
+    "test:booking-db": "node scripts/test-booking-db.js",
+    "db:migrate:supabase": "node scripts/migrate-supabase-booking.js"
   },
   "dependencies": {
     "@clerk/express": "^2.1.61",
