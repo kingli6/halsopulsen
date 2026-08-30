@@ -408,6 +408,13 @@
 .video-group-header { margin: var(--space-10) 0 var(--space-5); padding-bottom: var(--space-3); border-bottom: 2px solid var(--color-border); }
 .video-group-title { font-size: var(--size-lg); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-1); }
 .video-group-sub { font-size: var(--size-sm); color: var(--color-text-muted); }
+.leo-library-heading { margin-top: 0; }
+.guide-additional-resources {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-10);
+  padding-top: var(--space-2);
+}
+.guide-additional-resources > hr { display: none; }
 
 /* ── RESOURCE CARDS (Facebook, websites) ── */
 .resource-card {
