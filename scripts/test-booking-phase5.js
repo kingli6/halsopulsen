@@ -4,7 +4,8 @@ const { addDays, localDateForInstant, localDateTimeToDate, weekdayForDateOnly } 
 const {
   createBlockedTime,
   createRule,
-  createService
+  createService,
+  updateAppointment
 } = require("../booking/admin-service");
 const {
   BookingError,
@@ -126,6 +127,29 @@ async function main() {
     const acceptedDate = await prepareDay(7);
     const pendingToAccept = await makeBooking(acceptedDate, "09:00", "accept");
     const acceptedId = await appointmentId(pool, pendingToAccept.clientEmail);
+    const emptyBreak = await updateAppointment(pool, acceptedId, {
+      date: acceptedDate,
+      start: "09:00",
+      breakMinutesOverride: "",
+      status: "pending"
+    }, config);
+    assert.strictEqual(emptyBreak.breakMinutesOverride, null);
+    const zeroBreak = await updateAppointment(pool, acceptedId, {
+      date: acceptedDate,
+      start: "09:00",
+      breakMinutesOverride: 0,
+      status: "pending"
+    }, config);
+    assert.strictEqual(zeroBreak.breakMinutesOverride, 0);
+    await assert.rejects(
+      updateAppointment(pool, acceptedId, {
+        date: acceptedDate,
+        start: "09:00",
+        breakMinutesOverride: "not-a-number",
+        status: "pending"
+      }, config),
+      error => assertBookingError(error, "invalid_input")
+    );
     const alternative = await suggestAlternative(pool, acceptedId, {
       alternativeDate: acceptedDate,
       alternativeStart: "11:00"
@@ -136,6 +160,24 @@ async function main() {
     const accepted = await acceptAlternative(pool, alternative.actionToken, config);
     assert.strictEqual(accepted.booking.status, "confirmed");
     assert.strictEqual((await getClientAction(pool, accepted.actionToken, config)).status, "confirmed");
+
+    const effectiveBreakDate = await prepareDay(14);
+    const pendingWithNoBreak = await makeBooking(effectiveBreakDate, "09:00", "effective-break");
+    const noBreakId = await appointmentId(pool, pendingWithNoBreak.clientEmail);
+    await updateAppointment(pool, noBreakId, {
+      date: effectiveBreakDate,
+      start: "09:00",
+      breakMinutesOverride: 0,
+      status: "pending"
+    }, config);
+    const nextAppointment = await makeBooking(effectiveBreakDate, "12:00", "effective-break-blocker");
+    await confirmAppointment(pool, await appointmentId(pool, nextAppointment.clientEmail), config);
+    const effectiveBreakOffer = await suggestAlternative(pool, noBreakId, {
+      alternativeDate: effectiveBreakDate,
+      alternativeStart: "11:00"
+    }, config);
+    assert.strictEqual(effectiveBreakOffer.booking.status, "alternative_suggested");
+    await declineAlternative(pool, effectiveBreakOffer.actionToken, config);
 
     const declinedDate = await prepareDay(8);
     const pendingToDecline = await makeBooking(declinedDate, "09:00", "decline");

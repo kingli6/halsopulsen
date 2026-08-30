@@ -200,9 +200,11 @@ function availableSlotsForDate(dateValue, service, data, options) {
     config,
     earliestStart,
     latestStart,
+    durationMinutes = service.duration_minutes,
+    breakMinutes = service.default_break_minutes,
     timezone = config.timezone
   } = options;
-  const totalMinutes = Number(service.duration_minutes) + Number(service.default_break_minutes);
+  const totalMinutes = Number(durationMinutes) + Number(breakMinutes);
   const windows = dateWindows(dateValue, data, config);
   const blockedIntervals = data.blocked.map(row => ({
     start: toDate(row.starts_at),
@@ -251,6 +253,8 @@ async function calculateAvailability({
   fromDate,
   toDate: requestedToDate,
   now = new Date(),
+  durationMinutes,
+  breakMinutes,
   config: suppliedConfig
 }) {
   const config = getBookingConfig(suppliedConfig);
@@ -294,7 +298,9 @@ async function calculateAvailability({
     const { slots, unavailableTimes } = availableSlotsForDate(dateValue, service, data, {
       config,
       earliestStart,
-      latestStart
+      latestStart,
+      durationMinutes,
+      breakMinutes
     });
     if (slots.length > 0 || unavailableTimes.length > 0) {
       dates.push({

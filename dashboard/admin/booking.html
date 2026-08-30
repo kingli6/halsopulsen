@@ -87,11 +87,12 @@
             <div id="appointment-detail"></div>
             <div class="alternative-time-box" id="alternative-time-box" hidden>
               <p class="section-kicker">ALTERNATIV TID</p>
-              <p class="form-help">Föreslå en tid som fortfarande är ledig.</p>
+              <p class="form-help">Skicka en föreslagen tid till kunden. Bokningen bekräftas först när kunden accepterar.</p>
               <div class="form-grid">
                 <label class="form-label">Datum <input id="alternative-date" type="date"></label>
                 <label class="form-label">Starttid <input id="alternative-time" type="time" step="900"></label>
               </div>
+              <div class="alternative-feedback" id="alternative-feedback" role="status" aria-live="polite" hidden></div>
               <button class="button button-secondary button-small" data-suggest-alternative type="button">Föreslå ny tid</button>
             </div>
             <form id="appointment-form" class="stack-form">
@@ -110,6 +111,7 @@
                   <option value="completed">Genomförd</option>
                 </select>
               </label>
+              <div class="appointment-feedback" id="appointment-feedback" role="alert" aria-live="polite" hidden></div>
               <button class="button button-primary" type="submit">Spara ändringar</button>
             </form>
           </aside>
