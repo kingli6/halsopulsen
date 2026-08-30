@@ -555,6 +555,8 @@
           return;
         }
         target.disabled = true;
+        target.classList.add("is-loading");
+        target.textContent = "Kontrollerar tillgängligheten…";
         alternativeFeedback("Kontrollerar tillgängligheten…");
         (async () => {
           try {
@@ -578,6 +580,8 @@
             alternativeFeedback(alternativeErrorMessage(error), true);
           } finally {
             target.disabled = false;
+            target.classList.remove("is-loading");
+            target.textContent = "Föreslå ny tid";
           }
         })();
       }
