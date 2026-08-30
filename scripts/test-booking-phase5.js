@@ -109,6 +109,10 @@ async function main() {
       availableAfterCancel.dates.some(date => date.times.some(time => time.localTime === "09:00")),
       "Cancelled appointments should no longer block availability."
     );
+    const reopenedPending = await updateAppointment(pool, cancelledId, { status: "pending" }, config);
+    assert.strictEqual(reopenedPending.status, "pending");
+    assert.strictEqual(reopenedPending.breakMinutesOverride, null);
+    await cancelAppointment(pool, cancelledId, config);
     const reopened = await confirmAppointment(pool, cancelledId, config);
     assert.strictEqual(reopened.booking.status, "confirmed");
     const unavailableAfterReopen = await calculateAvailability({

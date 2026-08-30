@@ -280,6 +280,21 @@
     window.scrollTo({ top: $("booking-app").offsetTop - 24, behavior: "smooth" });
   }
 
+  function resetBookingFlow() {
+    state.selectedService = null;
+    state.selectedDate = today();
+    state.availableTimes = [];
+    state.unavailableTimes = [];
+    state.selectedSlot = null;
+    state.submitting = false;
+    $("details-form").reset();
+    $("booking-date").value = state.selectedDate;
+    renderServices();
+    renderTimes();
+    clearMessage();
+    setStep("service");
+  }
+
   async function submitBooking() {
     if (state.submitting || !state.selectedService || !state.selectedSlot) return;
     state.submitting = true;
@@ -348,6 +363,7 @@
       clearMessage();
       setStep("details");
     });
+    $("book-another").addEventListener("click", resetBookingFlow);
     $("details-form").addEventListener("submit", event => {
       event.preventDefault();
       clearMessage();
