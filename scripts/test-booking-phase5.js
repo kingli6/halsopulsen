@@ -127,6 +127,16 @@ async function main() {
       !unavailableAfterReopen.dates.some(date => date.times.some(time => time.localTime === "09:00")),
       "Reconfirmed appointments should block availability again."
     );
+    const confirmedToCancelled = await cancelAppointment(pool, cancelledId, config);
+    assert.strictEqual(confirmedToCancelled.booking.status, "cancelled");
+    const cancelledToPending = await updateAppointment(pool, cancelledId, { status: "pending" }, config);
+    assert.strictEqual(cancelledToPending.status, "pending");
+    const pendingToCancelled = await cancelAppointment(pool, cancelledId, config);
+    assert.strictEqual(pendingToCancelled.booking.status, "cancelled");
+    const cancelledToConfirmed = await confirmAppointment(pool, cancelledId, config);
+    assert.strictEqual(cancelledToConfirmed.booking.status, "confirmed");
+    const confirmedToPending = await updateAppointment(pool, cancelledId, { status: "pending" }, config);
+    assert.strictEqual(confirmedToPending.status, "pending");
 
     const acceptedDate = await prepareDay(7);
     const pendingToAccept = await makeBooking(acceptedDate, "09:00", "accept");
@@ -164,6 +174,16 @@ async function main() {
     const accepted = await acceptAlternative(pool, alternative.actionToken, config);
     assert.strictEqual(accepted.booking.status, "confirmed");
     assert.strictEqual((await getClientAction(pool, accepted.actionToken, config)).status, "confirmed");
+    const completed = await updateAppointment(pool, acceptedId, { status: "completed" }, config);
+    assert.strictEqual(completed.status, "completed");
+    await assert.rejects(
+      updateAppointment(pool, acceptedId, { status: "pending" }, config),
+      error => assertBookingError(error, "invalid_transition")
+    );
+    await assert.rejects(
+      cancelAppointment(pool, acceptedId, config),
+      error => assertBookingError(error, "invalid_transition")
+    );
 
     const effectiveBreakDate = await prepareDay(14);
     const pendingWithNoBreak = await makeBooking(effectiveBreakDate, "09:00", "effective-break");
