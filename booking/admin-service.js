@@ -294,11 +294,12 @@ function appointmentStartInput(body, config, existingStart) {
 }
 
 function appointmentBreakInput(body, existing) {
-  if (!Object.prototype.hasOwnProperty.call(body || {}, "breakMinutesOverride")
-    && !Object.prototype.hasOwnProperty.call(body || {}, "break_minutes_override")) {
+  const hasCamelCase = Object.prototype.hasOwnProperty.call(body || {}, "breakMinutesOverride");
+  const hasSnakeCase = Object.prototype.hasOwnProperty.call(body || {}, "break_minutes_override");
+  if (!hasCamelCase && !hasSnakeCase) {
     return existing;
   }
-  const value = body.breakMinutesOverride ?? body.break_minutes_override;
+  const value = hasCamelCase ? body.breakMinutesOverride : body.break_minutes_override;
   if (value === null || value === "") return null;
   return integerValue(value, "Break override", { min: 0, max: 1440 });
 }
@@ -645,6 +646,9 @@ async function updateAppointment(pool, id, body, config = getBookingConfig()) {
     }
     const existing = result.rows[0];
     const status = appointmentStatusInput(body, existing.status);
+    if (existing.status === "completed" && status !== "completed") {
+      throw new BookingError("Completed appointments cannot be reopened or cancelled.", 409, "invalid_transition");
+    }
     const startsAt = appointmentStartInput(body, config, existing.starts_at);
     if (Number.isNaN(startsAt.getTime())) {
       throw new BookingError("Appointment start time is invalid.", 400, "invalid_timestamp");
