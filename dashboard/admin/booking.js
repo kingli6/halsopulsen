@@ -339,7 +339,7 @@
         ${["pending", "cancelled"].includes(item.status)
           ? `<button class="button button-secondary button-small" data-quick-status="confirmed" type="button">${item.status === "cancelled" ? "Återaktivera och bekräfta" : "Bekräfta"}</button>`
           : ""}
-        ${item.status !== "cancelled" ? '<button class="button button-secondary button-small" data-quick-status="cancelled" type="button">Avboka</button>' : ""}
+        ${item.status !== "cancelled" ? '<button class="button button-secondary button-small danger-button" data-quick-status="cancelled" type="button">Avboka</button>' : ""}
         ${["pending", "confirmed"].includes(item.status) ? '<button class="button button-secondary button-small" data-quick-status="completed" type="button">Markera klar</button>' : ""}
       </div>
     `;
@@ -536,6 +536,10 @@
         if (item) openAppointment(item);
       }
       if (target.dataset.quickStatus && state.editingAppointment) {
+        if (target.dataset.quickStatus === "cancelled"
+          && !window.confirm("Avboka den här bokningen?")) {
+          return;
+        }
         api(`/appointments/${state.editingAppointment.id}`, {
           method: "PATCH",
           body: JSON.stringify({ status: target.dataset.quickStatus })
@@ -547,7 +551,8 @@
           toast("Bokningens status uppdaterades.");
         }).catch(error => message(error.message, true));
       }
-      if (target.dataset.suggestAlternative && state.editingAppointment) {
+      if (Object.prototype.hasOwnProperty.call(target.dataset, "suggestAlternative")
+        && state.editingAppointment) {
         const date = $("alternative-date").value;
         const start = $("alternative-time").value;
         if (!date || !start) {
