@@ -32,7 +32,6 @@ class FakeElement {
       ...event
     };
     if (this.id === "service-list") {
-      console.log("UI test dispatch", type, this.listeners[type]?.length || 0);
     }
     return Promise.all((this.listeners[type] || []).map(listener => listener(dispatched)));
   }
@@ -117,18 +116,14 @@ async function main() {
     console,
     document,
     fetch,
+    URLSearchParams,
     window: {
       scrollTo() {}
     },
     setTimeout,
     clearTimeout
   };
-  const bookingScript = fs.readFileSync("booking/booking.js", "utf8")
-    .replace(
-      "function selectService(id) {",
-      "function selectService(id) { console.log(\"UI test select\", id, state.services, \"date\", state.selectedDate);"
-    )
-    .replace("  async function loadAvailability() {", "  async function loadAvailability() { console.log(\"UI test availability\", state.selectedService, state.selectedDate);");
+  const bookingScript = fs.readFileSync("booking/booking.js", "utf8");
   vm.runInNewContext(bookingScript, context);
   await flush();
 
