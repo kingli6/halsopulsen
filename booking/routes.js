@@ -15,7 +15,7 @@ const {
 } = require("./time");
 const {
   isTestFixtureEmail,
-  sendAdminNewRequestEmail,
+  sendNewRequestAdminEmail,
   sendRequestReceivedEmail
 } = require("./email");
 
@@ -90,9 +90,11 @@ router.post("/requests", asyncRoute(async (req, res) => {
     });
     const booking = result;
     const suppressEmail = isTestFixtureEmail(booking.clientEmail);
-    sendRequestReceivedEmail({ booking, token: booking.actionToken, suppress: suppressEmail })
+    Promise.resolve()
+      .then(() => sendRequestReceivedEmail({ booking, token: booking.actionToken, suppress: suppressEmail }))
       .catch(error => console.error("Booking request email failed:", error.message));
-    sendAdminNewRequestEmail({ booking, suppress: suppressEmail })
+    Promise.resolve()
+      .then(() => sendNewRequestAdminEmail({ booking, suppress: suppressEmail }))
       .catch(error => console.error("Booking admin notification failed:", error.message));
     res.status(201).json({
       ok: true,
