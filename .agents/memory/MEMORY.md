@@ -12,3 +12,4 @@
 - [Critical product decisions](critical-product-decisions.md) — challenge ideas honestly, prefer familiar proven patterns, and avoid overengineering the MVP.
 - [Supabase production booking boundary](supabase-production-booking.md) — production booking data is explicitly Supabase; Replit PostgreSQL remains development-only.
 - [Booking Phase 2 runtime constraints](booking-phase2-runtime.md) — normalize PostgreSQL DATE values and serialize queries on pinned transaction clients.
+- [Production booking test environment](production-booking-test-environment.md) — direct shell runs may not receive the configured Supabase secret even when the workspace reports it exists.

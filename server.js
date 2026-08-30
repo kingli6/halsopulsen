@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { clerkMiddleware, getAuth } = require('@clerk/express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { bookingRouter } = require('./booking/routes');
+const { bookingAdminRouter } = require('./booking/admin-routes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -169,6 +170,10 @@ app.use('/api', (req, res, next) => {
   mutationRateLimiter(req, res, next);
 });
 app.use('/api/booking', bookingRouter);
+app.use('/api/booking/admin', (req, res, next) => {
+  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+  next();
+}, bookingAdminRouter);
 
 app.get('/api/auth/config', (req, res) => {
   res.json({ ok: true, publishableKey: process.env.CLERK_PUBLISHABLE_KEY || '' });
@@ -225,6 +230,14 @@ app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
 });
+function serveBookingAdminPage(req, res) {
+  if (!readAdminSession(req)) {
+    return res.redirect(`/admin?next=${encodeURIComponent('/admin/booking/')}`);
+  }
+  return res.sendFile(path.join(__dirname, 'dashboard', 'admin', 'booking.html'));
+}
+app.get(['/admin/booking', '/admin/booking/'], serveBookingAdminPage);
+app.get('/dashboard/admin/booking.html', serveBookingAdminPage);
 app.get(['/p/:token', '/p/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
 // Keep legacy challenge URLs redirected after retiring the old implementation.
 app.get(['/challenge', '/challenge/'], (req, res) => res.redirect('/'));
