@@ -4,6 +4,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { clerkMiddleware, getAuth } = require('@clerk/express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { bookingRouter } = require('./booking/routes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -167,6 +168,7 @@ app.use('/api', (req, res, next) => {
   if (!['POST', 'PUT', 'DELETE'].includes(req.method)) return next();
   mutationRateLimiter(req, res, next);
 });
+app.use('/api/booking', bookingRouter);
 
 app.get('/api/auth/config', (req, res) => {
   res.json({ ok: true, publishableKey: process.env.CLERK_PUBLISHABLE_KEY || '' });

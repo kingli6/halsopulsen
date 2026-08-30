@@ -53,3 +53,37 @@ appointments. Cancelled appointments do not reserve time.
 The current schema models one bookable practitioner/calendar. Supporting
 multiple practitioners or rooms should add an explicit resource dimension
 before those features are introduced.
+
+## Phase 2 booking API
+
+The server exposes these same-origin endpoints:
+
+```text
+GET  /api/booking/services
+GET  /api/booking/availability?service=PT&from=YYYY-MM-DD&to=YYYY-MM-DD
+POST /api/booking/requests
+```
+
+The availability response contains only public service details and available
+start times. The request body accepts `service`, `startAt` (or `startTime`),
+`clientName`, `email`, and optional `phone` and `notes`. A successful request
+creates a `pending` appointment and returns no appointment or client record.
+
+Availability is calculated on the server in `Europe/Stockholm` by default.
+The default minimum notice is 12 hours, the booking horizon is 60 days, and
+pending requests stop blocking slots after 24 hours. These values can be
+configured with `BOOKING_TIMEZONE`, `BOOKING_MIN_NOTICE_HOURS`,
+`BOOKING_HORIZON_DAYS`, `BOOKING_PENDING_EXPIRATION_HOURS`, and
+`BOOKING_SLOT_INTERVAL_MINUTES`.
+
+Pending expiration is lazy: expired rows are excluded from availability and
+the final booking check without a background cleanup job. Booking requests
+take a transaction-scoped calendar advisory lock, then recheck the complete
+occupied interval including the effective break before inserting. This keeps
+simultaneous requests from double-booking the single calendar.
+
+The production integration checks run explicitly against Supabase:
+
+```text
+npm run test:booking-phase2
+```

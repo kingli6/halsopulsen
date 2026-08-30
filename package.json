@@ -10,6 +10,7 @@
     "test:shared-log": "node scripts/test-shared-log-concurrency.js",
     "db:migrate": "node scripts/db-migrate.js",
     "test:booking-db": "node scripts/test-booking-db.js",
+    "test:booking-phase2": "NODE_ENV=production node scripts/test-booking-phase2.js",
     "db:migrate:supabase": "node scripts/migrate-supabase-booking.js"
   },
   "dependencies": {
