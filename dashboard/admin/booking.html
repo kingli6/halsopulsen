@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Booking admin · HälsoPulsen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/dashboard/portal.css">
+  <link rel="stylesheet" href="/dashboard/admin/booking.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/"><span class="brand-mark">H</span><span>Hälso<span class="brand-accent">Pulsen</span></span></a>
+      <nav class="topnav" aria-label="Admin navigation">
+        <a class="topnav-link" href="/admin/plans">Planering</a>
+        <a class="topnav-link active" href="/admin/booking">Bokningar</a>
+        <button class="topnav-link topnav-button" id="logout-button" type="button">Logga ut</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page booking-page">
+    <div class="shell">
+      <div class="page-intro booking-intro">
+        <div>
+          <p class="eyebrow">ADMIN · BOKNING</p>
+          <h1>Håll kalendern tydlig.</h1>
+          <p class="intro-copy">Hantera tjänster, arbetstider, undantag och bokningar i Europe/Stockholm.</p>
+        </div>
+        <div class="intro-actions">
+          <span class="local-owner-badge">Skyddad adminvy</span>
+          <button class="button button-secondary" id="refresh-all" type="button">Uppdatera</button>
+        </div>
+      </div>
+
+      <div class="booking-notice" id="page-message" role="status" aria-live="polite" hidden></div>
+
+      <div class="booking-tabs" role="tablist" aria-label="Bokningsadministration">
+        <button class="booking-tab is-active" data-panel="appointments" role="tab" aria-selected="true" type="button">Bokningar</button>
+        <button class="booking-tab" data-panel="calendar" role="tab" aria-selected="false" type="button">Kalender</button>
+        <button class="booking-tab" data-panel="services" role="tab" aria-selected="false" type="button">Tjänster</button>
+        <button class="booking-tab" data-panel="hours" role="tab" aria-selected="false" type="button">Arbetstider</button>
+        <button class="booking-tab" data-panel="overrides" role="tab" aria-selected="false" type="button">Undantag</button>
+        <button class="booking-tab" data-panel="blocks" role="tab" aria-selected="false" type="button">Blockerade tider</button>
+      </div>
+
+      <section class="booking-panel" id="panel-appointments" role="tabpanel">
+        <div class="section-heading-row">
+          <div>
+            <p class="section-kicker">BOKNINGAR</p>
+            <h2>Kommande och historik</h2>
+          </div>
+          <span class="range-label" id="appointment-count">Laddar…</span>
+        </div>
+        <form class="filter-bar" id="appointment-filters">
+          <label class="form-label">Status
+            <select id="appointment-status">
+              <option value="">Alla</option>
+              <option value="pending">Väntar</option>
+              <option value="confirmed">Bekräftad</option>
+              <option value="cancelled">Avbokad</option>
+              <option value="completed">Genomförd</option>
+            </select>
+          </label>
+          <label class="form-label">Från <input id="appointment-from" type="date"></label>
+          <label class="form-label">Till <input id="appointment-to" type="date"></label>
+          <button class="button button-secondary button-small" type="submit">Filtrera</button>
+        </form>
+        <div class="appointment-layout">
+          <div class="card data-card">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Tid</th><th>Kund</th><th>Tjänst</th><th>Status</th><th></th></tr></thead>
+                <tbody id="appointments-list"></tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="card editor-card" id="appointment-editor" hidden>
+            <div class="section-heading-row compact">
+              <div><p class="section-kicker">REDIGERA</p><h2>Bokningsdetaljer</h2></div>
+              <button class="icon-button" id="close-appointment-editor" type="button" aria-label="Stäng">×</button>
+            </div>
+            <div id="appointment-detail"></div>
+            <form id="appointment-form" class="stack-form">
+              <input id="appointment-id" type="hidden">
+              <label class="form-label">Datum <input id="edit-appointment-date" type="date" required></label>
+              <label class="form-label">Starttid <input id="edit-appointment-time" type="time" step="900" required></label>
+              <label class="form-label">Paus efter session (minuter)
+                <input id="edit-appointment-break" type="number" min="0" max="1440" step="1" placeholder="Tjänstens standard">
+              </label>
+              <label class="form-label">Status
+                <select id="edit-appointment-status">
+                  <option value="pending">Väntar</option>
+                  <option value="confirmed">Bekräftad</option>
+                  <option value="cancelled">Avbokad</option>
+                  <option value="completed">Genomförd</option>
+                </select>
+              </label>
+              <button class="button button-primary" type="submit">Spara ändringar</button>
+            </form>
+          </aside>
+        </div>
+      </section>
+
+      <section class="booking-panel" id="panel-calendar" role="tabpanel" hidden>
+        <div class="section-heading-row">
+          <div><p class="section-kicker">KALENDER</p><h2>En enkel dagvy</h2></div>
+          <span class="range-label">Europe/Stockholm</span>
+        </div>
+        <form class="filter-bar" id="calendar-filters">
+          <label class="form-label">Från <input id="calendar-from" type="date" required></label>
+          <label class="form-label">Till <input id="calendar-to" type="date" required></label>
+          <button class="button button-secondary button-small" type="submit">Visa kalender</button>
+        </form>
+        <div class="calendar-grid" id="calendar-list"></div>
+      </section>
+
+      <section class="booking-panel" id="panel-services" role="tabpanel" hidden>
+        <div class="section-heading-row"><div><p class="section-kicker">TJÄNSTER</p><h2>Det kunden kan boka</h2></div></div>
+        <div class="two-column-admin">
+          <form class="card editor-card stack-form" id="service-form">
+            <div class="section-heading-row compact"><div><p class="section-kicker">NY / REDIGERA</p><h2 id="service-form-title">Lägg till tjänst</h2></div><button class="text-button" id="reset-service" type="button">Rensa</button></div>
+            <input id="service-id" type="hidden">
+            <label class="form-label">Namn <input id="service-name" maxlength="120" required></label>
+            <label class="form-label">Beskrivning <textarea id="service-description" maxlength="1000" rows="3"></textarea></label>
+            <div class="form-grid">
+              <label class="form-label">Längd (min) <input id="service-duration" type="number" min="1" max="1440" required></label>
+              <label class="form-label">Standardpaus (min) <input id="service-break" type="number" min="0" max="1440" required></label>
+            </div>
+            <div class="form-grid">
+              <label class="form-label">Sortering <input id="service-order" type="number" min="0" max="10000" value="0" required></label>
+              <label class="check-label"><input id="service-active" type="checkbox" checked> Aktiv för kunder</label>
+            </div>
+            <button class="button button-primary" type="submit">Spara tjänst</button>
+          </form>
+          <div class="card data-card"><div class="resource-list" id="services-list"></div></div>
+        </div>
+      </section>
+
+      <section class="booking-panel" id="panel-hours" role="tabpanel" hidden>
+        <div class="section-heading-row"><div><p class="section-kicker">ARBETSTIDER</p><h2>Återkommande öppettider</h2></div></div>
+        <div class="two-column-admin">
+          <form class="card editor-card stack-form" id="hours-form">
+            <div class="section-heading-row compact"><div><p class="section-kicker">NY / REDIGERA</p><h2 id="hours-form-title">Lägg till period</h2></div><button class="text-button" id="reset-hours" type="button">Rensa</button></div>
+            <input id="hours-id" type="hidden">
+            <label class="form-label">Veckodag
+              <select id="hours-weekday"><option value="1">Måndag</option><option value="2">Tisdag</option><option value="3">Onsdag</option><option value="4">Torsdag</option><option value="5">Fredag</option><option value="6">Lördag</option><option value="7">Söndag</option></select>
+            </label>
+            <div class="form-grid"><label class="form-label">Från <input id="hours-start" type="time" required></label><label class="form-label">Till <input id="hours-end" type="time" required></label></div>
+            <div class="form-grid"><label class="form-label">Gäller från <input id="hours-effective-from" type="date" required></label><label class="form-label">Gäller till <input id="hours-effective-until" type="date"></label></div>
+            <label class="check-label"><input id="hours-active" type="checkbox" checked> Aktiv regel</label>
+            <button class="button button-primary" type="submit">Spara arbetstid</button>
+          </form>
+          <div class="card data-card"><div class="resource-list" id="hours-list"></div></div>
+        </div>
+      </section>
+
+      <section class="booking-panel" id="panel-overrides" role="tabpanel" hidden>
+        <div class="section-heading-row"><div><p class="section-kicker">UNDANTAG</p><h2>Enstaka tillgänglighet</h2></div></div>
+        <div class="two-column-admin">
+          <form class="card editor-card stack-form" id="override-form">
+            <div class="section-heading-row compact"><div><p class="section-kicker">NY / REDIGERA</p><h2 id="override-form-title">Lägg till undantag</h2></div><button class="text-button" id="reset-override" type="button">Rensa</button></div>
+            <input id="override-id" type="hidden">
+            <label class="form-label">Datum <input id="override-date" type="date" required></label>
+            <label class="form-label">Typ
+              <select id="override-type"><option value="period">Egen period</option><option value="unavailable">Helt stängt</option></select>
+            </label>
+            <div class="form-grid" id="override-times"><label class="form-label">Från <input id="override-start" type="time"></label><label class="form-label">Till <input id="override-end" type="time"></label></div>
+            <label class="form-label">Anteckning <input id="override-reason" maxlength="500" placeholder="Till exempel semester"></label>
+            <label class="check-label"><input id="override-active" type="checkbox" checked> Aktivt undantag</label>
+            <button class="button button-primary" type="submit">Spara undantag</button>
+          </form>
+          <div class="card data-card"><div class="resource-list" id="overrides-list"></div></div>
+        </div>
+      </section>
+
+      <section class="booking-panel" id="panel-blocks" role="tabpanel" hidden>
+        <div class="section-heading-row"><div><p class="section-kicker">BLOCKERADE TIDER</p><h2>Håll kalendern stängd</h2></div></div>
+        <div class="two-column-admin">
+          <form class="card editor-card stack-form" id="block-form">
+            <div class="section-heading-row compact"><div><p class="section-kicker">NY / REDIGERA</p><h2 id="block-form-title">Blockera tid</h2></div><button class="text-button" id="reset-block" type="button">Rensa</button></div>
+            <input id="block-id" type="hidden">
+            <label class="form-label">Datum <input id="block-date" type="date" required></label>
+            <div class="form-grid"><label class="form-label">Från <input id="block-start" type="time" required></label><label class="form-label">Till <input id="block-end" type="time" required></label></div>
+            <label class="form-label">Anledning <input id="block-reason" maxlength="500" placeholder="Till exempel lunch eller ledighet"></label>
+            <button class="button button-primary" type="submit">Spara blockering</button>
+          </form>
+          <div class="card data-card"><div class="resource-list" id="blocks-list"></div></div>
+        </div>
+      </section>
+
+      <p class="dashboard-footer"><span>Booking admin · servervaliderad kalender</span><span>Europe/Stockholm</span></p>
+    </div>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/dashboard/admin/booking.js"></script>
+</body>
+</html>
