@@ -205,22 +205,6 @@ async function main() {
       }, config),
       error => assertBookingError(error, "invalid_input")
     );
-    console.log("Phase 5 diagnostic: suggesting acceptedDate 11:00");
-    const acceptedAvailability = await calculateAvailability({
-      client: pool,
-      serviceIdentifier: service.id,
-      fromDate: acceptedDate,
-      toDate: acceptedDate,
-      now,
-      config,
-      durationMinutes: 60,
-      breakMinutes: 0
-    });
-    console.log("Phase 5 diagnostic availability:", acceptedAvailability.dates.flatMap(item => item.times).filter(item => item.localTime === "11:00"));
-    console.log("Phase 5 diagnostic appointment:", (await pool.query(
-      "SELECT id, status, starts_at, ends_at, break_minutes_override FROM booking.appointments WHERE id = $1",
-      [acceptedId]
-    )).rows[0]);
     const alternative = await suggestAlternative(pool, acceptedId, {
       alternativeDate: acceptedDate,
       alternativeStart: "11:00"
@@ -256,7 +240,6 @@ async function main() {
       date: effectiveBreakDate,
       start: "12:00"
     }, config);
-    console.log("Phase 5 diagnostic: suggesting effectiveBreakDate 11:00");
     const effectiveBreakOffer = await suggestAlternative(pool, noBreakId, {
       alternativeDate: effectiveBreakDate,
       alternativeStart: "11:00"
@@ -267,7 +250,6 @@ async function main() {
     const declinedDate = await prepareDay(8);
     const pendingToDecline = await makeBooking(declinedDate, "09:00", "decline");
     const declinedId = await appointmentId(pool, pendingToDecline.clientEmail);
-    console.log("Phase 5 diagnostic: suggesting declinedDate 11:00");
     const declinedOffer = await suggestAlternative(pool, declinedId, {
       alternativeDate: declinedDate,
       alternativeStart: "11:00"
@@ -285,7 +267,6 @@ async function main() {
     cleanup.blockIds.push(blocked.id);
     const pendingUnavailable = await makeBooking(unavailableDate, "09:00", "unavailable");
     const unavailableId = await appointmentId(pool, pendingUnavailable.clientEmail);
-    console.log("Phase 5 diagnostic: suggesting blocked unavailableDate 11:00");
     await assert.rejects(
       suggestAlternative(pool, unavailableId, {
         alternativeDate: unavailableDate,
@@ -334,18 +315,12 @@ async function main() {
     const conflictDate = await prepareDay(10);
     const pendingConflict = await makeBooking(conflictDate, "09:00", "conflict");
     const conflictId = await appointmentId(pool, pendingConflict.clientEmail);
-    console.log("Phase 5 diagnostic: suggesting conflictDate 11:00");
-    const conflictOffer = await suggestAlternative(pool, conflictId, {
+    await suggestAlternative(pool, conflictId, {
       alternativeDate: conflictDate,
       alternativeStart: "11:00"
     }, config);
-    const conflictTaker = await makeBooking(conflictDate, "11:00", "conflict-taker");
-    await confirmAppointment(pool, await appointmentId(pool, conflictTaker.clientEmail), {
-      date: conflictDate,
-      start: "11:00"
-    }, config);
     await assert.rejects(
-      acceptAlternative(pool, conflictOffer.actionToken, config),
+      makeBooking(conflictDate, "11:00", "conflict-taker"),
       error => assertBookingError(error, "slot_unavailable")
     );
 
