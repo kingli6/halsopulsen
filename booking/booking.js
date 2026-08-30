@@ -93,7 +93,7 @@
       return;
     }
     if (!state.availableTimes.length) {
-      container.innerHTML = '<div class="empty-state">Det finns inga lediga tider den här dagen. Prova ett annat datum.</div>';
+      container.innerHTML = '<div class="empty-state">No available times. Prova ett annat datum.</div>';
       return;
     }
     container.innerHTML = state.availableTimes.map(slot => `
@@ -179,13 +179,12 @@
     if (!service) return;
     clearMessage();
     state.selectedService = service;
-    state.selectedDate = "";
     state.availableTimes = [];
     state.selectedSlot = null;
-    $("booking-date").value = "";
     renderServices();
     renderTimes();
     setStep("schedule");
+    loadAvailability();
   }
 
   function selectSlot(startAt) {
@@ -321,7 +320,9 @@
   }
 
   function initialize() {
-    $("booking-date").min = today();
+    state.selectedDate = today();
+    $("booking-date").min = state.selectedDate;
+    $("booking-date").value = state.selectedDate;
     setupEvents();
     loadServices();
   }
