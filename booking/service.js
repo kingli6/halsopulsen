@@ -204,11 +204,16 @@ function availableSlotsForDate(dateValue, service, data, options) {
   } = options;
   const totalMinutes = Number(service.duration_minutes) + Number(service.default_break_minutes);
   const windows = dateWindows(dateValue, data, config);
-  const blockers = [
-    ...data.blocked.map(row => ({ start: toDate(row.starts_at), end: toDate(row.ends_at) })),
-    ...data.appointments.map(occupiedInterval)
-  ];
+  const blockedIntervals = data.blocked.map(row => ({
+    start: toDate(row.starts_at),
+    end: toDate(row.ends_at)
+  }));
+  const appointmentIntervals = data.appointments.map(row => ({
+    ...occupiedInterval(row),
+    kind: "booked"
+  }));
   const slots = [];
+  const unavailableTimes = [];
 
   for (const window of windows) {
     const lastStart = window.end.getTime() - totalMinutes * MINUTES_MS;
@@ -220,7 +225,14 @@ function availableSlotsForDate(dateValue, service, data, options) {
       const start = new Date(cursor);
       const end = new Date(cursor + totalMinutes * MINUTES_MS);
       if (start < earliestStart || start > latestStart) continue;
-      if (blockers.some(blocker => intervalOverlaps(start, end, blocker.start, blocker.end))) {
+      const booked = appointmentIntervals.some(blocker => intervalOverlaps(start, end, blocker.start, blocker.end));
+      const blocked = blockedIntervals.some(blocker => intervalOverlaps(start, end, blocker.start, blocker.end));
+      if (booked || blocked) {
+        unavailableTimes.push({
+          startAt: start.toISOString(),
+          localTime: localTimeForInstant(start, timezone),
+          reason: booked ? "booked" : "unavailable"
+        });
         continue;
       }
       slots.push({
@@ -230,7 +242,7 @@ function availableSlotsForDate(dateValue, service, data, options) {
     }
   }
 
-  return slots;
+  return { slots, unavailableTimes };
 }
 
 async function calculateAvailability({
@@ -279,12 +291,18 @@ async function calculateAvailability({
   const dates = [];
 
   for (let dateValue = from; dateValue <= to; dateValue = addDays(dateValue, 1)) {
-    const times = availableSlotsForDate(dateValue, service, data, {
+    const { slots, unavailableTimes } = availableSlotsForDate(dateValue, service, data, {
       config,
       earliestStart,
       latestStart
     });
-    if (times.length > 0) dates.push({ date: dateValue, times });
+    if (slots.length > 0 || unavailableTimes.length > 0) {
+      dates.push({
+        date: dateValue,
+        times: slots,
+        unavailableTimes
+      });
+    }
   }
 
   return { service, timezone: config.timezone, dates };

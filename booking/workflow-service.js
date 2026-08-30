@@ -172,7 +172,7 @@ async function confirmAppointment(pool, id, config = getBookingConfig()) {
   const client = await beginCalendarTransaction(pool);
   try {
     const row = await findAppointment(client, id, { forUpdate: true });
-    requireWorkflowStatus(row, ["pending"], "Only pending bookings can be confirmed.");
+    requireWorkflowStatus(row, ["pending", "cancelled"], "Only pending or cancelled bookings can be confirmed.");
     const startsAt = new Date(row.starts_at);
     const endsAt = new Date(row.ends_at);
     await ensureAppointmentRangeIsFree(client, {

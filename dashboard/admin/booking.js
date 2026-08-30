@@ -290,7 +290,9 @@
         <span>${esc(item.notes || "Ingen kundanteckning")}</span>
       </div>
       <div class="quick-actions">
-        ${item.status === "pending" ? '<button class="button button-secondary button-small" data-quick-status="confirmed" type="button">Bekräfta</button>' : ""}
+        ${["pending", "cancelled"].includes(item.status)
+          ? `<button class="button button-secondary button-small" data-quick-status="confirmed" type="button">${item.status === "cancelled" ? "Återaktivera och bekräfta" : "Bekräfta"}</button>`
+          : ""}
         ${item.status !== "cancelled" ? '<button class="button button-secondary button-small" data-quick-status="cancelled" type="button">Avboka</button>' : ""}
         ${["pending", "confirmed"].includes(item.status) ? '<button class="button button-secondary button-small" data-quick-status="completed" type="button">Markera klar</button>' : ""}
       </div>

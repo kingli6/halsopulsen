@@ -4,6 +4,7 @@
     selectedService: null,
     selectedDate: "",
     availableTimes: [],
+    unavailableTimes: [],
     selectedSlot: null,
     availabilityRequest: 0,
     submitting: false,
@@ -28,6 +29,36 @@
     month: "2-digit",
     day: "2-digit"
   }).format(new Date());
+  const dateOptionFormatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    weekday: "long",
+    day: "numeric",
+    month: "short"
+  });
+  const BOOKING_HORIZON_DAYS = 60;
+
+  function addDays(date, amount) {
+    const value = new Date(`${date}T12:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + amount);
+    return value.toISOString().slice(0, 10);
+  }
+
+  function dateOptionLabel(date) {
+    const parts = dateOptionFormatter.formatToParts(new Date(`${date}T12:00:00Z`));
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    const weekday = values.weekday ? `${values.weekday[0].toUpperCase()}${values.weekday.slice(1)}` : "";
+    return `${weekday} ${values.day} ${(values.month || "").replace(/\./g, "")}`;
+  }
+
+  function populateDateOptions() {
+    const dateSelect = $("booking-date");
+    const current = today();
+    dateSelect.innerHTML = Array.from({ length: BOOKING_HORIZON_DAYS + 1 }, (_, offset) => {
+      const date = addDays(current, offset);
+      return `<option value="${date}">${dateOptionLabel(date)}</option>`;
+    }).join("");
+    dateSelect.value = current;
+  }
 
   function formatDate(date) {
     return date ? dateFormatter.format(new Date(`${date}T12:00:00+01:00`)) : "—";
@@ -92,15 +123,24 @@
       container.innerHTML = '<div class="empty-state">Välj ett datum för att se lediga tider.</div>';
       return;
     }
-    if (!state.availableTimes.length) {
+    const timeOptions = [
+      ...state.availableTimes.map(slot => ({ ...slot, available: true })),
+      ...state.unavailableTimes.map(slot => ({ ...slot, available: false }))
+    ].sort((left, right) => left.startAt.localeCompare(right.startAt));
+    if (!timeOptions.length) {
       container.innerHTML = '<div class="empty-state">No available times. Prova ett annat datum.</div>';
       return;
     }
-    container.innerHTML = state.availableTimes.map(slot => `
-      <button class="time-option${state.selectedSlot?.startAt === slot.startAt ? " is-selected" : ""}"
-        type="button" role="option" aria-selected="${state.selectedSlot?.startAt === slot.startAt}"
-        data-slot="${escapeText(slot.startAt)}">${escapeText(slot.localTime)}</button>
-    `).join("");
+    container.innerHTML = timeOptions.map(slot => slot.available
+      ? `<button class="time-option${state.selectedSlot?.startAt === slot.startAt ? " is-selected" : ""}"
+          type="button" role="option" aria-selected="${state.selectedSlot?.startAt === slot.startAt}"
+          data-slot="${escapeText(slot.startAt)}">${escapeText(slot.localTime)}</button>`
+      : `<button class="time-option is-unavailable" type="button" role="option" aria-disabled="true" disabled
+          aria-label="${escapeText(`${slot.localTime} · ${slot.reason === "booked" ? "Bokad" : "Inte tillgänglig"}`)}">
+          <span>${escapeText(slot.localTime)}</span>
+          <small>${slot.reason === "booked" ? "Bokad" : "Ej tillgänglig"}</small>
+        </button>`
+    ).join("");
   }
 
   function renderSelectedSlot() {
@@ -149,6 +189,7 @@
   async function loadAvailability() {
     const requestId = ++state.availabilityRequest;
     state.availableTimes = [];
+    state.unavailableTimes = [];
     state.selectedSlot = null;
     renderTimes();
     if (!state.selectedService || !state.selectedDate) return;
@@ -166,6 +207,7 @@
         ? data.dates.find(item => item.date === state.selectedDate)
         : null;
       state.availableTimes = Array.isArray(day?.times) ? day.times : [];
+      state.unavailableTimes = Array.isArray(day?.unavailableTimes) ? day.unavailableTimes : [];
       renderTimes();
     } catch (error) {
       if (requestId !== state.availabilityRequest) return;
@@ -180,6 +222,7 @@
     clearMessage();
     state.selectedService = service;
     state.availableTimes = [];
+    state.unavailableTimes = [];
     state.selectedSlot = null;
     renderServices();
     renderTimes();
@@ -321,8 +364,7 @@
 
   function initialize() {
     state.selectedDate = today();
-    $("booking-date").min = state.selectedDate;
-    $("booking-date").value = state.selectedDate;
+    populateDateOptions();
     setupEvents();
     loadServices();
   }
