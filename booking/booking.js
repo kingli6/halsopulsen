@@ -128,7 +128,7 @@
       ...state.unavailableTimes.map(slot => ({ ...slot, available: false }))
     ].sort((left, right) => left.startAt.localeCompare(right.startAt));
     if (!timeOptions.length) {
-      container.innerHTML = '<div class="empty-state">No available times. Prova ett annat datum.</div>';
+      container.innerHTML = '<div class="empty-state">Det finns inga lediga tider. Prova ett annat datum.</div>';
       return;
     }
     container.innerHTML = timeOptions.map(slot => slot.available
@@ -194,7 +194,7 @@
     renderTimes();
     if (!state.selectedService || !state.selectedDate) return;
 
-    $("time-list").innerHTML = '<div class="loading-state"><span class="loader" aria-hidden="true"></span>Letar lediga tider…</div>';
+    $("time-list").innerHTML = '<div class="loading-state"><span class="loader" aria-hidden="true"></span>Letar efter lediga tider…</div>';
     try {
       const params = new URLSearchParams({
         service: String(state.selectedService.id),

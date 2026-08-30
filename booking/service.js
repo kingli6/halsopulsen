@@ -426,7 +426,7 @@ async function createBookingRequest({
       AND CASE
         WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
         ELSE a.starts_at
-      END < $3
+      END < $1
       AND (
         CASE
           WHEN a.status = 'alternative_suggested' THEN a.alternative_ends_at
@@ -435,7 +435,7 @@ async function createBookingRequest({
         + make_interval(mins => COALESCE(a.break_minutes_override, s.default_break_minutes))
       ) > $2
       LIMIT 1
-    `, [startAt, occupiedEnd, startAt]);
+    `, [occupiedEnd, startAt]);
 
     if (conflict.rowCount > 0) {
       throw new BookingError("That time is no longer available.", 409, "slot_unavailable");

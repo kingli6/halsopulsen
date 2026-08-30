@@ -25,6 +25,9 @@ ALTER TABLE booking.appointments
     )
   );
 
+ALTER TABLE booking.appointments
+  DROP CONSTRAINT IF EXISTS appointments_no_active_overlap;
+
 UPDATE booking.appointments
 SET original_starts_at = COALESCE(original_starts_at, starts_at),
     original_ends_at = COALESCE(original_ends_at, ends_at),
@@ -69,9 +72,6 @@ ALTER TABLE booking.appointments
       )
     )
   );
-
-ALTER TABLE booking.appointments
-  DROP CONSTRAINT IF EXISTS appointments_no_active_overlap;
 
 ALTER TABLE booking.appointments
   ADD CONSTRAINT appointments_no_active_overlap
