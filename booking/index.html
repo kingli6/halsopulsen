@@ -107,7 +107,8 @@
                   <input id="client-phone" name="phone" type="tel" maxlength="40" autocomplete="tel">
                 </label>
                 <label class="field-label" for="client-notes">Meddelande <span class="optional-label">valfritt</span>
-                  <textarea id="client-notes" name="notes" maxlength="2000" rows="4" placeholder="Berätta gärna om något vi behöver veta."></textarea>
+                  <textarea id="client-notes" name="notes" maxlength="1000" rows="4" aria-describedby="client-notes-count" placeholder="Berätta gärna om något vi behöver veta."></textarea>
+                  <span class="character-count" id="client-notes-count" aria-live="polite">0 / 1000</span>
                 </label>
                 <p class="form-hint">Vi använder uppgifterna för att hantera din bokningsförfrågan.</p>
                 <button class="button button-primary" type="submit">Granska bokning <span aria-hidden="true">→</span></button>

@@ -248,7 +248,8 @@
 
   function renderAppointments() {
     $("appointments-list").innerHTML = state.appointments.length ? state.appointments.map(item => `
-      <tr>
+      <tr class="${state.editingAppointment && String(state.editingAppointment.id) === String(item.id) ? "is-selected" : ""}"
+        aria-selected="${state.editingAppointment && String(state.editingAppointment.id) === String(item.id) ? "true" : "false"}">
         <td>${appointmentTime(item)}</td>
         <td>${esc(item.clientName)}<small>${esc(item.email)}</small></td>
         <td>${esc(item.serviceName)}<small>${item.effectiveBreakMinutes} min paus</small></td>
@@ -345,11 +346,20 @@
   }
 
   function openAppointment(item) {
+    const isReopening = state.editingAppointment
+      && String(state.editingAppointment.id) === String(item.id);
+    const currentDate = isReopening ? $("edit-appointment-date").value : "";
+    const currentTime = isReopening ? $("edit-appointment-time").value : "";
     state.editingAppointment = item;
     $("appointment-editor").hidden = false;
+    renderAppointments();
     $("appointment-id").value = item.id;
-    $("edit-appointment-date").value = item.date || "";
-    $("edit-appointment-time").value = item.start || "";
+    $("edit-appointment-date").value = isReopening
+      ? currentDate
+      : item.date || (item.status === "pending" ? item.originalDate || "" : "");
+    $("edit-appointment-time").value = isReopening
+      ? currentTime
+      : item.start || (item.status === "pending" ? item.originalStart || "" : "");
     $("edit-appointment-break").value = item.breakMinutesOverride ?? "";
     $("edit-appointment-status").value = item.status;
     $("alternative-date").value = item.alternativeDate || item.originalDate || "";
@@ -435,7 +445,9 @@
         await loadCalendar();
         toast("Bokningen sparades.");
         appointmentFeedback("");
+        state.editingAppointment = null;
         $("appointment-editor").hidden = true;
+        renderAppointments();
       }
     } catch (error) {
       if (form.id === "appointment-form") {
@@ -546,7 +558,11 @@
     ["alternative-date", "alternative-time"].forEach(id => {
       $(id).addEventListener("input", () => alternativeFeedback(""));
     });
-    $("close-appointment-editor").addEventListener("click", () => { $("appointment-editor").hidden = true; });
+    $("close-appointment-editor").addEventListener("click", () => {
+      state.editingAppointment = null;
+      $("appointment-editor").hidden = true;
+      renderAppointments();
+    });
     $("logout-button").addEventListener("click", async () => {
       await fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" });
       window.location.href = "/admin";

@@ -84,6 +84,8 @@ h1, h2, h3, p { margin-top: 0; }
 .field-label { display: flex; flex-direction: column; gap: 7px; margin-bottom: 18px; color: var(--booking-ink); font-size: 12px; font-weight: 700; }
 .field-label input, .field-label select, .field-label textarea { width: 100%; min-height: 45px; padding: 12px 13px; border: 1px solid var(--booking-border); border-radius: 8px; outline: 0; background: #fff; color: var(--booking-ink); font-size: 14px; font-weight: 400; }
 .field-label textarea { min-height: 90px; resize: vertical; }
+.character-count { align-self: flex-end; margin-top: -2px; color: var(--booking-muted); font-size: 11px; font-weight: 500; }
+.character-count.is-over-limit { color: #a74d43; font-weight: 700; }
 .field-label input:focus, .field-label select:focus, .field-label textarea:focus { border-color: var(--booking-green); box-shadow: 0 0 0 3px rgba(30, 107, 69, .12); }
 .field-label input:invalid:not(:placeholder-shown), .field-label textarea:invalid:not(:placeholder-shown) { border-color: #d9988e; }
 .optional-label { color: var(--booking-muted); font-size: 11px; font-weight: 400; }

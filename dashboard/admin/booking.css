@@ -30,6 +30,8 @@
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .data-table th { padding: 0 9px 10px; color: var(--muted); font-size: 10px; font-weight: 700; text-align: left; white-space: nowrap; }
 .data-table td { padding: 12px 9px; border-top: 1px solid #edf2ee; vertical-align: middle; white-space: nowrap; }
+.data-table tbody tr.is-selected td { background: #f2faf5; }
+.data-table tbody tr.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--green-2); }
 .data-table td:first-child { color: var(--ink); font-weight: 700; }
 .data-table small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
 .data-table .unscheduled-label { color: #906a19; }

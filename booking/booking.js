@@ -1,4 +1,5 @@
 (() => {
+  const MAX_NOTES_LENGTH = 1000;
   const state = {
     services: [],
     selectedService: null,
@@ -248,6 +249,13 @@
     };
   }
 
+  function updateNotesCount() {
+    const notes = $("client-notes").value;
+    const counter = $("client-notes-count");
+    counter.textContent = `${notes.length} / ${MAX_NOTES_LENGTH}`;
+    counter.classList.toggle("is-over-limit", notes.length > MAX_NOTES_LENGTH);
+  }
+
   function renderReview() {
     const details = detailsPayload();
     const service = state.selectedService;
@@ -288,6 +296,7 @@
     state.selectedSlot = null;
     state.submitting = false;
     $("details-form").reset();
+    updateNotesCount();
     $("booking-date").value = state.selectedDate;
     renderServices();
     renderTimes();
@@ -364,12 +373,18 @@
       setStep("details");
     });
     $("book-another").addEventListener("click", resetBookingFlow);
+    $("client-notes").addEventListener("input", updateNotesCount);
     $("details-form").addEventListener("submit", event => {
       event.preventDefault();
       clearMessage();
       const form = event.currentTarget;
       if (!form.checkValidity()) {
         form.reportValidity();
+        return;
+      }
+      if (detailsPayload().notes.length > MAX_NOTES_LENGTH) {
+        showMessage("Meddelandet får vara högst 1 000 tecken.", { error: true });
+        updateNotesCount();
         return;
       }
       renderReview();
@@ -381,6 +396,7 @@
   function initialize() {
     state.selectedDate = today();
     populateDateOptions();
+    updateNotesCount();
     setupEvents();
     loadServices();
   }
