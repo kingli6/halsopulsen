@@ -26,10 +26,6 @@ storage/
 # Development screenshots
 /screenshots/
 
-# Pasted prompts and task notes are not application source
-/attached_assets/Pasted-*.txt
-
-# Generated/search/downloaded attachment output.
-# Keep ordinary attached_assets images trackable in case they are used by the app.
-/attached_assets/generated_*/
-/attached_assets/image_search/
+# Internal agent memory and local attachment/reference files
+.agents/memory/
+/attached_assets/
