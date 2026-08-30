@@ -34,6 +34,7 @@
 .data-table small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
 .data-table .row-actions { display: flex; justify-content: flex-end; gap: 7px; }
 .status-pill.status-pending { background: #fff2d9; color: #906a19; }
+.status-pill.status-alternative_suggested { background: #f0eafe; color: #6c4e9e; }
 .status-pill.status-confirmed { background: var(--green-3); color: var(--green); }
 .status-pill.status-cancelled { background: #fbe9e7; color: var(--red); }
 .status-pill.status-completed { background: #e8eef8; color: #536e9d; }
@@ -50,6 +51,9 @@
 .appointment-summary strong { display: block; margin-bottom: 4px; }
 .appointment-summary span { display: block; color: var(--muted); font-size: 11px; }
 .quick-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 15px; }
+.alternative-time-box { padding: 14px; margin: 0 0 15px; border: 1px solid #d8eadf; border-radius: 10px; background: #f5fbf7; }
+.alternative-time-box .section-kicker { margin-bottom: 6px; }
+.form-help { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
 .calendar-grid { display: flex; flex-direction: column; gap: 9px; }
 .calendar-day { padding: 14px 16px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
 .calendar-day h3 { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; }

@@ -12,6 +12,7 @@
     "test:booking-db": "node scripts/test-booking-db.js",
     "test:booking-admin": "node scripts/test-booking-admin.js",
     "test:booking-phase2": "NODE_ENV=production node scripts/test-booking-phase2.js",
+    "test:booking-phase5": "node scripts/test-booking-phase5.js",
     "db:migrate:supabase": "node scripts/migrate-supabase-booking.js"
   },
   "dependencies": {

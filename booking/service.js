@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const { getBookingConfig } = require("./config");
 const {
   addDays,
@@ -13,6 +14,16 @@ const {
 
 const MINUTES_MS = 60 * 1000;
 const CALENDAR_LOCK_KEY = "halsopulsen-booking-calendar";
+const CLIENT_ACTION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function createClientActionToken() {
+  const token = crypto.randomBytes(32).toString("base64url");
+  return {
+    token,
+    hash: crypto.createHash("sha256").update(token).digest("hex"),
+    expiresAt: new Date(Date.now() + CLIENT_ACTION_TOKEN_TTL_MS)
+  };
+}
 
 class BookingError extends Error {
   constructor(message, status = 400, code = "booking_error") {
@@ -325,6 +336,7 @@ async function createBookingRequest({
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [CALENDAR_LOCK_KEY]);
 
     const service = await findService(client, input?.service);
+    const actionToken = createClientActionToken();
     const availability = await calculateAvailability({
       client,
       serviceIdentifier: service.id,
@@ -381,11 +393,15 @@ async function createBookingRequest({
         client_phone,
         starts_at,
         ends_at,
+        original_starts_at,
+        original_ends_at,
         break_minutes_override,
         status,
-        notes
+        notes,
+        client_action_token_hash,
+        client_action_expires_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, NULL, 'pending', $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $5, $6, NULL, 'pending', $7, $8, $9)
     `, [
       service.id,
       clientInput.name,
@@ -393,11 +409,23 @@ async function createBookingRequest({
       clientInput.phone,
       startAt,
       sessionEnd,
-      clientInput.notes
+      clientInput.notes,
+      actionToken.hash,
+      actionToken.expiresAt
     ]);
 
     await client.query("COMMIT");
-    return { status: "pending" };
+    return {
+      status: "pending",
+      actionToken: actionToken.token,
+      serviceName: service.name,
+      durationMinutes: service.duration_minutes,
+      startsAt: startAt,
+      endsAt: sessionEnd,
+      clientName: clientInput.name,
+      clientEmail: clientInput.email,
+      clientPhone: clientInput.phone
+    };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     if (error.code === "23P01") {

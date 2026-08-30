@@ -2,12 +2,11 @@ const fs = require("fs");
 const path = require("path");
 const { Pool } = require("pg");
 
-const migrationPath = path.join(
+const migrationsDirectory = path.join(
   __dirname,
   "..",
   "db",
-  "supabase-migrations",
-  "001_booking.sql"
+  "supabase-migrations"
 );
 
 function getSupabaseConnectionString() {
@@ -46,14 +45,28 @@ function getPool() {
 }
 
 async function run() {
-  const sql = fs.readFileSync(migrationPath, "utf8");
   const pool = getPool();
   const client = await pool.connect();
 
   try {
-    await client.query(sql);
-    console.log("Supabase booking migration applied.");
+    await client.query("SELECT pg_advisory_lock($1)", [814725190]);
+    for (const filename of fs.readdirSync(migrationsDirectory)
+      .filter(file => /^\d+_[a-z0-9-]+\.sql$/i.test(file))
+      .sort()) {
+      const applied = await client.query(
+        "SELECT 1 FROM booking.schema_migrations WHERE filename = $1",
+        [filename]
+      );
+      if (applied.rowCount > 0) continue;
+
+      const sql = fs.readFileSync(path.join(migrationsDirectory, filename), "utf8");
+      await client.query(sql);
+      console.log(`Applied Supabase booking migration: ${filename}`);
+    }
+    await client.query("SELECT pg_advisory_unlock($1)", [814725190]);
+    console.log("Supabase booking migrations are up to date.");
   } finally {
+    await client.query("SELECT pg_advisory_unlock($1)", [814725190]).catch(() => {});
     client.release();
     await pool.end();
   }
