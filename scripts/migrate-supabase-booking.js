@@ -50,6 +50,13 @@ async function run() {
 
   try {
     await client.query("SELECT pg_advisory_lock($1)", [814725190]);
+    await client.query(`
+      CREATE SCHEMA IF NOT EXISTS booking;
+      CREATE TABLE IF NOT EXISTS booking.schema_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
     for (const filename of fs.readdirSync(migrationsDirectory)
       .filter(file => /^\d+_[a-z0-9-]+\.sql$/i.test(file))
       .sort()) {
