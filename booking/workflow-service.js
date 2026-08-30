@@ -169,21 +169,13 @@ async function assertAvailable(client, row, startsAt, config, suppliedBreakMinut
     toDate: date,
     durationMinutes: Number(row.duration_minutes),
     breakMinutes,
+    excludeAppointmentId: row.id,
     config
   });
   const requestedSlot = availability.dates
     .flatMap(item => item.times)
     .find(item => item.startAt === startsAt.toISOString());
   if (!requestedSlot) {
-    console.error("Booking workflow availability mismatch", {
-      appointmentId: row.id,
-      serviceId: row.service_id,
-      date,
-      startsAt: startsAt.toISOString(),
-      durationMinutes: Number(row.duration_minutes),
-      breakMinutes,
-      availableTimes: availability.dates.flatMap(item => item.times).map(item => item.startAt)
-    });
     throw new BookingError("That suggested time is no longer available.", 409, "slot_unavailable");
   }
   const endsAt = new Date(startsAt.getTime() + Number(row.duration_minutes) * 60 * 1000);

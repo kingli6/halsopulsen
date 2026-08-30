@@ -110,7 +110,15 @@ function databaseDateToIso(value) {
   return String(value).slice(0, 10);
 }
 
-async function loadAvailabilityData(client, fromDate, toDateValue, windowStart, windowEnd, config) {
+async function loadAvailabilityData(
+  client,
+  fromDate,
+  toDateValue,
+  windowStart,
+  windowEnd,
+  config,
+  excludeAppointmentId = null
+) {
   // Keep these queries sequential when a transaction client is supplied.
   // pg clients cannot safely execute concurrent queries on one connection.
   const rules = await client.query(`
@@ -158,7 +166,8 @@ async function loadAvailabilityData(client, fromDate, toDateValue, windowStart, 
         AND a.alternative_ends_at IS NOT NULL
       )
     )
-    AND CASE
+     AND ($3::bigint IS NULL OR a.id <> $3)
+     AND CASE
       WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
       ELSE a.starts_at
     END < $1
@@ -166,7 +175,7 @@ async function loadAvailabilityData(client, fromDate, toDateValue, windowStart, 
       WHEN a.status = 'alternative_suggested' THEN a.alternative_ends_at
       ELSE a.ends_at
     END > $2
-  `, [windowEnd, windowStart]);
+  `, [windowEnd, windowStart, excludeAppointmentId]);
 
   return {
     rules: rules.rows,
@@ -276,6 +285,7 @@ async function calculateAvailability({
   now = new Date(),
   durationMinutes,
   breakMinutes,
+  excludeAppointmentId,
   config: suppliedConfig
 }) {
   const config = getBookingConfig(suppliedConfig);
@@ -309,7 +319,8 @@ async function calculateAvailability({
     to,
     windowStart,
     windowEnd,
-    config
+    config,
+    excludeAppointmentId
   );
   const earliestStart = new Date(now.getTime() + config.minimumNoticeHours * 60 * 60 * 1000);
   const latestStart = new Date(now.getTime() + config.bookingHorizonDays * 24 * 60 * 60 * 1000);
