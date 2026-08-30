@@ -137,11 +137,16 @@ function alternativeStartFromInput(body, config) {
 
 async function assertAvailable(client, row, startsAt, config) {
   const date = localDateForInstant(startsAt, config.timezone);
+  const breakMinutes = row.break_minutes_override === null
+    ? Number(row.default_break_minutes) || 0
+    : Number(row.break_minutes_override) || 0;
   const availability = await calculateAvailability({
     client,
     serviceIdentifier: row.service_id,
     fromDate: date,
     toDate: date,
+    durationMinutes: Number(row.duration_minutes),
+    breakMinutes,
     config
   });
   const requestedSlot = availability.dates
@@ -155,7 +160,7 @@ async function assertAvailable(client, row, startsAt, config) {
     id: row.id,
     startsAt,
     endsAt,
-    breakMinutes: Number(row.default_break_minutes) || 0,
+    breakMinutes,
     pendingExpirationHours: config.pendingExpirationHours
   });
   return endsAt;

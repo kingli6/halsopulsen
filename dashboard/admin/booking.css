@@ -54,6 +54,11 @@
 .alternative-time-box { padding: 14px; margin: 0 0 15px; border: 1px solid #d8eadf; border-radius: 10px; background: #f5fbf7; }
 .alternative-time-box .section-kicker { margin-bottom: 6px; }
 .form-help { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+.alternative-feedback { padding: 9px 10px; margin: 0 0 10px; border: 1px solid #d8eadf; border-radius: 8px; background: #fff; color: var(--green); font-size: 11px; line-height: 1.4; }
+.alternative-feedback.error { border-color: #e1aaa3; background: #fff4f2; color: #8f3e35; }
+.alternative-feedback[hidden] { display: none; }
+.appointment-feedback { padding: 9px 10px; margin: -2px 0 0; border: 1px solid #e1aaa3; border-radius: 8px; background: #fff4f2; color: #8f3e35; font-size: 11px; line-height: 1.4; }
+.appointment-feedback[hidden] { display: none; }
 .calendar-grid { display: flex; flex-direction: column; gap: 9px; }
 .calendar-day { padding: 14px 16px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
 .calendar-day h3 { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; }
