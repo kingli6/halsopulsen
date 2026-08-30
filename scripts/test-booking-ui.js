@@ -124,7 +124,11 @@ async function main() {
     clearTimeout
   };
   const bookingScript = fs.readFileSync("booking/booking.js", "utf8")
-    .replace("function selectService(id) {", "function selectService(id) { console.log(\"UI test select\", id, state.services);");
+    .replace(
+      "function selectService(id) {",
+      "function selectService(id) { console.log(\"UI test select\", id, state.services, \"date\", state.selectedDate);"
+    )
+    .replace("  async function loadAvailability() {", "  async function loadAvailability() { console.log(\"UI test availability\", state.selectedService, state.selectedDate);");
   vm.runInNewContext(bookingScript, context);
   await flush();
 
