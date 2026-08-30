@@ -97,8 +97,9 @@
             </div>
             <form id="appointment-form" class="stack-form">
               <input id="appointment-id" type="hidden">
-              <label class="form-label">Datum <input id="edit-appointment-date" type="date" required></label>
-              <label class="form-label">Starttid <input id="edit-appointment-time" type="time" step="900" required></label>
+              <p class="form-help appointment-schedule-help">Lämna datum och starttid tomma när statusen är Väntar. Då har förfrågan ingen tilldelad tid.</p>
+              <label class="form-label">Datum <input id="edit-appointment-date" type="date"></label>
+              <label class="form-label">Starttid <input id="edit-appointment-time" type="time" step="900"></label>
               <label class="form-label">Paus efter session (minuter)
                 <input id="edit-appointment-break" type="number" min="0" max="1440" step="1" placeholder="Tjänstens standard">
               </label>

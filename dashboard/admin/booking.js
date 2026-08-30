@@ -67,7 +67,11 @@
       throw new Error("Admin sign-in required.");
     }
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.ok === false) throw new Error(data.error || "Något gick fel.");
+    if (!response.ok || data.ok === false) {
+      const error = new Error(data.error || "Något gick fel.");
+      error.code = data.code;
+      throw error;
+    }
     return data;
   }
 
@@ -232,10 +236,20 @@
     return `<span class="status-pill status-${esc(status)}">${esc(statusLabels[status] || status)}</span>`;
   }
 
+  function appointmentTime(item) {
+    if (item.start && item.end) {
+      return `${esc(item.date)}<small>${esc(item.start)}–${esc(item.end)}</small>`;
+    }
+    if (item.alternativeStart && item.alternativeEnd) {
+      return `<strong>${esc(item.alternativeDate)}<small>${esc(item.alternativeStart)}–${esc(item.alternativeEnd)}</small></strong><small>Föreslagen tid</small>`;
+    }
+    return `<strong class="unscheduled-label">Ingen tid tilldelad</strong><small>Önskad: ${esc(item.originalDate || "—")} ${esc(item.originalStart || "")}</small>`;
+  }
+
   function renderAppointments() {
     $("appointments-list").innerHTML = state.appointments.length ? state.appointments.map(item => `
       <tr>
-        <td>${esc(item.date)}<small>${esc(item.start)}–${esc(item.end)}</small></td>
+        <td>${appointmentTime(item)}</td>
         <td>${esc(item.clientName)}<small>${esc(item.email)}</small></td>
         <td>${esc(item.serviceName)}<small>${item.effectiveBreakMinutes} min paus</small></td>
         <td>${statusPill(item.status)}</td>
@@ -247,8 +261,22 @@
   function renderCalendar() {
     const calendar = state.calendar;
     if (!calendar) return;
+    const appointmentEvents = calendar.appointments
+      .filter(item => (item.status === "alternative_suggested"
+        ? item.alternativeDate && item.alternativeStart && item.alternativeEnd
+        : item.date && item.start && item.end))
+      .map(item => {
+        const alternative = item.status === "alternative_suggested";
+        return {
+          ...item,
+          kind: "appointment",
+          day: alternative ? item.alternativeDate : item.date,
+          start: alternative ? item.alternativeStart : item.start,
+          end: alternative ? item.alternativeEnd : item.end
+        };
+      });
     const events = [
-      ...calendar.appointments.map(item => ({ ...item, kind: "appointment", day: item.date, start: item.start, end: item.end })),
+      ...appointmentEvents,
       ...calendar.blockedTimes.map(item => ({ ...item, kind: "blocked", day: item.date, start: item.start, end: item.end }))
     ].sort((a, b) => `${a.day}${a.start}`.localeCompare(`${b.day}${b.start}`));
     const days = [];
@@ -320,12 +348,12 @@
     state.editingAppointment = item;
     $("appointment-editor").hidden = false;
     $("appointment-id").value = item.id;
-    $("edit-appointment-date").value = item.date;
-    $("edit-appointment-time").value = item.start;
+    $("edit-appointment-date").value = item.date || "";
+    $("edit-appointment-time").value = item.start || "";
     $("edit-appointment-break").value = item.breakMinutesOverride ?? "";
     $("edit-appointment-status").value = item.status;
-    $("alternative-date").value = item.date;
-    $("alternative-time").value = item.start;
+    $("alternative-date").value = item.alternativeDate || item.originalDate || "";
+    $("alternative-time").value = item.alternativeStart || item.originalStart || "";
     alternativeFeedback("");
     appointmentFeedback("");
     $("alternative-time-box").hidden = item.status !== "pending";
@@ -336,7 +364,7 @@
         <span>${esc(item.notes || "Ingen kundanteckning")}</span>
       </div>
       <div class="quick-actions">
-        ${["pending", "cancelled"].includes(item.status)
+        ${(["pending", "cancelled"].includes(item.status) && item.startAt)
           ? `<button class="button button-secondary button-small" data-quick-status="confirmed" type="button">${item.status === "cancelled" ? "Återaktivera och bekräfta" : "Bekräfta"}</button>`
           : ""}
         ${item.status !== "cancelled" ? '<button class="button button-secondary button-small danger-button" data-quick-status="cancelled" type="button">Avboka</button>' : ""}

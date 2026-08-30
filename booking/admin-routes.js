@@ -157,7 +157,7 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
     return res.json({ ok: true, appointment: result.booking });
   }
   if (req.body?.status === "confirmed") {
-    const result = await confirmAppointment(getPool(), id, getBookingConfig());
+    const result = await confirmAppointment(getPool(), id, req.body, getBookingConfig());
     sendConfirmedEmail({
       booking: result.booking,
       token: result.actionToken,

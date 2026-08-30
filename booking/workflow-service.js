@@ -71,11 +71,15 @@ function workflowSnapshot(row, config = getBookingConfig(), overrides = {}) {
     notes: row.notes,
     ...overrides
   };
-  snapshot.requested = formatDateTime(snapshot.originalStartsAt, config.timezone);
-  if (snapshot.alternativeStartsAt) {
+  snapshot.requested = snapshot.originalStartsAt
+    ? formatDateTime(snapshot.originalStartsAt, config.timezone)
+    : null;
+  if (snapshot.alternativeStartsAt && snapshot.alternativeEndsAt) {
     snapshot.alternative = formatDateTime(snapshot.alternativeStartsAt, config.timezone);
   }
-  snapshot.current = formatDateTime(snapshot.startsAt, config.timezone);
+  snapshot.current = snapshot.startsAt && snapshot.endsAt
+    ? formatDateTime(snapshot.startsAt, config.timezone)
+    : null;
   return snapshot;
 }
 
@@ -135,11 +139,29 @@ function alternativeStartFromInput(body, config) {
   return parsed;
 }
 
-async function assertAvailable(client, row, startsAt, config) {
+function appointmentBreakFromInput(body, row) {
+  const hasCamelCase = Object.prototype.hasOwnProperty.call(body || {}, "breakMinutesOverride");
+  const hasSnakeCase = Object.prototype.hasOwnProperty.call(body || {}, "break_minutes_override");
+  if (!hasCamelCase && !hasSnakeCase) {
+    return row.break_minutes_override;
+  }
+  const value = hasCamelCase ? body.breakMinutesOverride : body.break_minutes_override;
+  if (value === null || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1440) {
+    throw new BookingError("Break override must be an integer between 0 and 1440.", 400, "invalid_input");
+  }
+  return parsed;
+}
+
+async function assertAvailable(client, row, startsAt, config, suppliedBreakMinutesOverride) {
   const date = localDateForInstant(startsAt, config.timezone);
-  const breakMinutes = row.break_minutes_override === null
+  const breakMinutesOverride = suppliedBreakMinutesOverride === undefined
+    ? row.break_minutes_override
+    : suppliedBreakMinutesOverride;
+  const breakMinutes = breakMinutesOverride === null
     ? Number(row.default_break_minutes) || 0
-    : Number(row.break_minutes_override) || 0;
+    : Number(breakMinutesOverride) || 0;
   const availability = await calculateAvailability({
     client,
     serviceIdentifier: row.service_id,
@@ -153,6 +175,15 @@ async function assertAvailable(client, row, startsAt, config) {
     .flatMap(item => item.times)
     .find(item => item.startAt === startsAt.toISOString());
   if (!requestedSlot) {
+    console.error("Booking workflow availability mismatch", {
+      appointmentId: row.id,
+      serviceId: row.service_id,
+      date,
+      startsAt: startsAt.toISOString(),
+      durationMinutes: Number(row.duration_minutes),
+      breakMinutes,
+      availableTimes: availability.dates.flatMap(item => item.times).map(item => item.startAt)
+    });
     throw new BookingError("That suggested time is no longer available.", 409, "slot_unavailable");
   }
   const endsAt = new Date(startsAt.getTime() + Number(row.duration_minutes) * 60 * 1000);
@@ -160,8 +191,7 @@ async function assertAvailable(client, row, startsAt, config) {
     id: row.id,
     startsAt,
     endsAt,
-    breakMinutes,
-    pendingExpirationHours: config.pendingExpirationHours
+    breakMinutes
   });
   return endsAt;
 }
@@ -173,37 +203,84 @@ async function beginCalendarTransaction(pool) {
   return client;
 }
 
-async function confirmAppointment(pool, id, config = getBookingConfig()) {
+function confirmationStartFromInput(body, row, config) {
+  if (body?.startAt || body?.date || body?.start) {
+    if (body.startAt) {
+      const parsed = parseInstant(body.startAt);
+      if (!parsed) {
+        throw new BookingError(
+          "The appointment start time must include a timezone.",
+          400,
+          "invalid_timestamp"
+        );
+      }
+      return parsed;
+    }
+    const parsed = localDateTimeToDate(body.date, body.start, config.timezone);
+    if (!parsed) {
+      throw new BookingError(
+        "A valid appointment date and start time are required.",
+        400,
+        "invalid_timestamp"
+      );
+    }
+    return parsed;
+  }
+
+  if (row.starts_at) {
+    const existing = new Date(row.starts_at);
+    if (!Number.isNaN(existing.getTime())) return existing;
+  }
+
+  throw new BookingError(
+    "A date and start time are required before this appointment can be confirmed.",
+    400,
+    "schedule_required"
+  );
+}
+
+async function confirmAppointment(pool, id, body = {}, config = getBookingConfig()) {
+  if (body && !body.startAt && !body.date && !body.start && body.timezone) {
+    config = body;
+    body = {};
+  }
   const client = await beginCalendarTransaction(pool);
   try {
     const row = await findAppointment(client, id, { forUpdate: true });
     requireWorkflowStatus(row, ["pending", "cancelled"], "Only pending or cancelled bookings can be confirmed.");
-    const startsAt = new Date(row.starts_at);
-    const endsAt = new Date(row.ends_at);
-    await ensureAppointmentRangeIsFree(client, {
-      id,
+    const startsAt = confirmationStartFromInput(body, row, config);
+    const breakMinutesOverride = appointmentBreakFromInput(body, row);
+    const endsAt = await assertAvailable(
+      client,
+      row,
       startsAt,
-      endsAt,
-      breakMinutes: row.break_minutes_override === null
-        ? Number(row.default_break_minutes) || 0
-        : Number(row.break_minutes_override) || 0,
-      pendingExpirationHours: config.pendingExpirationHours
-    });
+      config,
+      breakMinutesOverride
+    );
     const actionToken = createActionToken();
     await client.query(`
       UPDATE booking.appointments
-      SET status = 'confirmed',
+      SET starts_at = $2,
+          ends_at = $3,
+          break_minutes_override = $4,
+          status = 'confirmed',
           cancelled_at = NULL,
           alternative_starts_at = NULL,
           alternative_ends_at = NULL,
-          client_action_token_hash = $2,
-          client_action_expires_at = $3,
+          client_action_token_hash = $5,
+          client_action_expires_at = $6,
           client_action_used_at = NULL
       WHERE id = $1
-    `, [id, actionToken.hash, actionToken.expiresAt]);
+    `, [id, startsAt, endsAt, breakMinutesOverride, actionToken.hash, actionToken.expiresAt]);
     await client.query("COMMIT");
     return {
-      booking: workflowSnapshot(row, config, { status: "confirmed" }),
+      booking: workflowSnapshot(row, config, {
+        status: "confirmed",
+        startsAt,
+        endsAt,
+        alternativeStartsAt: null,
+        alternativeEndsAt: null
+      }),
       actionToken: actionToken.token
     };
   } catch (error) {
@@ -282,14 +359,20 @@ function publicActionState(row, config = getBookingConfig()) {
       name: row.service_name,
       durationMinutes: Number(row.duration_minutes)
     },
-    requested: formatDateTime(row.original_starts_at || row.starts_at, config.timezone),
+    requested: row.original_starts_at || row.starts_at
+      ? formatDateTime(row.original_starts_at || row.starts_at, config.timezone)
+      : null,
     expiresAt: new Date(row.client_action_expires_at).toISOString()
   };
   if (row.status === "alternative_suggested") {
-    result.alternative = formatDateTime(row.alternative_starts_at, config.timezone);
+    result.alternative = row.alternative_starts_at && row.alternative_ends_at
+      ? formatDateTime(row.alternative_starts_at, config.timezone)
+      : null;
   }
   if (row.status === "confirmed") {
-    result.confirmed = formatDateTime(row.starts_at, config.timezone);
+    result.confirmed = row.starts_at && row.ends_at
+      ? formatDateTime(row.starts_at, config.timezone)
+      : null;
   }
   return result;
 }
