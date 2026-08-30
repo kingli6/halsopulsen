@@ -71,6 +71,50 @@
     return data;
   }
 
+  function alternativeFeedback(text, error = false) {
+    const element = $("alternative-feedback");
+    element.textContent = text || "";
+    element.hidden = !text;
+    element.classList.toggle("error", error);
+  }
+
+  function appointmentFeedback(text) {
+    const element = $("appointment-feedback");
+    element.textContent = text || "";
+    element.hidden = !text;
+  }
+
+  function alternativeErrorMessage(error) {
+    return error?.code === "slot_unavailable"
+      ? "Den föreslagna tiden är inte längre tillgänglig."
+      : error.message;
+  }
+
+  async function checkAlternativeAvailability(appointment, date, start) {
+    const params = new URLSearchParams({
+      service: String(appointment.serviceId),
+      from: date,
+      to: date
+    });
+    const response = await fetch(`/api/booking/availability?${params.toString()}`, {
+      credentials: "same-origin"
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      const error = new Error(data.error || "Tiden kunde inte kontrolleras.");
+      error.code = data.code;
+      throw error;
+    }
+    const day = Array.isArray(data.dates)
+      ? data.dates.find(item => item.date === date)
+      : null;
+    if (!day?.times?.some(slot => slot.localTime === start)) {
+      const error = new Error("Den föreslagna tiden är inte längre tillgänglig.");
+      error.code = "slot_unavailable";
+      throw error;
+    }
+  }
+
   function formPayload(form, fields) {
     const data = {};
     fields.forEach(([key, id, type]) => {
@@ -282,6 +326,8 @@
     $("edit-appointment-status").value = item.status;
     $("alternative-date").value = item.date;
     $("alternative-time").value = item.start;
+    alternativeFeedback("");
+    appointmentFeedback("");
     $("alternative-time-box").hidden = item.status !== "pending";
     $("appointment-detail").innerHTML = `
       <div class="appointment-summary">
@@ -345,6 +391,7 @@
         await saveResource(`/blocks${id ? `/${id}` : ""}`, id ? "PUT" : "POST", payload, "Blockeringen sparades.");
         resetBlock();
       } else if (form.id === "appointment-form") {
+        appointmentFeedback("");
         const id = $("appointment-id").value;
         const breakValue = $("edit-appointment-break").value;
         await api(`/appointments/${id}`, {
@@ -359,10 +406,15 @@
         await loadAppointments();
         await loadCalendar();
         toast("Bokningen sparades.");
+        appointmentFeedback("");
         $("appointment-editor").hidden = true;
       }
     } catch (error) {
-      message(error.message, true);
+      if (form.id === "appointment-form") {
+        appointmentFeedback(error.message);
+      } else {
+        message(error.message, true);
+      }
     }
   }
 
@@ -463,6 +515,9 @@
     $("reset-override").addEventListener("click", resetOverride);
     $("reset-block").addEventListener("click", resetBlock);
     $("override-type").addEventListener("change", toggleOverrideTimes);
+    ["alternative-date", "alternative-time"].forEach(id => {
+      $(id).addEventListener("input", () => alternativeFeedback(""));
+    });
     $("close-appointment-editor").addEventListener("click", () => { $("appointment-editor").hidden = true; });
     $("logout-button").addEventListener("click", async () => {
       await fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" });
@@ -496,23 +551,35 @@
         const date = $("alternative-date").value;
         const start = $("alternative-time").value;
         if (!date || !start) {
-          message("Välj datum och starttid för förslaget.", true);
+          alternativeFeedback("Välj datum och starttid för förslaget.", true);
           return;
         }
-        api(`/appointments/${state.editingAppointment.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            action: "suggest_alternative",
-            alternativeDate: date,
-            alternativeStart: start
-          })
-        }).then(async () => {
-          await loadAppointments();
-          await loadCalendar();
-          const updated = state.appointments.find(item => item.id === state.editingAppointment.id);
-          if (updated) openAppointment(updated);
-          toast("Förslaget skickades.");
-        }).catch(error => message(error.message, true));
+        target.disabled = true;
+        alternativeFeedback("Kontrollerar tillgängligheten…");
+        (async () => {
+          try {
+            await checkAlternativeAvailability(state.editingAppointment, date, start);
+            await api(`/appointments/${state.editingAppointment.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({
+                action: "suggest_alternative",
+                alternativeDate: date,
+                alternativeStart: start
+              })
+            });
+            await loadAppointments();
+            await loadCalendar();
+            const updated = state.appointments.find(item => item.id === state.editingAppointment.id);
+            if (updated) openAppointment(updated);
+            message("Ny tid föreslagen. Kunden behöver acceptera tiden.");
+            toast("Ny tid föreslagen. Kunden behöver acceptera tiden.");
+          } catch (error) {
+            message("");
+            alternativeFeedback(alternativeErrorMessage(error), true);
+          } finally {
+            target.disabled = false;
+          }
+        })();
       }
       if (target.dataset.deleteRule) deleteResource(`/hours/${target.dataset.deleteRule}`, loadResources, "arbetstiden");
       if (target.dataset.deleteOverride) deleteResource(`/overrides/${target.dataset.deleteOverride}`, loadResources, "undantaget");
