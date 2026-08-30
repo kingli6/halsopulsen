@@ -113,19 +113,24 @@ async function run() {
     const appointmentStatuses = ["pending", "confirmed", "cancelled", "completed"];
     for (const [index, status] of appointmentStatuses.entries()) {
       const startHour = 9 + index * 2;
+      const startsAt = status === "pending" ? null : isoUtc(startHour);
+      const endsAt = status === "pending" ? null : isoUtc(startHour + 1);
       const appointment = await client.query(
         `
           INSERT INTO booking.appointments (
             service_id, client_name, client_email, starts_at, ends_at,
+            original_starts_at, original_ends_at,
             break_minutes, status, notes, cancelled_at
           )
-          VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, $9, $10)
           RETURNING status, break_minutes, starts_at, ends_at
         `,
         [
           service.id,
           `Test client ${status}`,
           `${status}@example.test`,
+          startsAt,
+          endsAt,
           isoUtc(startHour),
           isoUtc(startHour + 1),
           status,
@@ -143,8 +148,10 @@ async function run() {
         `Appointment break_minutes = 0 failed for ${status}.`
       );
       assert(
-        appointment.rows[0].starts_at.toISOString() === isoUtc(startHour),
-        `Appointment start timestamp failed for ${status}.`
+        status === "pending"
+          ? appointment.rows[0].starts_at === null && appointment.rows[0].ends_at === null
+          : appointment.rows[0].starts_at.toISOString() === isoUtc(startHour),
+        `Appointment current timestamp failed for ${status}.`
       );
     }
 
@@ -152,9 +159,20 @@ async function run() {
     await client.query(
       `
         INSERT INTO booking.appointments (
+          service_id, client_name, client_email, starts_at, ends_at,
+          original_starts_at, original_ends_at, status
+        )
+        VALUES ($1, 'Overlap test', 'overlap@example.test', NULL, NULL, $2, $3, 'pending')
+      `,
+      [service.id, isoUtc(17), isoUtc(18)]
+    );
+
+    await client.query(
+      `
+        INSERT INTO booking.appointments (
           service_id, client_name, client_email, starts_at, ends_at, status
         )
-        VALUES ($1, 'Overlap test', 'overlap@example.test', $2, $3, 'pending')
+        VALUES ($1, 'Confirmed test', 'confirmed@example.test', $2, $3, 'confirmed')
       `,
       [service.id, isoUtc(17), isoUtc(18)]
     );
@@ -176,7 +194,7 @@ async function run() {
     await client.query("ROLLBACK TO SAVEPOINT overlap_test");
     assert(
       overlapRejected,
-      "Pending/confirmed appointment overlap should be rejected by PostgreSQL."
+      "Confirmed appointment overlap should be rejected by PostgreSQL."
     );
 
     await client.query("ROLLBACK");

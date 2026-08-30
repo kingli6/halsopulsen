@@ -32,6 +32,7 @@
 .data-table td { padding: 12px 9px; border-top: 1px solid #edf2ee; vertical-align: middle; white-space: nowrap; }
 .data-table td:first-child { color: var(--ink); font-weight: 700; }
 .data-table small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
+.data-table .unscheduled-label { color: #906a19; }
 .data-table .row-actions { display: flex; justify-content: flex-end; gap: 7px; }
 .status-pill.status-pending { background: #fff2d9; color: #906a19; }
 .status-pill.status-alternative_suggested { background: #f0eafe; color: #6c4e9e; }
@@ -56,6 +57,7 @@
 .alternative-time-box { padding: 14px; margin: 0 0 15px; border: 1px solid #d8eadf; border-radius: 10px; background: #f5fbf7; }
 .alternative-time-box .section-kicker { margin-bottom: 6px; }
 .form-help { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+.appointment-schedule-help { padding: 9px 10px; margin: 0; border-radius: 8px; background: #fff8e8; color: #765e4e; font-size: 11px; line-height: 1.4; }
 .alternative-feedback { padding: 9px 10px; margin: 0 0 10px; border: 1px solid #d8eadf; border-radius: 8px; background: #fff; color: var(--green); font-size: 11px; line-height: 1.4; }
 .alternative-feedback.error { border-color: #e1aaa3; background: #fff4f2; color: #8f3e35; }
 .alternative-feedback[hidden] { display: none; }

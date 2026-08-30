@@ -135,6 +135,36 @@ function publicBlockedTime(row, timezone) {
   };
 }
 
+function publicAppointmentTime(startValue, endValue, timezone) {
+  if (!startValue || !endValue) {
+    return {
+      date: null,
+      start: null,
+      end: null,
+      startsAt: null,
+      endsAt: null
+    };
+  }
+  const startsAt = new Date(startValue);
+  const endsAt = new Date(endValue);
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return {
+      date: null,
+      start: null,
+      end: null,
+      startsAt: null,
+      endsAt: null
+    };
+  }
+  return {
+    date: localDateForInstant(startsAt, timezone),
+    start: localTimeForInstant(startsAt, timezone),
+    end: localTimeForInstant(endsAt, timezone),
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString()
+  };
+}
+
 function effectiveBreakMinutes(row) {
   return row.break_minutes_override === null || row.break_minutes_override === undefined
     ? Number(row.default_break_minutes) || 0
@@ -142,8 +172,17 @@ function effectiveBreakMinutes(row) {
 }
 
 function publicAppointment(row, timezone) {
-  const startsAt = new Date(row.starts_at);
-  const endsAt = new Date(row.ends_at);
+  const current = publicAppointmentTime(row.starts_at, row.ends_at, timezone);
+  const original = publicAppointmentTime(
+    row.original_starts_at || row.starts_at,
+    row.original_ends_at || row.ends_at,
+    timezone
+  );
+  const alternative = publicAppointmentTime(
+    row.alternative_starts_at,
+    row.alternative_ends_at,
+    timezone
+  );
   return {
     id: String(row.id),
     serviceId: String(row.service_id),
@@ -152,11 +191,21 @@ function publicAppointment(row, timezone) {
     clientName: row.client_name,
     email: row.client_email,
     phone: row.client_phone,
-    date: localDateForInstant(startsAt, timezone),
-    start: localTimeForInstant(startsAt, timezone),
-    end: localTimeForInstant(endsAt, timezone),
-    startAt: startsAt.toISOString(),
-    endAt: endsAt.toISOString(),
+    date: current.date,
+    start: current.start,
+    end: current.end,
+    startAt: current.startsAt,
+    endAt: current.endsAt,
+    originalDate: original.date,
+    originalStart: original.start,
+    originalEnd: original.end,
+    originalStartsAt: original.startsAt,
+    originalEndsAt: original.endsAt,
+    alternativeDate: alternative.date,
+    alternativeStart: alternative.start,
+    alternativeEnd: alternative.end,
+    alternativeStartsAt: alternative.startsAt,
+    alternativeEndsAt: alternative.endsAt,
     breakMinutesOverride: row.break_minutes_override,
     effectiveBreakMinutes: effectiveBreakMinutes(row),
     status: row.status,
@@ -290,7 +339,7 @@ function appointmentStartInput(body, config, existingStart) {
       { start: true }
     );
   }
-  return new Date(existingStart);
+  return existingStart ? new Date(existingStart) : null;
 }
 
 function appointmentBreakInput(body, existing) {
@@ -535,7 +584,9 @@ async function updateBlockedTime(client, id, body, config = getBookingConfig()) 
 
 const APPOINTMENT_SELECT = `
   SELECT a.id, a.service_id, a.client_name, a.client_email, a.client_phone,
-         a.starts_at, a.ends_at, a.break_minutes_override, a.status, a.notes,
+         a.starts_at, a.ends_at, a.original_starts_at, a.original_ends_at,
+         a.alternative_starts_at, a.alternative_ends_at,
+         a.break_minutes_override, a.status, a.notes,
          a.created_at, a.updated_at, a.cancelled_at,
          s.name AS service_name, s.duration_minutes, s.default_break_minutes
   FROM booking.appointments a
@@ -560,18 +611,37 @@ async function listAppointments(client, query = {}, config = getBookingConfig())
   if (query.from) {
     const from = dateValue(query.from, "From date");
     const start = localDateTimeToDate(from, "00:00", config.timezone);
-    conditions.push(`a.starts_at >= ${addParam(start)}`);
+    const parameter = addParam(start);
+    conditions.push(`(
+      a.status = 'pending'
+      OR CASE
+        WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+        ELSE a.starts_at
+      END >= ${parameter}
+    )`);
   }
   if (query.to) {
     const to = dateValue(query.to, "To date");
     const end = localDateTimeToDate(addDays(to, 1), "00:00", config.timezone);
-    conditions.push(`a.starts_at < ${addParam(end)}`);
+    const parameter = addParam(end);
+    conditions.push(`(
+      a.status = 'pending'
+      OR CASE
+        WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+        ELSE a.starts_at
+      END < ${parameter}
+    )`);
   }
 
   const result = await client.query(`
     ${APPOINTMENT_SELECT}
     ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""}
-    ORDER BY a.starts_at DESC
+    ORDER BY (
+      CASE
+        WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+        ELSE a.starts_at
+      END
+    ) DESC NULLS LAST, a.created_at DESC
     LIMIT 500
   `, params);
   return result.rows.map(row => publicAppointment(row, config.timezone));
@@ -592,8 +662,7 @@ async function ensureAppointmentRangeIsFree(client, {
   id,
   startsAt,
   endsAt,
-  breakMinutes,
-  pendingExpirationHours
+  breakMinutes
 }) {
   const occupiedEnd = new Date(endsAt.getTime() + breakMinutes * MINUTES_MS);
   const conflict = await client.query(`
@@ -602,19 +671,30 @@ async function ensureAppointmentRangeIsFree(client, {
     JOIN booking.services s ON s.id = a.service_id
     WHERE a.id <> $1
       AND (
-        a.status = 'confirmed'
+        (
+          a.status = 'confirmed'
+          AND a.starts_at IS NOT NULL
+          AND a.ends_at IS NOT NULL
+        )
         OR (
-          a.status = 'pending'
-          AND a.created_at >= NOW() - make_interval(hours => $2)
+          a.status = 'alternative_suggested'
+          AND a.alternative_starts_at IS NOT NULL
+          AND a.alternative_ends_at IS NOT NULL
         )
       )
-      AND a.starts_at < $4
+      AND CASE
+        WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+        ELSE a.starts_at
+      END < $3
       AND (
-        a.ends_at
+        CASE
+          WHEN a.status = 'alternative_suggested' THEN a.alternative_ends_at
+          ELSE a.ends_at
+        END
         + make_interval(mins => COALESCE(a.break_minutes_override, s.default_break_minutes))
-      ) > $3
+      ) > $2
     LIMIT 1
-  `, [id, pendingExpirationHours, startsAt, occupiedEnd]);
+  `, [id, occupiedEnd, startsAt]);
   if (conflict.rowCount > 0) {
     throw new BookingError("That appointment time overlaps another active appointment.", 409, "slot_unavailable");
   }
@@ -649,24 +729,31 @@ async function updateAppointment(pool, id, body, config = getBookingConfig()) {
     if (existing.status === "completed" && status !== "completed") {
       throw new BookingError("Completed appointments cannot be reopened or cancelled.", 409, "invalid_transition");
     }
-    const startsAt = appointmentStartInput(body, config, existing.starts_at);
-    if (Number.isNaN(startsAt.getTime())) {
+    let startsAt = appointmentStartInput(body, config, existing.starts_at);
+    if (status === "pending") {
+      startsAt = null;
+    } else if (startsAt && Number.isNaN(startsAt.getTime())) {
       throw new BookingError("Appointment start time is invalid.", 400, "invalid_timestamp");
+    } else if ((status === "confirmed" || status === "completed") && !startsAt) {
+      throw new BookingError(
+        "A date and start time are required before this appointment can be confirmed.",
+        400,
+        "schedule_required"
+      );
     }
-    const endsAt = new Date(
-      startsAt.getTime() + Number(existing.duration_minutes) * MINUTES_MS
-    );
+    const endsAt = startsAt
+      ? new Date(startsAt.getTime() + Number(existing.duration_minutes) * MINUTES_MS)
+      : null;
     const breakMinutes = appointmentBreakInput(body, existing.break_minutes_override);
 
-    if (status === "pending" || status === "confirmed") {
+    if (status === "confirmed" || status === "completed") {
       await ensureAppointmentRangeIsFree(client, {
         id,
         startsAt,
         endsAt,
         breakMinutes: breakMinutes === null
           ? Number(existing.default_break_minutes) || 0
-          : breakMinutes,
-        pendingExpirationHours: config.pendingExpirationHours
+          : breakMinutes
       });
     }
 
@@ -677,7 +764,9 @@ async function updateAppointment(pool, id, body, config = getBookingConfig()) {
           ends_at = $3,
           break_minutes_override = $4,
           status = $5,
-          cancelled_at = $6
+          cancelled_at = $6,
+          alternative_starts_at = NULL,
+          alternative_ends_at = NULL
       WHERE id = $1
       RETURNING id
     `, [id, startsAt, endsAt, breakMinutes, status, cancelledAt]);

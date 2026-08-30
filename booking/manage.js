@@ -13,15 +13,18 @@
     }[character]));
   }
 
-  function displayTime(value) {
-    return `${esc(value?.date || "")} kl. ${esc(value?.time || "")}`;
+  function displayTime(value, fallback = "Ingen tid tilldelad") {
+    if (!value?.date || !value?.time) return fallback;
+    return `${esc(value.date)} kl. ${esc(value.time)}`;
   }
 
   function render(booking) {
     details.hidden = false;
     details.innerHTML = `
       <strong>${esc(booking.service.name)}</strong>
-      <span>Efterfrågad tid: ${displayTime(booking.requested)}</span>
+      ${booking.requested
+        ? `<span>Efterfrågad tid: ${displayTime(booking.requested)}</span>`
+        : "<span>Ingen ursprunglig tid angavs.</span>"}
       <span>${esc(booking.service.durationMinutes)} minuter</span>
       ${booking.alternative ? `<span>Föreslagen ny tid: ${displayTime(booking.alternative)}</span>` : ""}
       ${booking.confirmed ? `<span>Bekräftad tid: ${displayTime(booking.confirmed)}</span>` : ""}
@@ -31,7 +34,7 @@
     decline.hidden = booking.status !== "alternative_suggested";
     cancel.hidden = !["pending", "confirmed"].includes(booking.status);
     if (booking.status === "pending") {
-      status.textContent = "Din förfrågan väntar fortfarande på granskning.";
+      status.textContent = "Din förfrågan väntar fortfarande på granskning. Ingen tid är tilldelad ännu.";
     } else if (booking.status === "alternative_suggested") {
       status.textContent = "Du har fått ett förslag på en annan tid.";
     } else if (booking.status === "confirmed") {

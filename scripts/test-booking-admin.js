@@ -111,18 +111,29 @@ async function main() {
     const inserted = await pool.query(`
       INSERT INTO booking.appointments (
         service_id, client_name, client_email, starts_at, ends_at,
+        original_starts_at, original_ends_at,
         break_minutes_override, status, notes
       )
       VALUES
-        ($1, 'Admin test one', $2, '2099-06-01T08:00:00Z', '2099-06-01T08:50:00Z', NULL, 'pending', ''),
-        ($1, 'Admin test two', $3, '2099-06-01T11:30:00Z', '2099-06-01T12:20:00Z', NULL, 'confirmed', '')
+        ($1, 'Admin test one', $2, NULL, NULL, '2099-06-01T08:00:00Z', '2099-06-01T08:50:00Z', NULL, 'pending', ''),
+        ($1, 'Admin test two', $3, '2099-06-01T13:30:00Z', '2099-06-01T14:20:00Z', '2099-06-01T13:30:00Z', '2099-06-01T14:20:00Z', NULL, 'confirmed', '')
       RETURNING id
     `, [service.id, `${tag}-one@example.test`, `${tag}-two@example.test`]);
     cleanup.appointmentIds = inserted.rows.map(row => String(row.id));
 
     const appointment = await getAppointment(pool, cleanup.appointmentIds[0]);
     assert.strictEqual(appointment.status, "pending");
+    assert.strictEqual(appointment.startAt, null);
+    assert.strictEqual(appointment.originalStart, "10:00");
     assert.strictEqual(appointment.effectiveBreakMinutes, 20);
+    const pendingAppointments = await listAppointments(pool, {
+      from: fixtureDate,
+      to: fixtureDate
+    });
+    assert(
+      pendingAppointments.some(item => item.id === cleanup.appointmentIds[0]),
+      "Unscheduled pending appointments should remain visible in date-filtered listings."
+    );
 
     const moved = await updateAppointment(pool, cleanup.appointmentIds[0], {
       date: fixtureDate,
@@ -133,6 +144,18 @@ async function main() {
     assert.strictEqual(moved.start, "09:00");
     assert.strictEqual(moved.breakMinutesOverride, 0);
     assert.strictEqual(moved.status, "confirmed");
+    const released = await updateAppointment(pool, cleanup.appointmentIds[0], {
+      status: "pending"
+    });
+    assert.strictEqual(released.startAt, null);
+    assert.strictEqual(released.endAt, null);
+    assert.strictEqual(released.status, "pending");
+    const rescheduled = await updateAppointment(pool, cleanup.appointmentIds[0], {
+      date: fixtureDate,
+      start: "09:00",
+      status: "confirmed"
+    });
+    assert.strictEqual(rescheduled.status, "confirmed");
 
     await assert.rejects(
       updateAppointment(pool, cleanup.appointmentIds[0], {
@@ -140,7 +163,7 @@ async function main() {
         start: "13:30",
         status: "confirmed"
       }),
-      error => error instanceof BookingError && error.code === "slot_unavailable"
+      error => error instanceof BookingError && error.code === "blocked_time"
     );
 
     const cancelled = await updateAppointment(pool, cleanup.appointmentIds[0], { status: "cancelled" });

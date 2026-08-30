@@ -150,15 +150,24 @@ async function main() {
 
     for (const appointment of fixtureAppointments) {
       fixtureEmails.add(appointment.email);
+      const currentStart = appointment.status === "pending"
+        ? null
+        : `${appointment.date}T${appointment.start}`;
+      const currentEnd = appointment.status === "pending"
+        ? null
+        : `${appointment.date}T${appointment.end}`;
       await setupClient.query(`
         INSERT INTO booking.appointments (
           service_id, client_name, client_email, starts_at, ends_at,
+          original_starts_at, original_ends_at,
           break_minutes_override, status, notes, created_at
         )
-        VALUES ($1, 'Phase 2 fixture', $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, 'Phase 2 fixture', $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [
         ptServiceId,
         appointment.email,
+        currentStart,
+        currentEnd,
         `${appointment.date}T${appointment.start}`,
         `${appointment.date}T${appointment.end}`,
         appointment.override,
@@ -196,9 +205,9 @@ async function main() {
     const appointments = await findSlots({ fromDate: fixtureDates.appointment, toDate: fixtureDates.appointment });
     const appointmentTimes = appointments.dates.flatMap(date => date.times.map(time => time.localTime));
     assert(!appointmentTimes.includes("09:00"), "Appointment plus break did not block.");
-    assert(!appointmentTimes.includes("11:00"), "Pending appointment did not block.");
+    assert(appointmentTimes.includes("11:00"), "Pending appointment should not block.");
     assert(appointmentTimes.includes("12:15"), "A slot after the pending appointment should be available.");
-    assert(appointmentTimes.includes("17:00"), "Expired pending appointment still blocked.");
+    assert(appointmentTimes.includes("17:00"), "Expired pending appointment should not block.");
     assert(!appointmentTimes.includes("14:00"), "Zero-break appointment was not considered.");
     assert(!appointmentTimes.includes("15:00"), "Positive-break appointment was not considered.");
 
@@ -235,25 +244,44 @@ async function main() {
     assert(beforeDst && afterDst && afterDst > beforeDst, "DST timezone conversion failed.");
     assert.strictEqual(localTimeForInstant(afterDst, config.timezone), "03:30");
 
-    const requestInput = startAt => ({
+    const requestInput = (startAt, label = startAt) => ({
       service: "PT",
       startAt,
       clientName: "Phase 2 booking test",
-      email: `${fixtureTag}-${startAt}.example@example.test`,
+      email: `${fixtureTag}-${label}.example@example.test`,
       phone: "",
       notes: "Phase 2 integration test"
     });
     const first = await createBookingRequest({
       pool,
-      input: requestInput("2099-01-10T09:00:00+01:00"),
+      input: requestInput("2099-01-10T09:00:00+01:00", "first"),
       now,
       config
     });
     assert.strictEqual(first.status, "pending");
+    assert.strictEqual(first.startsAt, null);
+    assert(first.originalStartsAt, "Original requested time was not preserved.");
+    const secondPending = await createBookingRequest({
+      pool,
+      input: requestInput("2099-01-10T09:00:00+01:00", "second"),
+      now,
+      config
+    });
+    assert.strictEqual(secondPending.status, "pending");
+    const firstId = await pool.query(
+      "SELECT id FROM booking.appointments WHERE client_email = $1",
+      [first.clientEmail]
+    );
+    await pool.query(
+      `UPDATE booking.appointments
+       SET starts_at = $1, ends_at = $2, status = 'confirmed'
+       WHERE id = $3`,
+      ["2099-01-10T08:00:00Z", "2099-01-10T09:00:00Z", firstId.rows[0].id]
+    );
     const overlap = await assertBookingError(
       createBookingRequest({
         pool,
-        input: requestInput("2099-01-10T09:00:00+01:00"),
+        input: requestInput("2099-01-10T09:00:00+01:00", "third"),
         now,
         config
       }),
@@ -262,8 +290,8 @@ async function main() {
     assert.strictEqual(overlap.status, 409);
 
     const concurrentInputs = [
-      requestInput("2099-01-10T11:00:00+01:00"),
-      requestInput("2099-01-10T11:00:00+01:00")
+      requestInput("2099-01-10T11:00:00+01:00", "concurrent-0"),
+      requestInput("2099-01-10T11:00:00+01:00", "concurrent-1")
     ].map((input, index) => ({
       ...input,
       email: `${fixtureTag}-concurrent-${index}@example.test`
@@ -275,8 +303,7 @@ async function main() {
           .catch(error => ({ ok: false, error }))
       )
     );
-    assert.strictEqual(concurrentResults.filter(result => result.ok).length, 1, "Both concurrent bookings succeeded.");
-    assert.strictEqual(concurrentResults.filter(result => !result.ok && result.error.code === "slot_unavailable").length, 1, "Concurrent conflict was not rejected.");
+    assert.strictEqual(concurrentResults.filter(result => result.ok).length, 2, "Pending requests should not block each other.");
 
     console.log(JSON.stringify({
       ok: true,

@@ -36,17 +36,26 @@ function publicUrl(path) {
 }
 
 function formatDateTime(date) {
+  if (!date) return "Ingen tid tilldelad";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "Ingen tid tilldelad";
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Europe/Stockholm",
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(new Date(date));
+  }).format(parsed);
 }
 
-function bookingDetails(booking) {
+function bookingDetails(booking, { requireCurrent = false } = {}) {
+  const time = requireCurrent
+    ? booking.startsAt
+    : booking.originalStartsAt || booking.startsAt;
+  if (requireCurrent && !time) {
+    throw new Error("A confirmed booking email requires a scheduled appointment time.");
+  }
   return [
     `Tjänst: ${booking.serviceName}`,
-    `Tid: ${formatDateTime(booking.startsAt)}`,
+    `${requireCurrent ? "Tid" : "Efterfrågad tid"}: ${formatDateTime(time)}`,
     `Längd: ${booking.durationMinutes} minuter`
   ].join("\n");
 }
@@ -102,12 +111,12 @@ async function sendRequestReceivedEmail({ booking, token, suppress }) {
       "",
       details,
       "",
-      "The appointment is not confirmed yet.",
+      "Tiden är inte tilldelad eller bekräftad ännu.",
       "Du får en bekräftelse efter att förfrågan har granskats.",
       "",
       `Hantera förfrågan: ${manageLink}`
     ].join("\n"),
-    html: `<p>Tack för din bokningsförfrågan till HälsoPulsen.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>The appointment is not confirmed yet.</strong></p><p>Du får en bekräftelse efter att förfrågan har granskats.</p><p><a href="${escapeHtml(manageLink)}">Hantera förfrågan</a></p>`
+    html: `<p>Tack för din bokningsförfrågan till HälsoPulsen.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>Tiden är inte tilldelad eller bekräftad ännu.</strong></p><p>Du får en bekräftelse efter att förfrågan har granskats.</p><p><a href="${escapeHtml(manageLink)}">Hantera förfrågan</a></p>`
   });
 }
 
@@ -134,7 +143,7 @@ async function sendNewRequestAdminEmail({ booking, suppress }) {
 
 async function sendConfirmedEmail({ booking, token, suppress }) {
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
-  const details = bookingDetails(booking);
+  const details = bookingDetails(booking, { requireCurrent: true });
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Din tid är bekräftad · HälsoPulsen",
@@ -152,6 +161,8 @@ async function sendConfirmedEmail({ booking, token, suppress }) {
 
 async function sendAlternativeEmail({ booking, token, suppress }) {
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
+  const originalTime = formatDateTime(booking.originalStartsAt || booking.startsAt);
+  const alternativeTime = formatDateTime(booking.alternativeStartsAt);
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Förslag på en annan tid · HälsoPulsen",
@@ -159,12 +170,12 @@ async function sendAlternativeEmail({ booking, token, suppress }) {
     text: [
       "Jag har ett förslag på en annan tid för din bokning.",
       "",
-      `Ursprunglig tid: ${formatDateTime(booking.originalStartsAt)}`,
-      `Föreslagen tid: ${formatDateTime(booking.alternativeStartsAt)}`,
+      `Ursprunglig tid: ${originalTime}`,
+      `Föreslagen tid: ${alternativeTime}`,
       "",
       `Öppna för att acceptera eller tacka nej: ${manageLink}`
     ].join("\n"),
-    html: `<p>Jag har ett förslag på en annan tid för din bokning.</p><p><strong>Ursprunglig tid:</strong> ${escapeHtml(formatDateTime(booking.originalStartsAt))}<br><strong>Föreslagen tid:</strong> ${escapeHtml(formatDateTime(booking.alternativeStartsAt))}</p><p><a href="${escapeHtml(manageLink)}">Acceptera eller tacka nej</a></p>`
+    html: `<p>Jag har ett förslag på en annan tid för din bokning.</p><p><strong>Ursprunglig tid:</strong> ${escapeHtml(originalTime)}<br><strong>Föreslagen tid:</strong> ${escapeHtml(alternativeTime)}</p><p><a href="${escapeHtml(manageLink)}">Acceptera eller tacka nej</a></p>`
   });
 }
 
@@ -185,6 +196,7 @@ async function sendCancelledEmail({ booking, suppress }) {
 }
 
 module.exports = {
+  bookingDetails,
   getEmailConfiguration,
   isTestFixtureEmail,
   sendAlternativeEmail,

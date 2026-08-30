@@ -21,7 +21,11 @@ const {
   getClientAction,
   suggestAlternative
 } = require("../booking/workflow-service");
-const { getEmailConfiguration, sendCancelledEmail } = require("../booking/email");
+const {
+  bookingDetails,
+  getEmailConfiguration,
+  sendCancelledEmail
+} = require("../booking/email");
 
 if (process.env.NODE_ENV === "production") {
   throw new Error("Phase 5 integration tests use the development database.");
@@ -88,8 +92,39 @@ async function main() {
 
     const confirmedDate = await prepareDay(5);
     const pendingToConfirm = await makeBooking(confirmedDate, "09:00", "confirm");
-    const confirmed = await confirmAppointment(pool, await appointmentId(pool, pendingToConfirm.clientEmail), config);
+    const pendingToConfirmId = await appointmentId(pool, pendingToConfirm.clientEmail);
+    const pendingState = await pool.query(
+      "SELECT starts_at, ends_at, original_starts_at, original_ends_at FROM booking.appointments WHERE id = $1",
+      [pendingToConfirmId]
+    );
+    assert.strictEqual(pendingState.rows[0].starts_at, null);
+    assert.strictEqual(pendingState.rows[0].ends_at, null);
+    assert(pendingState.rows[0].original_starts_at, "Original requested time was not preserved.");
+    const pendingAction = await getClientAction(pool, pendingToConfirm.actionToken, config);
+    assert(pendingAction.requested, "Pending client action should expose the requested time.");
+    assert.strictEqual(pendingAction.confirmed, undefined, "Pending client action should not expose a current time.");
+    await assert.rejects(
+      confirmAppointment(pool, pendingToConfirmId, {}, config),
+      error => assertBookingError(error, "schedule_required")
+    );
+    await assert.rejects(
+      confirmAppointment(pool, pendingToConfirmId, {
+        date: confirmedDate,
+        start: "19:00"
+      }, config),
+      error => assertBookingError(error, "slot_unavailable")
+    );
+    const confirmed = await confirmAppointment(pool, pendingToConfirmId, {
+      date: confirmedDate,
+      start: "09:00"
+    }, config);
     assert.strictEqual(confirmed.booking.status, "confirmed");
+    const confirmedState = await pool.query(
+      "SELECT starts_at, ends_at FROM booking.appointments WHERE id = $1",
+      [pendingToConfirmId]
+    );
+    assert.strictEqual(confirmedState.rows[0].starts_at.toISOString(), localDateTimeToDate(confirmedDate, "09:00", config.timezone).toISOString());
+    assert.strictEqual(confirmedState.rows[0].ends_at.toISOString(), localDateTimeToDate(confirmedDate, "10:00", config.timezone).toISOString());
     assert.strictEqual((await getClientAction(pool, confirmed.actionToken, config)).status, "confirmed");
 
     const cancelledDate = await prepareDay(6);
@@ -113,7 +148,10 @@ async function main() {
     assert.strictEqual(reopenedPending.status, "pending");
     assert.strictEqual(reopenedPending.breakMinutesOverride, null);
     await cancelAppointment(pool, cancelledId, config);
-    const reopened = await confirmAppointment(pool, cancelledId, config);
+    const reopened = await confirmAppointment(pool, cancelledId, {
+      date: cancelledDate,
+      start: "09:00"
+    }, config);
     assert.strictEqual(reopened.booking.status, "confirmed");
     const unavailableAfterReopen = await calculateAvailability({
       client: pool,
@@ -133,7 +171,10 @@ async function main() {
     assert.strictEqual(cancelledToPending.status, "pending");
     const pendingToCancelled = await cancelAppointment(pool, cancelledId, config);
     assert.strictEqual(pendingToCancelled.booking.status, "cancelled");
-    const cancelledToConfirmed = await confirmAppointment(pool, cancelledId, config);
+    const cancelledToConfirmed = await confirmAppointment(pool, cancelledId, {
+      date: cancelledDate,
+      start: "09:00"
+    }, config);
     assert.strictEqual(cancelledToConfirmed.booking.status, "confirmed");
     const confirmedToPending = await updateAppointment(pool, cancelledId, { status: "pending" }, config);
     assert.strictEqual(confirmedToPending.status, "pending");
@@ -164,6 +205,22 @@ async function main() {
       }, config),
       error => assertBookingError(error, "invalid_input")
     );
+    console.log("Phase 5 diagnostic: suggesting acceptedDate 11:00");
+    const acceptedAvailability = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: acceptedDate,
+      toDate: acceptedDate,
+      now,
+      config,
+      durationMinutes: 60,
+      breakMinutes: 0
+    });
+    console.log("Phase 5 diagnostic availability:", acceptedAvailability.dates.flatMap(item => item.times).filter(item => item.localTime === "11:00"));
+    console.log("Phase 5 diagnostic appointment:", (await pool.query(
+      "SELECT id, status, starts_at, ends_at, break_minutes_override FROM booking.appointments WHERE id = $1",
+      [acceptedId]
+    )).rows[0]);
     const alternative = await suggestAlternative(pool, acceptedId, {
       alternativeDate: acceptedDate,
       alternativeStart: "11:00"
@@ -195,7 +252,11 @@ async function main() {
       status: "pending"
     }, config);
     const nextAppointment = await makeBooking(effectiveBreakDate, "12:00", "effective-break-blocker");
-    await confirmAppointment(pool, await appointmentId(pool, nextAppointment.clientEmail), config);
+    await confirmAppointment(pool, await appointmentId(pool, nextAppointment.clientEmail), {
+      date: effectiveBreakDate,
+      start: "12:00"
+    }, config);
+    console.log("Phase 5 diagnostic: suggesting effectiveBreakDate 11:00");
     const effectiveBreakOffer = await suggestAlternative(pool, noBreakId, {
       alternativeDate: effectiveBreakDate,
       alternativeStart: "11:00"
@@ -206,6 +267,7 @@ async function main() {
     const declinedDate = await prepareDay(8);
     const pendingToDecline = await makeBooking(declinedDate, "09:00", "decline");
     const declinedId = await appointmentId(pool, pendingToDecline.clientEmail);
+    console.log("Phase 5 diagnostic: suggesting declinedDate 11:00");
     const declinedOffer = await suggestAlternative(pool, declinedId, {
       alternativeDate: declinedDate,
       alternativeStart: "11:00"
@@ -223,6 +285,7 @@ async function main() {
     cleanup.blockIds.push(blocked.id);
     const pendingUnavailable = await makeBooking(unavailableDate, "09:00", "unavailable");
     const unavailableId = await appointmentId(pool, pendingUnavailable.clientEmail);
+    console.log("Phase 5 diagnostic: suggesting blocked unavailableDate 11:00");
     await assert.rejects(
       suggestAlternative(pool, unavailableId, {
         alternativeDate: unavailableDate,
@@ -232,7 +295,7 @@ async function main() {
     );
 
     const takenDate = await prepareDay(13);
-    await makeBooking(takenDate, "09:00", "taken");
+    const taken = await makeBooking(takenDate, "09:00", "taken");
     const takenAvailability = await calculateAvailability({
       client: pool,
       serviceIdentifier: service.id,
@@ -243,22 +306,44 @@ async function main() {
     });
     const takenDay = takenAvailability.dates.find(date => date.date === takenDate);
     assert(
-      takenDay?.unavailableTimes?.some(time => time.localTime === "09:00" && time.reason === "booked"),
-      "Taken appointment times should be returned as private booked slots."
+      takenDay?.times?.some(time => time.localTime === "09:00"),
+      "Pending appointment times should remain available."
     );
     assert(
-      !takenDay?.times?.some(time => time.localTime === "09:00"),
-      "Taken appointment times must not be returned as available slots."
+      !takenDay?.unavailableTimes?.some(time => time.localTime === "09:00" && time.reason === "booked"),
+      "Pending appointment times must not be returned as booked."
+    );
+    await confirmAppointment(pool, await appointmentId(pool, taken.clientEmail), {
+      date: takenDate,
+      start: "09:00"
+    }, config);
+    const confirmedTakenAvailability = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: takenDate,
+      toDate: takenDate,
+      now,
+      config
+    });
+    const confirmedTakenDay = confirmedTakenAvailability.dates.find(date => date.date === takenDate);
+    assert(
+      confirmedTakenDay?.unavailableTimes?.some(time => time.localTime === "09:00" && time.reason === "booked"),
+      "Confirmed appointment times should be returned as private booked slots."
     );
 
     const conflictDate = await prepareDay(10);
     const pendingConflict = await makeBooking(conflictDate, "09:00", "conflict");
     const conflictId = await appointmentId(pool, pendingConflict.clientEmail);
+    console.log("Phase 5 diagnostic: suggesting conflictDate 11:00");
     const conflictOffer = await suggestAlternative(pool, conflictId, {
       alternativeDate: conflictDate,
       alternativeStart: "11:00"
     }, config);
-    await makeBooking(conflictDate, "11:00", "conflict-taker");
+    const conflictTaker = await makeBooking(conflictDate, "11:00", "conflict-taker");
+    await confirmAppointment(pool, await appointmentId(pool, conflictTaker.clientEmail), {
+      date: conflictDate,
+      start: "11:00"
+    }, config);
     await assert.rejects(
       acceptAlternative(pool, conflictOffer.actionToken, config),
       error => assertBookingError(error, "slot_unavailable")
@@ -299,6 +384,18 @@ async function main() {
     });
     assert.strictEqual(fixtureEmail.reason, "test_fixture");
     assert.strictEqual(getEmailConfiguration().configured, false);
+    const unscheduledDetails = bookingDetails({
+      serviceName: "Fixture",
+      startsAt: null,
+      originalStartsAt: new Date("2099-01-01T09:00:00Z"),
+      durationMinutes: 60
+    });
+    assert(unscheduledDetails.includes("Efterfrågad tid"), "Unscheduled email details should use the requested-time label.");
+    assert(!unscheduledDetails.includes("1970"), "Unscheduled email details must not format null as 1970.");
+    assert.throws(
+      () => bookingDetails({ serviceName: "Fixture", startsAt: null, durationMinutes: 60 }, { requireCurrent: true }),
+      /requires a scheduled appointment time/
+    );
 
     console.log("Booking Phase 5 checks passed: approval transitions, alternative offers, secure expiring tokens, conflict protection, token isolation, and test email suppression.");
   } finally {
