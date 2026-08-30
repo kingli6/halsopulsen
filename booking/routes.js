@@ -13,6 +13,11 @@ const {
   localDateForInstant,
   parseDateOnly
 } = require("./time");
+const {
+  isTestFixtureEmail,
+  sendAdminNewRequestEmail,
+  sendRequestReceivedEmail
+} = require("./email");
 
 const router = express.Router();
 
@@ -83,9 +88,15 @@ router.post("/requests", asyncRoute(async (req, res) => {
       pool: getPool(),
       input: req.body
     });
+    const booking = result;
+    const suppressEmail = isTestFixtureEmail(booking.clientEmail);
+    sendRequestReceivedEmail({ booking, token: booking.actionToken, suppress: suppressEmail })
+      .catch(error => console.error("Booking request email failed:", error.message));
+    sendAdminNewRequestEmail({ booking, suppress: suppressEmail })
+      .catch(error => console.error("Booking admin notification failed:", error.message));
     res.status(201).json({
       ok: true,
-      status: result.status,
+      status: booking.status,
       message: "Your booking request has been received and is pending confirmation."
     });
   } catch (error) {
