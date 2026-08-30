@@ -21,7 +21,7 @@
     <meta property="og:image" content="https://halsopulsen.se/images/stockimage1.webp" />
 
     <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
-    <link rel="stylesheet" href="style.css?v=8" />
+    <link rel="stylesheet" href="style.css?v=9" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -85,20 +85,18 @@
           </p>
           <div class="hero-cta">
             <a
-              href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20en%20gratis%20session."
-              class="btn btn-primary btn-whatsapp"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-sv="💬 Boka via WhatsApp"
-              data-en="💬 Book via WhatsApp"
-              >💬 Boka via WhatsApp</a
-            >
-            <a
               href="#services"
-              class="btn btn-ghost"
+              class="btn btn-primary"
               data-sv="Se tjänster"
               data-en="See services"
               >Se tjänster</a
+            >
+            <a
+              href="#journey"
+              class="btn btn-ghost"
+              data-sv="Läs om upplägget"
+              data-en="Learn how it works"
+              >Läs om upplägget</a
             >
           </div>
           <p class="hero-deadline" data-sv="🗓️ Gratis t.o.m. vecka 51, 2026" data-en="🗓️ Free until week 51, 2026">🗓️ Gratis t.o.m. vecka 51, 2026</p>
@@ -274,10 +272,10 @@
     <section class="journey" id="journey">
       <div class="container">
         <h2 class="section-title" data-sv="Varför är det gratis?" data-en="Why is it free?">Varför är det gratis?</h2>
-        <p class="section-sub"
-          data-sv="Min skola kräver att jag genomför ett visst antal klienter och sessioner för varje tjänst. Du hjälper mig uppfylla mina studiekrav — jag ger dig en professionell session."
-          data-en="My school requires me to complete a set number of clients and sessions for each service. You help me meet my study requirements — I give you a professional session.">
-          Min skola kräver att jag genomför ett visst antal klienter och sessioner för varje tjänst. Du hjälper mig uppfylla mina studiekrav — jag ger dig en professionell session.
+        <p class="section-sub journey-intro"
+          data-sv="Du får en professionell, individuell session — samtidigt som jag uppfyller de praktiska kraven i min utbildning."
+          data-en="You get a professional, individual session — while I complete the practical requirements of my education.">
+          Du får en professionell, individuell session — samtidigt som jag uppfyller de praktiska kraven i min utbildning.
         </p>
 
         <div class="journey-grid">
@@ -487,37 +485,38 @@
         <div class="contact-buttons">
           <a
             href="https://halsopulsen.simplybook.it/v2/#book"
-            class="btn btn-primary btn-contact"
+            class="btn btn-primary btn-contact btn-contact-primary"
             target="_blank"
             rel="noopener noreferrer"
             data-sv="📅 Boka via bokningssidan"
             data-en="📅 Book via booking page"
             >📅 Boka via bokningssidan</a
           >
-          <a
-            href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20en%20gratis%20session."
-            class="btn btn-ghost btn-contact"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-sv="💬 WhatsApp"
-            data-en="💬 WhatsApp"
-            >💬 WhatsApp</a
-          >
-          <a
-            href="https://www.facebook.com/jonathan.fisher.391/"
-            class="btn btn-ghost btn-contact"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-sv="📘 Facebook"
-            data-en="📘 Facebook"
-            >📘 Facebook</a
-          >
+          <div class="contact-secondary" aria-label="Fler kontaktvägar">
+            <a
+              href="https://wa.me/46760672218?text=Hej%20Jonathan!%20Jag%20är%20intresserad%20av%20en%20gratis%20session."
+              class="btn btn-ghost btn-contact"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-sv="💬 WhatsApp"
+              data-en="💬 WhatsApp"
+              >💬 WhatsApp</a
+            >
+            <a
+              href="https://www.facebook.com/jonathan.fisher.391/"
+              class="btn btn-ghost btn-contact"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-sv="📘 Facebook"
+              data-en="📘 Facebook"
+              >📘 Facebook</a
+            >
+            <p class="contact-email">
+              <span data-sv="E-post:" data-en="Email:">E-post:</span>
+              <a href="mailto:halsopulsen@gmail.com">halsopulsen@gmail.com</a>
+            </p>
+          </div>
         </div>
-
-        <p class="contact-email">
-          <span data-sv="Kontakta mig via e-post:" data-en="Contact me by email:">Kontakta mig via e-post:</span>
-          <a href="mailto:halsopulsen@gmail.com">halsopulsen@gmail.com</a>
-        </p>
       </div>
     </section>
 
