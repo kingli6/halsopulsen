@@ -4,6 +4,19 @@ node_modules/
 # Runtime/local data
 storage/
 
+# Environment files and local credential material
+.env
+.env.*
+!.env.example
+.envrc
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+service-account*.json
+
 # Replit and other machine-local workspace state
 .cache/
 .upm/
