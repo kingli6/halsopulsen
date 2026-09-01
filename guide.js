@@ -23,9 +23,12 @@ if (hamburger && navLinks) {
 function toggleSection(id, btn) {
   const el = document.getElementById(id);
   if (!el) return;
-  const chevron = btn ? btn.querySelector('.section-chevron') : null;
+  const chevron = btn
+    ? (btn.querySelector('.section-chevron') || btn.closest('.section-header-toggle')?.querySelector('.section-chevron'))
+    : null;
   const isNowHidden = el.classList.toggle('hidden');
   if (chevron) chevron.classList.toggle('rotated', !isNowHidden);
+  if (btn) btn.setAttribute('aria-expanded', String(!isNowHidden));
 }
 
 /* ── LeoMoves filter ── */
@@ -162,10 +165,11 @@ function shareSection(hash) {
     const content = document.getElementById(contentId);
     if (!content || !content.classList.contains('hidden')) return;
     // Find its toggle button
-    const toggle = content.closest('.container')?.querySelector('.section-header-toggle');
+    const toggle = content.closest('.container')?.querySelector(`[aria-controls="${content.id}"]`);
     content.classList.remove('hidden');
     if (toggle) {
-      const chevron = toggle.querySelector('.section-chevron');
+      toggle.setAttribute('aria-expanded', 'true');
+      const chevron = toggle.closest('.section-header-toggle')?.querySelector('.section-chevron');
       if (chevron) chevron.classList.add('rotated');
     }
   }
