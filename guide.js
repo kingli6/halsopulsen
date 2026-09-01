@@ -31,6 +31,14 @@ function toggleSection(id, btn) {
   if (btn) btn.setAttribute('aria-expanded', String(!isNowHidden));
 }
 
+/* Let the non-button parts of headers with actions use the same toggle. */
+document.querySelectorAll('.section-header-toggle').forEach(header => {
+  header.addEventListener('click', event => {
+    if (event.target.closest('.section-header-toggle-button, .section-share-btn')) return;
+    header.querySelector('.section-header-toggle-button')?.click();
+  });
+});
+
 /* ── LeoMoves filter ── */
 const _leoFilters = { niva: 'all', tid: 'all', fokus: 'all' };
 const _leoBatchSize = 8;
