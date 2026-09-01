@@ -1437,7 +1437,7 @@
             </div></div>
           </div>
 
-          <!-- ── NEW VIDEOS (leo-extra — hidden until "Visa fler" or filter active) ── -->
+          <!-- ── ADDITIONAL VIDEOS (progressively revealed by the result controls) ── -->
 
           <!-- 5 ROUND Hiit Workout -->
           <div class="video-card leo-extra" data-niva="2" data-tid="30" data-fokus="fullbody">
@@ -1703,8 +1703,9 @@
 
         </div><!-- /#leoGrid -->
 
-        <button id="leoShowMore" class="leo-show-more-btn" onclick="showLeoExtra()" style="display:none;">
-          <span data-sv="Visa " data-en="Show ">Visa </span><span class="leo-extra-count">0</span><span data-sv=" videor till ↓" data-en=" more videos ↓"> videor till ↓</span>
+        <button id="leoShowMore" class="leo-show-more-btn" onclick="showLeoMore()" aria-controls="leoGrid" style="display:none;">
+          <span data-sv="Visa fler videor" data-en="Show more videos">Visa fler videor</span>
+          <span class="leo-extra-count" aria-live="polite">0</span>
         </button>
 
         <p class="leo-more-note" data-sv="Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar." data-en="More videos on the way — the library grows as difficulty levels expand.">Fler videor på väg — biblioteket växer allt eftersom svårighetsgraden ökar.</p>
