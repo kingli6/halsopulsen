@@ -262,7 +262,16 @@ section {
   outline-offset: 3px;
   border-radius: var(--radius-sm);
 }
-.nav-resource-start { margin-left: var(--space-2); padding-left: var(--space-6); border-left: 1px solid var(--color-border); }
+.nav-resource-start {
+  margin-left: var(--space-2);
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--color-border);
+}
+.nav-resource-end {
+  margin-right: var(--space-2);
+  padding-right: var(--space-6);
+  border-right: 1px solid var(--color-border);
+}
 
 .nav-actions {
   display: flex;
@@ -292,9 +301,10 @@ section {
   flex-direction: column;
   justify-content: center;
   gap: 5px;
-  width: 32px;
-  height: 32px;
-  padding: 4px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  margin: -6px;
 }
 .hamburger span {
   display: block;
@@ -1156,6 +1166,12 @@ section[id] { scroll-margin-top: 80px; }
     border-left: 0;
     border-top: 1px solid var(--color-border);
     padding-top: var(--space-3);
+  }
+  .nav-resource-end {
+    margin: 0 0 var(--space-2);
+    padding: 0 0 var(--space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
   }
 }
 

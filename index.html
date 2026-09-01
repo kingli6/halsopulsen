@@ -41,11 +41,10 @@
 
         <ul class="nav-links" id="navLinks">
           <li><a href="#services" data-sv="Tjänster" data-en="Services">Tjänster</a></li>
-          <li><a href="#journey" data-sv="Min resa" data-en="My journey">Min resa</a></li>
+          <li class="nav-resource-start"><a href="/träningsguide.html" data-sv="📖 Träningsguide" data-en="📖 Training Guide">📖 Träningsguide</a></li>
+          <li class="nav-resource-end"><a href="/workout.html" data-sv="⏱ Träningsverktyg" data-en="⏱ Workout Tools">⏱ Träningsverktyg</a></li>
           <li><a href="#about" data-sv="Om mig" data-en="About">Om mig</a></li>
           <li><a href="#contact" data-sv="Kontakt" data-en="Contact">Kontakt</a></li>
-          <li class="nav-resource-start"><a href="/träningsguide.html" data-sv="📖 Träningsguide" data-en="📖 Training Guide">📖 Träningsguide</a></li>
-          <li><a href="/workout.html" data-sv="⏱ Träningsverktyg" data-en="⏱ Workout Tools">⏱ Träningsverktyg</a></li>
         </ul>
 
         <div class="nav-actions">
@@ -329,11 +328,68 @@
       </div>
     </section>
 
+    <!-- TESTIMONIALS (hidden until TESTIMONIALS array in script.js has entries) -->
+    <section class="testimonials" id="testimonials" hidden>
+      <div class="container">
+        <h2 class="section-title" data-sv="Vad säger klienterna?" data-en="What do clients say?">Vad säger klienterna?</h2>
+        <div class="testimonials-grid" id="testimonialsGrid"></div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="about" id="about">
+      <div class="container about-inner">
+        <div class="about-image">
+          <img src="images/JFprofileImg.webp" alt="Jonathan Fisher – HälsoPulsen" class="about-photo" loading="lazy" />
+        </div>
+
+        <div class="about-text">
+          <h2 data-sv="Om mig" data-en="About me">Om mig</h2>
+          <p
+            data-sv="Hej! Jag heter Jonathan Fisher och utbildar mig till hälsocoach via Örnsköldsviks folkhögskola. Jag är diplomerad massör i klassisk svensk massage och studerar just nu PT och kostcoach i slutfasen av min utbildning."
+            data-en="Hi! My name is Jonathan Fisher and I'm training to become a health coach at Örnsköldsvik Folk High School. I'm a certified classical Swedish massage therapist currently in the final stage of my PT and nutrition coach studies."
+          >
+            Hej! Jag heter Jonathan Fisher och utbildar mig till hälsocoach via Örnsköldsviks folkhögskola. Jag är diplomerad massör i klassisk svensk massage och studerar just nu PT och kostcoach i slutfasen av min utbildning.
+          </p>
+          <p
+            data-sv="Mitt mål är att hjälpa dig bygga tillräcklig styrka och vitalitet för att kunna delta i allt det roliga livet har att erbjuda. Under min praktikperiod (aug–dec 2026) söker jag klienter att arbeta med — och erbjuder alla tjänster helt gratis."
+            data-en="My goal is to help you build enough strength and vitality to enjoy everything life has to offer. During my practice period (Aug–Dec 2026), I'm looking for clients to work with — and offering all services completely free."
+          >
+            Mitt mål är att hjälpa dig bygga tillräcklig styrka och vitalitet för att kunna delta i allt det roliga livet har att erbjuda. Under min praktikperiod (aug–dec 2026) söker jag klienter att arbeta med — och erbjuder alla tjänster helt gratis.
+          </p>
+
+          <div class="certs">
+            <h3 class="certs-title" data-sv="Utbildning & Certifieringar" data-en="Education & Certifications">Utbildning &amp; Certifieringar</h3>
+
+            <div class="cert-school-group">
+              <p class="cert-school-name">Örnsköldsviks Folkhögskola · 2026</p>
+              <ul class="certs-list">
+                <li class="cert-item"><span data-sv="Diplomerad Massör — Klassisk Svensk Massage" data-en="Certified Massage Therapist — Classical Swedish Massage">Diplomerad Massör — Klassisk Svensk Massage</span></li>
+                <li class="cert-item"><span data-sv="Personlig Tränare (PT)" data-en="Personal Trainer (PT)">Personlig Tränare (PT)</span></li>
+                <li class="cert-item"><span data-sv="Kostcoach" data-en="Nutrition Coach">Kostcoach</span></li>
+                <li class="cert-item"><span data-sv="MI-utövare — Motiverande Samtal" data-en="MI Practitioner — Motivational Interviewing">MI-utövare — Motiverande Samtal</span></li>
+              </ul>
+            </div>
+
+            <div class="cert-school-group">
+              <p class="cert-school-name">RF Sisu</p>
+              <ul class="certs-list">
+                <li class="cert-item"><span data-sv="Ledare som Lyssnar" data-en="The Listening Leader">Ledare som Lyssnar</span></li>
+              </ul>
+            </div>
+            <a href="images/certificates/diploma.pdf" target="_blank" rel="noopener noreferrer" class="certs-pdf-link">
+              <span data-sv="📄 Se mitt diplom (PDF)" data-en="📄 View my diploma (PDF)">📄 Se mitt diplom (PDF)</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- PROGRESS TRACKERS -->
     <section class="progress-section" id="progress">
       <div class="container">
-        <h2 class="section-title" data-sv="Hur långt har jag kommit?" data-en="How far have I come?">Hur långt har jag kommit?</h2>
-        <p class="section-sub" data-sv="Platser fylls på — följ min resa i realtid." data-en="Spots are filling up — follow my journey in real time.">Platser fylls på — följ min resa i realtid.</p>
+        <h2 class="section-title" data-sv="Min praktikresa" data-en="My practice journey">Min praktikresa</h2>
+        <p class="section-sub" data-sv="Här kan du följa hur långt jag har kommit med mina praktiska utbildningsmoment." data-en="Follow my progress through my practical training requirements.">Här kan du följa hur långt jag har kommit med mina praktiska utbildningsmoment.</p>
 
         <div class="progress-grid">
 
@@ -407,63 +463,6 @@
             </div>
           </div>
 
-        </div>
-      </div>
-    </section>
-
-    <!-- TESTIMONIALS (hidden until TESTIMONIALS array in script.js has entries) -->
-    <section class="testimonials" id="testimonials" hidden>
-      <div class="container">
-        <h2 class="section-title" data-sv="Vad säger klienterna?" data-en="What do clients say?">Vad säger klienterna?</h2>
-        <div class="testimonials-grid" id="testimonialsGrid"></div>
-      </div>
-    </section>
-
-    <!-- ABOUT -->
-    <section class="about" id="about">
-      <div class="container about-inner">
-        <div class="about-image">
-          <img src="images/JFprofileImg.webp" alt="Jonathan Fisher – HälsoPulsen" class="about-photo" loading="lazy" />
-        </div>
-
-        <div class="about-text">
-          <h2 data-sv="Om mig" data-en="About me">Om mig</h2>
-          <p
-            data-sv="Hej! Jag heter Jonathan Fisher och utbildar mig till hälsocoach via Örnsköldsviks folkhögskola. Jag är diplomerad massör i klassisk svensk massage och studerar just nu PT och kostcoach i slutfasen av min utbildning."
-            data-en="Hi! My name is Jonathan Fisher and I'm training to become a health coach at Örnsköldsvik Folk High School. I'm a certified classical Swedish massage therapist currently in the final stage of my PT and nutrition coach studies."
-          >
-            Hej! Jag heter Jonathan Fisher och utbildar mig till hälsocoach via Örnsköldsviks folkhögskola. Jag är diplomerad massör i klassisk svensk massage och studerar just nu PT och kostcoach i slutfasen av min utbildning.
-          </p>
-          <p
-            data-sv="Mitt mål är att hjälpa dig bygga tillräcklig styrka och vitalitet för att kunna delta i allt det roliga livet har att erbjuda. Under min praktikperiod (aug–dec 2026) söker jag klienter att arbeta med — och erbjuder alla tjänster helt gratis."
-            data-en="My goal is to help you build enough strength and vitality to enjoy everything life has to offer. During my practice period (Aug–Dec 2026), I'm looking for clients to work with — and offering all services completely free."
-          >
-            Mitt mål är att hjälpa dig bygga tillräcklig styrka och vitalitet för att kunna delta i allt det roliga livet har att erbjuda. Under min praktikperiod (aug–dec 2026) söker jag klienter att arbeta med — och erbjuder alla tjänster helt gratis.
-          </p>
-
-          <div class="certs">
-            <h3 class="certs-title" data-sv="Utbildning & Certifieringar" data-en="Education & Certifications">Utbildning &amp; Certifieringar</h3>
-
-            <div class="cert-school-group">
-              <p class="cert-school-name">Örnsköldsviks Folkhögskola · 2026</p>
-              <ul class="certs-list">
-                <li class="cert-item"><span data-sv="Diplomerad Massör — Klassisk Svensk Massage" data-en="Certified Massage Therapist — Classical Swedish Massage">Diplomerad Massör — Klassisk Svensk Massage</span></li>
-                <li class="cert-item"><span data-sv="Personlig Tränare (PT)" data-en="Personal Trainer (PT)">Personlig Tränare (PT)</span></li>
-                <li class="cert-item"><span data-sv="Kostcoach" data-en="Nutrition Coach">Kostcoach</span></li>
-                <li class="cert-item"><span data-sv="MI-utövare — Motiverande Samtal" data-en="MI Practitioner — Motivational Interviewing">MI-utövare — Motiverande Samtal</span></li>
-              </ul>
-            </div>
-
-            <div class="cert-school-group">
-              <p class="cert-school-name">RF Sisu</p>
-              <ul class="certs-list">
-                <li class="cert-item"><span data-sv="Ledare som Lyssnar" data-en="The Listening Leader">Ledare som Lyssnar</span></li>
-              </ul>
-            </div>
-            <a href="images/certificates/diploma.pdf" target="_blank" rel="noopener noreferrer" class="certs-pdf-link">
-              <span data-sv="📄 Se mitt diplom (PDF)" data-en="📄 View my diploma (PDF)">📄 Se mitt diplom (PDF)</span>
-            </a>
-          </div>
         </div>
       </div>
     </section>
