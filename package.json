@@ -11,6 +11,7 @@
     "db:migrate": "node scripts/db-migrate.js",
     "test:booking-db": "node scripts/test-booking-db.js",
     "test:booking-admin": "node scripts/test-booking-admin.js",
+    "test:booking-email": "node scripts/test-booking-email.js",
     "test:booking-phase2": "NODE_ENV=production node scripts/test-booking-phase2.js",
     "test:booking-phase5": "node scripts/test-booking-phase5.js",
     "test:booking-ui": "node scripts/test-booking-ui.js",
