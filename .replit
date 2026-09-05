@@ -42,3 +42,7 @@ BOOKING_EMAIL_PROVIDER = "resend"
 BOOKING_PUBLIC_URL = "https://halsopulsen.se"
 BOOKING_FROM_EMAIL = "bokning@halsopulsen.se"
 BOOKING_ADMIN_EMAIL = "halsopulsen@gmail.com"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
