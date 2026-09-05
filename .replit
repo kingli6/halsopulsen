@@ -34,3 +34,9 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+BOOKING_EMAIL_PROVIDER = "resend"
+BOOKING_PUBLIC_URL = "https://halsopulsen.se"
