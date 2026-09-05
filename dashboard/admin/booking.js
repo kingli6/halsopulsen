@@ -374,7 +374,7 @@
         <span>${esc(item.notes || "Ingen kundanteckning")}</span>
       </div>
       <div class="quick-actions">
-        ${(["pending", "cancelled"].includes(item.status) && item.startAt)
+        ${(["pending", "cancelled"].includes(item.status) && (item.status === "pending" || item.startAt))
           ? `<button class="button button-secondary button-small" data-quick-status="confirmed" type="button">${item.status === "cancelled" ? "Återaktivera och bekräfta" : "Bekräfta"}</button>`
           : ""}
         ${item.status !== "cancelled" ? '<button class="button button-secondary button-small danger-button" data-quick-status="cancelled" type="button">Avboka</button>' : ""}
@@ -584,9 +584,16 @@
           && !window.confirm("Avboka den här bokningen?")) {
           return;
         }
+        const quickStatusPayload = { status: target.dataset.quickStatus };
+        if (target.dataset.quickStatus === "confirmed"
+          && state.editingAppointment.status === "pending"
+          && !state.editingAppointment.startAt) {
+          quickStatusPayload.date = state.editingAppointment.originalDate;
+          quickStatusPayload.start = state.editingAppointment.originalStart;
+        }
         api(`/appointments/${state.editingAppointment.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ status: target.dataset.quickStatus })
+          body: JSON.stringify(quickStatusPayload)
         }).then(async () => {
           await loadAppointments();
           await loadCalendar();
