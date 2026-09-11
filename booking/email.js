@@ -35,6 +35,17 @@ function publicUrl(path) {
   return base ? `${base}${path}` : path;
 }
 
+function validPublicUrl() {
+  const value = String(process.env.BOOKING_PUBLIC_URL || "").trim();
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function formatDateTime(date) {
   if (!date) return "Ingen tid tilldelad";
   const parsed = new Date(date);
@@ -60,7 +71,7 @@ function bookingDetails(booking, { requireCurrent = false } = {}) {
   ].join("\n");
 }
 
-async function sendBookingEmail({ to, subject, text, html, suppress = false }) {
+async function sendBookingEmail({ to, subject, text, html, label = "transactional booking email", suppress = false }) {
   if (suppress || isTestFixtureEmail(to)) {
     return { sent: false, reason: "test_fixture" };
   }
@@ -71,6 +82,11 @@ async function sendBookingEmail({ to, subject, text, html, suppress = false }) {
       `Booking email skipped: provider is not configured (${config.missing.join(", ")}).`
     );
     return { sent: false, reason: "not_configured", missing: config.missing };
+  }
+
+  if (!validPublicUrl()) {
+    console.warn("Booking email skipped: BOOKING_PUBLIC_URL must be an absolute HTTP(S) URL.");
+    return { sent: false, reason: "invalid_public_url" };
   }
 
   if (config.provider !== "resend") {
@@ -96,6 +112,7 @@ async function sendBookingEmail({ to, subject, text, html, suppress = false }) {
     const detail = await response.text().catch(() => "");
     throw new Error(`Transactional email provider rejected the message (${response.status}): ${detail.slice(0, 300)}`);
   }
+  console.info(`Booking email sent via Resend: ${label}.`);
   return { sent: true };
 }
 
@@ -105,6 +122,7 @@ async function sendRequestReceivedEmail({ booking, token, suppress }) {
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Din bokningsförfrågan har tagits emot · HälsoPulsen",
+    label: "client request confirmation",
     suppress,
     text: [
       "Tack för din bokningsförfrågan till HälsoPulsen.",
@@ -126,6 +144,7 @@ async function sendNewRequestAdminEmail({ booking, suppress }) {
   return sendBookingEmail({
     to: process.env.BOOKING_ADMIN_EMAIL || "",
     subject: `Ny bokningsförfrågan · ${booking.clientName}`,
+    label: "admin new-request notification",
     suppress,
     text: [
       "En ny bokningsförfrågan väntar på granskning.",
@@ -147,6 +166,7 @@ async function sendConfirmedEmail({ booking, token, suppress }) {
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Din tid är bekräftad · HälsoPulsen",
+    label: "client booking confirmation",
     suppress,
     text: [
       "Din bokning är bekräftad.",
@@ -166,6 +186,7 @@ async function sendAlternativeEmail({ booking, token, suppress }) {
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Förslag på en annan tid · HälsoPulsen",
+    label: "client alternative-time message",
     suppress,
     text: [
       "Jag har ett förslag på en annan tid för din bokning.",
@@ -183,6 +204,7 @@ async function sendCancelledEmail({ booking, suppress }) {
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Bokningsförfrågan avslutad · HälsoPulsen",
+    label: "client cancellation message",
     suppress,
     text: [
       "Din bokningsförfrågan har avslutats och tiden är inte längre reserverad.",
