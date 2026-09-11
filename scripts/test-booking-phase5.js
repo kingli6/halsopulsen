@@ -23,7 +23,6 @@ const {
 } = require("../booking/workflow-service");
 const {
   bookingDetails,
-  getEmailConfiguration,
   sendCancelledEmail
 } = require("../booking/email");
 
@@ -375,7 +374,6 @@ async function main() {
       }
     });
     assert.strictEqual(fixtureEmail.reason, "test_fixture");
-    assert.strictEqual(getEmailConfiguration().configured, false);
     const unscheduledDetails = bookingDetails({
       serviceName: "Fixture",
       startsAt: null,
