@@ -28,6 +28,34 @@ const TESTIMONIALS = [
 const SERVICE_LABEL = { massage: "Massage", nutrition: "Kostcoach", pt: "Personlig Träning" };
 const SERVICE_ICON  = { massage: "💆", nutrition: "🥗", pt: "💪" };
 
+const RENDER_WAKE_URL = "https://halsopulsen-cold-start-test.onrender.com/api/booking/wake";
+const KEEP_WARM_INTERVAL_MS = 10 * 60 * 1000;
+let keepWarmTimer = null;
+
+function wakeRender() {
+  fetch(RENDER_WAKE_URL, {
+    method: "GET",
+    mode: "no-cors",
+    cache: "no-store",
+    keepalive: true
+  }).catch(() => {});
+}
+
+function stopKeepWarm() {
+  if (keepWarmTimer !== null) {
+    clearInterval(keepWarmTimer);
+    keepWarmTimer = null;
+  }
+}
+
+function startKeepWarm() {
+  stopKeepWarm();
+  if (document.visibilityState !== "visible") return;
+  keepWarmTimer = setInterval(() => {
+    if (document.visibilityState === "visible") wakeRender();
+  }, KEEP_WARM_INTERVAL_MS);
+}
+
 function renderTestimonials() {
   const section = document.getElementById('testimonials');
   const grid    = document.getElementById('testimonialsGrid');
@@ -154,6 +182,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   applyLanguage(currentLang);
+
+  wakeRender();
+  startKeepWarm();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      wakeRender();
+      startKeepWarm();
+    } else {
+      stopKeepWarm();
+    }
+  });
+
+  window.addEventListener("pageshow", () => {
+    if (document.visibilityState === "visible") {
+      wakeRender();
+      startKeepWarm();
+    }
+  });
+
+  const bookingLink = document.querySelector("a.btn-contact-primary");
+  if (bookingLink) {
+    bookingLink.addEventListener("pointerdown", wakeRender);
+    bookingLink.addEventListener("click", wakeRender);
+  }
 
 
   /* ================================================================

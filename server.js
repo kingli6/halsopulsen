@@ -27,7 +27,10 @@ if (process.env.NODE_ENV === 'production' && process.env.CLERK_SECRET_KEY) {
 }
 const clerk = clerkMiddleware();
 app.use((req, res, next) => {
-  if (req.method === 'GET' && req.path === '/api/booking/services') {
+  if (
+    req.method === 'GET'
+    && (req.path === '/api/booking/services' || req.path === '/api/booking/wake')
+  ) {
     return next();
   }
   return clerk(req, res, next);
@@ -175,6 +178,9 @@ app.use('/api', (req, res, next) => {
 app.use('/api', (req, res, next) => {
   if (!['POST', 'PUT', 'DELETE'].includes(req.method)) return next();
   mutationRateLimiter(req, res, next);
+});
+app.get('/api/booking/wake', (req, res) => {
+  res.json({ ok: true });
 });
 app.use('/api/booking', bookingRouter);
 app.use('/api/booking/actions', bookingActionRouter);
