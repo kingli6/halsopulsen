@@ -25,7 +25,13 @@ if (process.env.NODE_ENV === 'production' && process.env.CLERK_SECRET_KEY) {
     }
   }));
 }
-app.use(clerkMiddleware());
+const clerk = clerkMiddleware();
+app.use((req, res, next) => {
+  if (req.method === 'GET' && req.path === '/api/booking/services') {
+    return next();
+  }
+  return clerk(req, res, next);
+});
 app.use(express.json({ limit: '512kb', strict: true }));
 
 const MAX_PROGRAM_WEEKS = 52;
