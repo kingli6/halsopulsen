@@ -6,6 +6,7 @@ const {
   createOverride,
   createRule,
   createService,
+  deleteCancelledAppointment,
   getAppointment,
   listAppointments,
   updateAppointment,
@@ -150,12 +151,21 @@ async function main() {
     assert.strictEqual(released.startAt, null);
     assert.strictEqual(released.endAt, null);
     assert.strictEqual(released.status, "pending");
+    await assert.rejects(
+      deleteCancelledAppointment(pool, cleanup.appointmentIds[0]),
+      error => error instanceof BookingError && error.code === "invalid_transition"
+    );
+
     const rescheduled = await updateAppointment(pool, cleanup.appointmentIds[0], {
       date: fixtureDate,
       start: "09:00",
       status: "confirmed"
     });
     assert.strictEqual(rescheduled.status, "confirmed");
+    await assert.rejects(
+      deleteCancelledAppointment(pool, cleanup.appointmentIds[0]),
+      error => error instanceof BookingError && error.code === "invalid_transition"
+    );
 
     await assert.rejects(
       updateAppointment(pool, cleanup.appointmentIds[0], {
@@ -172,11 +182,44 @@ async function main() {
     assert.strictEqual(reactivated.status, "pending");
     assert.strictEqual(reactivated.startAt, null);
     assert.strictEqual(reactivated.cancelledAt, null);
+    await assert.rejects(
+      deleteCancelledAppointment(pool, cleanup.appointmentIds[0]),
+      error => error instanceof BookingError && error.code === "invalid_transition"
+    );
+
+    const confirmedAgain = await updateAppointment(pool, cleanup.appointmentIds[0], {
+      date: fixtureDate,
+      start: "09:00",
+      status: "confirmed"
+    });
+    assert.strictEqual(confirmedAgain.status, "confirmed");
+    await assert.rejects(
+      deleteCancelledAppointment(pool, cleanup.appointmentIds[0]),
+      error => error instanceof BookingError && error.code === "invalid_transition"
+    );
+
+    const cancelledForDeletion = await updateAppointment(
+      pool,
+      cleanup.appointmentIds[0],
+      { status: "cancelled" }
+    );
+    assert.strictEqual(cancelledForDeletion.status, "cancelled");
+    const deleted = await deleteCancelledAppointment(pool, cleanup.appointmentIds[0]);
+    assert.strictEqual(deleted.id, cleanup.appointmentIds[0]);
+    await assert.rejects(
+      getAppointment(pool, cleanup.appointmentIds[0]),
+      error => error instanceof BookingError && error.code === "not_found"
+    );
+    const serviceStillExists = await pool.query(
+      "SELECT id FROM booking.services WHERE id = $1",
+      [service.id]
+    );
+    assert.strictEqual(serviceStillExists.rowCount, 1);
+
     const completed = await updateAppointment(pool, cleanup.appointmentIds[1], { status: "completed" });
     assert.strictEqual(completed.status, "completed");
 
     const appointments = await listAppointments(pool, { from: fixtureDate, to: fixtureDate });
-    assert(appointments.some(item => item.id === cleanup.appointmentIds[0]));
     assert(appointments.some(item => item.id === cleanup.appointmentIds[1]));
     console.log("Booking admin integration checks passed.");
   } finally {

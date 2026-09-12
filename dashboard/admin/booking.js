@@ -379,7 +379,8 @@
            ? `<button class="button button-secondary button-small" data-quick-status="${item.status === "cancelled" ? "pending" : "confirmed"}" type="button">${item.status === "cancelled" ? "Återaktivera" : "Bekräfta"}</button>`
           : ""}
         ${item.status !== "cancelled" ? '<button class="button button-secondary button-small danger-button" data-quick-status="cancelled" type="button">Avboka</button>' : ""}
-        ${["pending", "confirmed"].includes(item.status) ? '<button class="button button-secondary button-small" data-quick-status="completed" type="button">Markera klar</button>' : ""}
+        ${item.status === "confirmed" ? '<button class="button button-secondary button-small" data-quick-status="completed" type="button">Markera klar</button>' : ""}
+        ${item.status === "cancelled" ? `<button class="button button-secondary button-small danger-button" data-delete-appointment="${item.id}" type="button">Ta bort</button>` : ""}
       </div>
     `;
     $("appointment-editor").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -608,6 +609,15 @@
         }
         updateQuickStatus(target.dataset.quickStatus);
       }
+      if (target.dataset.deleteAppointment && state.editingAppointment) {
+        openConfirmation({
+          title: "Ta bort bokning?",
+          message: "Bokningen tas bort permanent och kan inte återställas.",
+          confirmLabel: "Ta bort",
+          onConfirm: () => deleteAppointment(target.dataset.deleteAppointment)
+        });
+        return;
+      }
       if (Object.prototype.hasOwnProperty.call(target.dataset, "suggestAlternative")
         && state.editingAppointment) {
         const date = $("alternative-date").value;
@@ -688,6 +698,19 @@
         target.textContent = "Föreslå ny tid";
       }
     })();
+  }
+
+  async function deleteAppointment(id) {
+    try {
+      await api(`/appointments/${id}`, { method: "DELETE" });
+      state.editingAppointment = null;
+      $("appointment-editor").hidden = true;
+      await loadAppointments();
+      await loadCalendar();
+      toast("Bokningen togs bort.");
+    } catch (error) {
+      message(error.message, true);
+    }
   }
 
   function initialize() {
