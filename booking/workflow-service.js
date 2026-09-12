@@ -2,7 +2,8 @@ const crypto = require("crypto");
 const { getBookingConfig } = require("./config");
 const {
   BookingError,
-  calculateAvailability
+  calculateAvailability,
+  expireAlternativeProposalsInTransaction
 } = require("./service");
 const { ensureAppointmentRangeIsFree } = require("./admin-service");
 const {
@@ -370,6 +371,7 @@ function publicActionState(row, config = getBookingConfig()) {
 }
 
 async function getClientAction(pool, token, config = getBookingConfig()) {
+  await expireAlternativeProposalsInTransaction(pool);
   const row = await findAppointmentByToken(pool, token);
   if (!VALID_WORKFLOW_STATUSES.has(row.status)) {
     throw new BookingError("This booking link is no longer active.", 409, "invalid_transition");
@@ -378,6 +380,7 @@ async function getClientAction(pool, token, config = getBookingConfig()) {
 }
 
 async function acceptAlternative(pool, token, config = getBookingConfig()) {
+  await expireAlternativeProposalsInTransaction(pool);
   const client = await beginCalendarTransaction(pool);
   try {
     const row = await findAppointmentByToken(client, token, { forUpdate: true });
@@ -418,6 +421,7 @@ async function acceptAlternative(pool, token, config = getBookingConfig()) {
 }
 
 async function cancelByToken(pool, token, config = getBookingConfig()) {
+  await expireAlternativeProposalsInTransaction(pool);
   const client = await beginCalendarTransaction(pool);
   try {
     const row = await findAppointmentByToken(client, token, { forUpdate: true });
@@ -444,6 +448,7 @@ async function cancelByToken(pool, token, config = getBookingConfig()) {
 }
 
 async function declineAlternative(pool, token, config = getBookingConfig()) {
+  await expireAlternativeProposalsInTransaction(pool);
   const client = await beginCalendarTransaction(pool);
   try {
     const row = await findAppointmentByToken(client, token, { forUpdate: true });

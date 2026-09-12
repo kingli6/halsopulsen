@@ -26,6 +26,37 @@ function createClientActionToken() {
   };
 }
 
+async function expireAlternativeProposals(client) {
+  const result = await client.query(`
+    UPDATE booking.appointments
+    SET status = 'cancelled',
+        cancelled_at = COALESCE(cancelled_at, CURRENT_TIMESTAMP),
+        alternative_starts_at = NULL,
+        alternative_ends_at = NULL
+    WHERE status = 'alternative_suggested'
+      AND client_action_expires_at IS NOT NULL
+      AND client_action_expires_at <= CURRENT_TIMESTAMP
+    RETURNING id
+  `);
+  return result.rows.map(row => String(row.id));
+}
+
+async function expireAlternativeProposalsInTransaction(pool) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [CALENDAR_LOCK_KEY]);
+    const expiredIds = await expireAlternativeProposals(client);
+    await client.query("COMMIT");
+    return expiredIds;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 class BookingError extends Error {
   constructor(message, status = 400, code = "booking_error") {
     super(message);
@@ -314,6 +345,7 @@ async function calculateAvailability({
     throw new BookingError("The availability date range is invalid.", 400, "invalid_date_range");
   }
 
+  await expireAlternativeProposals(client);
   const data = await loadAvailabilityData(
     client,
     from,
@@ -511,6 +543,8 @@ module.exports = {
   BookingError,
   calculateAvailability,
   createBookingRequest,
+  expireAlternativeProposals,
+  expireAlternativeProposalsInTransaction,
   findService,
   listActiveServices,
   publicService
