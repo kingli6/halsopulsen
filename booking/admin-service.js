@@ -710,7 +710,13 @@ async function ensureAppointmentRangeIsFree(client, {
   }
 }
 
-async function updateAppointment(pool, id, body, config = getBookingConfig()) {
+async function updateAppointment(
+  pool,
+  id,
+  body,
+  config = getBookingConfig(),
+  { confirmedEditOnly = false } = {}
+) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -726,6 +732,13 @@ async function updateAppointment(pool, id, body, config = getBookingConfig()) {
     }
     const existing = result.rows[0];
     const status = appointmentStatusInput(body, existing.status);
+    if (confirmedEditOnly && (existing.status !== "confirmed" || status !== "confirmed")) {
+      throw new BookingError(
+        "Only confirmed appointments can be edited as confirmed.",
+        409,
+        "invalid_transition"
+      );
+    }
     if (existing.status === "completed" && status !== "completed") {
       throw new BookingError("Completed appointments cannot be reopened or cancelled.", 409, "invalid_transition");
     }
@@ -774,10 +787,23 @@ async function updateAppointment(pool, id, body, config = getBookingConfig()) {
     return getAppointment(pool, updated.rows[0].id, config);
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
+    if (error.code === "23P01") {
+      throw new BookingError("That time is no longer available.", 409, "slot_unavailable");
+    }
     throw error;
   } finally {
     client.release();
   }
+}
+
+async function updateConfirmedAppointment(pool, id, body, config = getBookingConfig()) {
+  return updateAppointment(
+    pool,
+    id,
+    { ...(body || {}), status: "confirmed" },
+    config,
+    { confirmedEditOnly: true }
+  );
 }
 
 async function deleteCancelledAppointment(pool, id) {
@@ -854,6 +880,7 @@ module.exports = {
   listRules,
   listServices,
   updateAppointment,
+  updateConfirmedAppointment,
   updateBlockedTime,
   updateOverride,
   updateRule,

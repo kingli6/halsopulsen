@@ -18,6 +18,7 @@ const {
   listRules,
   listServices,
   updateAppointment,
+  updateConfirmedAppointment,
   updateBlockedTime,
   updateOverride,
   updateRule,
@@ -165,6 +166,13 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
     return res.json({ ok: true, appointment: result.booking });
   }
   if (req.body?.status === "confirmed") {
+    const existing = await getAppointment(getPool(), id, getBookingConfig());
+    if (existing.status === "confirmed") {
+      return res.json({
+        ok: true,
+        appointment: await updateConfirmedAppointment(getPool(), id, req.body, getBookingConfig())
+      });
+    }
     const result = await confirmAppointment(getPool(), id, req.body, getBookingConfig());
     sendConfirmedEmail({
       booking: result.booking,
