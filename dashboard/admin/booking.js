@@ -8,6 +8,7 @@
     calendar: null,
     editingAppointment: null
   };
+  let pendingConfirmation = null;
   const weekdays = ["", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
   const statusLabels = {
     pending: "Väntar",
@@ -374,11 +375,12 @@
         <span>${esc(item.notes || "Ingen kundanteckning")}</span>
       </div>
       <div class="quick-actions">
-        ${(["pending", "cancelled"].includes(item.status) && (item.status === "pending" || item.startAt))
-          ? `<button class="button button-secondary button-small" data-quick-status="confirmed" type="button">${item.status === "cancelled" ? "Återaktivera och bekräfta" : "Bekräfta"}</button>`
+         ${["pending", "cancelled"].includes(item.status)
+           ? `<button class="button button-secondary button-small" data-quick-status="${item.status === "cancelled" ? "pending" : "confirmed"}" type="button">${item.status === "cancelled" ? "Återaktivera" : "Bekräfta"}</button>`
           : ""}
         ${item.status !== "cancelled" ? '<button class="button button-secondary button-small danger-button" data-quick-status="cancelled" type="button">Avboka</button>' : ""}
-        ${["pending", "confirmed"].includes(item.status) ? '<button class="button button-secondary button-small" data-quick-status="completed" type="button">Markera klar</button>' : ""}
+        ${item.status === "confirmed" ? '<button class="button button-secondary button-small" data-quick-status="completed" type="button">Markera klar</button>' : ""}
+        ${item.status === "cancelled" ? `<button class="button button-secondary button-small danger-button" data-delete-appointment="${item.id}" type="button">Ta bort</button>` : ""}
       </div>
     `;
     $("appointment-editor").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -555,6 +557,18 @@
     $("reset-override").addEventListener("click", resetOverride);
     $("reset-block").addEventListener("click", resetBlock);
     $("override-type").addEventListener("change", toggleOverrideTimes);
+    $("booking-confirmation-cancel").addEventListener("click", event => {
+      event.preventDefault();
+      pendingConfirmation = null;
+      $("booking-confirmation-dialog").close();
+    });
+    $("booking-confirmation-confirm").addEventListener("click", event => {
+      event.preventDefault();
+      const confirmation = pendingConfirmation;
+      pendingConfirmation = null;
+      $("booking-confirmation-dialog").close();
+      if (confirmation) confirmation.onConfirm();
+    });
     ["alternative-date", "alternative-time"].forEach(id => {
       $(id).addEventListener("input", () => alternativeFeedback(""));
     });
@@ -584,23 +598,25 @@
           && !window.confirm("Avboka den här bokningen?")) {
           return;
         }
-        const quickStatusPayload = { status: target.dataset.quickStatus };
-        if (target.dataset.quickStatus === "confirmed"
-          && state.editingAppointment.status === "pending"
-          && !state.editingAppointment.startAt) {
-          quickStatusPayload.date = state.editingAppointment.originalDate;
-          quickStatusPayload.start = state.editingAppointment.originalStart;
+        if (target.dataset.quickStatus === "confirmed") {
+          openConfirmation({
+            title: "Bekräfta bokning?",
+            message: "Detta bekräftar tiden och skickar ett bekräftelsemejl till klienten.",
+            confirmLabel: "Bekräfta och skicka",
+            onConfirm: () => updateQuickStatus(target.dataset.quickStatus)
+          });
+          return;
         }
-        api(`/appointments/${state.editingAppointment.id}`, {
-          method: "PATCH",
-          body: JSON.stringify(quickStatusPayload)
-        }).then(async () => {
-          await loadAppointments();
-          await loadCalendar();
-          state.editingAppointment.status = target.dataset.quickStatus;
-          openAppointment(state.appointments.find(item => item.id === state.editingAppointment.id) || state.editingAppointment);
-          toast("Bokningens status uppdaterades.");
-        }).catch(error => message(error.message, true));
+        updateQuickStatus(target.dataset.quickStatus);
+      }
+      if (target.dataset.deleteAppointment && state.editingAppointment) {
+        openConfirmation({
+          title: "Ta bort bokning?",
+          message: "Bokningen tas bort permanent och kan inte återställas.",
+          confirmLabel: "Ta bort",
+          onConfirm: () => deleteAppointment(target.dataset.deleteAppointment)
+        });
+        return;
       }
       if (Object.prototype.hasOwnProperty.call(target.dataset, "suggestAlternative")
         && state.editingAppointment) {
@@ -610,41 +626,91 @@
           alternativeFeedback("Välj datum och starttid för förslaget.", true);
           return;
         }
-        target.disabled = true;
-        target.classList.add("is-loading");
-        target.textContent = "Kontrollerar tillgängligheten…";
-        alternativeFeedback("Kontrollerar tillgängligheten…");
-        (async () => {
-          try {
-            await checkAlternativeAvailability(state.editingAppointment, date, start);
-            await api(`/appointments/${state.editingAppointment.id}`, {
-              method: "PATCH",
-              body: JSON.stringify({
-                action: "suggest_alternative",
-                alternativeDate: date,
-                alternativeStart: start
-              })
-            });
-            await loadAppointments();
-            await loadCalendar();
-            const updated = state.appointments.find(item => item.id === state.editingAppointment.id);
-            if (updated) openAppointment(updated);
-            message("Ny tid föreslagen. Kunden behöver acceptera tiden.");
-            toast("Ny tid föreslagen. Kunden behöver acceptera tiden.");
-          } catch (error) {
-            message("");
-            alternativeFeedback(alternativeErrorMessage(error), true);
-          } finally {
-            target.disabled = false;
-            target.classList.remove("is-loading");
-            target.textContent = "Föreslå ny tid";
-          }
-        })();
+        openConfirmation({
+          title: "Skicka förslag på ny tid?",
+          message: "Klienten får ett meddelande med den nya föreslagna tiden och kan acceptera eller avböja den.",
+          confirmLabel: "Skicka förslag",
+          onConfirm: () => suggestAlternative(date, start, target)
+        });
       }
       if (target.dataset.deleteRule) deleteResource(`/hours/${target.dataset.deleteRule}`, loadResources, "arbetstiden");
       if (target.dataset.deleteOverride) deleteResource(`/overrides/${target.dataset.deleteOverride}`, loadResources, "undantaget");
       if (target.dataset.deleteBlock) deleteResource(`/blocks/${target.dataset.deleteBlock}`, loadResources, "blockeringen");
     });
+  }
+
+  function openConfirmation({ title, message, confirmLabel, onConfirm }) {
+    pendingConfirmation = { onConfirm };
+    $("booking-confirmation-title").textContent = title;
+    $("booking-confirmation-message").textContent = message;
+    $("booking-confirmation-confirm").textContent = confirmLabel;
+    $("booking-confirmation-dialog").showModal();
+  }
+
+  function updateQuickStatus(status) {
+    const quickStatusPayload = { status };
+    if (status === "confirmed"
+      && state.editingAppointment.status === "pending"
+      && !state.editingAppointment.startAt) {
+      quickStatusPayload.date = state.editingAppointment.originalDate;
+      quickStatusPayload.start = state.editingAppointment.originalStart;
+    }
+    api(`/appointments/${state.editingAppointment.id}`, {
+      method: "PATCH",
+      body: JSON.stringify(quickStatusPayload)
+    }).then(async () => {
+      await loadAppointments();
+      await loadCalendar();
+      state.editingAppointment.status = status;
+      openAppointment(state.appointments.find(item => item.id === state.editingAppointment.id) || state.editingAppointment);
+      toast("Bokningens status uppdaterades.");
+    }).catch(error => message(error.message, true));
+  }
+
+  function suggestAlternative(date, start, target) {
+    target.disabled = true;
+    target.classList.add("is-loading");
+    target.textContent = "Kontrollerar tillgängligheten…";
+    alternativeFeedback("Kontrollerar tillgängligheten…");
+    (async () => {
+      try {
+        await checkAlternativeAvailability(state.editingAppointment, date, start);
+        await api(`/appointments/${state.editingAppointment.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            action: "suggest_alternative",
+            alternativeDate: date,
+            alternativeStart: start
+          })
+        });
+        await loadAppointments();
+        await loadCalendar();
+        const updated = state.appointments.find(item => item.id === state.editingAppointment.id);
+        if (updated) openAppointment(updated);
+        message("Ny tid föreslagen. Kunden behöver acceptera tiden.");
+        toast("Ny tid föreslagen. Kunden behöver acceptera tiden.");
+      } catch (error) {
+        message("");
+        alternativeFeedback(alternativeErrorMessage(error), true);
+      } finally {
+        target.disabled = false;
+        target.classList.remove("is-loading");
+        target.textContent = "Föreslå ny tid";
+      }
+    })();
+  }
+
+  async function deleteAppointment(id) {
+    try {
+      await api(`/appointments/${id}`, { method: "DELETE" });
+      state.editingAppointment = null;
+      $("appointment-editor").hidden = true;
+      await loadAppointments();
+      await loadCalendar();
+      toast("Bokningen togs bort.");
+    } catch (error) {
+      message(error.message, true);
+    }
   }
 
   function initialize() {

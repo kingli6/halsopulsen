@@ -10,6 +10,7 @@ const {
   createOverride,
   createRule,
   createService,
+  deleteCancelledAppointment,
   getAppointment,
   listAppointments,
   listBlockedTimes,
@@ -143,6 +144,13 @@ router.get("/appointments", asyncRoute(async (req, res) => {
 
 router.get("/appointments/:id", asyncRoute(async (req, res) => {
   res.json({ ok: true, appointment: await getAppointment(getPool(), parseId(req.params.id)) });
+}));
+
+router.delete("/appointments/:id", asyncRoute(async (req, res) => {
+  res.json({
+    ok: true,
+    appointment: await deleteCancelledAppointment(getPool(), parseId(req.params.id))
+  });
 }));
 
 router.patch("/appointments/:id", asyncRoute(async (req, res) => {

@@ -245,13 +245,14 @@ async function testRouteTriggersAndProviderFailure() {
     createOverride: async () => ({}),
     createRule: async () => ({}),
     createService: async () => ({}),
+    deleteCancelledAppointment: async () => ({ id: "3" }),
     getAppointment: async () => ({}),
     listAppointments: async () => [],
     listBlockedTimes: async () => [],
     listOverrides: async () => [],
     listRules: async () => [],
     listServices: async () => [],
-    updateAppointment: async () => ({}),
+    updateAppointment: async () => ({ status: "pending" }),
     updateBlockedTime: async () => ({}),
     updateOverride: async () => ({}),
     updateRule: async () => ({}),
@@ -315,6 +316,21 @@ async function testRouteTriggersAndProviderFailure() {
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.status, "cancelled");
   assert.strictEqual(calls[4].name, "cancelled");
+
+  response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
+    params: { id: "3" },
+    body: { status: "pending" }
+  });
+  assert.strictEqual(response.statusCode, 200);
+  assert.strictEqual(response.body.appointment.status, "pending");
+  assert.strictEqual(calls.length, 5, "Reactivation must not send an email.");
+
+  response = await invokeRoute(bookingAdminRouter, "delete", "/appointments/:id", {
+    params: { id: "3" }
+  });
+  assert.strictEqual(response.statusCode, 200);
+  assert.strictEqual(response.body.appointment.id, "3");
+  assert.strictEqual(calls.length, 5, "Deleting must not send an email.");
 
   global.fetch = async () => ({
     ok: false,

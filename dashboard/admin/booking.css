@@ -66,6 +66,13 @@
 .alternative-time-box .button:disabled { cursor: wait; opacity: .72; }
 .appointment-feedback { padding: 9px 10px; margin: -2px 0 0; border: 1px solid #e1aaa3; border-radius: 8px; background: #fff4f2; color: #8f3e35; font-size: 11px; line-height: 1.4; }
 .appointment-feedback[hidden] { display: none; }
+.booking-confirmation { width: min(420px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 14px; background: transparent; color: var(--ink); box-shadow: 0 18px 55px rgba(22, 53, 36, .22); }
+.booking-confirmation::backdrop { background: rgba(20, 35, 27, .38); }
+.booking-confirmation-card { padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.booking-confirmation h2 { margin: 0 0 9px; font-family: "Space Grotesk", sans-serif; font-size: 20px; }
+.booking-confirmation p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.booking-confirmation-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.booking-confirmation-actions .button { margin: 0; }
 .calendar-grid { display: flex; flex-direction: column; gap: 9px; }
 .calendar-day { padding: 14px 16px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
 .calendar-day h3 { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; }
