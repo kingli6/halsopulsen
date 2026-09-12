@@ -202,11 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  const bookingLink = document.querySelector("a.btn-contact-primary");
-  if (bookingLink) {
-    bookingLink.addEventListener("pointerdown", wakeRender);
-    bookingLink.addEventListener("click", wakeRender);
-  }
+  const bookingLinks = document.querySelectorAll(
+    "a.btn-contact-primary, #services a[href='#contact']"
+  );
+
+  bookingLinks.forEach((link) => {
+    link.addEventListener("pointerdown", wakeRender);
+    link.addEventListener("click", wakeRender);
+  });
 
 
   /* ================================================================
