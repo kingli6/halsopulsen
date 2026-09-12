@@ -8,7 +8,10 @@ const {
   getClientAction
 } = require("./workflow-service");
 const {
+  calendarSequence,
   isTestFixtureEmail,
+  sendAdminCancelledEmail,
+  sendAdminConfirmedEmail,
   sendCancelledEmail,
   sendConfirmedEmail
 } = require("./email");
@@ -52,13 +55,19 @@ router.post("/:token/accept", asyncRoute(async (req, res) => {
     token: result.actionToken,
     suppress: suppressFor(result.booking)
   }).catch(error => console.error("Booking confirmation email failed:", error.message));
+  sendAdminConfirmedEmail({
+    booking: result.booking,
+    suppress: suppressFor(result.booking)
+  }).catch(error => console.error("Admin booking confirmation email failed:", error.message));
   res.json({ ok: true, status: result.booking.status, manageToken: result.actionToken });
 }));
 
 router.post("/:token/decline", asyncRoute(async (req, res) => {
   const result = await declineAlternative(getPool(), token(req));
+  const sequence = calendarSequence(result.booking);
   sendCancelledEmail({
     booking: result.booking,
+    sequence,
     suppress: suppressFor(result.booking)
   }).catch(error => console.error("Booking cancellation email failed:", error.message));
   res.json({ ok: true, status: result.booking.status });
@@ -66,10 +75,19 @@ router.post("/:token/decline", asyncRoute(async (req, res) => {
 
 router.post("/:token/cancel", asyncRoute(async (req, res) => {
   const result = await cancelByToken(getPool(), token(req));
+  const sequence = calendarSequence(result.booking);
   sendCancelledEmail({
     booking: result.booking,
+    sequence,
     suppress: suppressFor(result.booking)
   }).catch(error => console.error("Booking cancellation email failed:", error.message));
+  if (result.booking.startsAt && result.booking.endsAt) {
+    sendAdminCancelledEmail({
+      booking: result.booking,
+      sequence,
+      suppress: suppressFor(result.booking)
+    }).catch(error => console.error("Admin booking cancellation email failed:", error.message));
+  }
   res.json({ ok: true, status: result.booking.status });
 }));
 
