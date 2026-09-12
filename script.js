@@ -28,7 +28,7 @@ const TESTIMONIALS = [
 const SERVICE_LABEL = { massage: "Massage", nutrition: "Kostcoach", pt: "Personlig Träning" };
 const SERVICE_ICON  = { massage: "💆", nutrition: "🥗", pt: "💪" };
 
-const RENDER_WAKE_URL = "https://halsopulsen-cold-start-test.onrender.com/api/booking/wake";
+const RENDER_WAKE_URL = "https://booking.halsopulsen.se/api/booking/wake";
 const KEEP_WARM_INTERVAL_MS = 10 * 60 * 1000;
 let keepWarmTimer = null;
 
