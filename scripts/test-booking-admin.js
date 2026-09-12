@@ -168,6 +168,10 @@ async function main() {
 
     const cancelled = await updateAppointment(pool, cleanup.appointmentIds[0], { status: "cancelled" });
     assert.strictEqual(cancelled.status, "cancelled");
+    const reactivated = await updateAppointment(pool, cleanup.appointmentIds[0], { status: "pending" });
+    assert.strictEqual(reactivated.status, "pending");
+    assert.strictEqual(reactivated.startAt, null);
+    assert.strictEqual(reactivated.cancelledAt, null);
     const completed = await updateAppointment(pool, cleanup.appointmentIds[1], { status: "completed" });
     assert.strictEqual(completed.status, "completed");
 

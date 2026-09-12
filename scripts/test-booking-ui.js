@@ -184,9 +184,16 @@ async function main() {
   const adminJs = fs.readFileSync("dashboard/admin/booking.js", "utf8");
   assert(adminHtml.includes('id="alternative-feedback"'));
   assert(adminHtml.includes("kunden accepterar"));
+   assert(adminHtml.includes('id="booking-confirmation-dialog"'));
   assert(adminJs.includes("Kontrollerar tillgängligheten"));
   assert(adminJs.includes("Ny tid föreslagen. Kunden behöver acceptera tiden."));
   assert(adminJs.includes("Den föreslagna tiden är inte längre tillgänglig."));
+   assert(adminJs.includes('data-quick-status="${item.status === "cancelled" ? "pending" : "confirmed"}"'));
+   assert(adminJs.includes('title: "Bekräfta bokning?"'));
+   assert(adminJs.includes('confirmLabel: "Bekräfta och skicka"'));
+   assert(adminJs.includes('title: "Skicka förslag på ny tid?"'));
+   assert(adminJs.includes('confirmLabel: "Skicka förslag"'));
+   assert(!adminJs.includes("Återaktivera och bekräfta"));
   console.log("Booking UI checks passed: rebooking reset, duplicate protection, and alternative-time feedback.");
 }
 

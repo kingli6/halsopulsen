@@ -210,6 +210,16 @@
     </div>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog class="booking-confirmation" id="booking-confirmation-dialog" aria-labelledby="booking-confirmation-title">
+    <form method="dialog" class="booking-confirmation-card">
+      <h2 id="booking-confirmation-title"></h2>
+      <p id="booking-confirmation-message"></p>
+      <div class="booking-confirmation-actions">
+        <button class="button button-secondary" id="booking-confirmation-cancel" value="cancel" type="submit">Avbryt</button>
+        <button class="button button-primary" id="booking-confirmation-confirm" value="confirm" type="submit"></button>
+      </div>
+    </form>
+  </dialog>
   <script src="/dashboard/admin/booking.js"></script>
 </body>
 </html>
