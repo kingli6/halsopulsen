@@ -10,6 +10,7 @@ const {
   getAppointment,
   listAppointments,
   updateAppointment,
+  updateConfirmedAppointment,
   updateBlockedTime,
   updateOverride,
   updateRule,
@@ -198,6 +199,53 @@ async function main() {
       error => error instanceof BookingError && error.code === "invalid_transition"
     );
 
+    const existingConfirmed = await getAppointment(pool, cleanup.appointmentIds[1]);
+    const unchangedConfirmed = await updateConfirmedAppointment(pool, cleanup.appointmentIds[1], {
+      date: existingConfirmed.date,
+      start: existingConfirmed.start,
+      status: "confirmed"
+    });
+    assert.strictEqual(unchangedConfirmed.id, cleanup.appointmentIds[1]);
+    assert.strictEqual(unchangedConfirmed.status, "confirmed");
+
+    const movedSameDay = await updateConfirmedAppointment(pool, cleanup.appointmentIds[1], {
+      date: fixtureDate,
+      start: "15:00",
+      status: "confirmed"
+    });
+    assert.strictEqual(movedSameDay.id, cleanup.appointmentIds[1]);
+    assert.strictEqual(movedSameDay.date, fixtureDate);
+    assert.strictEqual(movedSameDay.start, "15:00");
+    assert.strictEqual(movedSameDay.status, "confirmed");
+
+    const movedAnotherDay = await updateConfirmedAppointment(pool, cleanup.appointmentIds[1], {
+      date: "2099-06-02",
+      start: "10:00",
+      status: "confirmed"
+    });
+    assert.strictEqual(movedAnotherDay.id, cleanup.appointmentIds[1]);
+    assert.strictEqual(movedAnotherDay.date, "2099-06-02");
+    assert.strictEqual(movedAnotherDay.start, "10:00");
+    assert.strictEqual(movedAnotherDay.status, "confirmed");
+
+    await assert.rejects(
+      updateConfirmedAppointment(pool, cleanup.appointmentIds[1], {
+        date: fixtureDate,
+        start: "09:00",
+        status: "confirmed"
+      }),
+      error => error instanceof BookingError && error.code === "slot_unavailable"
+    );
+    const afterRejectedReschedule = await getAppointment(pool, cleanup.appointmentIds[1]);
+    assert.strictEqual(afterRejectedReschedule.date, "2099-06-02");
+    assert.strictEqual(afterRejectedReschedule.start, "10:00");
+    assert.strictEqual(afterRejectedReschedule.status, "confirmed");
+    const appointmentCount = await pool.query(
+      "SELECT COUNT(*)::int AS count FROM booking.appointments WHERE service_id = $1",
+      [service.id]
+    );
+    assert.strictEqual(appointmentCount.rows[0].count, 2);
+
     const cancelledForDeletion = await updateAppointment(
       pool,
       cleanup.appointmentIds[0],
@@ -219,7 +267,7 @@ async function main() {
     const completed = await updateAppointment(pool, cleanup.appointmentIds[1], { status: "completed" });
     assert.strictEqual(completed.status, "completed");
 
-    const appointments = await listAppointments(pool, { from: fixtureDate, to: fixtureDate });
+    const appointments = await listAppointments(pool, { from: "2099-06-02", to: "2099-06-02" });
     assert(appointments.some(item => item.id === cleanup.appointmentIds[1]));
     console.log("Booking admin integration checks passed.");
   } finally {
