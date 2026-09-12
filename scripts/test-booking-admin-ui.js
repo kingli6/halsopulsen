@@ -6,6 +6,7 @@ class FakeElement {
   constructor(id) {
     this.id = id;
     this.hidden = false;
+    this.open = false;
     this.value = "";
     this.textContent = "";
     this.innerHTML = "";
@@ -19,6 +20,12 @@ class FakeElement {
       toggle: (value, enabled) => enabled
         ? this.classList.values.add(value)
         : this.classList.values.delete(value)
+    };
+    this.showModal = () => {
+      this.open = true;
+    };
+    this.close = () => {
+      this.open = false;
     };
   }
 
@@ -95,11 +102,28 @@ async function main() {
       serviceName: "Test session",
       effectiveBreakMinutes: 15,
       notes: ""
+    },
+    {
+      id: "3",
+      date: "2026-09-02",
+      start: "12:00",
+      end: "13:00",
+      status: "cancelled",
+      clientName: "Cancelled customer",
+      email: "cancelled@example.test",
+      serviceName: "Test session",
+      effectiveBreakMinutes: 15,
+      notes: ""
     }
   ];
+  const calls = [];
   const response = data => ({ ok: true, json: async () => data });
-  const fetch = async path => {
+  const fetch = async (path, options = {}) => {
+    calls.push({ path, options });
     if (path.includes("/appointments?")) return response({ appointments });
+    if (path.endsWith("/appointments/3") && options.method === "DELETE") {
+      return response({ ok: true, appointment: { id: "3" } });
+    }
     if (path.includes("/calendar?")) return response({ from: "2026-08-30", to: "2026-09-13", appointments: [], blockedTimes: [] });
     if (path.endsWith("/services")) return response({ services: [] });
     if (path.endsWith("/hours")) return response({ rules: [] });
@@ -135,6 +159,7 @@ async function main() {
   assert.strictEqual(get("edit-appointment-date").value, "2026-08-30");
   assert.strictEqual(get("edit-appointment-time").value, "13:00");
   assert(get("appointments-list").innerHTML.includes('class="is-selected"'));
+  assert(!get("appointment-detail").innerHTML.includes("Markera klar"));
 
   get("edit-appointment-date").value = "2026-09-02";
   await clickAppointment("1");
@@ -149,6 +174,34 @@ async function main() {
   assert(
     get("appointments-list").innerHTML.includes('data-edit-appointment="2"')
       && get("appointments-list").innerHTML.includes('class="is-selected"')
+  );
+  assert(get("appointment-detail").innerHTML.includes("Markera klar"));
+  await clickAppointment("3");
+  assert(get("appointment-detail").innerHTML.includes('data-delete-appointment="3"'));
+  await document.dispatch("click", {
+    target: { closest: () => ({ dataset: { deleteAppointment: "3" } }) }
+  });
+  assert.strictEqual(get("booking-confirmation-dialog").open, true);
+  assert.strictEqual(get("booking-confirmation-title").textContent, "Ta bort bokning?");
+  assert.strictEqual(
+    get("booking-confirmation-message").textContent,
+    "Bokningen tas bort permanent och kan inte återställas."
+  );
+  await get("booking-confirmation-cancel").dispatch("click");
+  assert.strictEqual(
+    calls.filter(call => call.path.endsWith("/appointments/3") && call.options.method === "DELETE").length,
+    0,
+    "Cancelling deletion must not send a DELETE request."
+  );
+  await document.dispatch("click", {
+    target: { closest: () => ({ dataset: { deleteAppointment: "3" } }) }
+  });
+  await get("booking-confirmation-confirm").dispatch("click");
+  await flush();
+  assert.strictEqual(
+    calls.filter(call => call.path.endsWith("/appointments/3") && call.options.method === "DELETE").length,
+    1,
+    "Confirmed deletion must send exactly one DELETE request."
   );
   await get("close-appointment-editor").dispatch("click");
   assert.strictEqual(get("appointment-editor").hidden, true);

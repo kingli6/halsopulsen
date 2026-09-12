@@ -780,6 +780,39 @@ async function updateAppointment(pool, id, body, config = getBookingConfig()) {
   }
 }
 
+async function deleteCancelledAppointment(pool, id) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [CALENDAR_LOCK_KEY]);
+    const existing = await client.query(
+      "SELECT status FROM booking.appointments WHERE id = $1 FOR UPDATE",
+      [id]
+    );
+    if (existing.rowCount === 0) {
+      throw new BookingError("Appointment not found.", 404, "not_found");
+    }
+    if (existing.rows[0].status !== "cancelled") {
+      throw new BookingError(
+        "Only cancelled appointments can be permanently deleted.",
+        409,
+        "invalid_transition"
+      );
+    }
+    const deleted = await client.query(
+      "DELETE FROM booking.appointments WHERE id = $1 AND status = 'cancelled' RETURNING id",
+      [id]
+    );
+    await client.query("COMMIT");
+    return { id: String(deleted.rows[0].id) };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function calendarEvents(client, query = {}, config = getBookingConfig()) {
   const from = dateValue(query.from, "From date");
   const to = dateValue(query.to, "To date");
@@ -812,6 +845,7 @@ module.exports = {
   createOverride,
   createRule,
   createService,
+  deleteCancelledAppointment,
   ensureAppointmentRangeIsFree,
   getAppointment,
   listAppointments,
