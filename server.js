@@ -180,7 +180,6 @@ app.use('/api', (req, res, next) => {
   mutationRateLimiter(req, res, next);
 });
 app.get('/api/booking/wake', (req, res) => {
-  console.log('WAKE REQUEST RECEIVED');
   res.json({ ok: true });
 });
 app.use('/api/booking', bookingRouter);
