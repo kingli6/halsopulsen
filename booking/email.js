@@ -1,4 +1,6 @@
 const EMAIL_PROVIDER = String(process.env.BOOKING_EMAIL_PROVIDER || "").trim().toLowerCase();
+const CALENDAR_FILENAME = "halsopulsen-bokning.ics";
+const CALENDAR_UID_DOMAIN = "halsopulsen.se";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -57,7 +59,114 @@ function formatDateTime(date) {
   }).format(parsed);
 }
 
+function escapeICalendarText(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
+}
+
+function foldICalendarLine(line) {
+  const folded = [];
+  let current = "";
+  for (const character of line) {
+    const candidate = current + character;
+    if (Buffer.byteLength(candidate, "utf8") > 75) {
+      folded.push(current);
+      current = ` ${character}`;
+    } else {
+      current = candidate;
+    }
+  }
+  folded.push(current);
+  return folded.join("\r\n");
+}
+
+function formatICalendarUtc(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("A valid appointment time is required for a calendar event.");
+  }
+  return `${date.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
+}
+
+function calendarUid(booking) {
+  const id = String(booking?.id || "").trim();
+  if (!id) throw new Error("A booking ID is required for a calendar event.");
+  return `booking-${id}@${CALENDAR_UID_DOMAIN}`;
+}
+
+function normalizeBooking(booking = {}) {
+  return {
+    ...booking,
+    clientEmail: booking.clientEmail || booking.email,
+    clientPhone: booking.clientPhone ?? booking.phone,
+    startsAt: booking.startsAt || booking.startAt,
+    endsAt: booking.endsAt || booking.endAt
+  };
+}
+
+function calendarSequence(booking, fallback = Date.now()) {
+  const updatedAt = booking?.updatedAt ? new Date(booking.updatedAt).getTime() : NaN;
+  if (Number.isFinite(updatedAt)) return Math.max(1, Math.floor(updatedAt));
+  return Math.max(0, Math.floor(Number(fallback) || 0));
+}
+
+function createCalendarAttachment(
+  booking,
+  {
+    method = "REQUEST",
+    status = "CONFIRMED",
+    sequence = 0,
+    stamp = new Date()
+  } = {}
+) {
+  booking = normalizeBooking(booking);
+  if (!booking?.startsAt || !booking?.endsAt) return null;
+  const normalizedMethod = String(method).toUpperCase();
+  const normalizedStatus = String(status).toUpperCase();
+  const description = [
+    `Tjänst: ${booking.serviceName}`,
+    `Kund: ${booking.clientName}`,
+    `Boknings-ID: ${booking.id}`
+  ].join("\n");
+  const contentType = `text/calendar; method=${normalizedMethod}`;
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//HälsoPulsen//Booking//EN",
+    "CALSCALE:GREGORIAN",
+    `METHOD:${normalizedMethod}`,
+    "BEGIN:VEVENT",
+    `UID:${calendarUid(booking)}`,
+    `DTSTAMP:${formatICalendarUtc(stamp)}`,
+    `DTSTART:${formatICalendarUtc(booking.startsAt)}`,
+    `DTEND:${formatICalendarUtc(booking.endsAt)}`,
+    `SUMMARY:${escapeICalendarText(`HälsoPulsen – ${booking.serviceName}`)}`,
+    `DESCRIPTION:${escapeICalendarText(description)}`,
+    `STATUS:${normalizedStatus}`,
+    `SEQUENCE:${Math.max(0, Math.floor(Number(sequence) || 0))}`,
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ];
+  const icsContent = `${lines.map(foldICalendarLine).join("\r\n")}\r\n`;
+  const base64Content = Buffer.from(icsContent, "utf8").toString("base64");
+  return {
+    filename: CALENDAR_FILENAME,
+    content: base64Content,
+    content_type: contentType,
+    type: contentType
+  };
+}
+
+function calendarAttachments(booking, options) {
+  const attachment = createCalendarAttachment(booking, options);
+  return attachment ? [attachment] : [];
+}
+
 function bookingDetails(booking, { requireCurrent = false } = {}) {
+  booking = normalizeBooking(booking);
   const time = requireCurrent
     ? booking.startsAt
     : booking.originalStartsAt || booking.startsAt;
@@ -71,7 +180,15 @@ function bookingDetails(booking, { requireCurrent = false } = {}) {
   ].join("\n");
 }
 
-async function sendBookingEmail({ to, subject, text, html, label = "transactional booking email", suppress = false }) {
+async function sendBookingEmail({
+  to,
+  subject,
+  text,
+  html,
+  attachments = [],
+  label = "transactional booking email",
+  suppress = false
+}) {
   if (suppress || isTestFixtureEmail(to)) {
     return { sent: false, reason: "test_fixture" };
   }
@@ -94,19 +211,22 @@ async function sendBookingEmail({ to, subject, text, html, label = "transactiona
     return { sent: false, reason: "unsupported_provider" };
   }
 
+  const payload = {
+    from: process.env.BOOKING_FROM_EMAIL,
+    to: [to],
+    subject,
+    text,
+    html
+  };
+  if (attachments.length > 0) payload.attachments = attachments;
+
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      from: process.env.BOOKING_FROM_EMAIL,
-      to: [to],
-      subject,
-      text,
-      html
-    })
+    body: JSON.stringify(payload)
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -117,6 +237,7 @@ async function sendBookingEmail({ to, subject, text, html, label = "transactiona
 }
 
 async function sendRequestReceivedEmail({ booking, token, suppress }) {
+  booking = normalizeBooking(booking);
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
   const details = bookingDetails(booking);
   return sendBookingEmail({
@@ -139,6 +260,7 @@ async function sendRequestReceivedEmail({ booking, token, suppress }) {
 }
 
 async function sendNewRequestAdminEmail({ booking, suppress }) {
+  booking = normalizeBooking(booking);
   const manageLink = publicUrl("/admin/booking");
   const details = bookingDetails(booking);
   return sendBookingEmail({
@@ -160,7 +282,8 @@ async function sendNewRequestAdminEmail({ booking, suppress }) {
   });
 }
 
-async function sendConfirmedEmail({ booking, token, suppress }) {
+async function sendConfirmedEmail({ booking, token, suppress, sequence = 0 }) {
+  booking = normalizeBooking(booking);
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
   const details = bookingDetails(booking, { requireCurrent: true });
   return sendBookingEmail({
@@ -168,6 +291,7 @@ async function sendConfirmedEmail({ booking, token, suppress }) {
     subject: "Din tid är bekräftad · HälsoPulsen",
     label: "client booking confirmation",
     suppress,
+    attachments: calendarAttachments(booking, { sequence }),
     text: [
       "Din bokning är bekräftad.",
       "",
@@ -179,7 +303,72 @@ async function sendConfirmedEmail({ booking, token, suppress }) {
   });
 }
 
+async function sendAdminConfirmedEmail({ booking, suppress, sequence = 0 }) {
+  booking = normalizeBooking(booking);
+  const details = bookingDetails(booking, { requireCurrent: true });
+  return sendBookingEmail({
+    to: process.env.BOOKING_ADMIN_EMAIL || "",
+    subject: `Bokning bekräftad · ${booking.clientName}`,
+    label: "admin booking confirmation",
+    suppress,
+    attachments: calendarAttachments(booking, { sequence }),
+    text: [
+      "En bokning har bekräftats.",
+      "",
+      `Kund: ${booking.clientName}`,
+      `E-post: ${booking.clientEmail}`,
+      `Telefon: ${booking.clientPhone || "—"}`,
+      details,
+      `Boknings-ID: ${booking.id}`
+    ].join("\n"),
+    html: `<p>En bokning har bekräftats.</p><p><strong>Kund:</strong> ${escapeHtml(booking.clientName)}<br><strong>E-post:</strong> ${escapeHtml(booking.clientEmail)}<br><strong>Telefon:</strong> ${escapeHtml(booking.clientPhone || "—")}</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>Boknings-ID:</strong> ${escapeHtml(booking.id)}</p>`
+  });
+}
+
+async function sendRescheduledEmail({ booking, suppress, sequence }) {
+  booking = normalizeBooking(booking);
+  const details = bookingDetails(booking, { requireCurrent: true });
+  return sendBookingEmail({
+    to: booking.clientEmail,
+    subject: "Din bekräftade tid har ändrats · HälsoPulsen",
+    label: "client booking reschedule",
+    suppress,
+    attachments: calendarAttachments(booking, { sequence }),
+    text: [
+      "Din bekräftade bokning har ändrats.",
+      "",
+      details,
+      "",
+      "Kalenderhändelsen i bilagan innehåller den uppdaterade tiden."
+    ].join("\n"),
+    html: `<p>Din bekräftade bokning har ändrats.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p>Kalenderhändelsen i bilagan innehåller den uppdaterade tiden.</p>`
+  });
+}
+
+async function sendAdminRescheduledEmail({ booking, suppress, sequence }) {
+  booking = normalizeBooking(booking);
+  const details = bookingDetails(booking, { requireCurrent: true });
+  return sendBookingEmail({
+    to: process.env.BOOKING_ADMIN_EMAIL || "",
+    subject: `Bokning ändrad · ${booking.clientName}`,
+    label: "admin booking reschedule",
+    suppress,
+    attachments: calendarAttachments(booking, { sequence }),
+    text: [
+      "En bekräftad bokning har ändrats.",
+      "",
+      `Kund: ${booking.clientName}`,
+      `E-post: ${booking.clientEmail}`,
+      `Telefon: ${booking.clientPhone || "—"}`,
+      details,
+      `Boknings-ID: ${booking.id}`
+    ].join("\n"),
+    html: `<p>En bekräftad bokning har ändrats.</p><p><strong>Kund:</strong> ${escapeHtml(booking.clientName)}<br><strong>E-post:</strong> ${escapeHtml(booking.clientEmail)}<br><strong>Telefon:</strong> ${escapeHtml(booking.clientPhone || "—")}</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>Boknings-ID:</strong> ${escapeHtml(booking.id)}</p>`
+  });
+}
+
 async function sendAlternativeEmail({ booking, token, suppress }) {
+  booking = normalizeBooking(booking);
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
   const originalTime = formatDateTime(booking.originalStartsAt || booking.startsAt);
   const alternativeTime = formatDateTime(booking.alternativeStartsAt);
@@ -200,12 +389,18 @@ async function sendAlternativeEmail({ booking, token, suppress }) {
   });
 }
 
-async function sendCancelledEmail({ booking, suppress }) {
+async function sendCancelledEmail({ booking, suppress, sequence }) {
+  booking = normalizeBooking(booking);
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Bokningsförfrågan avslutad · HälsoPulsen",
     label: "client cancellation message",
     suppress,
+    attachments: calendarAttachments(booking, {
+      method: "CANCEL",
+      status: "CANCELLED",
+      sequence: calendarSequence(booking, sequence)
+    }),
     text: [
       "Din bokningsförfrågan har avslutats och tiden är inte längre reserverad.",
       "",
@@ -217,13 +412,45 @@ async function sendCancelledEmail({ booking, suppress }) {
   });
 }
 
+async function sendAdminCancelledEmail({ booking, suppress, sequence }) {
+  booking = normalizeBooking(booking);
+  const details = bookingDetails(booking);
+  return sendBookingEmail({
+    to: process.env.BOOKING_ADMIN_EMAIL || "",
+    subject: `Bokning avslutad · ${booking.clientName}`,
+    label: "admin cancellation message",
+    suppress,
+    attachments: calendarAttachments(booking, {
+      method: "CANCEL",
+      status: "CANCELLED",
+      sequence: calendarSequence(booking, sequence)
+    }),
+    text: [
+      "En bokning har avslutats.",
+      "",
+      `Kund: ${booking.clientName}`,
+      `E-post: ${booking.clientEmail}`,
+      `Telefon: ${booking.clientPhone || "—"}`,
+      details,
+      `Boknings-ID: ${booking.id}`
+    ].join("\n"),
+    html: `<p>En bokning har avslutats.</p><p><strong>Kund:</strong> ${escapeHtml(booking.clientName)}<br><strong>E-post:</strong> ${escapeHtml(booking.clientEmail)}<br><strong>Telefon:</strong> ${escapeHtml(booking.clientPhone || "—")}</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>Boknings-ID:</strong> ${escapeHtml(booking.id)}</p>`
+  });
+}
+
 module.exports = {
   bookingDetails,
+  calendarSequence,
+  createCalendarAttachment,
   getEmailConfiguration,
   isTestFixtureEmail,
+  sendAdminCancelledEmail,
+  sendAdminConfirmedEmail,
+  sendAdminRescheduledEmail,
   sendAlternativeEmail,
   sendCancelledEmail,
   sendConfirmedEmail,
   sendNewRequestAdminEmail,
-  sendRequestReceivedEmail
+  sendRequestReceivedEmail,
+  sendRescheduledEmail
 };

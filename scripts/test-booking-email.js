@@ -29,6 +29,7 @@ function responseOk() {
 
 function bookingFixture(overrides = {}) {
   return {
+    id: "42",
     clientName: "Anna Andersson",
     clientEmail: "anna@example.com",
     clientPhone: "070-123 45 67",
@@ -122,6 +123,64 @@ async function testEmailConfigurationAndPayloads() {
     )
   );
   assert(deliveries[1].body.text.includes("https://booking.example.test/admin/booking"));
+  assert(!deliveries[0].body.attachments, "Pending client email must not include a calendar attachment.");
+  assert(!deliveries[1].body.attachments, "Pending admin email must not include a calendar attachment.");
+  assert(!deliveries[3].body.attachments, "Alternative proposal email must not include a calendar attachment.");
+
+  const confirmedAttachment = deliveries[2].body.attachments?.[0];
+  assert(confirmedAttachment, "Confirmed client email should include a calendar attachment.");
+  assert.strictEqual(confirmedAttachment.filename, "halsopulsen-bokning.ics");
+  assert.strictEqual(confirmedAttachment.content_type, "text/calendar; method=REQUEST");
+  assert.strictEqual(confirmedAttachment.type, "text/calendar; method=REQUEST");
+  assert.strictEqual(
+    Buffer.from(confirmedAttachment.content, "base64").toString("base64"),
+    confirmedAttachment.content,
+    "Calendar attachment content must be valid Base64."
+  );
+  const confirmedIcs = Buffer.from(confirmedAttachment.content, "base64").toString("utf8");
+  assert(confirmedIcs.includes("\r\n"), "iCalendar content must use CRLF line endings.");
+  assert(!confirmedIcs.replace(/\r\n/g, "").includes("\n"), "iCalendar content must not contain bare LF line endings.");
+  assert(confirmedIcs.includes("METHOD:REQUEST\r\n"));
+  assert(confirmedIcs.includes("UID:booking-42@halsopulsen.se\r\n"));
+  assert(confirmedIcs.includes("DTSTART:20990615T080000Z\r\n"));
+  assert(confirmedIcs.includes("DTEND:20990615T090000Z\r\n"));
+  assert(confirmedIcs.includes("STATUS:CONFIRMED\r\n"));
+  assert(confirmedIcs.includes("SEQUENCE:0\r\n"));
+
+  const cancellationAttachment = deliveries[4].body.attachments?.[0];
+  assert(cancellationAttachment, "Confirmed cancellation email should include a calendar attachment.");
+  assert.strictEqual(cancellationAttachment.type, "text/calendar; method=CANCEL");
+  const cancellationIcs = Buffer.from(cancellationAttachment.content, "base64").toString("utf8");
+  assert(cancellationIcs.includes("METHOD:CANCEL\r\n"));
+  assert(cancellationIcs.includes("STATUS:CANCELLED\r\n"));
+  assert(cancellationIcs.includes("UID:booking-42@halsopulsen.se\r\n"));
+
+  const updatedBooking = bookingFixture({
+    id: "84",
+    startsAt: new Date("2099-06-16T10:00:00Z"),
+    endsAt: new Date("2099-06-16T11:00:00Z")
+  });
+  await email.sendConfirmedEmail({ booking: updatedBooking, token: "accepted-token" });
+  const acceptedIcs = Buffer.from(deliveries[5].body.attachments[0].content, "base64").toString("utf8");
+  assert(acceptedIcs.includes("DTSTART:20990616T100000Z\r\n"), "Accepted alternatives must use the accepted start time.");
+  assert(acceptedIcs.includes("DTEND:20990616T110000Z\r\n"), "Accepted alternatives must use the accepted end time.");
+
+  await email.sendAdminConfirmedEmail({ booking: updatedBooking });
+  assert.strictEqual(deliveries[6].body.to[0], "admin@example.com");
+  assert.strictEqual(deliveries[6].body.attachments[0].type, "text/calendar; method=REQUEST");
+
+  await email.sendRescheduledEmail({ booking: updatedBooking, sequence: 7 });
+  const rescheduledIcs = Buffer.from(deliveries[7].body.attachments[0].content, "base64").toString("utf8");
+  assert(rescheduledIcs.includes("UID:booking-84@halsopulsen.se\r\n"));
+  assert(rescheduledIcs.includes("SEQUENCE:7\r\n"));
+
+  const noCalendarBooking = bookingFixture({
+    id: "85",
+    startsAt: null,
+    endsAt: null
+  });
+  await email.sendCancelledEmail({ booking: noCalendarBooking });
+  assert(!deliveries[8].body.attachments, "A pending cancellation must not include a calendar attachment.");
 
   let fixtureDeliveryAttempted = false;
   global.fetch = async () => {
@@ -227,7 +286,11 @@ async function testRouteTriggersAndProviderFailure() {
       }
       return { sent: true };
     },
-    sendCancelledEmail: deliverySpy("cancelled")
+    sendAdminConfirmedEmail: deliverySpy("admin_confirmed"),
+    sendCancelledEmail: deliverySpy("cancelled"),
+    sendAdminCancelledEmail: deliverySpy("admin_cancelled"),
+    sendRescheduledEmail: deliverySpy("rescheduled"),
+    sendAdminRescheduledEmail: deliverySpy("admin_rescheduled")
   };
 
   mockModule("../booking/email", emailMock);
@@ -309,6 +372,7 @@ async function testRouteTriggersAndProviderFailure() {
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.status, "confirmed");
   assert.strictEqual(calls[3].name, "confirmed");
+  assert.strictEqual(calls[4].name, "admin_confirmed");
 
   response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
     params: { id: "3" },
@@ -316,7 +380,8 @@ async function testRouteTriggersAndProviderFailure() {
   });
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.status, "cancelled");
-  assert.strictEqual(calls[4].name, "cancelled");
+  assert.strictEqual(calls[5].name, "cancelled");
+  assert.strictEqual(calls[6].name, "admin_cancelled");
 
   response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
     params: { id: "3" },
@@ -324,14 +389,14 @@ async function testRouteTriggersAndProviderFailure() {
   });
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.status, "pending");
-  assert.strictEqual(calls.length, 5, "Reactivation must not send an email.");
+  assert.strictEqual(calls.length, 7, "Reactivation must not send an email.");
 
   response = await invokeRoute(bookingAdminRouter, "delete", "/appointments/:id", {
     params: { id: "3" }
   });
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.id, "3");
-  assert.strictEqual(calls.length, 5, "Deleting must not send an email.");
+  assert.strictEqual(calls.length, 7, "Deleting must not send an email.");
 
   response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
     params: { id: "4" },
@@ -339,7 +404,8 @@ async function testRouteTriggersAndProviderFailure() {
   });
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.status, "confirmed");
-  assert.strictEqual(calls.length, 5, "Editing a confirmed booking must not send a confirmation email.");
+  assert.strictEqual(calls[7].name, "rescheduled");
+  assert.strictEqual(calls[8].name, "admin_rescheduled");
 
   global.fetch = async () => ({
     ok: false,
@@ -361,7 +427,8 @@ async function testRouteTriggersAndProviderFailure() {
   assert.strictEqual(response.body.ok, true);
   assert.strictEqual(response.body.status, "confirmed");
   assert(loggedErrors.some(message => message.includes("Booking confirmation email failed")));
-  assert.strictEqual(calls[5].name, "confirmed");
+  assert.strictEqual(calls[9].name, "confirmed");
+  assert.strictEqual(calls[10].name, "admin_confirmed");
 }
 
 async function main() {
