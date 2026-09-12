@@ -355,6 +355,73 @@ async function main() {
       error => assertBookingError(error, "invalid_token")
     );
 
+    const expiredAlternativeDate = await prepareDay(15);
+    const pendingExpiredAlternative = await makeBooking(
+      expiredAlternativeDate,
+      "09:00",
+      "expired-alternative"
+    );
+    const expiredAlternativeId = await appointmentId(pool, pendingExpiredAlternative.clientEmail);
+    const validOffer = await suggestAlternative(pool, expiredAlternativeId, {
+      alternativeDate: expiredAlternativeDate,
+      alternativeStart: "11:00"
+    }, config);
+    assert.strictEqual(validOffer.booking.status, "alternative_suggested");
+    const validOfferAvailability = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: expiredAlternativeDate,
+      toDate: expiredAlternativeDate,
+      now,
+      config
+    });
+    const validOfferDay = validOfferAvailability.dates.find(date => date.date === expiredAlternativeDate);
+    assert(
+      validOfferDay?.unavailableTimes?.some(time => time.localTime === "11:00" && time.reason === "booked"),
+      "A valid alternative proposal should continue blocking its proposed time."
+    );
+
+    await pool.query(
+      "UPDATE booking.appointments SET client_action_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1",
+      [expiredAlternativeId]
+    );
+    const releasedAvailability = await calculateAvailability({
+      client: pool,
+      serviceIdentifier: service.id,
+      fromDate: expiredAlternativeDate,
+      toDate: expiredAlternativeDate,
+      now,
+      config
+    });
+    const releasedDay = releasedAvailability.dates.find(date => date.date === expiredAlternativeDate);
+    assert(
+      releasedDay?.times?.some(time => time.localTime === "11:00"),
+      "An expired alternative proposal should release its proposed time."
+    );
+    assert(
+      !releasedDay?.unavailableTimes?.some(time => time.localTime === "11:00" && time.reason === "booked"),
+      "An expired alternative proposal should no longer block availability."
+    );
+    const expiredAlternativeState = await pool.query(
+      `SELECT status, alternative_starts_at, alternative_ends_at, cancelled_at
+       FROM booking.appointments
+       WHERE id = $1`,
+      [expiredAlternativeId]
+    );
+    assert.strictEqual(expiredAlternativeState.rows[0].status, "cancelled");
+    assert.strictEqual(expiredAlternativeState.rows[0].alternative_starts_at, null);
+    assert.strictEqual(expiredAlternativeState.rows[0].alternative_ends_at, null);
+    assert(expiredAlternativeState.rows[0].cancelled_at);
+    await assert.rejects(
+      acceptAlternative(pool, validOffer.actionToken, config),
+      error => assertBookingError(error, "token_expired")
+    );
+    const expiredAlternativeAfterAccept = await pool.query(
+      "SELECT status FROM booking.appointments WHERE id = $1",
+      [expiredAlternativeId]
+    );
+    assert.strictEqual(expiredAlternativeAfterAccept.rows[0].status, "cancelled");
+
     const isolationDate = await prepareDay(12);
     const isolationA = await makeBooking(isolationDate, "09:00", "isolation-a");
     const isolationB = await makeBooking(isolationDate, "11:00", "isolation-b");
