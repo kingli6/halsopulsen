@@ -30,10 +30,15 @@ const {
   suggestAlternative
 } = require("./workflow-service");
 const {
+  calendarSequence,
   isTestFixtureEmail,
+  sendAdminCancelledEmail,
+  sendAdminConfirmedEmail,
+  sendAdminRescheduledEmail,
   sendAlternativeEmail,
   sendCancelledEmail,
-  sendConfirmedEmail
+  sendConfirmedEmail,
+  sendRescheduledEmail
 } = require("./email");
 
 const router = express.Router();
@@ -168,10 +173,19 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
   if (req.body?.status === "confirmed") {
     const existing = await getAppointment(getPool(), id, getBookingConfig());
     if (existing.status === "confirmed") {
-      return res.json({
-        ok: true,
-        appointment: await updateConfirmedAppointment(getPool(), id, req.body, getBookingConfig())
-      });
+      const appointment = await updateConfirmedAppointment(getPool(), id, req.body, getBookingConfig());
+      const sequence = calendarSequence(appointment);
+      sendRescheduledEmail({
+        booking: appointment,
+        sequence,
+        suppress: isTestFixtureEmail(appointment.email || appointment.clientEmail)
+      }).catch(error => console.error("Booking reschedule email failed:", error.message));
+      sendAdminRescheduledEmail({
+        booking: appointment,
+        sequence,
+        suppress: isTestFixtureEmail(appointment.email || appointment.clientEmail)
+      }).catch(error => console.error("Admin booking reschedule email failed:", error.message));
+      return res.json({ ok: true, appointment });
     }
     const result = await confirmAppointment(getPool(), id, req.body, getBookingConfig());
     sendConfirmedEmail({
@@ -179,14 +193,27 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
       token: result.actionToken,
       suppress: isTestFixtureEmail(result.booking.clientEmail)
     }).catch(error => console.error("Booking confirmation email failed:", error.message));
+    sendAdminConfirmedEmail({
+      booking: result.booking,
+      suppress: isTestFixtureEmail(result.booking.clientEmail)
+    }).catch(error => console.error("Admin booking confirmation email failed:", error.message));
     return res.json({ ok: true, appointment: result.booking });
   }
   if (req.body?.status === "cancelled") {
     const result = await cancelAppointment(getPool(), id, getBookingConfig());
+    const sequence = calendarSequence(result.booking);
     sendCancelledEmail({
       booking: result.booking,
+      sequence,
       suppress: isTestFixtureEmail(result.booking.clientEmail)
     }).catch(error => console.error("Booking cancellation email failed:", error.message));
+    if (result.booking.startsAt && result.booking.endsAt) {
+      sendAdminCancelledEmail({
+        booking: result.booking,
+        sequence,
+        suppress: isTestFixtureEmail(result.booking.clientEmail)
+      }).catch(error => console.error("Admin booking cancellation email failed:", error.message));
+    }
     return res.json({ ok: true, appointment: result.booking });
   }
   res.json({
