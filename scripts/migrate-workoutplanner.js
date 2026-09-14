@@ -53,6 +53,72 @@ function getMigrationFiles() {
     .sort();
 }
 
+async function foundationAlreadyExists(client) {
+  const requiredTables = [
+    "profiles",
+    "clients",
+    "coach_clients",
+    "exercises",
+    "programs",
+    "program_versions",
+    "program_weeks",
+    "workouts",
+    "workout_exercises",
+    "assignments",
+    "workout_sessions",
+    "session_exercises",
+    "session_sets"
+  ];
+  const tableResult = await client.query(
+    `
+      SELECT count(*)::int AS table_count
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name = ANY($1::text[])
+    `,
+    [requiredTables]
+  );
+  if (tableResult.rows[0].table_count !== requiredTables.length) {
+    return false;
+  }
+
+  const triggerResult = await client.query(`
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgrelid = 'public.profiles'::regclass
+      AND tgname = 'profiles_set_updated_at'
+      AND NOT tgisinternal
+  `);
+  if (triggerResult.rowCount === 0) return false;
+
+  const foreignKeyResult = await client.query(`
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.profiles'::regclass
+      AND confrelid = 'auth.users'::regclass
+      AND contype = 'f'
+  `);
+  return foreignKeyResult.rowCount > 0;
+}
+
+async function markExistingFoundation(client) {
+  const applied = await client.query(
+    `SELECT 1 FROM ${migrationTable} WHERE filename = $1`,
+    ["001_initial-foundation.sql"]
+  );
+  if (applied.rowCount > 0) return;
+
+  if (await foundationAlreadyExists(client)) {
+    await client.query(
+      `INSERT INTO ${migrationTable} (filename) VALUES ($1)`,
+      ["001_initial-foundation.sql"]
+    );
+    console.log(
+      "Detected existing WorkoutPlanner foundation; marked 001_initial-foundation.sql as applied."
+    );
+  }
+}
+
 async function run() {
   const pool = getPool();
   const client = await pool.connect();
@@ -66,6 +132,7 @@ async function run() {
         applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await markExistingFoundation(client);
 
     for (const filename of getMigrationFiles()) {
       const applied = await client.query(
