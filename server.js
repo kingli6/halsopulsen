@@ -17,6 +17,7 @@ const {
 } = require('./workoutplanner/identity');
 const {
   findClientDataByToken,
+  hasClientAccessToken,
   regenerateClientAccessLink
 } = require('./workoutplanner/client-access');
 
@@ -317,7 +318,20 @@ function serveBookingAdminPage(req, res) {
 app.get(['/admin/booking', '/admin/booking/'], serveBookingAdminPage);
 app.get('/dashboard/admin/booking.html', serveBookingAdminPage);
 app.get(['/p/:token', '/p/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
-app.get(['/client/:token', '/client/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'client.html')));
+app.get(['/client/:token', '/client/:token/'], async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).send('WorkoutPlanner database access is not configured.');
+  }
+  try {
+    if (!await hasClientAccessToken(getWorkoutPlannerPool(), req.params.token)) {
+      return res.sendStatus(404);
+    }
+    return res.sendFile(path.join(__dirname, 'dashboard', 'client.html'));
+  } catch (error) {
+    console.error('Could not validate private WorkoutPlanner client link:', error.message);
+    return res.status(503).send('The private training plan is unavailable.');
+  }
+});
 // Keep legacy challenge URLs redirected after retiring the old implementation.
 app.get(['/challenge', '/challenge/'], (req, res) => res.redirect('/'));
 app.get('/challenge/*', (req, res) => res.redirect('/'));

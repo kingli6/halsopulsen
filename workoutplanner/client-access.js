@@ -174,9 +174,25 @@ async function findClientDataByToken(db, token) {
   };
 }
 
+async function hasClientAccessToken(db, token) {
+  const tokenHash = hashClientAccessToken(token);
+  if (!tokenHash) return false;
+
+  const result = await db.query(
+    `SELECT 1
+       FROM public.clients
+      WHERE client_access_token_hash = $1
+        AND active = true
+      LIMIT 1`,
+    [tokenHash]
+  );
+  return result.rowCount === 1;
+}
+
 module.exports = {
   findClientDataByToken,
   generateClientAccessToken,
   hashClientAccessToken,
+  hasClientAccessToken,
   regenerateClientAccessLink
 };
