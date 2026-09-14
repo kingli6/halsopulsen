@@ -74,46 +74,15 @@
         await clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
         const mount = document.getElementById("clerkMount");
         const signedIn = document.getElementById("accountSignedIn");
-        const query = new URLSearchParams(window.location.search);
-        const requestedNext = query.get("next") || "";
-        const nextPath = (() => {
-          if (!requestedNext.startsWith("/") || requestedNext.startsWith("//") || requestedNext.includes("\\")) {
-            return "";
-          }
-          try {
-            const destination = new URL(requestedNext, window.location.origin);
-            if (destination.origin !== window.location.origin) return "";
-            return `${destination.pathname}${destination.search}${destination.hash}`;
-          } catch {
-            return "";
-          }
-        })();
-        const signOutRequested = query.get("signout") === "1";
-        let redirected = false;
         const render = () => {
           const isSignedIn = Boolean(clerk.user);
           mount.hidden = isSignedIn;
           signedIn.classList.toggle("visible", isSignedIn);
-          if (isSignedIn && nextPath && !redirected) {
-            redirected = true;
-            window.location.assign(nextPath);
-          }
         };
-        if (signOutRequested) {
-          if (clerk.user) {
-            await clerk.signOut({ redirectUrl: "/" });
-          } else {
-            window.location.assign("/");
-          }
-          return;
-        }
         if (clerk.user) {
           render();
         } else {
-          const signUpUrl = nextPath
-            ? `/account?mode=sign-up&next=${encodeURIComponent(nextPath)}`
-            : "/account?mode=sign-up";
-          clerk.mountSignIn(mount, { signUpUrl });
+          clerk.mountSignIn(mount, { signUpUrl: "/account?mode=sign-up" });
           clerk.addListener(render);
         }
         document.getElementById("signOutBtn").addEventListener("click", () => clerk.signOut({ redirectUrl: "/" }));
