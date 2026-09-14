@@ -15,6 +15,12 @@ const {
   findProfileByClerkUserId,
   publicProfile
 } = require('./workoutplanner/identity');
+const {
+  createClientForCoach,
+  findClientDataByToken,
+  hasClientAccessToken,
+  regenerateClientAccessLink
+} = require('./workoutplanner/client-access');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -212,6 +218,69 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
   res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
 });
 
+app.post('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
+  const displayName = typeof req.body?.displayName === 'string'
+    ? req.body.displayName.trim()
+    : '';
+  if (!displayName) {
+    return res.status(400).json({ ok: false, error: 'Client name is required.' });
+  }
+
+  try {
+    const client = await createClientForCoach(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      displayName
+    );
+    return res.status(201).json({ ok: true, client });
+  } catch (error) {
+    console.error('Could not create WorkoutPlanner client:', error.message);
+    return res.status(503).json({ ok: false, error: 'The client could not be created.' });
+  }
+});
+
+app.post('/api/workoutplanner/clients/:clientId/link', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const generated = await regenerateClientAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId
+    );
+    if (!generated) {
+      return res.status(404).json({ ok: false, error: 'Client not found.' });
+    }
+    const clientPath = `/client/${generated.token}`;
+    res.json({
+      ok: true,
+      client: {
+        id: generated.client.id,
+        displayName: generated.client.display_name
+      },
+      path: clientPath,
+      url: `${req.protocol}://${req.get('host')}${clientPath}`
+    });
+  } catch (error) {
+    console.error('Could not generate WorkoutPlanner client link:', error.message);
+    res.status(503).json({ ok: false, error: 'The private client link could not be generated.' });
+  }
+});
+
+app.get('/api/client/:token', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const data = await findClientDataByToken(getWorkoutPlannerPool(), req.params.token);
+    if (!data) {
+      return res.status(404).json({ ok: false, error: 'Private client link not found.' });
+    }
+    res.json({ ok: true, data });
+  } catch (error) {
+    console.error('Could not load private WorkoutPlanner client data:', error.message);
+    res.status(503).json({ ok: false, error: 'The private training plan is unavailable.' });
+  }
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
 });
@@ -271,6 +340,20 @@ function serveBookingAdminPage(req, res) {
 app.get(['/admin/booking', '/admin/booking/'], serveBookingAdminPage);
 app.get('/dashboard/admin/booking.html', serveBookingAdminPage);
 app.get(['/p/:token', '/p/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
+app.get(['/client/:token', '/client/:token/'], async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).send('WorkoutPlanner database access is not configured.');
+  }
+  try {
+    if (!await hasClientAccessToken(getWorkoutPlannerPool(), req.params.token)) {
+      return res.sendStatus(404);
+    }
+    return res.sendFile(path.join(__dirname, 'dashboard', 'client.html'));
+  } catch (error) {
+    console.error('Could not validate private WorkoutPlanner client link:', error.message);
+    return res.status(503).send('The private training plan is unavailable.');
+  }
+});
 // Keep legacy challenge URLs redirected after retiring the old implementation.
 app.get(['/challenge', '/challenge/'], (req, res) => res.redirect('/'));
 app.get('/challenge/*', (req, res) => res.redirect('/'));
@@ -393,6 +476,15 @@ async function requireWorkoutPlannerProfile(req, res, next) {
       error: 'WorkoutPlanner profile lookup is unavailable.'
     });
   }
+}
+
+function requireWorkoutPlannerCoach(req, res, next) {
+  requireWorkoutPlannerProfile(req, res, () => {
+    if (req.workoutPlannerProfile.role !== 'coach') {
+      return res.status(403).json({ ok: false, error: 'Coach access required.' });
+    }
+    next();
+  });
 }
 
 function getOrCreateUser(userId) {

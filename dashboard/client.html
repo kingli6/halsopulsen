@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your private read-only WorkoutPlanner page." />
+  <title>Your training plan — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/dashboard/portal.css" />
+  <link rel="stylesheet" href="/dashboard/client.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">H</span>
+        <span>Hälso<span class="brand-accent">Pulsen</span></span>
+      </a>
+      <nav class="topnav" aria-label="Main navigation">
+        <span class="topnav-link active">Training plan</span>
+        <a class="topnav-link" href="/">Main site</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell page">
+    <section class="page-intro">
+      <div>
+        <p class="eyebrow">PRIVATE TRAINING PLAN · READ ONLY</p>
+        <h1 id="pageHeading">Loading your training plan…</h1>
+        <p class="intro-copy" id="pageCopy">This private link shows only the plan and session history assigned to you.</p>
+      </div>
+    </section>
+    <section class="mode-banner" id="errorBanner" hidden role="alert">
+      <span class="mode-banner-icon" aria-hidden="true">!</span>
+      <div><strong>Plan unavailable.</strong><span id="errorText"></span></div>
+    </section>
+    <section class="section-block">
+      <div class="section-heading-row">
+        <div><p class="section-kicker">YOUR SCHEDULE</p><h2>Assigned workouts</h2></div>
+      </div>
+      <div class="client-list" id="assignmentList" aria-live="polite"></div>
+    </section>
+    <section class="section-block">
+      <div class="section-heading-row">
+        <div><p class="section-kicker">WHAT HAPPENED</p><h2>Recent sessions</h2></div>
+      </div>
+      <div class="client-list" id="sessionList"></div>
+    </section>
+    <footer class="dashboard-footer">
+      <span>HälsoPulsen personal training</span>
+      <span>This first client-link version is read-only.</span>
+    </footer>
+  </main>
+  <script src="/dashboard/client.js" defer></script>
+</body>
+</html>
