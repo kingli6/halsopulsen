@@ -35,6 +35,22 @@ outputType = "webview"
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 8123
+externalPort = 3001
+
+[[ports]]
+localPort = 8124
+externalPort = 3002
+
+[[ports]]
+localPort = 8125
+externalPort = 3003
+
+[[ports]]
+localPort = 8126
+externalPort = 4200
+
 [userenv]
 
 [userenv.shared]
