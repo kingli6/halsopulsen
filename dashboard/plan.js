@@ -1124,6 +1124,33 @@ async function loadTemplates() {
   }
 }
 
+async function loadClients() {
+  const list = document.getElementById("clientList");
+  const status = document.getElementById("clientCreateStatus");
+  if (!list || !status || userWorkspace) return;
+
+  try {
+    const response = await fetch("/api/workoutplanner/clients");
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not load clients.");
+    }
+    const clients = Array.isArray(result.clients) ? result.clients : [];
+    list.innerHTML = clients.length
+      ? clients.map(client => `
+        <div class="client-list-item">
+          <strong>${escapePlanHtml(client.displayName)}</strong>
+          <span>${client.active ? "Active" : "Inactive"}</span>
+        </div>
+      `).join("")
+      : '<p class="client-list-empty">No clients yet.</p>';
+  } catch (error) {
+    list.innerHTML = "";
+    status.textContent = error.message || "Could not load clients.";
+    status.classList.add("is-error");
+  }
+}
+
 async function createClient(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -1154,6 +1181,7 @@ async function createClient(event) {
     }
     form.reset();
     status.textContent = `Added ${result.client.displayName} (ID: ${result.client.id}).`;
+    await loadClients();
   } catch (error) {
     status.textContent = error.message || "Could not add client.";
     status.classList.add("is-error");
@@ -1274,4 +1302,8 @@ TrackerData.ensureAssignments(planState.data);
 TrackerData.save(planState.data);
 bindPlanEvents();
 renderAllPlan();
-seedRequestedDemo().then(() => Promise.all([loadLibrary(), loadTemplates()]));
+seedRequestedDemo().then(() => Promise.all([
+  loadLibrary(),
+  loadTemplates(),
+  ...(userWorkspace ? [] : [loadClients()])
+]));

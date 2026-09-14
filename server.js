@@ -218,6 +218,30 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
   res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
 });
 
+app.get('/api/workoutplanner/clients', requireLocalWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await getWorkoutPlannerPool().query(
+      `SELECT c.id, c.display_name, c.active
+         FROM public.clients c
+         JOIN public.coach_clients cc ON cc.client_id = c.id
+        WHERE cc.coach_profile_id = $1
+        ORDER BY c.display_name ASC, c.created_at ASC`,
+      [req.workoutPlannerProfile.id]
+    );
+    return res.json({
+      ok: true,
+      clients: result.rows.map(client => ({
+        id: client.id,
+        displayName: client.display_name,
+        active: Boolean(client.active)
+      }))
+    });
+  } catch (error) {
+    console.error('Could not list WorkoutPlanner clients:', error.message);
+    return res.status(503).json({ ok: false, error: 'The clients could not be loaded.' });
+  }
+});
+
 app.post('/api/workoutplanner/clients', requireLocalWorkoutPlannerCoach, async (req, res) => {
   const displayName = typeof req.body?.displayName === 'string'
     ? req.body.displayName.trim()
