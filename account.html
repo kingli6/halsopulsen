@@ -40,15 +40,38 @@
       </div>
     </section>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
   <script>
     (async () => {
       const error = document.getElementById("accountError");
       try {
         const config = await fetch("/api/auth/config").then(response => response.json());
-        if (!config.publishableKey || !window.Clerk) throw new Error("Account sign-in is not configured.");
-        const clerk = window.Clerk(config.publishableKey);
-        await clerk.load();
+        if (!config.publishableKey) throw new Error("Account sign-in is not configured.");
+
+        const clerkDomain = atob(config.publishableKey.split("_")[2]).slice(0, -1);
+        const loadScript = (src, attributes = {}) => new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = src;
+          Object.entries(attributes).forEach(([name, value]) => script.setAttribute(name, value));
+          script.addEventListener("load", resolve, { once: true });
+          script.addEventListener("error", () => reject(new Error("Could not load account sign-in.")), { once: true });
+          document.head.appendChild(script);
+        });
+
+        await loadScript(`https://${clerkDomain}/npm/@clerk/ui@1/dist/ui.browser.js`, {
+          crossorigin: "anonymous"
+        });
+        const clerkScript = document.createElement("script");
+        clerkScript.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+        clerkScript.setAttribute("data-clerk-publishable-key", config.publishableKey);
+        await new Promise((resolve, reject) => {
+          clerkScript.addEventListener("load", resolve, { once: true });
+          clerkScript.addEventListener("error", () => reject(new Error("Could not load account sign-in.")), { once: true });
+          document.head.appendChild(clerkScript);
+        });
+
+        if (!window.Clerk) throw new Error("Account sign-in is not configured.");
+        const clerk = window.Clerk;
+        await clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
         const mount = document.getElementById("clerkMount");
         const signedIn = document.getElementById("accountSignedIn");
         const render = () => {
