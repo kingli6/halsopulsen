@@ -16,6 +16,7 @@ const {
   publicProfile
 } = require('./workoutplanner/identity');
 const {
+  createClientForCoach,
   findClientDataByToken,
   hasClientAccessToken,
   regenerateClientAccessLink
@@ -215,6 +216,27 @@ app.get('/api/auth/me', (req, res) => {
 
 app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) => {
   res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
+});
+
+app.post('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
+  const displayName = typeof req.body?.displayName === 'string'
+    ? req.body.displayName.trim()
+    : '';
+  if (!displayName) {
+    return res.status(400).json({ ok: false, error: 'Client name is required.' });
+  }
+
+  try {
+    const client = await createClientForCoach(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      displayName
+    );
+    return res.status(201).json({ ok: true, client });
+  } catch (error) {
+    console.error('Could not create WorkoutPlanner client:', error.message);
+    return res.status(503).json({ ok: false, error: 'The client could not be created.' });
+  }
 });
 
 app.post('/api/workoutplanner/clients/:clientId/link', requireWorkoutPlannerCoach, async (req, res) => {

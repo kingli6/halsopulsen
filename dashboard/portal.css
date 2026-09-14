@@ -225,6 +225,13 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .library-view-header h2 { margin-bottom: 7px; font-size: 25px; }
 .library-view-header p:last-child { max-width: 700px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .library-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.client-create-row { display: flex; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.client-create-row h2 { margin: 0; font-size: 18px; }
+.client-create-form { display: flex; flex: 1; align-items: center; justify-content: flex-end; gap: 8px; }
+.client-create-form input { min-width: min(280px, 100%); padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; outline: none; background: #fbfdfb; color: var(--ink); font-size: 13px; }
+.client-create-form input:focus { border-color: var(--green-2); box-shadow: 0 0 0 3px rgba(76,175,125,.12); }
+.client-create-status { max-width: 280px; margin: 0; color: var(--green); font-size: 11px; }
+.client-create-status.is-error { color: var(--red); }
 .library-summary { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 10px; }
 .library-summary strong { color: var(--green); font: 700 16px var(--font-display); }
 .library-access-note { margin: 12px 0 18px; color: var(--muted); font-size: 10px; line-height: 1.45; }
@@ -244,7 +251,7 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.2; }
 .other-history-check { background: #e8f1fb; color: #2d628e; }
 .move-assignment-button { color: #a75522; }
 .move-assignment-button:hover { color: #8d451d; background: var(--orange-soft); }
-@media (max-width: 980px) { .library-view-header { align-items: flex-start; flex-direction: column; }.plan-details-bar { align-items: flex-start; flex-direction: column; }.library-toolbar { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 980px) { .library-view-header { align-items: flex-start; flex-direction: column; }.plan-details-bar { align-items: flex-start; flex-direction: column; }.library-toolbar { align-items: flex-start; flex-direction: column; }.client-create-row { align-items: flex-start; flex-wrap: wrap; }.client-create-form { justify-content: flex-start; } }
 @media (max-width: 620px) { .library-item { align-items: flex-start; flex-direction: column; }.library-actions { width: 100%; flex-wrap: wrap; }.library-actions .button { flex: 1; }.library-note { display: none; }.publish-actions { gap: 7px; }.log-exercise-heading { align-items: flex-start; flex-direction: column; gap: 2px; }.mode-banner { align-items: flex-start; flex-wrap: wrap; }.mode-banner > div { flex: 1; min-width: 0; }.mode-banner-action { width: 100%; margin: 2px 0 0 35px; } }
 
 .workout-overview-section, .workout-activities-section { padding: 15px; border: 1px solid var(--line); border-radius: 13px; background: #fbfdfb; }

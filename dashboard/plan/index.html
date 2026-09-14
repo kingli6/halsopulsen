@@ -56,6 +56,18 @@
       <div class="library-toolbar">
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
       </div>
+       <section class="client-create-row" id="clientCreateSection" aria-labelledby="clientCreateHeading" hidden>
+         <div>
+           <p class="section-kicker">CLIENTS</p>
+           <h2 id="clientCreateHeading">Add client</h2>
+         </div>
+         <form class="client-create-form" id="clientCreateForm">
+           <label class="sr-only" for="clientNameInput">Client name</label>
+           <input id="clientNameInput" name="displayName" type="text" required placeholder="Client name" autocomplete="off" />
+           <button class="button button-secondary" type="submit">Add client</button>
+         </form>
+         <p class="client-create-status" id="clientCreateStatus" role="status" aria-live="polite"></p>
+       </section>
       <p class="library-access-note">One participant uses each published share link by design. Deleting a version permanently removes its plan, participant link, logs, and saved history.</p>
       <div class="plan-library" id="planLibrary"></div>
     </section>

@@ -1124,6 +1124,44 @@ async function loadTemplates() {
   }
 }
 
+async function createClient(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const input = document.getElementById("clientNameInput");
+  const status = document.getElementById("clientCreateStatus");
+  const button = form.querySelector("button[type=\"submit\"]");
+  const displayName = input.value.trim();
+  status.classList.remove("is-error");
+
+  if (!displayName) {
+    status.textContent = "Enter a client name first.";
+    status.classList.add("is-error");
+    input.focus();
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = "Adding client…";
+  try {
+    const response = await fetch("/api/workoutplanner/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not add client.");
+    }
+    form.reset();
+    status.textContent = `Added ${result.client.displayName} (ID: ${result.client.id}).`;
+  } catch (error) {
+    status.textContent = error.message || "Could not add client.";
+    status.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function seedRequestedDemo() {
   if (userWorkspace) return;
   if (new URLSearchParams(window.location.search).get("demo") !== "jerry") return;
@@ -1170,6 +1208,11 @@ function bindPlanEvents() {
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);
   document.getElementById("cancelDetailsBtn").addEventListener("click", closeDetailsModal);
   document.getElementById("publishBtn").addEventListener("click", publishPlan);
+  const clientCreateSection = document.getElementById("clientCreateSection");
+  if (!userWorkspace) {
+    clientCreateSection.hidden = false;
+    document.getElementById("clientCreateForm").addEventListener("submit", createClient);
+  }
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
     if (tab) selectDraftWeek(tab.dataset.weekIndex);
