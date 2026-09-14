@@ -185,6 +185,11 @@ function adminRedirectPath(req) {
   return `/admin/plans${queryStart === -1 ? '' : originalUrl.slice(queryStart)}`;
 }
 
+function workoutPlannerAccountRedirect(req) {
+  const destination = String(req.originalUrl || '/admin/plans/');
+  return `/account?next=${encodeURIComponent(destination)}`;
+}
+
 app.use('/api', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   apiRateLimiter(req, res, next);
@@ -316,7 +321,7 @@ app.get(['/dashboard/index.html'], (req, res) => res.redirect('/admin'));
 app.get(['/dashboard/plan', '/dashboard/plan/'], (req, res) => res.redirect(adminRedirectPath(req)));
 app.get(['/dashboard/plan/index.html'], (req, res) => res.redirect('/admin/plans'));
 app.get('/admin', (req, res) => {
-  if (readAdminSession(req)) return res.redirect('/admin/plans');
+  if (readAdminSession(req)) return res.redirect('/admin/booking/');
   res.sendFile(path.join(__dirname, 'dashboard', 'admin', 'index.html'));
 });
 app.get(['/account', '/account/'], (req, res) => res.sendFile(path.join(__dirname, 'account.html')));
@@ -327,9 +332,22 @@ app.get(['/booking/manage/:token', '/booking/manage/:token/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'booking', 'manage.html'));
 });
 app.get(['/plans', '/plans/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html')));
-app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
-  if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
-  res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
+app.get(['/admin/plans', '/admin/plans/'], async (req, res) => {
+  const clerkUserId = currentUserId(req);
+  if (!clerkUserId) return res.redirect(workoutPlannerAccountRedirect(req));
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).send('WorkoutPlanner database access is not configured.');
+  }
+
+  try {
+    const profile = await findProfileByClerkUserId(getWorkoutPlannerPool(), clerkUserId);
+    if (!profile) return res.status(404).send('WorkoutPlanner coach profile not found.');
+    if (profile.role !== 'coach') return res.status(403).send('WorkoutPlanner coach access required.');
+    return res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
+  } catch (error) {
+    console.error('Could not resolve WorkoutPlanner coach page access:', error.message);
+    return res.status(503).send('WorkoutPlanner profile lookup is unavailable.');
+  }
 });
 function serveBookingAdminPage(req, res) {
   if (!readAdminSession(req)) {
@@ -357,6 +375,13 @@ app.get(['/client/:token', '/client/:token/'], async (req, res) => {
 // Keep legacy challenge URLs redirected after retiring the old implementation.
 app.get(['/challenge', '/challenge/'], (req, res) => res.redirect('/'));
 app.get('/challenge/*', (req, res) => res.redirect('/'));
+
+app.get('/', (req, res, next) => {
+  if (String(req.hostname || '').toLowerCase() === 'booking.halsopulsen.se') {
+    return res.redirect('/account?next=%2Fadmin%2Fplans%2F');
+  }
+  next();
+});
 
 app.use(express.static(path.join(__dirname)));
 
@@ -661,15 +686,13 @@ function validateTemplatePayload(body) {
   return null;
 }
 
-app.get('/api/templates', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.get('/api/templates', requireWorkoutPlannerCoach, (req, res) => {
   const templates = readTemplates()
     .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
   res.json({ ok: true, templates: templates.map(publicTemplate) });
 });
 
-app.post('/api/templates', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.post('/api/templates', requireWorkoutPlannerCoach, (req, res) => {
   const validationError = validateTemplatePayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
 
@@ -691,8 +714,7 @@ app.post('/api/templates', (req, res) => {
   res.status(201).json({ ok: true, template: publicTemplate(template) });
 });
 
-app.delete('/api/templates/:id', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.delete('/api/templates/:id', requireWorkoutPlannerCoach, (req, res) => {
   const templates = readTemplates();
   const template = templates.find(item => item.id === req.params.id);
   if (!template) return res.status(404).json({ ok: false, error: 'Template not found.' });
@@ -1058,8 +1080,7 @@ function jerryDemoPlan() {
 }
 
 // ── Published personal training plans ─────────────────────────────
-app.post('/api/plans/publish', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.post('/api/plans/publish', requireWorkoutPlannerCoach, (req, res) => {
   const validationError = validatePlanPayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
 
@@ -1114,8 +1135,7 @@ app.post('/api/plans/publish', (req, res) => {
   });
 });
 
-app.post('/api/plans/demo/jerry', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.post('/api/plans/demo/jerry', requireWorkoutPlannerCoach, (req, res) => {
   const plans = readPublishedPlans();
   const existing = plans.find(item =>
     !item.deletedAt &&
@@ -1154,16 +1174,14 @@ app.post('/api/plans/demo/jerry', (req, res) => {
   });
 });
 
-app.get('/api/plans/owner', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.get('/api/plans/owner', requireWorkoutPlannerCoach, (req, res) => {
   const plans = readPublishedPlans()
     .filter(plan => !plan.deletedAt)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   res.json({ ok: true, plans: ownerPlanSummaries(plans) });
 });
 
-app.get('/api/plans/owner/:id', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.get('/api/plans/owner/:id', requireWorkoutPlannerCoach, (req, res) => {
   const plan = readPublishedPlans().find(item => item.id === req.params.id && !item.deletedAt);
   if (!plan) return res.status(404).json({ ok: false, error: 'Plan not found.' });
   res.json({
@@ -1180,8 +1198,7 @@ app.get('/api/plans/owner/:id', (req, res) => {
   });
 });
 
-app.put('/api/plans/owner/:id', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.put('/api/plans/owner/:id', requireWorkoutPlannerCoach, (req, res) => {
   const validationError = validatePlanPayload(req.body);
   if (validationError) return res.status(400).json({ ok: false, error: validationError });
 
@@ -1231,8 +1248,7 @@ app.put('/api/plans/owner/:id', (req, res) => {
   });
 });
 
-app.delete('/api/plans/owner/:id', (req, res) => {
-  if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
+app.delete('/api/plans/owner/:id', requireWorkoutPlannerCoach, (req, res) => {
 
   const plans = readPublishedPlans();
   const planIndex = plans.findIndex(item =>
