@@ -1200,8 +1200,7 @@ function bindPlanEvents() {
       window.location.assign("/account");
       return;
     }
-    await fetch("/api/admin/logout", { method: "POST" });
-    window.location.assign("/admin");
+    window.location.assign("/account?signout=1");
   });
   document.getElementById("editDetailsBtn").addEventListener("click", openDetailsModal);
   document.getElementById("detailsForm").addEventListener("submit", saveDetails);

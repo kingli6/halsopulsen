@@ -64,10 +64,10 @@
     const errorText = document.getElementById("adminLoginError");
     const loginButton = document.getElementById("adminLoginButton");
     const query = new URLSearchParams(window.location.search);
-    const requestedNext = query.get("next") || "/admin/plans/";
+    const requestedNext = query.get("next") || "/admin/booking/";
     const nextPath = requestedNext.startsWith("/") && !requestedNext.startsWith("//")
       ? requestedNext
-      : "/admin/plans/";
+      : "/admin/booking/";
 
     loginForm.addEventListener("submit", async event => {
       event.preventDefault();
