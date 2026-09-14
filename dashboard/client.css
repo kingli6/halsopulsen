@@ -1,0 +1,50 @@
+.client-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.client-empty,
+.client-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #dde4df);
+  border-radius: 18px;
+  padding: 1.25rem;
+}
+
+.client-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.client-card h3,
+.client-card p {
+  margin-top: 0;
+}
+
+.client-meta,
+.client-exercise-meta {
+  color: var(--muted, #5f6b65);
+  font-size: .9rem;
+}
+
+.client-exercises {
+  border-top: 1px solid var(--border, #dde4df);
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: .75rem 0 0;
+}
+
+.client-exercises li {
+  padding: .45rem 0;
+}
+
+.client-status {
+  background: #edf5ef;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .35rem .65rem;
+  text-transform: uppercase;
+}

@@ -15,6 +15,7 @@
     "test:booking-phase2": "NODE_ENV=production node scripts/test-booking-phase2.js",
     "test:booking-phase5": "node scripts/test-booking-phase5.js",
     "test:booking-ui": "node scripts/test-booking-ui.js",
+    "test:workoutplanner-client-link": "node scripts/test-workoutplanner-client-link.js",
     "db:migrate:supabase": "node scripts/migrate-supabase-booking.js",
     "db:migrate:workoutplanner": "node scripts/migrate-workoutplanner.js"
   },
