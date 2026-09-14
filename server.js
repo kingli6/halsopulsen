@@ -7,6 +7,14 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const { bookingRouter } = require('./booking/routes');
 const { bookingAdminRouter } = require('./booking/admin-routes');
 const { bookingActionRouter } = require('./booking/action-routes');
+const {
+  getPool: getWorkoutPlannerPool,
+  isConfigured: isWorkoutPlannerConfigured
+} = require('./workoutplanner/db');
+const {
+  findProfileByClerkUserId,
+  publicProfile
+} = require('./workoutplanner/identity');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -200,6 +208,10 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ ok: true, authenticated: true, user: { id: user.id } });
 });
 
+app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) => {
+  res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
 });
@@ -343,8 +355,44 @@ function currentUserId(req) {
 function requireUser(req, res, next) {
   const userId = currentUserId(req);
   if (!userId) return res.status(401).json({ ok: false, error: 'Sign in required.' });
+  req.clerkUserId = userId;
   req.userId = userId;
   next();
+}
+
+async function requireWorkoutPlannerProfile(req, res, next) {
+  const clerkUserId = currentUserId(req);
+  if (!clerkUserId) {
+    return res.status(401).json({ ok: false, error: 'Sign in required.' });
+  }
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({
+      ok: false,
+      error: 'WorkoutPlanner database access is not configured.'
+    });
+  }
+
+  try {
+    const profile = await findProfileByClerkUserId(
+      getWorkoutPlannerPool(),
+      clerkUserId
+    );
+    if (!profile) {
+      return res.status(404).json({
+        ok: false,
+        error: 'WorkoutPlanner profile not found.'
+      });
+    }
+    req.clerkUserId = clerkUserId;
+    req.workoutPlannerProfile = profile;
+    next();
+  } catch (error) {
+    console.error('Could not resolve WorkoutPlanner profile:', error.message);
+    res.status(503).json({
+      ok: false,
+      error: 'WorkoutPlanner profile lookup is unavailable.'
+    });
+  }
 }
 
 function getOrCreateUser(userId) {
