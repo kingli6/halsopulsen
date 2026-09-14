@@ -189,7 +189,45 @@ async function hasClientAccessToken(db, token) {
   return result.rowCount === 1;
 }
 
+async function createClientForCoach(db, coachProfileId, displayName) {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+    const profileResult = await client.query(
+      `INSERT INTO public.profiles (role, display_name, clerk_user_id)
+       VALUES ('client', $1, NULL)
+       RETURNING id`,
+      [displayName]
+    );
+    const profileId = profileResult.rows[0].id;
+    const clientResult = await client.query(
+      `INSERT INTO public.clients (profile_id, display_name)
+       VALUES ($1, $2)
+       RETURNING id, display_name`,
+      [profileId, displayName]
+    );
+    const createdClient = clientResult.rows[0];
+    await client.query(
+      `INSERT INTO public.coach_clients (coach_profile_id, client_id)
+       VALUES ($1, $2)`,
+      [coachProfileId, createdClient.id]
+    );
+    await client.query("COMMIT");
+    return {
+      id: createdClient.id,
+      displayName: createdClient.display_name
+    };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
+  createClientForCoach,
   findClientDataByToken,
   generateClientAccessToken,
   hashClientAccessToken,
