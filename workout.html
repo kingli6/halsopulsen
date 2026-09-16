@@ -1196,8 +1196,10 @@
             <button class="preset-chip" onclick="loadPreset('hiit')">🔥 HIIT 40/20</button>
             <button class="preset-chip" onclick="loadPreset('amrap')">⏱ AMRAP-vila</button>
             <button class="preset-chip" onclick="loadPreset('massage')">💆 Massage</button>
-            <button class="preset-chip" onclick="loadPreset('rehab')">🩺 Rehab</button>
+            <button class="preset-chip" onclick="loadPreset('rehab')">🩺 Senstyrketräning</button>
+            <button class="preset-chip" onclick="loadPreset('rehabtraining')">🩺 Rehabträning</button>
           </div>
+          <p class="tab-description" id="presetNote" aria-live="polite">Välj ett snabbval för att se instruktionen här.</p>
 
            <div class="sequence-total" id="sequenceTotal" style="display:none;">
              <span class="sequence-total-label">Total tid</span>
@@ -1919,9 +1921,18 @@
     },
     'rehab': {
       rounds: 10,
+      note: 'Isometrisk träning för senstyrka. Håll positionen i 10 sekunder och upprepa 10 gånger.',
       blocks: [
-        { type: 'work', label: 'Arbete', duration: 10 },
+        { type: 'work', label: 'Håll', duration: 10 },
         { type: 'rest', label: 'Vila',   duration: 50 },
+      ],
+    },
+    'rehabtraining': {
+      rounds: 4,
+      note: 'Isometriskt håll – håll positionen stilla i 30 sekunder, vila och upprepa i 4 set.',
+      blocks: [
+        { type: 'work', label: 'Håll', duration: 30 },
+        { type: 'rest', label: 'Vila', duration: 30 },
       ],
     },
   };
@@ -1935,6 +1946,8 @@
     timerState.rounds = preset.rounds;
     timerState.activePreset = key;
     document.getElementById('roundsVal').textContent = timerState.rounds;
+    const presetNote = document.getElementById('presetNote');
+    if (presetNote) presetNote.textContent = preset.note || '';
     saveTimerState();
     saveMassageConfig();
     renderBlocks();
