@@ -59,6 +59,33 @@
       return `<option value="${date}">${dateOptionLabel(date)}</option>`;
     }).join("");
     dateSelect.value = current;
+    updateDateNavigation();
+  }
+
+  function updateDateNavigation() {
+    const dateSelect = $("booking-date");
+    const selectedIndex = typeof dateSelect.selectedIndex === "number"
+      ? dateSelect.selectedIndex
+      : -1;
+    const optionCount = dateSelect.options?.length || 0;
+    $("previous-day").disabled = selectedIndex <= 0;
+    $("next-day").disabled = selectedIndex < 0
+      || selectedIndex >= optionCount - 1;
+  }
+
+  function selectDate(date) {
+    const dateSelect = $("booking-date");
+    if (!Array.from(dateSelect.options).some(option => option.value === date)) return;
+    state.selectedDate = date;
+    dateSelect.value = date;
+    updateDateNavigation();
+    clearMessage();
+    loadAvailability();
+  }
+
+  function shiftSelectedDate(amount) {
+    const current = $("booking-date").value || state.selectedDate;
+    selectDate(addDays(current, amount));
   }
 
   function formatDate(date) {
@@ -298,6 +325,7 @@
     $("details-form").reset();
     updateNotesCount();
     $("booking-date").value = state.selectedDate;
+    updateDateNavigation();
     renderServices();
     renderTimes();
     clearMessage();
@@ -355,11 +383,9 @@
       const button = event.target.closest("[data-slot]");
       if (button) selectSlot(button.dataset.slot);
     });
-    $("booking-date").addEventListener("change", event => {
-      state.selectedDate = event.target.value;
-      clearMessage();
-      loadAvailability();
-    });
+    $("booking-date").addEventListener("change", event => selectDate(event.target.value));
+    $("previous-day").addEventListener("click", () => shiftSelectedDate(-1));
+    $("next-day").addEventListener("click", () => shiftSelectedDate(1));
     $("back-to-service").addEventListener("click", () => {
       clearMessage();
       setStep("service");
