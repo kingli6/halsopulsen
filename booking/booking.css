@@ -89,6 +89,10 @@ h1, h2, h3, p { margin-top: 0; }
 .field-label input:focus, .field-label select:focus, .field-label textarea:focus { border-color: var(--booking-green); box-shadow: 0 0 0 3px rgba(30, 107, 69, .12); }
 .field-label input:invalid:not(:placeholder-shown), .field-label textarea:invalid:not(:placeholder-shown) { border-color: #d9988e; }
 .optional-label { color: var(--booking-muted); font-size: 11px; font-weight: 400; }
+.date-navigation { display: grid; grid-template-columns: auto minmax(160px, 1fr) auto; align-items: end; gap: 10px; margin-bottom: 18px; }
+.date-navigation .field-label { min-width: 0; margin: 0; }
+.date-nav-button { padding-inline: 4px; white-space: nowrap; }
+.date-nav-button:disabled { color: var(--booking-muted); cursor: not-allowed; opacity: .55; text-decoration: none; }
 .availability-heading { align-items: baseline; margin-bottom: 10px; }
 .availability-heading .field-label { margin: 0; }
 .availability-caption { color: var(--booking-muted); font-size: 11px; }
@@ -164,6 +168,10 @@ h1, h2, h3, p { margin-top: 0; }
   .service-list { grid-template-columns: 1fr; }
   .service-option { min-height: 0; }
   .form-grid { grid-template-columns: 1fr; gap: 0; }
+   .date-navigation { grid-template-columns: 1fr 1fr; }
+   .date-navigation .field-label { grid-column: 1 / -1; grid-row: 1; }
+   .date-navigation .date-nav-button:first-child { grid-column: 1; grid-row: 2; text-align: left; }
+   .date-navigation .date-nav-button:last-child { grid-column: 2; grid-row: 2; text-align: right; }
   .time-list { grid-template-columns: repeat(3, 1fr); }
   .booking-aside { grid-template-columns: 1fr; gap: 10px; }
   .aside-footnote { grid-column: auto; }
