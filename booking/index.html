@@ -77,9 +77,13 @@
                 <button class="text-button" id="back-to-service" type="button">← Byt tjänst</button>
               </div>
               <div class="selected-service" id="selected-service"></div>
-              <label class="field-label" for="booking-date">Datum
-                <select id="booking-date" required aria-label="Välj bokningsdatum"></select>
-              </label>
+              <div class="date-navigation" aria-label="Datumsväljare">
+                <button class="text-button date-nav-button" id="previous-day" type="button">‹ Föregående dag</button>
+                <label class="field-label" for="booking-date">Datum
+                  <select id="booking-date" required aria-label="Välj bokningsdatum"></select>
+                </label>
+                <button class="text-button date-nav-button" id="next-day" type="button">Nästa dag ›</button>
+              </div>
               <div class="availability-heading">
                 <span class="field-label">Lediga tider</span>
                 <span class="availability-caption" id="availability-caption"></span>
