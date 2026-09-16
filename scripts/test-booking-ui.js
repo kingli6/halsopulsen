@@ -185,6 +185,8 @@ async function main() {
   assert(adminHtml.includes('id="alternative-feedback"'));
   assert(adminHtml.includes("kunden accepterar"));
    assert(adminHtml.includes('id="booking-confirmation-dialog"'));
+   assert(adminHtml.includes('id="confirmation-personal-message"'));
+   assert(adminHtml.includes('id="alternative-message"'));
   assert(adminJs.includes("Kontrollerar tillgängligheten"));
   assert(adminJs.includes("Ny tid föreslagen. Kunden behöver acceptera tiden."));
   assert(adminJs.includes("Den föreslagna tiden är inte längre tillgänglig."));
@@ -193,6 +195,8 @@ async function main() {
    assert(adminJs.includes('confirmLabel: "Bekräfta och skicka"'));
    assert(adminJs.includes('title: "Skicka förslag på ny tid?"'));
    assert(adminJs.includes('confirmLabel: "Skicka förslag"'));
+   assert(adminJs.includes("allowPersonalMessage: true"));
+   assert(adminJs.includes("personalMessage"));
    assert(!adminJs.includes("Återaktivera och bekräfta"));
   console.log("Booking UI checks passed: rebooking reset, duplicate protection, and alternative-time feedback.");
 }

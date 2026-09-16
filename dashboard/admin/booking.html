@@ -92,6 +92,9 @@
                 <label class="form-label">Datum <input id="alternative-date" type="date"></label>
                 <label class="form-label">Starttid <input id="alternative-time" type="time" step="900"></label>
               </div>
+                <label class="form-label">Personligt meddelande <span class="form-help-inline">(valfritt)</span>
+                  <textarea id="alternative-message" maxlength="1000" rows="3" placeholder="Skriv ett kort meddelande till kunden"></textarea>
+                </label>
               <div class="alternative-feedback" id="alternative-feedback" role="status" aria-live="polite" hidden></div>
               <button class="button button-secondary button-small" data-suggest-alternative type="button">Föreslå ny tid</button>
             </div>
@@ -214,6 +217,10 @@
     <form method="dialog" class="booking-confirmation-card">
       <h2 id="booking-confirmation-title"></h2>
       <p id="booking-confirmation-message"></p>
+      <label class="form-label confirmation-personal-message-field" id="confirmation-personal-message-field" hidden>
+        Personligt meddelande <span class="form-help-inline">(valfritt)</span>
+        <textarea id="confirmation-personal-message" maxlength="1000" rows="3" placeholder="Skriv ett kort meddelande till kunden"></textarea>
+      </label>
       <div class="booking-confirmation-actions">
         <button class="button button-secondary" id="booking-confirmation-cancel" value="cancel" type="submit">Avbryt</button>
         <button class="button button-primary" id="booking-confirmation-confirm" value="confirm" type="submit"></button>

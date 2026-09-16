@@ -1,6 +1,7 @@
 const EMAIL_PROVIDER = String(process.env.BOOKING_EMAIL_PROVIDER || "").trim().toLowerCase();
 const CALENDAR_FILENAME = "halsopulsen-bokning.ics";
 const CALENDAR_UID_DOMAIN = "halsopulsen.se";
+const ADMIN_REPLY_TO_EMAIL = "halsopulsen@gmail.com";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -187,7 +188,8 @@ async function sendBookingEmail({
   html,
   attachments = [],
   label = "transactional booking email",
-  suppress = false
+  suppress = false,
+  replyTo
 }) {
   if (suppress || isTestFixtureEmail(to)) {
     return { sent: false, reason: "test_fixture" };
@@ -218,6 +220,7 @@ async function sendBookingEmail({
     text,
     html
   };
+  if (replyTo) payload.reply_to = replyTo;
   if (attachments.length > 0) payload.attachments = attachments;
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -282,24 +285,39 @@ async function sendNewRequestAdminEmail({ booking, suppress }) {
   });
 }
 
-async function sendConfirmedEmail({ booking, token, suppress, sequence = 0 }) {
+async function sendConfirmedEmail({
+  booking,
+  token,
+  suppress,
+  sequence = 0,
+  personalMessage
+}) {
   booking = normalizeBooking(booking);
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
   const details = bookingDetails(booking, { requireCurrent: true });
+  const message = String(personalMessage || "").trim();
+  const personalMessageText = message
+    ? ["", "Personligt meddelande från HälsoPulsen:", message]
+    : [];
+  const personalMessageHtml = message
+    ? `<p><strong>Personligt meddelande från HälsoPulsen:</strong></p><p>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`
+    : "";
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Din tid är bekräftad · HälsoPulsen",
     label: "client booking confirmation",
     suppress,
+    replyTo: ADMIN_REPLY_TO_EMAIL,
     attachments: calendarAttachments(booking, { sequence }),
     text: [
       "Din bokning är bekräftad.",
       "",
       details,
+      ...personalMessageText,
       "",
       `Hantera eller avboka: ${manageLink}`
     ].join("\n"),
-    html: `<p>Din bokning är bekräftad.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><a href="${escapeHtml(manageLink)}">Hantera eller avboka din tid</a></p>`
+    html: `<p>Din bokning är bekräftad.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p>${personalMessageHtml}<p><a href="${escapeHtml(manageLink)}">Hantera eller avboka din tid</a></p>`
   });
 }
 
@@ -367,25 +385,34 @@ async function sendAdminRescheduledEmail({ booking, suppress, sequence }) {
   });
 }
 
-async function sendAlternativeEmail({ booking, token, suppress }) {
+async function sendAlternativeEmail({ booking, token, suppress, personalMessage }) {
   booking = normalizeBooking(booking);
   const manageLink = publicUrl(`/booking/manage/${encodeURIComponent(token)}`);
   const originalTime = formatDateTime(booking.originalStartsAt || booking.startsAt);
   const alternativeTime = formatDateTime(booking.alternativeStartsAt);
+  const message = String(personalMessage || "").trim();
+  const personalMessageText = message
+    ? ["", "Personligt meddelande från HälsoPulsen:", message]
+    : [];
+  const personalMessageHtml = message
+    ? `<p><strong>Personligt meddelande från HälsoPulsen:</strong></p><p>${escapeHtml(message).replace(/\n/g, "<br>")}</p>`
+    : "";
   return sendBookingEmail({
     to: booking.clientEmail,
     subject: "Förslag på en annan tid · HälsoPulsen",
     label: "client alternative-time message",
     suppress,
+    replyTo: ADMIN_REPLY_TO_EMAIL,
     text: [
       "Jag har ett förslag på en annan tid för din bokning.",
       "",
       `Ursprunglig tid: ${originalTime}`,
       `Föreslagen tid: ${alternativeTime}`,
+      ...personalMessageText,
       "",
       `Öppna för att acceptera eller tacka nej: ${manageLink}`
     ].join("\n"),
-    html: `<p>Jag har ett förslag på en annan tid för din bokning.</p><p><strong>Ursprunglig tid:</strong> ${escapeHtml(originalTime)}<br><strong>Föreslagen tid:</strong> ${escapeHtml(alternativeTime)}</p><p><a href="${escapeHtml(manageLink)}">Acceptera eller tacka nej</a></p>`
+    html: `<p>Jag har ett förslag på en annan tid för din bokning.</p><p><strong>Ursprunglig tid:</strong> ${escapeHtml(originalTime)}<br><strong>Föreslagen tid:</strong> ${escapeHtml(alternativeTime)}</p>${personalMessageHtml}<p><a href="${escapeHtml(manageLink)}">Acceptera eller tacka nej</a></p>`
   });
 }
 

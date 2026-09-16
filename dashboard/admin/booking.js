@@ -365,6 +365,7 @@
     $("edit-appointment-status").value = item.status;
     $("alternative-date").value = item.alternativeDate || item.originalDate || "";
     $("alternative-time").value = item.alternativeStart || item.originalStart || "";
+    $("alternative-message").value = "";
     alternativeFeedback("");
     appointmentFeedback("");
     $("alternative-time-box").hidden = item.status !== "pending";
@@ -560,14 +561,17 @@
     $("booking-confirmation-cancel").addEventListener("click", event => {
       event.preventDefault();
       pendingConfirmation = null;
+      $("confirmation-personal-message").value = "";
       $("booking-confirmation-dialog").close();
     });
     $("booking-confirmation-confirm").addEventListener("click", event => {
       event.preventDefault();
       const confirmation = pendingConfirmation;
+      const personalMessage = $("confirmation-personal-message").value;
       pendingConfirmation = null;
       $("booking-confirmation-dialog").close();
-      if (confirmation) confirmation.onConfirm();
+      $("confirmation-personal-message").value = "";
+      if (confirmation) confirmation.onConfirm(personalMessage);
     });
     ["alternative-date", "alternative-time"].forEach(id => {
       $(id).addEventListener("input", () => alternativeFeedback(""));
@@ -603,7 +607,8 @@
             title: "Bekräfta bokning?",
             message: "Detta bekräftar tiden och skickar ett bekräftelsemejl till klienten.",
             confirmLabel: "Bekräfta och skicka",
-            onConfirm: () => updateQuickStatus(target.dataset.quickStatus)
+            allowPersonalMessage: true,
+            onConfirm: personalMessage => updateQuickStatus(target.dataset.quickStatus, personalMessage)
           });
           return;
         }
@@ -630,7 +635,7 @@
           title: "Skicka förslag på ny tid?",
           message: "Klienten får ett meddelande med den nya föreslagna tiden och kan acceptera eller avböja den.",
           confirmLabel: "Skicka förslag",
-          onConfirm: () => suggestAlternative(date, start, target)
+          onConfirm: () => suggestAlternative(date, start, target, $("alternative-message").value)
         });
       }
       if (target.dataset.deleteRule) deleteResource(`/hours/${target.dataset.deleteRule}`, loadResources, "arbetstiden");
@@ -639,16 +644,21 @@
     });
   }
 
-  function openConfirmation({ title, message, confirmLabel, onConfirm }) {
-    pendingConfirmation = { onConfirm };
+  function openConfirmation({ title, message, confirmLabel, onConfirm, allowPersonalMessage = false }) {
+    pendingConfirmation = { onConfirm, allowPersonalMessage };
     $("booking-confirmation-title").textContent = title;
     $("booking-confirmation-message").textContent = message;
     $("booking-confirmation-confirm").textContent = confirmLabel;
+    $("confirmation-personal-message-field").hidden = !allowPersonalMessage;
+    $("confirmation-personal-message").value = "";
     $("booking-confirmation-dialog").showModal();
   }
 
-  function updateQuickStatus(status) {
+  function updateQuickStatus(status, personalMessage = "") {
     const quickStatusPayload = { status };
+    if (status === "confirmed") {
+      quickStatusPayload.personalMessage = personalMessage;
+    }
     if (status === "confirmed"
       && state.editingAppointment.status === "pending"
       && !state.editingAppointment.startAt) {
@@ -667,7 +677,7 @@
     }).catch(error => message(error.message, true));
   }
 
-  function suggestAlternative(date, start, target) {
+  function suggestAlternative(date, start, target, personalMessage = "") {
     target.disabled = true;
     target.classList.add("is-loading");
     target.textContent = "Kontrollerar tillgängligheten…";
@@ -680,7 +690,8 @@
           body: JSON.stringify({
             action: "suggest_alternative",
             alternativeDate: date,
-            alternativeStart: start
+            alternativeStart: start,
+            personalMessage
           })
         });
         await loadAppointments();

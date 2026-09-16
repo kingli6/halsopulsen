@@ -84,8 +84,16 @@ async function testEmailConfigurationAndPayloads() {
   const booking = bookingFixture();
   await email.sendRequestReceivedEmail({ booking, token: "request-token" });
   await email.sendNewRequestAdminEmail({ booking });
-  await email.sendConfirmedEmail({ booking, token: "confirmed-token" });
-  await email.sendAlternativeEmail({ booking, token: "alternative-token" });
+  await email.sendConfirmedEmail({
+    booking,
+    token: "confirmed-token",
+    personalMessage: "Välkommen!\nVi ses snart."
+  });
+  await email.sendAlternativeEmail({
+    booking,
+    token: "alternative-token",
+    personalMessage: "<Ring gärna om tiden inte passar.>"
+  });
   await email.sendCancelledEmail({ booking });
 
   assert.strictEqual(deliveries.length, 5);
@@ -122,6 +130,15 @@ async function testEmailConfigurationAndPayloads() {
       "https://booking.example.test/booking/manage/alternative-token"
     )
   );
+  assert.strictEqual(deliveries[0].body.reply_to, undefined);
+  assert.strictEqual(deliveries[2].body.reply_to, "halsopulsen@gmail.com");
+  assert.strictEqual(deliveries[3].body.reply_to, "halsopulsen@gmail.com");
+  assert.strictEqual(deliveries[4].body.reply_to, undefined);
+  assert(deliveries[2].body.text.includes("Personligt meddelande från HälsoPulsen:"));
+  assert(deliveries[2].body.text.includes("Välkommen!\nVi ses snart."));
+  assert(deliveries[2].body.html.includes("Välkommen!<br>Vi ses snart."));
+  assert(deliveries[3].body.text.includes("<Ring gärna om tiden inte passar.>"));
+  assert(deliveries[3].body.html.includes("&lt;Ring gärna om tiden inte passar.&gt;"));
   assert(deliveries[1].body.text.includes("https://booking.example.test/admin/booking"));
   assert(!deliveries[0].body.attachments, "Pending client email must not include a calendar attachment.");
   assert(!deliveries[1].body.attachments, "Pending admin email must not include a calendar attachment.");
@@ -161,6 +178,8 @@ async function testEmailConfigurationAndPayloads() {
     endsAt: new Date("2099-06-16T11:00:00Z")
   });
   await email.sendConfirmedEmail({ booking: updatedBooking, token: "accepted-token" });
+  assert.strictEqual(deliveries[5].body.reply_to, "halsopulsen@gmail.com");
+  assert(!deliveries[5].body.text.includes("Personligt meddelande från HälsoPulsen:"));
   const acceptedIcs = Buffer.from(deliveries[5].body.attachments[0].content, "base64").toString("utf8");
   assert(acceptedIcs.includes("DTSTART:20990616T100000Z\r\n"), "Accepted alternatives must use the accepted start time.");
   assert(acceptedIcs.includes("DTEND:20990616T110000Z\r\n"), "Accepted alternatives must use the accepted end time.");
@@ -181,6 +200,15 @@ async function testEmailConfigurationAndPayloads() {
   });
   await email.sendCancelledEmail({ booking: noCalendarBooking });
   assert(!deliveries[8].body.attachments, "A pending cancellation must not include a calendar attachment.");
+
+  await email.sendAlternativeEmail({
+    booking,
+    token: "empty-alternative-token",
+    personalMessage: "   "
+  });
+  assert.strictEqual(deliveries[9].body.reply_to, "halsopulsen@gmail.com");
+  assert(!deliveries[9].body.text.includes("Personligt meddelande från HälsoPulsen:"));
+  assert(!deliveries[9].body.html.includes("Personligt meddelande från HälsoPulsen:"));
 
   let fixtureDeliveryAttempted = false;
   global.fetch = async () => {
@@ -359,20 +387,29 @@ async function testRouteTriggersAndProviderFailure() {
 
   response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
     params: { id: "1" },
-    body: { action: "suggest_alternative" }
+    body: {
+      action: "suggest_alternative",
+      personalMessage: "Kan den föreslagna tiden passa?"
+    }
   });
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.ok, true);
   assert.strictEqual(calls[2].name, "alternative");
+  assert.strictEqual(calls[2].args.personalMessage, "Kan den föreslagna tiden passa?");
 
   response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
     params: { id: "2" },
-    body: { status: "confirmed" }
+    body: {
+      status: "confirmed",
+      personalMessage: "Din tid är bokad. Välkommen!"
+    }
   });
   assert.strictEqual(response.statusCode, 200);
   assert.strictEqual(response.body.appointment.status, "confirmed");
   assert.strictEqual(calls[3].name, "confirmed");
+  assert.strictEqual(calls[3].args.personalMessage, "Din tid är bokad. Välkommen!");
   assert.strictEqual(calls[4].name, "admin_confirmed");
+  assert.strictEqual(calls[4].args.personalMessage, undefined);
 
   response = await invokeRoute(bookingAdminRouter, "patch", "/appointments/:id", {
     params: { id: "3" },
