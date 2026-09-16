@@ -42,6 +42,19 @@ const {
 } = require("./email");
 
 const router = express.Router();
+const MAX_PERSONAL_MESSAGE_LENGTH = 1000;
+
+function personalMessageFromBody(body) {
+  const message = String(body?.personalMessage || "").trim();
+  if (message.length > MAX_PERSONAL_MESSAGE_LENGTH) {
+    throw new BookingError(
+      "Det personliga meddelandet får vara högst 1 000 tecken.",
+      400,
+      "invalid_personal_message"
+    );
+  }
+  return message;
+}
 
 function parseId(value) {
   const id = Number(value);
@@ -162,15 +175,18 @@ router.delete("/appointments/:id", asyncRoute(async (req, res) => {
 router.patch("/appointments/:id", asyncRoute(async (req, res) => {
   const id = parseId(req.params.id);
   if (req.body?.action === "suggest_alternative") {
+    const personalMessage = personalMessageFromBody(req.body);
     const result = await suggestAlternative(getPool(), id, req.body, getBookingConfig());
     sendAlternativeEmail({
       booking: result.booking,
       token: result.actionToken,
+      personalMessage,
       suppress: isTestFixtureEmail(result.booking.clientEmail)
     }).catch(error => console.error("Alternative-time email failed:", error.message));
     return res.json({ ok: true, appointment: result.booking });
   }
   if (req.body?.status === "confirmed") {
+    const personalMessage = personalMessageFromBody(req.body);
     const existing = await getAppointment(getPool(), id, getBookingConfig());
     if (existing.status === "confirmed") {
       const appointment = await updateConfirmedAppointment(getPool(), id, req.body, getBookingConfig());
@@ -191,6 +207,7 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
     sendConfirmedEmail({
       booking: result.booking,
       token: result.actionToken,
+      personalMessage,
       suppress: isTestFixtureEmail(result.booking.clientEmail)
     }).catch(error => console.error("Booking confirmation email failed:", error.message));
     sendAdminConfirmedEmail({
