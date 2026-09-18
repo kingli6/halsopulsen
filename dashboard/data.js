@@ -188,6 +188,7 @@ const TrackerData = (() => {
     });
     return {
       weekNumber: Math.max(1, Number(week?.weekNumber) || fallbackWeekNumber),
+      name: String(week?.name || week?.phase || `Week ${fallbackWeekNumber}`),
       phase: String(week?.phase || programDefaults.phase || "Foundation"),
       progressionNotes: String(week?.progressionNotes || programDefaults.progressionNotes || ""),
       successMetric: String(week?.successMetric || programDefaults.successMetric || ""),
@@ -276,6 +277,7 @@ const TrackerData = (() => {
         draftSourceVersion: Number(raw.draftSourceVersion) || null,
         publishedAt: raw.publishedAt || "",
         assignmentPrefix: String(raw.assignmentPrefix || ""),
+        databaseProgramId: raw.databaseProgramId || null,
         assignments: (raw.assignments || []).map(normalizeAssignment),
         logs: Array.isArray(raw.logs) ? raw.logs : []
       };
@@ -300,6 +302,7 @@ const TrackerData = (() => {
       draftSourceVersion: null,
       publishedAt: "",
       assignmentPrefix: "",
+        databaseProgramId: null,
       assignments: (raw?.assignments || []).map(normalizeAssignment),
       logs: Array.isArray(raw?.logs) ? raw.logs : []
     };
@@ -355,6 +358,7 @@ const TrackerData = (() => {
       draftSourceVersion: null,
       publishedAt: "",
       assignmentPrefix: "",
+        databaseProgramId: null,
       assignments: [],
       logs: []
     };
@@ -397,6 +401,7 @@ const TrackerData = (() => {
       draftSourceVersion: Number(plan?.version) || null,
       publishedAt: plan?.publishedAt || "",
       assignmentPrefix: `v${Number(plan?.version) || 1}-assignment`,
+      databaseProgramId: null,
       assignments: Array.isArray(plan?.assignments) ? plan.assignments.map(normalizeAssignment) : [],
       logs: Array.isArray(plan?.logs) ? plan.logs : []
     };

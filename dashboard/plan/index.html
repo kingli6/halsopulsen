@@ -70,6 +70,18 @@
          <p class="client-create-status" id="clientCreateStatus" role="status" aria-live="polite"></p>
           <div class="client-list" id="clientList" aria-live="polite"></div>
        </section>
+       <section class="library-view card" id="databaseProgramLibrary" aria-labelledby="databaseProgramLibraryHeading" hidden>
+         <div class="library-view-header">
+           <div>
+             <p class="section-kicker">DATABASE PROGRAM LIBRARY</p>
+             <h2 id="databaseProgramLibraryHeading">Reusable programs</h2>
+             <p>These drafts belong to your coach profile and can be reopened without choosing a client.</p>
+           </div>
+           <span class="draft-status is-current" id="databaseProgramLibrarySummary">0 programs</span>
+         </div>
+         <p class="client-create-status" id="databaseProgramLibraryStatus" role="status" aria-live="polite"></p>
+         <div class="plan-library" id="databaseProgramList"></div>
+       </section>
       <p class="library-access-note">One participant uses each published share link by design. Deleting a version permanently removes its plan, participant link, logs, and saved history.</p>
       <div class="plan-library" id="planLibrary"></div>
     </section>
@@ -157,8 +169,10 @@
         <p id="publishDescription">Publishing creates one immutable multi-week schedule and share link. You can keep editing this draft afterwards.</p>
       </div>
       <div class="publish-actions">
+        <span class="published-detail" id="databaseSaveDetail">Not saved to the database library</span>
         <span class="published-detail" id="publishedDetail">No published version yet</span>
         <a class="share-link-button" id="currentShareLink" href="#" target="_blank" rel="noopener" hidden>Open current share link ↗</a>
+        <button class="button button-secondary" id="saveDatabaseProgramBtn" type="button" hidden>Save to program library</button>
         <button class="button button-primary" id="publishBtn" type="button">Publish plan</button>
       </div>
     </section>
