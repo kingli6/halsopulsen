@@ -318,6 +318,10 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
        p.name as program_name,
        p.description as program_description,
        p.status as program_status,
+       p.kind as program_kind,
+       p.source_program_id,
+       p.source_version_id,
+       p.updated_at as program_updated_at,
        p.start_date,
        pv.id as version_id,
        pv.version_number,
@@ -441,9 +445,12 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
   };
   return {
     id: first.program_id,
+    kind: first.program_kind || "library",
+    sourceProgramId: first.source_program_id,
+    sourceVersionId: first.source_version_id,
     status: first.program_status,
     versionStatus: first.version_status || "draft",
-    updatedAt: null,
+    updatedAt: first.program_updated_at,
     program
   };
 }
@@ -460,14 +467,19 @@ async function listPrograms(db, coachProfileId) {
        p.name,
        p.description,
        p.status,
+       p.kind,
+       p.source_program_id,
+       p.source_version_id,
        p.start_date,
        p.updated_at,
+       latest.version_id,
        latest.version_number,
        latest.version_status,
        count(pw.id)::int as week_count
      from public.programs p
      left join lateral (
        select
+         candidate.id as version_id,
          candidate.version_number,
          candidate.status as version_status
        from public.program_versions candidate
@@ -484,12 +496,16 @@ async function listPrograms(db, coachProfileId) {
           limit 1
        )
     where p.coach_profile_id = $1
-    group by p.id, latest.version_number, latest.version_status
+     group by p.id, latest.version_id, latest.version_number, latest.version_status
     order by p.updated_at desc`,
     [coachProfileId]
   );
   return result.rows.map(row => ({
-    id: row.id,
+     id: row.id,
+     kind: row.kind || "library",
+     sourceProgramId: row.source_program_id,
+     sourceVersionId: row.source_version_id,
+     versionId: row.version_id,
     name: row.name,
     description: row.description,
     status: row.status,
@@ -546,8 +562,8 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null) {
     } else {
       const inserted = await client.query(
         `insert into public.programs
-          (coach_profile_id, client_id, name, description, status, start_date)
-         values ($1, null, $2, $3, 'draft', $4)
+          (coach_profile_id, client_id, kind, name, description, status, start_date)
+         values ($1, null, 'library', $2, $3, 'draft', $4)
          returning id`,
         [coachProfileId, program.name, program.description, program.startDate]
       );
@@ -682,7 +698,202 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null) {
   }
 }
 
+async function cloneLibraryProgramVersion(
+  db,
+  coachProfileId,
+  sourceProgramId,
+  sourceVersionId,
+  clientProgramName
+) {
+  if (!isUuid(coachProfileId) || !isUuid(sourceProgramId) || !isUuid(sourceVersionId)) {
+    const error = new Error("Valid coach, program, and version IDs are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const name = text(clientProgramName);
+  if (!name) {
+    const error = new Error("A name is required for the client program.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query("begin");
+
+    const sourceResult = await client.query(
+      `select
+         p.id,
+         p.name,
+         p.description,
+         p.status,
+         p.start_date,
+         pv.id as version_id,
+         pv.version_number,
+         pv.status as version_status
+       from public.programs p
+       join public.program_versions pv on pv.program_id = p.id
+      where p.id = $1
+        and pv.id = $2
+        and p.coach_profile_id = $3
+        and p.kind = 'library'
+      for update`,
+      [sourceProgramId, sourceVersionId, coachProfileId]
+    );
+    if (sourceResult.rowCount !== 1) {
+      const error = new Error("The selected library version was not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+    const source = sourceResult.rows[0];
+
+    const clientProgramResult = await client.query(
+      `insert into public.programs
+        (coach_profile_id, client_id, kind, source_program_id, source_version_id,
+         name, description, status, start_date)
+       values ($1, null, 'client', $2, $3, $4, $5, $6, $7)
+       returning id`,
+      [
+        coachProfileId,
+        source.id,
+        source.version_id,
+        name,
+        source.description || "",
+        source.status,
+        dateValue(source.start_date)
+      ]
+    );
+    const clientProgramId = clientProgramResult.rows[0].id;
+
+    const clientVersionResult = await client.query(
+      `insert into public.program_versions
+        (program_id, version_number, status, created_by)
+       values ($1, 1, 'draft', $2)
+       returning id`,
+      [clientProgramId, coachProfileId]
+    );
+    const clientVersionId = clientVersionResult.rows[0].id;
+
+    const weeks = await client.query(
+      `select id, week_number, name, phase, progression_notes, success_metric
+         from public.program_weeks
+        where program_version_id = $1
+        order by week_number`,
+      [source.version_id]
+    );
+
+    for (const sourceWeek of weeks.rows) {
+      const clientWeekResult = await client.query(
+        `insert into public.program_weeks
+          (program_version_id, week_number, name, phase, progression_notes, success_metric)
+         values ($1, $2, $3, $4, $5, $6)
+         returning id`,
+        [
+          clientVersionId,
+          sourceWeek.week_number,
+          sourceWeek.name,
+          sourceWeek.phase,
+          sourceWeek.progression_notes,
+          sourceWeek.success_metric
+        ]
+      );
+      const clientWeekId = clientWeekResult.rows[0].id;
+      const workouts = await client.query(
+        `select id, day_of_week, name, description, session_type, warmup, cooldown, is_rest
+           from public.workouts
+          where program_week_id = $1
+          order by day_of_week`,
+        [sourceWeek.id]
+      );
+
+      for (const sourceWorkout of workouts.rows) {
+        const clientWorkoutResult = await client.query(
+          `insert into public.workouts
+            (program_week_id, day_of_week, name, description, session_type, warmup, cooldown, is_rest)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)
+           returning id`,
+          [
+            clientWeekId,
+            sourceWorkout.day_of_week,
+            sourceWorkout.name,
+            sourceWorkout.description,
+            sourceWorkout.session_type,
+            sourceWorkout.warmup,
+            sourceWorkout.cooldown,
+            sourceWorkout.is_rest
+          ]
+        );
+        const clientWorkoutId = clientWorkoutResult.rows[0].id;
+        const exercises = await client.query(
+          `select exercise_id, sort_order, sets, reps, duration, duration_unit,
+                  distance, distance_unit, load, load_unit, rir, tempo, rest_seconds,
+                  intensity, intensity_unit, work_seconds, recovery_seconds, rounds,
+                  notes, resource_url, planner_metadata
+             from public.workout_exercises
+            where workout_id = $1
+            order by sort_order`,
+          [sourceWorkout.id]
+        );
+
+        for (const sourceExercise of exercises.rows) {
+          await client.query(
+            `insert into public.workout_exercises
+              (workout_id, exercise_id, sort_order, sets, reps, duration, duration_unit,
+               distance, distance_unit, load, load_unit, rir, tempo, rest_seconds,
+               intensity, intensity_unit, work_seconds, recovery_seconds, rounds, notes,
+               resource_url, planner_metadata)
+             values
+              ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+               $15, $16, $17, $18, $19, $20, $21, $22)`,
+            [
+              clientWorkoutId,
+              sourceExercise.exercise_id,
+              sourceExercise.sort_order,
+              sourceExercise.sets,
+              sourceExercise.reps,
+              sourceExercise.duration,
+              sourceExercise.duration_unit,
+              sourceExercise.distance,
+              sourceExercise.distance_unit,
+              sourceExercise.load,
+              sourceExercise.load_unit,
+              sourceExercise.rir,
+              sourceExercise.tempo,
+              sourceExercise.rest_seconds,
+              sourceExercise.intensity,
+              sourceExercise.intensity_unit,
+              sourceExercise.work_seconds,
+              sourceExercise.recovery_seconds,
+              sourceExercise.rounds,
+              sourceExercise.notes,
+              sourceExercise.resource_url,
+              sourceExercise.planner_metadata || {}
+            ]
+          );
+        }
+      }
+    }
+
+    const saved = await loadProgramWithClient(client, coachProfileId, clientProgramId);
+    await client.query("commit");
+    return {
+      ...saved,
+      sourceProgramId: source.id,
+      sourceVersionId: source.version_id,
+      sourceVersionNumber: Number(source.version_number),
+      version: 1
+    };
+  } catch (error) {
+    await client.query("rollback").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
+  cloneLibraryProgramVersion,
   listPrograms,
   loadProgram,
   normalizeProgram,

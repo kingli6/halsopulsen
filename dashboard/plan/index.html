@@ -74,12 +74,23 @@
          <div class="library-view-header">
            <div>
              <p class="section-kicker">DATABASE PROGRAM LIBRARY</p>
-             <h2 id="databaseProgramLibraryHeading">Reusable programs</h2>
-             <p>These drafts belong to your coach profile and can be reopened without choosing a client.</p>
+             <h2 id="databaseProgramLibraryHeading">Program library</h2>
+             <p>Open reusable library programs or create independent client copies. Anonymous access is not part of this pass.</p>
            </div>
            <span class="draft-status is-current" id="databaseProgramLibrarySummary">0 programs</span>
          </div>
          <p class="client-create-status" id="databaseProgramLibraryStatus" role="status" aria-live="polite"></p>
+         <form class="client-create-row" id="cloneProgramForm" hidden>
+           <div>
+             <p class="section-kicker">CLIENT PROGRAM COPY</p>
+             <h3>Create independent client program</h3>
+           </div>
+           <label class="sr-only" for="cloneProgramNameInput">Client program name</label>
+           <input id="cloneProgramNameInput" type="text" required placeholder="Client program name" autocomplete="off" />
+           <button class="button button-secondary" id="cloneProgramSubmit" type="submit">Create copy</button>
+           <button class="button button-secondary" id="cloneProgramCancel" type="button">Cancel</button>
+         </form>
+         <p class="client-create-status" id="cloneProgramStatus" role="status" aria-live="polite"></p>
          <div class="plan-library" id="databaseProgramList"></div>
        </section>
       <p class="library-access-note">One participant uses each published share link by design. Deleting a version permanently removes its plan, participant link, logs, and saved history.</p>
