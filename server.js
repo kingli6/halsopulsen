@@ -22,6 +22,7 @@ const {
   regenerateClientAccessLink
 } = require('./workoutplanner/client-access');
 const {
+  cloneLibraryProgramVersion,
   listPrograms,
   loadProgram,
   saveProgram
@@ -297,6 +298,29 @@ app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
     return res.status(error.statusCode || 503).json({
       ok: false,
       error: error.statusCode ? error.message : 'The program could not be loaded.'
+    });
+  }
+});
+
+app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await cloneLibraryProgramVersion(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId,
+      req.body?.sourceVersionId,
+      req.body?.name
+    );
+    return res.status(201).json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not clone WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program could not be created.'
     });
   }
 });
