@@ -4,6 +4,7 @@
     rules: [],
     overrides: [],
     blocks: [],
+    settings: { minimumNoticeHours: 0 },
     appointments: [],
     calendar: null,
     editingAppointment: null
@@ -134,17 +135,19 @@
   }
 
   async function loadResources() {
-    const [services, hours, overrides, blocks] = await Promise.all([
-      api("/services"), api("/hours"), api("/overrides"), api("/blocks")
+    const [services, hours, overrides, blocks, settings] = await Promise.all([
+      api("/services"), api("/hours"), api("/overrides"), api("/blocks"), api("/settings")
     ]);
     state.services = services.services;
     state.rules = hours.rules;
     state.overrides = overrides.overrides;
     state.blocks = blocks.blockedTimes;
+    state.settings = settings.settings;
     renderServices();
     renderRules();
     renderOverrides();
     renderBlocks();
+    renderSettings();
   }
 
   async function loadAppointments() {
@@ -231,6 +234,10 @@
         </div>
       </div>
     `).join("") : '<div class="empty-resource">Inga blockerade tider ännu.</div>';
+  }
+
+  function renderSettings() {
+    $("settings-minimum-notice").value = state.settings.minimumNoticeHours;
   }
 
   function statusPill(status) {
@@ -397,7 +404,10 @@
     event.preventDefault();
     const form = event.currentTarget;
     try {
-      if (form.id === "service-form") {
+      if (form.id === "settings-form") {
+        const payload = formPayload(form, [["minimumNoticeHours", "settings-minimum-notice", "number"]]);
+        await saveResource("/settings", "PUT", payload, "Inställningen sparades.");
+      } else if (form.id === "service-form") {
         const id = $("service-id").value;
         const payload = formPayload(form, [
           ["name", "service-name"], ["description", "service-description"],
@@ -541,7 +551,7 @@
   }
 
   function setupEvents() {
-    ["service-form", "hours-form", "override-form", "block-form", "appointment-form"].forEach(id => {
+    ["settings-form", "service-form", "hours-form", "override-form", "block-form", "appointment-form"].forEach(id => {
       $(id).addEventListener("submit", handleFormSubmit);
     });
     $("appointment-filters").addEventListener("submit", event => {

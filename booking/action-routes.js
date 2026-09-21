@@ -1,5 +1,6 @@
 const express = require("express");
 const { getPool } = require("./db");
+const { loadBookingConfig } = require("./config");
 const { BookingError } = require("./service");
 const {
   acceptAlternative,
@@ -45,11 +46,13 @@ function suppressFor(booking) {
 }
 
 router.get("/:token", asyncRoute(async (req, res) => {
-  res.json({ ok: true, booking: await getClientAction(getPool(), token(req)) });
+  const pool = getPool();
+  res.json({ ok: true, booking: await getClientAction(pool, token(req), await loadBookingConfig(pool)) });
 }));
 
 router.post("/:token/accept", asyncRoute(async (req, res) => {
-  const result = await acceptAlternative(getPool(), token(req));
+  const pool = getPool();
+  const result = await acceptAlternative(pool, token(req), await loadBookingConfig(pool));
   sendConfirmedEmail({
     booking: result.booking,
     token: result.actionToken,
@@ -63,7 +66,8 @@ router.post("/:token/accept", asyncRoute(async (req, res) => {
 }));
 
 router.post("/:token/decline", asyncRoute(async (req, res) => {
-  const result = await declineAlternative(getPool(), token(req));
+  const pool = getPool();
+  const result = await declineAlternative(pool, token(req), await loadBookingConfig(pool));
   const sequence = calendarSequence(result.booking);
   sendCancelledEmail({
     booking: result.booking,
@@ -74,7 +78,8 @@ router.post("/:token/decline", asyncRoute(async (req, res) => {
 }));
 
 router.post("/:token/cancel", asyncRoute(async (req, res) => {
-  const result = await cancelByToken(getPool(), token(req));
+  const pool = getPool();
+  const result = await cancelByToken(pool, token(req), await loadBookingConfig(pool));
   const sequence = calendarSequence(result.booking);
   sendCancelledEmail({
     booking: result.booking,

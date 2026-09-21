@@ -1,5 +1,6 @@
 const assert = require("assert");
 const { getPool, closePool } = require("../booking/db");
+const { loadBookingConfig } = require("../booking/config");
 const { BookingError } = require("../booking/service");
 const {
   createBlockedTime,
@@ -7,11 +8,13 @@ const {
   createRule,
   createService,
   deleteCancelledAppointment,
+  getBookingSettings,
   getAppointment,
   listAppointments,
   updateAppointment,
   updateConfirmedAppointment,
   updateBlockedTime,
+  updateBookingSettings,
   updateOverride,
   updateRule,
   updateService
@@ -33,8 +36,15 @@ async function main() {
     blockIds: [],
     appointmentIds: []
   };
+  let originalMinimumNoticeHours;
 
   try {
+    const originalSettings = await getBookingSettings(pool);
+    originalMinimumNoticeHours = originalSettings.minimumNoticeHours;
+    const updatedSettings = await updateBookingSettings(pool, { minimumNoticeHours: 2 });
+    assert.strictEqual(updatedSettings.minimumNoticeHours, 2);
+    assert.strictEqual((await loadBookingConfig(pool)).minimumNoticeHours, 2);
+
     const service = await createService(pool, {
       name: `Admin test ${tag}`,
       description: "temporary",
@@ -271,6 +281,11 @@ async function main() {
     assert(appointments.some(item => item.id === cleanup.appointmentIds[1]));
     console.log("Booking admin integration checks passed.");
   } finally {
+    if (originalMinimumNoticeHours !== undefined) {
+      await updateBookingSettings(pool, {
+        minimumNoticeHours: originalMinimumNoticeHours
+      }).catch(() => {});
+    }
     await pool.query("DELETE FROM booking.appointments WHERE id = ANY($1::bigint[])", [
       cleanup.appointmentIds.map(Number)
     ]).catch(() => {});

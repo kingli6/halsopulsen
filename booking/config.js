@@ -1,6 +1,6 @@
 const DEFAULTS = Object.freeze({
   timezone: "Europe/Stockholm",
-  minimumNoticeHours: 12,
+  minimumNoticeHours: 0,
   bookingHorizonDays: 60,
   pendingExpirationHours: 24,
   slotIntervalMinutes: 15
@@ -42,7 +42,32 @@ function getBookingConfig(overrides = {}) {
   };
 }
 
+async function loadBookingConfig(client, overrides = {}) {
+  const config = getBookingConfig(overrides);
+  if (!client || Object.prototype.hasOwnProperty.call(overrides, "minimumNoticeHours")) {
+    return config;
+  }
+
+  const result = await client.query(`
+    SELECT minimum_notice_hours
+    FROM booking.settings
+    WHERE id = 1
+  `);
+  if (result.rowCount === 0) return config;
+
+  return {
+    ...config,
+    minimumNoticeHours: numberAtLeast(
+      result.rows[0].minimum_notice_hours,
+      config.minimumNoticeHours,
+      0,
+      { integer: true }
+    )
+  };
+}
+
 module.exports = {
   DEFAULT_BOOKING_CONFIG: DEFAULTS,
-  getBookingConfig
+  getBookingConfig,
+  loadBookingConfig
 };

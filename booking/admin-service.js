@@ -1,4 +1,4 @@
-const { getBookingConfig } = require("./config");
+const { getBookingConfig, loadBookingConfig } = require("./config");
 const { BookingError } = require("./service");
 const {
   addDays,
@@ -48,6 +48,38 @@ function booleanValue(value, label, fallback) {
   if (value === "true" || value === "1" || value === 1) return true;
   if (value === "false" || value === "0" || value === 0) return false;
   throw new BookingError(`${label} must be true or false.`, 400, "invalid_input");
+}
+
+function bookingSettingsInput(body) {
+  return {
+    minimumNoticeHours: integerValue(
+      body?.minimumNoticeHours,
+      "Minimum booking notice",
+      { min: 0, max: 720 }
+    )
+  };
+}
+
+async function getBookingSettings(client) {
+  const config = await loadBookingConfig(client);
+  return {
+    minimumNoticeHours: config.minimumNoticeHours
+  };
+}
+
+async function updateBookingSettings(client, body) {
+  const input = bookingSettingsInput(body);
+  const result = await client.query(`
+    INSERT INTO booking.settings (id, minimum_notice_hours)
+    VALUES (1, $1)
+    ON CONFLICT (id) DO UPDATE
+      SET minimum_notice_hours = EXCLUDED.minimum_notice_hours,
+          updated_at = CURRENT_TIMESTAMP
+    RETURNING minimum_notice_hours
+  `, [input.minimumNoticeHours]);
+  return {
+    minimumNoticeHours: Number(result.rows[0].minimum_notice_hours)
+  };
 }
 
 function dateValue(value, label, { required = true } = {}) {
@@ -871,6 +903,7 @@ module.exports = {
   createOverride,
   createRule,
   createService,
+  getBookingSettings,
   deleteCancelledAppointment,
   ensureAppointmentRangeIsFree,
   getAppointment,
@@ -882,6 +915,7 @@ module.exports = {
   updateAppointment,
   updateConfirmedAppointment,
   updateBlockedTime,
+  updateBookingSettings,
   updateOverride,
   updateRule,
   updateService

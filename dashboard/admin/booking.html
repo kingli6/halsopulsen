@@ -43,6 +43,7 @@
         <button class="booking-tab" data-panel="calendar" role="tab" aria-selected="false" type="button">Kalender</button>
         <button class="booking-tab" data-panel="services" role="tab" aria-selected="false" type="button">Tjänster</button>
         <button class="booking-tab" data-panel="hours" role="tab" aria-selected="false" type="button">Arbetstider</button>
+        <button class="booking-tab" data-panel="settings" role="tab" aria-selected="false" type="button">Inställningar</button>
         <button class="booking-tab" data-panel="overrides" role="tab" aria-selected="false" type="button">Undantag</button>
         <button class="booking-tab" data-panel="blocks" role="tab" aria-selected="false" type="button">Blockerade tider</button>
       </div>
@@ -172,6 +173,24 @@
             <button class="button button-primary" type="submit">Spara arbetstid</button>
           </form>
           <div class="card data-card"><div class="resource-list" id="hours-list"></div></div>
+        </div>
+      </section>
+
+      <section class="booking-panel" id="panel-settings" role="tabpanel" hidden>
+        <div class="section-heading-row">
+          <div><p class="section-kicker">INSTÄLLNINGAR</p><h2>Bokningsregler</h2></div>
+        </div>
+        <div class="two-column-admin">
+          <form class="card editor-card stack-form settings-form" id="settings-form">
+            <div class="section-heading-row compact">
+              <div><p class="section-kicker">TILLGÄNGLIGHET</p><h2>Minsta framförhållning</h2></div>
+            </div>
+            <label class="form-label">Minimum booking notice
+              <input id="settings-minimum-notice" type="number" min="0" max="720" step="1" required>
+            </label>
+            <p class="form-help">Ange hur många timmar före start en klient måste skicka sin förfrågan. 0 tillåter framtida tider samma dag.</p>
+            <button class="button button-primary" type="submit">Spara inställning</button>
+          </form>
         </div>
       </section>
 
