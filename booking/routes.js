@@ -1,6 +1,6 @@
 const express = require("express");
 const { getPool } = require("./db");
-const { getBookingConfig } = require("./config");
+const { loadBookingConfig } = require("./config");
 const {
   BookingError,
   calculateAvailability,
@@ -52,7 +52,8 @@ router.get("/services", asyncRoute(async (req, res) => {
 
 router.get("/availability", asyncRoute(async (req, res) => {
   try {
-    const config = getBookingConfig();
+    const client = getPool();
+    const config = await loadBookingConfig(client);
     const now = new Date();
     const today = localDateForInstant(now, config.timezone);
     const fromDate = req.query.from ? String(req.query.from) : today;
@@ -65,7 +66,7 @@ router.get("/availability", asyncRoute(async (req, res) => {
     }
 
     const availability = await calculateAvailability({
-      client: getPool(),
+      client,
       serviceIdentifier: req.query.service,
       fromDate,
       toDate,

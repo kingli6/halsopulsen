@@ -1,6 +1,6 @@
 const express = require("express");
 const { getPool } = require("./db");
-const { getBookingConfig } = require("./config");
+const { getBookingConfig, loadBookingConfig } = require("./config");
 const {
   BookingError
 } = require("./service");
@@ -11,6 +11,7 @@ const {
   createRule,
   createService,
   deleteCancelledAppointment,
+  getBookingSettings,
   getAppointment,
   listAppointments,
   listBlockedTimes,
@@ -20,6 +21,7 @@ const {
   updateAppointment,
   updateConfirmedAppointment,
   updateBlockedTime,
+  updateBookingSettings,
   updateOverride,
   updateRule,
   updateService
@@ -138,6 +140,14 @@ router.get("/blocks", asyncRoute(async (req, res) => {
   res.json({ ok: true, blockedTimes: await listBlockedTimes(getPool()) });
 }));
 
+router.get("/settings", asyncRoute(async (req, res) => {
+  res.json({ ok: true, settings: await getBookingSettings(getPool()) });
+}));
+
+router.put("/settings", asyncRoute(async (req, res) => {
+  res.json({ ok: true, settings: await updateBookingSettings(getPool(), req.body) });
+}));
+
 router.post("/blocks", asyncRoute(async (req, res) => {
   res.status(201).json({ ok: true, blockedTime: await createBlockedTime(getPool(), req.body) });
 }));
@@ -176,7 +186,7 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
   const id = parseId(req.params.id);
   if (req.body?.action === "suggest_alternative") {
     const personalMessage = personalMessageFromBody(req.body);
-    const result = await suggestAlternative(getPool(), id, req.body, getBookingConfig());
+    const result = await suggestAlternative(getPool(), id, req.body, await loadBookingConfig(getPool()));
     sendAlternativeEmail({
       booking: result.booking,
       token: result.actionToken,
@@ -189,7 +199,7 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
     const personalMessage = personalMessageFromBody(req.body);
     const existing = await getAppointment(getPool(), id, getBookingConfig());
     if (existing.status === "confirmed") {
-      const appointment = await updateConfirmedAppointment(getPool(), id, req.body, getBookingConfig());
+      const appointment = await updateConfirmedAppointment(getPool(), id, req.body, await loadBookingConfig(getPool()));
       const sequence = calendarSequence(appointment);
       sendRescheduledEmail({
         booking: appointment,
@@ -203,7 +213,7 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
       }).catch(error => console.error("Admin booking reschedule email failed:", error.message));
       return res.json({ ok: true, appointment });
     }
-    const result = await confirmAppointment(getPool(), id, req.body, getBookingConfig());
+    const result = await confirmAppointment(getPool(), id, req.body, await loadBookingConfig(getPool()));
     sendConfirmedEmail({
       booking: result.booking,
       token: result.actionToken,
@@ -217,7 +227,7 @@ router.patch("/appointments/:id", asyncRoute(async (req, res) => {
     return res.json({ ok: true, appointment: result.booking });
   }
   if (req.body?.status === "cancelled") {
-    const result = await cancelAppointment(getPool(), id, getBookingConfig());
+    const result = await cancelAppointment(getPool(), id, await loadBookingConfig(getPool()));
     const sequence = calendarSequence(result.booking);
     sendCancelledEmail({
       booking: result.booking,

@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { getBookingConfig } = require("./config");
+const { loadBookingConfig } = require("./config");
 const {
   addDays,
   formatDateOnly,
@@ -320,7 +320,7 @@ async function calculateAvailability({
   excludeAppointmentId,
   config: suppliedConfig
 }) {
-  const config = getBookingConfig(suppliedConfig);
+  const config = await loadBookingConfig(client, suppliedConfig);
   const service = await findService(client, serviceIdentifier);
   const today = localDateForInstant(now, config.timezone);
   const from = fromDate || today;
@@ -406,7 +406,7 @@ async function createBookingRequest({
   now = new Date(),
   config: suppliedConfig
 }) {
-  const config = getBookingConfig(suppliedConfig);
+  const config = await loadBookingConfig(pool, suppliedConfig);
   const startAt = parseInstant(input?.startTime || input?.startAt);
   if (!startAt) {
     throw new BookingError(

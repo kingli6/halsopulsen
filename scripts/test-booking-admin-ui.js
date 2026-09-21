@@ -129,6 +129,7 @@ async function main() {
     if (path.endsWith("/hours")) return response({ rules: [] });
     if (path.endsWith("/overrides")) return response({ overrides: [] });
     if (path.endsWith("/blocks")) return response({ blockedTimes: [] });
+    if (path.endsWith("/settings")) return response({ settings: { minimumNoticeHours: 0 } });
     throw new Error(`Unexpected request: ${path}`);
   };
   const context = {
@@ -158,6 +159,7 @@ async function main() {
   await clickAppointment("1");
   assert.strictEqual(get("edit-appointment-date").value, "2026-08-30");
   assert.strictEqual(get("edit-appointment-time").value, "13:00");
+  assert.strictEqual(String(get("settings-minimum-notice").value), "0");
   assert(get("appointments-list").innerHTML.includes('class="is-selected"'));
   assert(!get("appointment-detail").innerHTML.includes("Markera klar"));
 
