@@ -21,6 +21,12 @@ const {
   hasClientAccessToken,
   regenerateClientAccessLink
 } = require('./workoutplanner/client-access');
+const {
+  cloneLibraryProgramVersion,
+  listPrograms,
+  loadProgram,
+  saveProgram
+} = require('./workoutplanner/program-library');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -260,6 +266,105 @@ app.post('/api/workoutplanner/clients', requireLocalWorkoutPlannerCoach, async (
   } catch (error) {
     console.error('Could not create WorkoutPlanner client:', error.message);
     return res.status(503).json({ ok: false, error: 'The client could not be created.' });
+  }
+});
+
+app.get('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const programs = await listPrograms(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id
+    );
+    return res.json({ ok: true, programs });
+  } catch (error) {
+    console.error('Could not list WorkoutPlanner programs:', error.message);
+    return res.status(503).json({ ok: false, error: 'The program library could not be loaded.' });
+  }
+});
+
+app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await loadProgram(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    if (!result) {
+      return res.status(404).json({ ok: false, error: 'Program not found.' });
+    }
+    return res.json({ ok: true, program: result.program, meta: result });
+  } catch (error) {
+    console.error('Could not load WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The program could not be loaded.'
+    });
+  }
+});
+
+app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await cloneLibraryProgramVersion(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId,
+      req.body?.sourceVersionId,
+      req.body?.name
+    );
+    return res.status(201).json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not clone WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program could not be created.'
+    });
+  }
+});
+
+app.post('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await saveProgram(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.body?.program
+    );
+    return res.status(201).json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not save WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The program could not be saved.'
+    });
+  }
+});
+
+app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await saveProgram(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.body?.program,
+      req.params.programId
+    );
+    return res.json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not update WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The program could not be updated.'
+    });
   }
 });
 

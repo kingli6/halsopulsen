@@ -72,9 +72,10 @@ successful request creates a `pending` appointment and returns no appointment
 or client record.
 
 Availability is calculated on the server in `Europe/Stockholm` by default.
-The default minimum notice is 12 hours, the booking horizon is 60 days, and
+The default minimum notice is 0 hours, the booking horizon is 60 days, and
 pending requests stop blocking slots after 24 hours. These values can be
-configured with `BOOKING_TIMEZONE`, `BOOKING_MIN_NOTICE_HOURS`,
+configured in the booking admin settings and, for deployments without a
+persisted setting, with `BOOKING_TIMEZONE`, `BOOKING_MIN_NOTICE_HOURS`,
 `BOOKING_HORIZON_DAYS`, `BOOKING_PENDING_EXPIRATION_HOURS`, and
 `BOOKING_SLOT_INTERVAL_MINUTES`.
 

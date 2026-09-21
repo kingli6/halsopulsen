@@ -6,10 +6,18 @@ const planState = {
   selectedWeekIndex: 0,
   toastTimer: null,
   publishing: false,
+  databasePrograms: [],
+  databaseProgramId: null,
+  databaseProgramKind: null,
+  databaseProgramVersion: null,
+  databaseSaving: false,
+  cloneSourceProgramId: null,
+  cloneSourceVersionId: null,
   editingCurrentPlanId: null,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
 const userWorkspace = window.location.pathname.startsWith("/plans");
+planState.databaseProgramId = planState.data.databaseProgramId || null;
 
 function userPlanSummary(saved) {
   const data = saved.data || {};
@@ -164,6 +172,9 @@ function renderPlanOverview() {
   setPlanText("publishedDetail", planState.data.publishedPlanId
     ? `Version ${planState.data.publishedProgram.version} published`
     : "Not published to a share link yet");
+  setPlanText("databaseSaveDetail", planState.databaseProgramId
+    ? `Saved to database · Version ${planState.databaseProgramVersion || program.version || 1}`
+    : "Not saved to the database library");
   setPlanText("publishHeading", changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", changed
     ? (planState.editingCurrentPlanId
@@ -209,6 +220,12 @@ function startNewDraft() {
   planState.data.draftSourcePlanId = null;
   planState.data.draftSourceVersion = null;
   planState.data.assignmentPrefix = "";
+  planState.data.databaseProgramId = null;
+  planState.databaseProgramId = null;
+  planState.databaseProgramKind = null;
+  planState.databaseProgramVersion = null;
+  planState.cloneSourceProgramId = null;
+  planState.cloneSourceVersionId = null;
   planState.editingCurrentPlanId = null;
   enterEditor();
   TrackerData.save(planState.data);
@@ -636,6 +653,225 @@ function renderLibrary() {
   `).join("");
 }
 
+function renderDatabaseProgramLibrary() {
+  const section = document.getElementById("databaseProgramLibrary");
+  const container = document.getElementById("databaseProgramList");
+  const summary = document.getElementById("databaseProgramLibrarySummary");
+  if (!section || !container || !userWorkspace) return;
+
+  section.hidden = false;
+  const programs = planState.databasePrograms;
+  if (summary) summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"}`;
+  if (!programs.length) {
+    container.innerHTML = `<div class="empty-panel">Save a draft to build your program library.</div>`;
+    return;
+  }
+  container.innerHTML = programs.map(program => `
+    <article class="library-item">
+      <div class="library-item-main">
+        <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="current-tag">${program.kind === "client" ? "Client copy" : "Library"}</span></div>
+        <span>Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
+        ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
+      </div>
+      <div class="library-actions">
+        <button class="button button-primary button-small" type="button" data-open-database-program="${escapePlanHtml(program.id)}">Open program</button>
+        ${program.kind === "library"
+          ? `<button class="button button-secondary button-small" type="button" data-clone-database-program="${escapePlanHtml(program.id)}" data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Create client program</button>`
+          : ""}
+      </div>
+    </article>
+  `).join("");
+}
+
+async function loadDatabaseLibrary() {
+  if (!userWorkspace) return;
+  const status = document.getElementById("databaseProgramLibraryStatus");
+  try {
+    const response = await fetch("/api/workoutplanner/programs");
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not load the database program library.");
+    }
+    planState.databasePrograms = Array.isArray(result.programs) ? result.programs : [];
+    if (status) status.textContent = "";
+    renderDatabaseProgramLibrary();
+  } catch (error) {
+    if (status) {
+      status.textContent = error.message || "Could not load the database program library.";
+      status.classList.add("is-error");
+    }
+  }
+}
+
+function beginCloneDatabaseProgram(programId, versionId) {
+  const program = planState.databasePrograms.find(item => item.id === programId);
+  if (!program || !versionId) {
+    showPlanToast("The selected library version is unavailable.");
+    return;
+  }
+  planState.cloneSourceProgramId = programId;
+  planState.cloneSourceVersionId = versionId;
+  const form = document.getElementById("cloneProgramForm");
+  const input = document.getElementById("cloneProgramNameInput");
+  const status = document.getElementById("cloneProgramStatus");
+  if (form) form.hidden = false;
+  if (input) {
+    input.value = `${program.name} — Client copy`;
+    input.focus();
+    input.select();
+  }
+  if (status) status.textContent = `Copying version ${program.version} from ${program.name}.`;
+}
+
+function cancelCloneDatabaseProgram() {
+  planState.cloneSourceProgramId = null;
+  planState.cloneSourceVersionId = null;
+  const form = document.getElementById("cloneProgramForm");
+  const status = document.getElementById("cloneProgramStatus");
+  if (form) form.hidden = true;
+  if (status) status.textContent = "";
+}
+
+async function createClientDatabaseProgram() {
+  if (!userWorkspace || !planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
+  const input = document.getElementById("cloneProgramNameInput");
+  const button = document.getElementById("cloneProgramSubmit");
+  const name = input?.value.trim() || "";
+  if (!name) {
+    if (input) input.focus();
+    return;
+  }
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Creating…";
+  }
+  try {
+    const response = await fetch(
+      `/api/workoutplanner/programs/${encodeURIComponent(planState.cloneSourceProgramId)}/clone`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceVersionId: planState.cloneSourceVersionId,
+          name
+        })
+      }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not create the client program.");
+    }
+    const fresh = TrackerData.defaultData();
+    fresh.person = { name };
+    fresh.goal = "Build a consistent training habit";
+    fresh.draftGoal = fresh.goal;
+    fresh.publishedGoal = fresh.goal;
+    fresh.draftProgram = TrackerData.normalizeProgram(result.program);
+    fresh.publishedProgram = null;
+    fresh.databaseProgramId = result.meta?.id;
+    planState.data = fresh;
+    planState.databaseProgramId = result.meta?.id || null;
+    planState.databaseProgramKind = "client";
+    planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
+    planState.selectedWeekIndex = 0;
+    planState.editorMode = true;
+    planState.editingCurrentPlanId = null;
+    cancelCloneDatabaseProgram();
+    window.history.pushState({}, "", "/plans/?view=editor");
+    TrackerData.save(planState.data);
+    await loadDatabaseLibrary();
+    renderAllPlan();
+    showPlanToast("Independent client program created.");
+  } catch (error) {
+    const status = document.getElementById("cloneProgramStatus");
+    if (status) status.textContent = error.message || "Could not create the client program.";
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Create copy";
+    }
+  }
+}
+
+async function openDatabaseProgram(programId) {
+  try {
+    const response = await fetch(`/api/workoutplanner/programs/${encodeURIComponent(programId)}`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not load that database program.");
+    }
+    const fresh = TrackerData.defaultData();
+    fresh.person = { name: result.meta?.kind === "client" ? result.program.name : "Coach library" };
+    fresh.goal = "Build a consistent training habit";
+    fresh.draftGoal = fresh.goal;
+    fresh.publishedGoal = fresh.goal;
+    fresh.draftProgram = TrackerData.normalizeProgram(result.program);
+    fresh.publishedProgram = null;
+    fresh.publishedPlanId = null;
+    fresh.publishedSharePath = "";
+    fresh.publishedAt = "";
+    fresh.assignments = [];
+    fresh.logs = [];
+    fresh.history = [];
+    fresh.databaseProgramId = result.meta?.id || programId;
+    planState.data = fresh;
+    planState.databaseProgramId = fresh.databaseProgramId;
+    planState.databaseProgramKind = result.meta?.kind || "library";
+    planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
+    planState.selectedWeekIndex = 0;
+    planState.editorMode = true;
+    planState.editingCurrentPlanId = null;
+    window.history.pushState({}, "", `${userWorkspace ? "/plans/" : "/admin/plans/"}?view=editor`);
+    TrackerData.save(planState.data);
+    renderAllPlan();
+    showPlanToast("Database program opened.");
+  } catch (error) {
+    showPlanToast(error.message || "Could not load that database program.");
+  }
+}
+
+async function saveDatabaseProgram() {
+  if (!userWorkspace || planState.databaseSaving) return;
+  const button = document.getElementById("saveDatabaseProgramBtn");
+  const program = TrackerData.normalizeProgram(planState.data.draftProgram);
+  planState.databaseSaving = true;
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+  try {
+    const endpoint = planState.databaseProgramId
+      ? `/api/workoutplanner/programs/${encodeURIComponent(planState.databaseProgramId)}`
+      : "/api/workoutplanner/programs";
+    const response = await fetch(endpoint, {
+      method: planState.databaseProgramId ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ program })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not save the database program.");
+    }
+    planState.databaseProgramId = result.meta?.id || planState.databaseProgramId;
+    planState.databaseProgramKind = result.meta?.kind || planState.databaseProgramKind || "library";
+    planState.databaseProgramVersion = Number(result.meta?.version || program.version) || 1;
+    planState.data.databaseProgramId = planState.databaseProgramId;
+    planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
+    TrackerData.save(planState.data);
+    await loadDatabaseLibrary();
+    renderAllPlan();
+    showPlanToast("Program saved to the database library.");
+  } catch (error) {
+    showPlanToast(error.message || "Could not save the database program.");
+  } finally {
+    planState.databaseSaving = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Save to program library";
+    }
+  }
+}
+
 function renderAllPlan() {
   if (planState.editorMode) {
     renderPlanOverview();
@@ -644,6 +880,7 @@ function renderAllPlan() {
   }
   renderTemplateLibrary();
   renderLibrary();
+  renderDatabaseProgramLibrary();
   setPlanView();
 }
 
@@ -1236,6 +1473,11 @@ function bindPlanEvents() {
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);
   document.getElementById("cancelDetailsBtn").addEventListener("click", closeDetailsModal);
   document.getElementById("publishBtn").addEventListener("click", publishPlan);
+  const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
+  if (saveDatabaseButton) {
+    saveDatabaseButton.hidden = !userWorkspace;
+    saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
+  }
   const clientCreateSection = document.getElementById("clientCreateSection");
   if (!userWorkspace) {
     clientCreateSection.hidden = false;
@@ -1274,6 +1516,25 @@ function bindPlanEvents() {
     if (copy) copyPlanLink(copy.dataset.copyPlan);
     if (remove) deletePublishedPlan(remove.dataset.deletePlan);
   });
+  const databaseProgramList = document.getElementById("databaseProgramList");
+  if (databaseProgramList) {
+    databaseProgramList.addEventListener("click", event => {
+      const open = event.target.closest("[data-open-database-program]");
+      const clone = event.target.closest("[data-clone-database-program]");
+      if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
+      if (clone) beginCloneDatabaseProgram(
+        clone.dataset.cloneDatabaseProgram,
+        clone.dataset.cloneVersionId
+      );
+    });
+  }
+  const cloneForm = document.getElementById("cloneProgramForm");
+  if (cloneForm) cloneForm.addEventListener("submit", event => {
+    event.preventDefault();
+    createClientDatabaseProgram();
+  });
+  const cloneCancel = document.getElementById("cloneProgramCancel");
+  if (cloneCancel) cloneCancel.addEventListener("click", cancelCloneDatabaseProgram);
   document.getElementById("createPlanBtn").addEventListener("click", event => {
     event.preventDefault();
     startNewDraft();
@@ -1305,5 +1566,5 @@ renderAllPlan();
 seedRequestedDemo().then(() => Promise.all([
   loadLibrary(),
   loadTemplates(),
-  ...(userWorkspace ? [] : [loadClients()])
+  ...(userWorkspace ? [loadDatabaseLibrary()] : [loadClients()])
 ]));
