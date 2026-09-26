@@ -11,6 +11,7 @@ const planState = {
   databaseProgramKind: null,
   databaseProgramVersion: null,
   databaseSaving: false,
+  clients: [],
   cloneSourceProgramId: null,
   cloneSourceVersionId: null,
   editingCurrentPlanId: null,
@@ -711,6 +712,7 @@ function beginCloneDatabaseProgram(programId, versionId) {
   }
   planState.cloneSourceProgramId = programId;
   planState.cloneSourceVersionId = versionId;
+  renderCloneClientOptions();
   const form = document.getElementById("cloneProgramForm");
   const input = document.getElementById("cloneProgramNameInput");
   const status = document.getElementById("cloneProgramStatus");
@@ -735,10 +737,16 @@ function cancelCloneDatabaseProgram() {
 async function createClientDatabaseProgram() {
   if (!userWorkspace || !planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
   const input = document.getElementById("cloneProgramNameInput");
+  const clientSelect = document.getElementById("cloneProgramClientInput");
   const button = document.getElementById("cloneProgramSubmit");
   const name = input?.value.trim() || "";
+  const clientId = clientSelect?.value || "";
   if (!name) {
     if (input) input.focus();
+    return;
+  }
+  if (!clientId) {
+    if (clientSelect) clientSelect.focus();
     return;
   }
   if (button) {
@@ -753,6 +761,7 @@ async function createClientDatabaseProgram() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceVersionId: planState.cloneSourceVersionId,
+          clientId,
           name
         })
       }
@@ -780,6 +789,7 @@ async function createClientDatabaseProgram() {
     window.history.pushState({}, "", "/plans/?view=editor");
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
+    await loadClients();
     renderAllPlan();
     showPlanToast("Independent client program created.");
   } catch (error) {
@@ -790,6 +800,19 @@ async function createClientDatabaseProgram() {
       button.disabled = false;
       button.textContent = "Create copy";
     }
+  }
+}
+
+function renderCloneClientOptions() {
+  const select = document.getElementById("cloneProgramClientInput");
+  if (!select) return;
+  const currentValue = select.value;
+  const options = planState.clients
+    .filter(client => client.active)
+    .map(client => `<option value="${escapePlanHtml(client.id)}">${escapePlanHtml(client.displayName)}</option>`);
+  select.innerHTML = `<option value="">Choose a client…</option>${options.join("")}`;
+  if (options.some(option => option.includes(`value="${currentValue}"`))) {
+    select.value = currentValue;
   }
 }
 
@@ -1364,7 +1387,7 @@ async function loadTemplates() {
 async function loadClients() {
   const list = document.getElementById("clientList");
   const status = document.getElementById("clientCreateStatus");
-  if (!list || !status || userWorkspace) return;
+  if (!list || !status) return;
 
   try {
     const response = await fetch("/api/workoutplanner/clients");
@@ -1373,17 +1396,88 @@ async function loadClients() {
       throw new Error(result.error || "Could not load clients.");
     }
     const clients = Array.isArray(result.clients) ? result.clients : [];
+    planState.clients = clients;
+    renderCloneClientOptions();
+    if (userWorkspace) {
+      const section = document.getElementById("clientCreateSection");
+      if (section) section.hidden = false;
+    }
     list.innerHTML = clients.length
       ? clients.map(client => `
         <div class="client-list-item">
-          <strong>${escapePlanHtml(client.displayName)}</strong>
-          <span>${client.active ? "Active" : "Inactive"}</span>
+          <div>
+            <strong>${escapePlanHtml(client.displayName)}</strong>
+            <span>${client.active ? "Active" : "Inactive"} · ${client.programs.length} ${client.programs.length === 1 ? "program" : "programs"}</span>
+          </div>
+          <div class="client-program-list">
+            ${client.programs.length
+              ? client.programs.map(program => `
+                <div class="client-program-row">
+                  <span><strong>${escapePlanHtml(program.name)}</strong> · ${escapePlanHtml(program.status || "draft")}</span>
+                  <div class="library-actions">
+                    <button class="button button-secondary button-small" type="button"
+                      data-create-client-link="${escapePlanHtml(client.id)}"
+                      data-program-id="${escapePlanHtml(program.id)}">
+                      ${program.hasActivePrivateLink ? "Rotate link" : "Create link"}
+                    </button>
+                    ${program.hasActivePrivateLink
+                      ? `<button class="button button-danger button-small" type="button"
+                          data-revoke-client-link="${escapePlanHtml(client.id)}"
+                          data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
+                      : ""}
+                  </div>
+                </div>
+              `).join("")
+              : '<span>No client programs yet.</span>'}
+          </div>
         </div>
       `).join("")
       : '<p class="client-list-empty">No clients yet.</p>';
   } catch (error) {
     list.innerHTML = "";
     status.textContent = error.message || "Could not load clients.";
+    status.classList.add("is-error");
+  }
+}
+
+async function createClientLink(clientId, programId) {
+  const status = document.getElementById("clientCreateStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Generating private link…";
+  try {
+    const response = await fetch(`/api/workoutplanner/clients/${encodeURIComponent(clientId)}/programs/${encodeURIComponent(programId)}/link`, {
+      method: "POST"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not generate the private link.");
+    }
+    await copyPlanLink(result.path);
+    status.textContent = "Private link copied. Any previous link for this program is no longer valid.";
+    await loadClients();
+  } catch (error) {
+    status.textContent = error.message || "Could not generate the private link.";
+    status.classList.add("is-error");
+  }
+}
+
+async function revokeClientLink(clientId, programId) {
+  if (!window.confirm("Revoke this private client link? Anyone using the old link will lose access.")) return;
+  const status = document.getElementById("clientCreateStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Revoking private link…";
+  try {
+    const response = await fetch(`/api/workoutplanner/clients/${encodeURIComponent(clientId)}/programs/${encodeURIComponent(programId)}/link`, {
+      method: "DELETE"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not revoke the private link.");
+    }
+    status.textContent = result.revoked ? "Private link revoked." : "No active private link was found.";
+    await loadClients();
+  } catch (error) {
+    status.textContent = error.message || "Could not revoke the private link.";
     status.classList.add("is-error");
   }
 }
@@ -1479,9 +1573,15 @@ function bindPlanEvents() {
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
   const clientCreateSection = document.getElementById("clientCreateSection");
-  if (!userWorkspace) {
+  if (userWorkspace) {
     clientCreateSection.hidden = false;
     document.getElementById("clientCreateForm").addEventListener("submit", createClient);
+    document.getElementById("clientList").addEventListener("click", event => {
+      const create = event.target.closest("[data-create-client-link]");
+      const revoke = event.target.closest("[data-revoke-client-link]");
+      if (create) createClientLink(create.dataset.createClientLink, create.dataset.programId);
+      if (revoke) revokeClientLink(revoke.dataset.revokeClientLink, revoke.dataset.programId);
+    });
   }
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
@@ -1566,5 +1666,5 @@ renderAllPlan();
 seedRequestedDemo().then(() => Promise.all([
   loadLibrary(),
   loadTemplates(),
-  ...(userWorkspace ? [loadDatabaseLibrary()] : [loadClients()])
+  ...(userWorkspace ? [loadDatabaseLibrary(), loadClients()] : [])
 ]));

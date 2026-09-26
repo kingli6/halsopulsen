@@ -19,6 +19,7 @@ const {
   createClientForCoach,
   findClientDataByToken,
   hasClientAccessToken,
+  revokeClientAccessLink,
   regenerateClientAccessLink
 } = require('./workoutplanner/client-access');
 const {
@@ -224,23 +225,48 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
   res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
 });
 
-app.get('/api/workoutplanner/clients', requireLocalWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
   try {
     const result = await getWorkoutPlannerPool().query(
-      `SELECT c.id, c.display_name, c.active
+      `SELECT c.id AS client_id, c.display_name, c.active,
+              p.id AS program_id, p.name AS program_name, p.status AS program_status,
+              (l.id IS NOT NULL) AS has_active_private_link
          FROM public.clients c
          JOIN public.coach_clients cc ON cc.client_id = c.id
+         LEFT JOIN public.programs p
+           ON p.client_id = c.id
+          AND p.coach_profile_id = cc.coach_profile_id
+          AND p.kind = 'client'
+         LEFT JOIN public.client_access_links l
+           ON l.client_id = c.id
+          AND l.program_id = p.id
+          AND l.revoked_at IS NULL
         WHERE cc.coach_profile_id = $1
-        ORDER BY c.display_name ASC, c.created_at ASC`,
+        ORDER BY c.display_name ASC, c.created_at ASC, p.updated_at DESC NULLS LAST`,
       [req.workoutPlannerProfile.id]
     );
+    const clients = new Map();
+    for (const row of result.rows) {
+      if (!clients.has(row.client_id)) {
+        clients.set(row.client_id, {
+          id: row.client_id,
+          displayName: row.display_name,
+          active: Boolean(row.active),
+          programs: []
+        });
+      }
+      if (row.program_id) {
+        clients.get(row.client_id).programs.push({
+          id: row.program_id,
+          name: row.program_name,
+          status: row.program_status,
+          hasActivePrivateLink: Boolean(row.has_active_private_link)
+        });
+      }
+    }
     return res.json({
       ok: true,
-      clients: result.rows.map(client => ({
-        id: client.id,
-        displayName: client.display_name,
-        active: Boolean(client.active)
-      }))
+      clients: [...clients.values()]
     });
   } catch (error) {
     console.error('Could not list WorkoutPlanner clients:', error.message);
@@ -248,7 +274,7 @@ app.get('/api/workoutplanner/clients', requireLocalWorkoutPlannerCoach, async (r
   }
 });
 
-app.post('/api/workoutplanner/clients', requireLocalWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
   const displayName = typeof req.body?.displayName === 'string'
     ? req.body.displayName.trim()
     : '';
@@ -309,6 +335,7 @@ app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerC
       req.workoutPlannerProfile.id,
       req.params.programId,
       req.body?.sourceVersionId,
+      req.body?.clientId,
       req.body?.name
     );
     return res.status(201).json({
@@ -368,22 +395,27 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
   }
 });
 
-app.post('/api/workoutplanner/clients/:clientId/link', requireLocalWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
   try {
     const generated = await regenerateClientAccessLink(
       getWorkoutPlannerPool(),
       req.workoutPlannerProfile.id,
-      req.params.clientId
+      req.params.clientId,
+      req.params.programId
     );
     if (!generated) {
-      return res.status(404).json({ ok: false, error: 'Client not found.' });
+      return res.status(404).json({ ok: false, error: 'Client program not found.' });
     }
-    const clientPath = `/client/${generated.token}`;
+    const clientPath = `/p/${generated.token}`;
     res.json({
       ok: true,
       client: {
         id: generated.client.id,
         displayName: generated.client.display_name
+      },
+      program: {
+        id: generated.client.program_id,
+        name: generated.client.program_name
       },
       path: clientPath,
       url: `${req.protocol}://${req.get('host')}${clientPath}`
@@ -391,6 +423,35 @@ app.post('/api/workoutplanner/clients/:clientId/link', requireLocalWorkoutPlanne
   } catch (error) {
     console.error('Could not generate WorkoutPlanner client link:', error.message);
     res.status(503).json({ ok: false, error: 'The private client link could not be generated.' });
+  }
+});
+
+app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await revokeClientAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId,
+      req.params.programId
+    );
+    if (!result) {
+      return res.status(404).json({ ok: false, error: 'Client program not found.' });
+    }
+    return res.json({
+      ok: true,
+      client: {
+        id: result.client.id,
+        displayName: result.client.display_name
+      },
+      program: {
+        id: result.client.program_id,
+        name: result.client.program_name
+      },
+      revoked: result.revoked
+    });
+  } catch (error) {
+    console.error('Could not revoke WorkoutPlanner client link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The private client link could not be revoked.' });
   }
 });
 
@@ -468,8 +529,30 @@ function serveBookingAdminPage(req, res) {
 }
 app.get(['/admin/booking', '/admin/booking/'], serveBookingAdminPage);
 app.get('/dashboard/admin/booking.html', serveBookingAdminPage);
-app.get(['/p/:token', '/p/:token/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
+app.get(['/p/:token', '/p/:token/'], async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (isWorkoutPlannerConfigured()) {
+    try {
+      if (await hasClientAccessToken(getWorkoutPlannerPool(), req.params.token)) {
+        return res.sendFile(path.join(__dirname, 'dashboard', 'client.html'));
+      }
+    } catch (error) {
+      console.error('Could not validate private WorkoutPlanner client link:', error.message);
+      return res.status(503).send('The private training plan is unavailable.');
+    }
+  }
+
+  // Preserve the older published-plan URLs only when the token is a known
+  // legacy share token. Unknown bearer values must not receive a page.
+  if (readPublishedPlans().some(plan => plan.shareToken === req.params.token)) {
+    return res.sendFile(path.join(__dirname, 'dashboard', 'index.html'));
+  }
+  return res.sendStatus(404);
+});
 app.get(['/client/:token', '/client/:token/'], async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   if (!isWorkoutPlannerConfigured()) {
     return res.status(503).send('WorkoutPlanner database access is not configured.');
   }

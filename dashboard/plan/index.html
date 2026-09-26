@@ -68,6 +68,7 @@
            <button class="button button-secondary" type="submit">Add client</button>
          </form>
          <p class="client-create-status" id="clientCreateStatus" role="status" aria-live="polite"></p>
+           <p class="client-create-status">Private links are read-only. Each client program has its own link; rotating one does not affect the others.</p>
           <div class="client-list" id="clientList" aria-live="polite"></div>
        </section>
        <section class="library-view card" id="databaseProgramLibrary" aria-labelledby="databaseProgramLibraryHeading" hidden>
@@ -87,6 +88,10 @@
            </div>
            <label class="sr-only" for="cloneProgramNameInput">Client program name</label>
            <input id="cloneProgramNameInput" type="text" required placeholder="Client program name" autocomplete="off" />
+            <label class="sr-only" for="cloneProgramClientInput">Client</label>
+            <select id="cloneProgramClientInput" required>
+              <option value="">Choose a client…</option>
+            </select>
            <button class="button button-secondary" id="cloneProgramSubmit" type="submit">Create copy</button>
            <button class="button button-secondary" id="cloneProgramCancel" type="button">Cancel</button>
          </form>
