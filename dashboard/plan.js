@@ -10,6 +10,7 @@ const planState = {
   databaseProgramId: null,
   databaseProgramKind: null,
   databaseProgramVersion: null,
+  databaseProgramVersionStatus: null,
   databaseSaving: false,
   clients: [],
   cloneSourceProgramId: null,
@@ -173,11 +174,20 @@ function renderPlanOverview() {
   setPlanText("publishedDetail", planState.data.publishedPlanId
     ? `Version ${planState.data.publishedProgram.version} published`
     : "Not published to a share link yet");
+  const databaseVersion = planState.databaseProgramVersion || program.version || 1;
+  const databaseStatus = planState.databaseProgramVersionStatus || "draft";
   setPlanText("databaseSaveDetail", planState.databaseProgramId
-    ? `Saved to database · Version ${planState.databaseProgramVersion || program.version || 1}`
+    ? `Saved to database · Version ${databaseVersion} · ${databaseStatus}`
     : "Not saved to the database library");
-  setPlanText("publishHeading", changed ? "Publish when this program is ready" : "Your published program is current");
-  setPlanText("publishDescription", changed
+  const isDatabaseClientProgram = userWorkspace
+    && planState.databaseProgramId
+    && planState.databaseProgramKind === "client";
+  setPlanText("publishHeading", isDatabaseClientProgram
+    ? (databaseStatus === "published" ? "Publish a new draft when this program is ready" : "Publish when this program is ready")
+    : changed ? "Publish when this program is ready" : "Your published program is current");
+  setPlanText("publishDescription", isDatabaseClientProgram
+    ? "Save edits as a draft first, then publish them to the existing private client link. Draft changes remain hidden until you publish."
+    : changed
     ? (planState.editingCurrentPlanId
       ? "Existing completed, skipped, or moved records stay unchanged. Future planned assignments will use these updates, with the same version and share link."
       : "Publishing creates one immutable multi-week snapshot and a new share link. Future assignments use the correct week by date.")
@@ -225,6 +235,7 @@ function startNewDraft() {
   planState.databaseProgramId = null;
   planState.databaseProgramKind = null;
   planState.databaseProgramVersion = null;
+  planState.databaseProgramVersionStatus = null;
   planState.cloneSourceProgramId = null;
   planState.cloneSourceVersionId = null;
   planState.editingCurrentPlanId = null;
@@ -670,7 +681,7 @@ function renderDatabaseProgramLibrary() {
   container.innerHTML = programs.map(program => `
     <article class="library-item">
       <div class="library-item-main">
-        <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="current-tag">${program.kind === "client" ? "Client copy" : "Library"}</span></div>
+        <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="${program.versionStatus === "published" ? "current-tag" : "draft-status is-draft"}">${program.kind === "client" ? "Client copy" : "Library"} · ${escapePlanHtml(program.versionStatus || "draft")}</span></div>
         <span>Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
         ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
       </div>
@@ -782,6 +793,7 @@ async function createClientDatabaseProgram() {
     planState.databaseProgramId = result.meta?.id || null;
     planState.databaseProgramKind = "client";
     planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
+    planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
     planState.selectedWeekIndex = 0;
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
@@ -841,6 +853,7 @@ async function openDatabaseProgram(programId) {
     planState.databaseProgramId = fresh.databaseProgramId;
     planState.databaseProgramKind = result.meta?.kind || "library";
     planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
+    planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
     planState.selectedWeekIndex = 0;
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
@@ -853,7 +866,7 @@ async function openDatabaseProgram(programId) {
   }
 }
 
-async function saveDatabaseProgram() {
+async function saveDatabaseProgram({ silent = false } = {}) {
   if (!userWorkspace || planState.databaseSaving) return;
   const button = document.getElementById("saveDatabaseProgramBtn");
   const program = TrackerData.normalizeProgram(planState.data.draftProgram);
@@ -878,19 +891,64 @@ async function saveDatabaseProgram() {
     planState.databaseProgramId = result.meta?.id || planState.databaseProgramId;
     planState.databaseProgramKind = result.meta?.kind || planState.databaseProgramKind || "library";
     planState.databaseProgramVersion = Number(result.meta?.version || program.version) || 1;
+    planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
     planState.data.databaseProgramId = planState.databaseProgramId;
     planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
     renderAllPlan();
-    showPlanToast("Program saved to the database library.");
+    if (!silent) showPlanToast("Program saved to the database library.");
+    return result;
   } catch (error) {
-    showPlanToast(error.message || "Could not save the database program.");
+    if (!silent) showPlanToast(error.message || "Could not save the database program.");
+    throw error;
   } finally {
     planState.databaseSaving = false;
     if (button) {
       button.disabled = false;
       button.textContent = "Save to program library";
+    }
+  }
+}
+
+async function publishDatabaseProgram() {
+  if (!userWorkspace || planState.databaseProgramKind !== "client" || !planState.databaseProgramId) return;
+  if (planState.publishing) return;
+
+  planState.publishing = true;
+  const button = document.getElementById("publishBtn");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Publishing…";
+  }
+
+  try {
+    await saveDatabaseProgram({ silent: true });
+    const response = await fetch(
+      `/api/workoutplanner/programs/${encodeURIComponent(planState.databaseProgramId)}/publish`,
+      { method: "POST" }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not publish the client program.");
+    }
+
+    planState.databaseProgramVersion = Number(result.meta?.version || planState.databaseProgramVersion || 1);
+    planState.databaseProgramVersionStatus = result.meta?.versionStatus || "published";
+    planState.data.databaseProgramId = planState.databaseProgramId;
+    planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
+    TrackerData.save(planState.data);
+    await loadDatabaseLibrary();
+    await loadClients();
+    renderAllPlan();
+    showPlanToast(`Client program published. ${result.meta?.publishedAssignmentCount || 0} assignments created.`);
+  } catch (error) {
+    showPlanToast(error.message || "Could not publish the client program.");
+  } finally {
+    planState.publishing = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Publish plan";
     }
   }
 }
@@ -1235,6 +1293,11 @@ function clearDay(weekday) {
 }
 
 async function publishPlan() {
+  if (userWorkspace && planState.databaseProgramKind === "client" && planState.databaseProgramId) {
+    await publishDatabaseProgram();
+    return;
+  }
+
   const draft = planState.data.draftProgram;
   const weeks = Array.isArray(draft.weeks) ? draft.weeks : [];
   const activeWeeks = weeks.filter(week => week.days.some(day => day.enabled && day.exercises.length));

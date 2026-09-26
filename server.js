@@ -26,6 +26,7 @@ const {
   cloneLibraryProgramVersion,
   listPrograms,
   loadProgram,
+  publishProgram,
   saveProgram
 } = require('./workoutplanner/program-library');
 const {
@@ -398,6 +399,27 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
     return res.status(error.statusCode || 503).json({
       ok: false,
       error: error.statusCode ? error.message : 'The program could not be updated.'
+    });
+  }
+});
+
+app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await publishProgram(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    return res.json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not publish WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The program could not be published.'
     });
   }
 });

@@ -698,6 +698,179 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null) {
   }
 }
 
+async function publishProgram(db, coachProfileId, programId) {
+  if (!isUuid(coachProfileId)) {
+    const error = new Error("A valid coach profile is required.");
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!isUuid(programId)) {
+    const error = new Error("That program ID is invalid.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const client = await db.connect();
+  let transactionStarted = false;
+  try {
+    await client.query("begin");
+    transactionStarted = true;
+
+    const programResult = await client.query(
+      `select p.id, p.client_id, p.start_date
+         from public.programs p
+         join public.clients c on c.id = p.client_id
+         join public.coach_clients cc
+           on cc.client_id = p.client_id
+          and cc.coach_profile_id = p.coach_profile_id
+        where p.id = $1
+          and p.coach_profile_id = $2
+          and p.kind = 'client'
+          and c.active = true
+          and cc.coach_profile_id = $2
+        for update of p`,
+      [programId, coachProfileId]
+    );
+    if (programResult.rowCount !== 1) {
+      const error = new Error("Client program not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const program = programResult.rows[0];
+    if (!program.start_date) {
+      const error = new Error("A program start date is required before publishing.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const draftResult = await client.query(
+      `select id, version_number
+         from public.program_versions
+        where program_id = $1
+          and status = 'draft'
+        order by version_number desc
+        limit 1
+        for update`,
+      [programId]
+    );
+    if (draftResult.rowCount !== 1) {
+      const error = new Error("No draft version is available to publish.");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const draft = draftResult.rows[0];
+    const weekValidation = await client.query(
+      `select pw.id,
+              pw.week_number,
+              count(w.id)::int as workout_count,
+              count(distinct w.day_of_week)::int as day_count
+         from public.program_weeks pw
+         left join public.workouts w on w.program_week_id = pw.id
+        where pw.program_version_id = $1
+        group by pw.id, pw.week_number
+        order by pw.week_number`,
+      [draft.id]
+    );
+    if (
+      weekValidation.rowCount === 0
+      || weekValidation.rows.some(row => Number(row.workout_count) !== 7 || Number(row.day_count) !== 7)
+    ) {
+      const error = new Error("Every program week must contain seven distinct workout days.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const activeWorkoutResult = await client.query(
+      `select count(*)::int as active_workout_count
+         from public.workouts w
+         join public.program_weeks pw on pw.id = w.program_week_id
+        where pw.program_version_id = $1
+          and w.is_rest = false
+          and exists (
+            select 1
+              from public.workout_exercises we
+             where we.workout_id = w.id
+          )`,
+      [draft.id]
+    );
+    if (Number(activeWorkoutResult.rows[0]?.active_workout_count || 0) === 0) {
+      const error = new Error("A program needs at least one workout day before publishing.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await client.query(
+      `update public.program_versions
+          set status = 'archived'
+        where program_id = $1
+          and status = 'published'
+          and id <> $2`,
+      [programId, draft.id]
+    );
+    await client.query(
+      `update public.program_versions
+          set status = 'published',
+              published_at = now()
+        where id = $1
+          and program_id = $2
+        returning id, version_number`,
+      [draft.id, programId]
+    );
+
+    const assignmentResult = await client.query(
+      `insert into public.assignments
+        (client_id, workout_id, recommended_date, scheduled_date, status, moved)
+       select p.client_id,
+              w.id,
+              p.start_date + (
+                ((pw.week_number - 1) * 7) + (w.day_of_week - 1)
+              )::integer,
+              p.start_date + (
+                ((pw.week_number - 1) * 7) + (w.day_of_week - 1)
+              )::integer,
+              'planned',
+              false
+         from public.programs p
+         join public.program_versions pv on pv.program_id = p.id
+         join public.program_weeks pw on pw.program_version_id = pv.id
+         join public.workouts w on w.program_week_id = pw.id
+        where p.id = $1
+          and pv.id = $2
+          and w.is_rest = false
+          and exists (
+            select 1
+              from public.workout_exercises we
+             where we.workout_id = w.id
+          )
+          and not exists (
+            select 1
+              from public.assignments existing
+             where existing.client_id = p.client_id
+               and existing.workout_id = w.id
+          )
+       returning id`,
+      [programId, draft.id]
+    );
+
+    const saved = await loadProgramWithClient(client, coachProfileId, programId);
+    await client.query("commit");
+    transactionStarted = false;
+    return {
+      ...saved,
+      clientId: program.client_id,
+      version: Number(draft.version_number),
+      publishedAssignmentCount: assignmentResult.rowCount
+    };
+  } catch (error) {
+    if (transactionStarted) await client.query("rollback").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function cloneLibraryProgramVersion(
   db,
   coachProfileId,
@@ -921,5 +1094,6 @@ module.exports = {
   listPrograms,
   loadProgram,
   normalizeProgram,
+  publishProgram,
   saveProgram
 };
