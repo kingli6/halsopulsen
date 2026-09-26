@@ -703,10 +703,16 @@ async function cloneLibraryProgramVersion(
   coachProfileId,
   sourceProgramId,
   sourceVersionId,
+  clientId,
   clientProgramName
 ) {
-  if (!isUuid(coachProfileId) || !isUuid(sourceProgramId) || !isUuid(sourceVersionId)) {
-    const error = new Error("Valid coach, program, and version IDs are required.");
+  if (
+    !isUuid(coachProfileId) ||
+    !isUuid(sourceProgramId) ||
+    !isUuid(sourceVersionId) ||
+    !isUuid(clientId)
+  ) {
+    const error = new Error("Valid coach, program, version, and client IDs are required.");
     error.statusCode = 400;
     throw error;
   }
@@ -721,6 +727,22 @@ async function cloneLibraryProgramVersion(
   const client = await db.connect();
   try {
     await client.query("begin");
+
+    const targetClientResult = await client.query(
+      `select c.id, c.display_name
+         from public.clients c
+         join public.coach_clients cc on cc.client_id = c.id
+        where c.id = $1
+          and cc.coach_profile_id = $2
+          and c.active = true
+        for update of c`,
+      [clientId, coachProfileId]
+    );
+    if (targetClientResult.rowCount !== 1) {
+      const error = new Error("The target client was not found.");
+      error.statusCode = 404;
+      throw error;
+    }
 
     const sourceResult = await client.query(
       `select
@@ -752,10 +774,11 @@ async function cloneLibraryProgramVersion(
       `insert into public.programs
         (coach_profile_id, client_id, kind, source_program_id, source_version_id,
          name, description, status, start_date)
-       values ($1, null, 'client', $2, $3, $4, $5, $6, $7)
+       values ($1, $2, 'client', $3, $4, $5, $6, $7, $8)
        returning id`,
       [
         coachProfileId,
+        clientId,
         source.id,
         source.version_id,
         name,
@@ -879,6 +902,7 @@ async function cloneLibraryProgramVersion(
     await client.query("commit");
     return {
       ...saved,
+      clientId,
       sourceProgramId: source.id,
       sourceVersionId: source.version_id,
       sourceVersionNumber: Number(source.version_number),
