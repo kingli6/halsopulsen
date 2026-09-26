@@ -16,6 +16,7 @@
     "test:booking-phase5": "node scripts/test-booking-phase5.js",
     "test:booking-ui": "node scripts/test-booking-ui.js",
     "test:workoutplanner-client-link": "node scripts/test-workoutplanner-client-link.js",
+    "test:workoutplanner-pass3": "node scripts/test-workoutplanner-pass3.js",
     "db:migrate:supabase": "node scripts/migrate-supabase-booking.js",
     "db:migrate:workoutplanner": "node scripts/migrate-workoutplanner.js"
   },

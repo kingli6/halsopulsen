@@ -50,29 +50,8 @@ function renderAssignments(assignments) {
   `).join("");
 }
 
-function renderSessions(sessions) {
-  const target = document.getElementById("sessionList");
-  if (!sessions.length) {
-    target.innerHTML = '<p class="client-empty">No sessions have been recorded yet.</p>';
-    return;
-  }
-  target.innerHTML = sessions.map(session => `
-    <article class="client-card">
-      <div class="client-card-header">
-        <div>
-          <p class="section-kicker">${escapeHtml(formatDate(session.completed_at || session.started_at))}</p>
-          <h3>Recorded session</h3>
-        </div>
-        <span class="client-status">${escapeHtml(session.status)}</span>
-      </div>
-      <p class="client-meta">Difficulty: ${escapeHtml(session.difficulty ?? "—")} · Energy: ${escapeHtml(session.energy ?? "—")}</p>
-      ${session.note ? `<p>${escapeHtml(session.note)}</p>` : ""}
-    </article>
-  `).join("");
-}
-
 async function loadClientPlan() {
-  const match = window.location.pathname.match(/^\/client\/([^/]+)\/?$/);
+  const match = window.location.pathname.match(/^\/(?:p|client)\/([^/]+)\/?$/);
   const token = match?.[1] || "";
   try {
     const response = await fetch(`/api/client/${encodeURIComponent(token)}`);
@@ -80,13 +59,11 @@ async function loadClientPlan() {
     if (!response.ok || !result.ok) throw new Error(result.error || "This private link is invalid or has been replaced.");
     document.title = `${result.data.client.displayName}'s training plan — HälsoPulsen`;
     document.getElementById("pageHeading").textContent = `${result.data.client.displayName}'s training plan`;
-    document.getElementById("pageCopy").textContent = "Your assigned workouts and recorded sessions are shown below. Changes are disabled in this first version.";
+    document.getElementById("pageCopy").textContent = "Your assigned workouts are shown below. Changes are disabled for this private link.";
     renderAssignments(result.data.assignments);
-    renderSessions(result.data.sessions);
   } catch (error) {
     document.getElementById("pageHeading").textContent = "Training plan unavailable";
     document.getElementById("assignmentList").innerHTML = "";
-    document.getElementById("sessionList").innerHTML = "";
     document.getElementById("errorText").textContent = error.message;
     document.getElementById("errorBanner").hidden = false;
   }
