@@ -10,7 +10,7 @@ function hashClientAccessToken(token) {
   return crypto.createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
-async function regenerateClientAccessLink(db, coachProfileId, clientId) {
+async function regenerateClientAccessLink(db, coachProfileId, clientId, programId) {
   const token = generateClientAccessToken();
   const tokenHash = hashClientAccessToken(token);
   const connection = await db.connect();
@@ -18,13 +18,18 @@ async function regenerateClientAccessLink(db, coachProfileId, clientId) {
   try {
     await connection.query("BEGIN");
     const clientResult = await connection.query(
-      `SELECT c.id, c.display_name
+      `SELECT c.id, c.display_name, p.id AS program_id, p.name AS program_name
          FROM public.clients c
          JOIN public.coach_clients cc ON cc.client_id = c.id
+         JOIN public.programs p
+           ON p.client_id = c.id
+          AND p.id = $2
+          AND p.kind = 'client'
+          AND p.coach_profile_id = $3
         WHERE c.id = $1
-          AND cc.coach_profile_id = $2
+          AND cc.coach_profile_id = $3
         FOR UPDATE OF c`,
-      [clientId, coachProfileId]
+      [clientId, programId, coachProfileId]
     );
     if (clientResult.rowCount !== 1) {
       await connection.query("ROLLBACK");
@@ -35,14 +40,15 @@ async function regenerateClientAccessLink(db, coachProfileId, clientId) {
       `UPDATE public.client_access_links
           SET revoked_at = COALESCE(revoked_at, now())
         WHERE client_id = $1
+          AND program_id = $2
           AND revoked_at IS NULL`,
-      [clientId]
+      [clientId, programId]
     );
     await connection.query(
       `INSERT INTO public.client_access_links
-        (client_id, token_hash, created_by)
-       VALUES ($1, $2, $3)`,
-      [clientId, tokenHash, coachProfileId]
+        (client_id, program_id, token_hash, created_by)
+       VALUES ($1, $2, $3, $4)`,
+      [clientId, programId, tokenHash, coachProfileId]
     );
     await connection.query("COMMIT");
     return { token, client: clientResult.rows[0] };
@@ -54,19 +60,24 @@ async function regenerateClientAccessLink(db, coachProfileId, clientId) {
   }
 }
 
-async function revokeClientAccessLink(db, coachProfileId, clientId) {
+async function revokeClientAccessLink(db, coachProfileId, clientId, programId) {
   const connection = await db.connect();
 
   try {
     await connection.query("BEGIN");
     const clientResult = await connection.query(
-      `SELECT c.id, c.display_name
+      `SELECT c.id, c.display_name, p.id AS program_id, p.name AS program_name
          FROM public.clients c
          JOIN public.coach_clients cc ON cc.client_id = c.id
+         JOIN public.programs p
+           ON p.client_id = c.id
+          AND p.id = $2
+          AND p.kind = 'client'
+          AND p.coach_profile_id = $3
         WHERE c.id = $1
-          AND cc.coach_profile_id = $2
+          AND cc.coach_profile_id = $3
         FOR UPDATE OF c`,
-      [clientId, coachProfileId]
+      [clientId, programId, coachProfileId]
     );
     if (clientResult.rowCount !== 1) {
       await connection.query("ROLLBACK");
@@ -77,9 +88,10 @@ async function revokeClientAccessLink(db, coachProfileId, clientId) {
       `UPDATE public.client_access_links
           SET revoked_at = now()
         WHERE client_id = $1
+          AND program_id = $2
           AND revoked_at IS NULL
         RETURNING id`,
-      [clientId]
+      [clientId, programId]
     );
     await connection.query("COMMIT");
     return {
@@ -99,9 +111,13 @@ async function findClientDataByToken(db, token) {
   if (!tokenHash) return null;
 
   const clientResult = await db.query(
-    `SELECT c.id, c.display_name, c.active
+    `SELECT c.id, c.display_name, c.active,
+            l.program_id, p.name AS program_name
        FROM public.client_access_links l
        JOIN public.clients c ON c.id = l.client_id
+       JOIN public.programs p
+         ON p.id = l.program_id
+        AND p.client_id = l.client_id
       WHERE l.token_hash = $1
         AND l.revoked_at IS NULL
         AND c.active = true
@@ -110,7 +126,7 @@ async function findClientDataByToken(db, token) {
   );
   if (clientResult.rowCount !== 1) return null;
 
-  const client = clientResult.rows[0];
+   const client = clientResult.rows[0];
   const assignmentResult = await db.query(
     `SELECT
         a.id,
@@ -170,16 +186,19 @@ async function findClientDataByToken(db, token) {
       JOIN public.programs p ON p.id = pv.program_id
       LEFT JOIN public.workout_exercises we ON we.workout_id = w.id
       LEFT JOIN public.exercises e ON e.id = we.exercise_id
-     WHERE a.client_id = $1
-       AND p.client_id = $1
+      WHERE a.client_id = $1
+        AND p.id = $2
+        AND p.client_id = $1
+        AND p.kind = 'client'
        AND pv.status = 'published'
      GROUP BY a.id, p.id, pv.id, pw.id, w.id
      ORDER BY a.scheduled_date, w.day_of_week`,
-    [client.id]
+    [client.id, client.program_id]
   );
 
   return {
     client: { displayName: client.display_name },
+    program: { id: client.program_id, name: client.program_name },
     assignments: assignmentResult.rows
   };
 }
