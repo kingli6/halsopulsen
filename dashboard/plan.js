@@ -1376,14 +1376,66 @@ async function loadClients() {
     list.innerHTML = clients.length
       ? clients.map(client => `
         <div class="client-list-item">
-          <strong>${escapePlanHtml(client.displayName)}</strong>
-          <span>${client.active ? "Active" : "Inactive"}</span>
+          <div>
+            <strong>${escapePlanHtml(client.displayName)}</strong>
+            <span>${client.active ? "Active" : "Inactive"} · ${client.hasActivePrivateLink ? "Private link active" : "No private link"}</span>
+          </div>
+          <div class="library-actions">
+            <button class="button button-secondary button-small" type="button" data-create-client-link="${escapePlanHtml(client.id)}">
+              ${client.hasActivePrivateLink ? "Rotate link" : "Create link"}
+            </button>
+            ${client.hasActivePrivateLink
+              ? `<button class="button button-danger button-small" type="button" data-revoke-client-link="${escapePlanHtml(client.id)}">Revoke</button>`
+              : ""}
+          </div>
         </div>
       `).join("")
       : '<p class="client-list-empty">No clients yet.</p>';
   } catch (error) {
     list.innerHTML = "";
     status.textContent = error.message || "Could not load clients.";
+    status.classList.add("is-error");
+  }
+}
+
+async function createClientLink(clientId) {
+  const status = document.getElementById("clientCreateStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Generating private link…";
+  try {
+    const response = await fetch(`/api/workoutplanner/clients/${encodeURIComponent(clientId)}/link`, {
+      method: "POST"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not generate the private link.");
+    }
+    await copyPlanLink(result.path);
+    status.textContent = "Private link copied. Any previous link for this client is no longer valid.";
+    await loadClients();
+  } catch (error) {
+    status.textContent = error.message || "Could not generate the private link.";
+    status.classList.add("is-error");
+  }
+}
+
+async function revokeClientLink(clientId) {
+  if (!window.confirm("Revoke this private client link? Anyone using the old link will lose access.")) return;
+  const status = document.getElementById("clientCreateStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Revoking private link…";
+  try {
+    const response = await fetch(`/api/workoutplanner/clients/${encodeURIComponent(clientId)}/link`, {
+      method: "DELETE"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not revoke the private link.");
+    }
+    status.textContent = result.revoked ? "Private link revoked." : "No active private link was found.";
+    await loadClients();
+  } catch (error) {
+    status.textContent = error.message || "Could not revoke the private link.";
     status.classList.add("is-error");
   }
 }
@@ -1482,6 +1534,12 @@ function bindPlanEvents() {
   if (!userWorkspace) {
     clientCreateSection.hidden = false;
     document.getElementById("clientCreateForm").addEventListener("submit", createClient);
+    document.getElementById("clientList").addEventListener("click", event => {
+      const create = event.target.closest("[data-create-client-link]");
+      const revoke = event.target.closest("[data-revoke-client-link]");
+      if (create) createClientLink(create.dataset.createClientLink);
+      if (revoke) revokeClientLink(revoke.dataset.revokeClientLink);
+    });
   }
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
