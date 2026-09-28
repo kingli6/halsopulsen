@@ -26,8 +26,12 @@ const {
   cloneLibraryProgramVersion,
   listPrograms,
   loadProgram,
+  publishProgram,
   saveProgram
 } = require('./workoutplanner/program-library');
+const {
+  createGlobalFailedLoginLimiter
+} = require('./admin-login-limiter');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -116,6 +120,10 @@ const loginRateLimiter = createRateLimiter({
   name: 'login',
   windowMs: 15 * 60 * 1000,
   max: 12
+});
+const globalFailedLoginLimiter = createGlobalFailedLoginLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 4
 });
 
 const SESSION_COOKIE_NAME = 'halsopulsen_admin_session';
@@ -395,6 +403,27 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
   }
 });
 
+app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlannerCoach, async (req, res) => {
+  try {
+    const result = await publishProgram(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    return res.json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not publish WorkoutPlanner program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The program could not be published.'
+    });
+  }
+});
+
 app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
   try {
     const generated = await regenerateClientAccessLink(
@@ -479,7 +508,16 @@ app.post('/api/admin/login', loginRateLimiter, (req, res) => {
   if (!ADMIN_PASSWORD) {
     return res.status(503).json({ ok: false, error: 'Admin sign-in has not been configured yet.' });
   }
+  const failedLoginStatus = globalFailedLoginLimiter.status();
+  if (failedLoginStatus.blocked) {
+    res.setHeader('Retry-After', String(failedLoginStatus.retryAfter));
+    return res.status(429).json({
+      ok: false,
+      error: 'Too many failed sign-in attempts. Please wait a moment and try again.'
+    });
+  }
   if (!sameSecret(req.body?.password, ADMIN_PASSWORD)) {
+    globalFailedLoginLimiter.recordFailure();
     return res.status(401).json({ ok: false, error: 'That password is not correct.' });
   }
   const token = crypto.randomBytes(32).toString('base64url');
