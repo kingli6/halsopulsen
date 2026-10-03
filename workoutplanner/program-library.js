@@ -876,16 +876,22 @@ async function cloneLibraryProgramVersion(
   coachProfileId,
   sourceProgramId,
   sourceVersionId,
-  clientId,
+  clientNameOrId,
   clientProgramName
 ) {
   if (
     !isUuid(coachProfileId) ||
     !isUuid(sourceProgramId) ||
-    !isUuid(sourceVersionId) ||
-    !isUuid(clientId)
+    !isUuid(sourceVersionId)
   ) {
-    const error = new Error("Valid coach, program, version, and client IDs are required.");
+    const error = new Error("Valid coach, program, and version IDs are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const clientIdentity = text(clientNameOrId);
+  if (!clientIdentity) {
+    const error = new Error("A client name is required.");
     error.statusCode = 400;
     throw error;
   }
@@ -901,21 +907,58 @@ async function cloneLibraryProgramVersion(
   try {
     await client.query("begin");
 
-    const targetClientResult = await client.query(
-      `select c.id, c.display_name
-         from public.clients c
-         join public.coach_clients cc on cc.client_id = c.id
-        where c.id = $1
-          and cc.coach_profile_id = $2
-          and c.active = true
-        for update of c`,
-      [clientId, coachProfileId]
-    );
+    let targetClientResult;
+    if (isUuid(clientIdentity)) {
+      targetClientResult = await client.query(
+        `select c.id, c.display_name
+           from public.clients c
+           join public.coach_clients cc on cc.client_id = c.id
+          where c.id = $1
+            and cc.coach_profile_id = $2
+            and c.active = true
+          for update of c`,
+        [clientIdentity, coachProfileId]
+      );
+    } else {
+      targetClientResult = await client.query(
+        `select c.id, c.display_name
+           from public.clients c
+           join public.coach_clients cc on cc.client_id = c.id
+          where lower(trim(c.display_name)) = lower(trim($1))
+            and cc.coach_profile_id = $2
+            and c.active = true
+          order by c.created_at asc
+          limit 1
+          for update of c`,
+        [clientIdentity, coachProfileId]
+      );
+      if (targetClientResult.rowCount === 0) {
+        const profileResult = await client.query(
+          `insert into public.profiles (role, display_name, clerk_user_id)
+           values ('client', $1, NULL)
+           returning id`,
+          [clientIdentity]
+        );
+        const newClientResult = await client.query(
+          `insert into public.clients (profile_id, display_name)
+           values ($1, $2)
+           returning id, display_name`,
+          [profileResult.rows[0].id, clientIdentity]
+        );
+        targetClientResult = newClientResult;
+        await client.query(
+          `insert into public.coach_clients (coach_profile_id, client_id)
+           values ($1, $2)`,
+          [coachProfileId, targetClientResult.rows[0].id]
+        );
+      }
+    }
     if (targetClientResult.rowCount !== 1) {
       const error = new Error("The target client was not found.");
       error.statusCode = 404;
       throw error;
     }
+    const clientId = targetClientResult.rows[0].id;
 
     const sourceResult = await client.query(
       `select

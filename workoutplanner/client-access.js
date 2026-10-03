@@ -1,17 +1,25 @@
 const crypto = require("crypto");
 
-function generateClientAccessToken() {
-  return crypto.randomBytes(32).toString("base64url");
-}
-
 function hashClientAccessToken(token) {
   const normalized = String(token || "").trim();
   if (!normalized) return "";
   return crypto.createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
+function generateClientAccessToken(linkId = crypto.randomUUID()) {
+  const secret = String(process.env.SESSION_SECRET || "");
+  if (!secret) {
+    throw new Error("SESSION_SECRET must be configured to create or recover private client links.");
+  }
+  return crypto.createHmac("sha256", secret)
+    .update("workoutplanner-client-link:v1:")
+    .update(String(linkId))
+    .digest("base64url");
+}
+
 async function regenerateClientAccessLink(db, coachProfileId, clientId, programId) {
-  const token = generateClientAccessToken();
+  const linkId = crypto.randomUUID();
+  const token = generateClientAccessToken(linkId);
   const tokenHash = hashClientAccessToken(token);
   const connection = await db.connect();
 
@@ -46,9 +54,9 @@ async function regenerateClientAccessLink(db, coachProfileId, clientId, programI
     );
     await connection.query(
       `INSERT INTO public.client_access_links
-        (client_id, program_id, token_hash, created_by)
-       VALUES ($1, $2, $3, $4)`,
-      [clientId, programId, tokenHash, coachProfileId]
+        (id, client_id, program_id, token_hash, created_by)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [linkId, clientId, programId, tokenHash, coachProfileId]
     );
     await connection.query("COMMIT");
     return { token, client: clientResult.rows[0] };
@@ -58,6 +66,42 @@ async function regenerateClientAccessLink(db, coachProfileId, clientId, programI
   } finally {
     connection.release();
   }
+}
+
+async function getClientAccessLink(db, coachProfileId, clientId, programId) {
+  const result = await db.query(
+    `SELECT l.id, l.token_hash, c.id AS client_id, c.display_name,
+            p.id AS program_id, p.name AS program_name
+       FROM public.client_access_links l
+       JOIN public.clients c ON c.id = l.client_id
+       JOIN public.coach_clients cc ON cc.client_id = c.id
+       JOIN public.programs p
+         ON p.id = l.program_id
+        AND p.client_id = c.id
+        AND p.kind = 'client'
+        AND p.coach_profile_id = $1
+      WHERE cc.coach_profile_id = $1
+        AND c.id = $2
+        AND p.id = $3
+        AND l.revoked_at IS NULL
+      LIMIT 2`,
+    [coachProfileId, clientId, programId]
+  );
+  if (result.rowCount !== 1) return null;
+
+  const row = result.rows[0];
+  const token = generateClientAccessToken(row.id);
+  const recoverable = hashClientAccessToken(token) === row.token_hash;
+  return {
+    token: recoverable ? token : null,
+    recoverable,
+    client: {
+      id: row.client_id,
+      display_name: row.display_name,
+      program_id: row.program_id,
+      program_name: row.program_name
+    }
+  };
 }
 
 async function revokeClientAccessLink(db, coachProfileId, clientId, programId) {
@@ -220,47 +264,10 @@ async function hasClientAccessToken(db, token) {
   return result.rowCount === 1;
 }
 
-async function createClientForCoach(db, coachProfileId, displayName) {
-  const client = await db.connect();
-
-  try {
-    await client.query("BEGIN");
-    const profileResult = await client.query(
-      `INSERT INTO public.profiles (role, display_name, clerk_user_id)
-       VALUES ('client', $1, NULL)
-       RETURNING id`,
-      [displayName]
-    );
-    const profileId = profileResult.rows[0].id;
-    const clientResult = await client.query(
-      `INSERT INTO public.clients (profile_id, display_name)
-       VALUES ($1, $2)
-       RETURNING id, display_name`,
-      [profileId, displayName]
-    );
-    const createdClient = clientResult.rows[0];
-    await client.query(
-      `INSERT INTO public.coach_clients (coach_profile_id, client_id)
-       VALUES ($1, $2)`,
-      [coachProfileId, createdClient.id]
-    );
-    await client.query("COMMIT");
-    return {
-      id: createdClient.id,
-      displayName: createdClient.display_name
-    };
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 module.exports = {
-  createClientForCoach,
   findClientDataByToken,
   generateClientAccessToken,
+  getClientAccessLink,
   hashClientAccessToken,
   hasClientAccessToken,
   revokeClientAccessLink,

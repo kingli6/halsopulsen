@@ -16,8 +16,8 @@ const {
   publicProfile
 } = require('./workoutplanner/identity');
 const {
-  createClientForCoach,
   findClientDataByToken,
+  getClientAccessLink,
   hasClientAccessToken,
   revokeClientAccessLink,
   regenerateClientAccessLink
@@ -233,7 +233,7 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
   res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
 });
 
-app.get('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await getWorkoutPlannerPool().query(
       `SELECT c.id AS client_id, c.display_name, c.active,
@@ -282,28 +282,7 @@ app.get('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, r
   }
 });
 
-app.post('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
-  const displayName = typeof req.body?.displayName === 'string'
-    ? req.body.displayName.trim()
-    : '';
-  if (!displayName) {
-    return res.status(400).json({ ok: false, error: 'Client name is required.' });
-  }
-
-  try {
-    const client = await createClientForCoach(
-      getWorkoutPlannerPool(),
-      req.workoutPlannerProfile.id,
-      displayName
-    );
-    return res.status(201).json({ ok: true, client });
-  } catch (error) {
-    console.error('Could not create WorkoutPlanner client:', error.message);
-    return res.status(503).json({ ok: false, error: 'The client could not be created.' });
-  }
-});
-
-app.get('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const programs = await listPrograms(
       getWorkoutPlannerPool(),
@@ -316,7 +295,7 @@ app.get('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, 
   }
 });
 
-app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await loadProgram(
       getWorkoutPlannerPool(),
@@ -336,14 +315,14 @@ app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
   }
 });
 
-app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await cloneLibraryProgramVersion(
       getWorkoutPlannerPool(),
       req.workoutPlannerProfile.id,
       req.params.programId,
       req.body?.sourceVersionId,
-      req.body?.clientId,
+      req.body?.clientName,
       req.body?.name
     );
     return res.status(201).json({
@@ -360,7 +339,7 @@ app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerC
   }
 });
 
-app.post('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await saveProgram(
       getWorkoutPlannerPool(),
@@ -381,7 +360,7 @@ app.post('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req,
   }
 });
 
-app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, async (req, res) => {
+app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await saveProgram(
       getWorkoutPlannerPool(),
@@ -403,7 +382,7 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
   }
 });
 
-app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await publishProgram(
       getWorkoutPlannerPool(),
@@ -424,7 +403,36 @@ app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlanne
   }
 });
 
-app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const link = await getClientAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId,
+      req.params.programId
+    );
+    if (!link) {
+      return res.status(404).json({ ok: false, error: 'Active private client link not found.' });
+    }
+    if (!link.recoverable) {
+      return res.status(409).json({
+        ok: false,
+        error: 'This link remains active, but its original address cannot be recovered. Replace it once to make future copies available.'
+      });
+    }
+    const clientPath = `/p/${link.token}`;
+    return res.json({
+      ok: true,
+      path: clientPath,
+      url: `${req.protocol}://${req.get('host')}${clientPath}`
+    });
+  } catch (error) {
+    console.error('Could not retrieve WorkoutPlanner client link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The private client link could not be retrieved.' });
+  }
+});
+
+app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const generated = await regenerateClientAccessLink(
       getWorkoutPlannerPool(),
@@ -455,7 +463,7 @@ app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requi
   }
 });
 
-app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
+app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await revokeClientAccessLink(
       getWorkoutPlannerPool(),
@@ -742,6 +750,13 @@ function requireWorkoutPlannerCoach(req, res, next) {
     }
     next();
   });
+}
+
+function requireWorkoutPlannerOwner(req, res, next) {
+  if (readAdminSession(req)) {
+    return requireLocalWorkoutPlannerCoach(req, res, next);
+  }
+  return requireWorkoutPlannerCoach(req, res, next);
 }
 
 async function requireLocalWorkoutPlannerCoach(req, res, next) {

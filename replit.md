@@ -28,8 +28,10 @@ Build the first version for the owner and their partner:
   open day.
 - The person logs planned versus completed work.
 - The logging workspace includes history, graphs, and CSV export.
-- The owner area uses a secure admin session; participant pages use bearer links
-  for this prototype.
+- The owner workflow uses the password-protected admin session to create and
+  manage client programs in WorkoutPlanner. Clients do not sign in; they use
+  hard-to-guess, revocable private links to read their current program. Updating
+  a program keeps its client link.
 - The lean production direction is GitHub/GitHub Pages for the frontend,
   Supabase for private structured data and access control, and Gemini only as an
   optional server-side coaching feature.
