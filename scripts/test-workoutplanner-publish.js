@@ -58,7 +58,7 @@ function clientProgramInput() {
 async function run() {
   const serverSource = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   const editorSource = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
-  assert.match(serverSource, /app\.post\('\/api\/workoutplanner\/programs\/:programId\/publish', requireWorkoutPlannerCoach/);
+  assert.match(serverSource, /app\.post\('\/api\/workoutplanner\/programs\/:programId\/publish', requireWorkoutPlannerOwner/);
   assert.match(editorSource, /\/api\/workoutplanner\/programs\/\$\{encodeURIComponent\(planState\.databaseProgramId\)\}\/publish/);
   assert.match(editorSource, /databaseProgramKind === "client"/);
 

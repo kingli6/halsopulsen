@@ -18,7 +18,10 @@ const planState = {
   editingCurrentPlanId: null,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
+const adminDatabaseWorkspace = window.location.pathname.startsWith("/admin/plans");
 const userWorkspace = window.location.pathname.startsWith("/plans");
+const databaseWorkspace = adminDatabaseWorkspace || userWorkspace;
+const plannerPath = userWorkspace ? "/plans/" : "/admin/plans/";
 planState.databaseProgramId = planState.data.databaseProgramId || null;
 
 function userPlanSummary(saved) {
@@ -179,14 +182,18 @@ function renderPlanOverview() {
   setPlanText("databaseSaveDetail", planState.databaseProgramId
     ? `Saved to database · Version ${databaseVersion} · ${databaseStatus}`
     : "Not saved to the database library");
-  const isDatabaseClientProgram = userWorkspace
+  const isDatabaseClientProgram = databaseWorkspace
     && planState.databaseProgramId
     && planState.databaseProgramKind === "client";
   setPlanText("publishHeading", isDatabaseClientProgram
-    ? (databaseStatus === "published" ? "Publish a new draft when this program is ready" : "Publish when this program is ready")
+    ? (databaseStatus === "published" ? "Publish an update when this program is ready" : "Publish when this program is ready")
+    : adminDatabaseWorkspace
+    ? "Save this reusable program to the library"
     : changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", isDatabaseClientProgram
-    ? "Save edits as a draft first, then publish them to the existing private client link. Draft changes remain hidden until you publish."
+    ? "Save edits as a draft, then publish them to the same private client link. Draft changes stay hidden until publishing."
+    : adminDatabaseWorkspace
+    ? "Save a reusable program here, then create an independent copy for each client."
     : changed
     ? (planState.editingCurrentPlanId
       ? "Existing completed, skipped, or moved records stay unchanged. Future planned assignments will use these updates, with the same version and share link."
@@ -194,21 +201,29 @@ function renderPlanOverview() {
     : "The logging page and its share link are already showing this version.");
   const publishButton = document.getElementById("publishBtn");
   if (publishButton && !planState.publishing) {
-    publishButton.textContent = planState.editingCurrentPlanId ? "Save current plan" : "Publish plan";
+    publishButton.hidden = adminDatabaseWorkspace && !isDatabaseClientProgram;
+    publishButton.textContent = planState.editingCurrentPlanId
+      ? "Save current plan"
+      : isDatabaseClientProgram ? "Publish client program" : "Publish plan";
+  }
+  const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
+  if (saveDatabaseButton && databaseWorkspace) {
+    saveDatabaseButton.textContent = isDatabaseClientProgram ? "Save client draft" : "Save to program library";
   }
   setPlanText("detailsModalContext", planState.editingCurrentPlanId
     ? "These changes update the current plan. Existing participant records stay intact; future planned assignments follow the updated program."
     : "These details are part of the version you publish. The live logging page changes only after saving or publishing.");
   const currentLink = document.getElementById("currentShareLink");
   if (currentLink) {
-    currentLink.hidden = !planState.data.publishedSharePath;
+    currentLink.hidden = adminDatabaseWorkspace || !planState.data.publishedSharePath;
     currentLink.href = planState.data.publishedSharePath || "#";
   }
+
 }
 
 function enterEditor() {
   planState.editorMode = true;
-  window.history.pushState({}, "", `${userWorkspace ? "/plans/" : "/admin/plans/"}?view=editor`);
+  window.history.pushState({}, "", `${plannerPath}?view=editor`);
   renderAllPlan();
 }
 
@@ -669,7 +684,7 @@ function renderDatabaseProgramLibrary() {
   const section = document.getElementById("databaseProgramLibrary");
   const container = document.getElementById("databaseProgramList");
   const summary = document.getElementById("databaseProgramLibrarySummary");
-  if (!section || !container || !userWorkspace) return;
+  if (!section || !container || !databaseWorkspace) return;
 
   section.hidden = false;
   const programs = planState.databasePrograms;
@@ -696,7 +711,7 @@ function renderDatabaseProgramLibrary() {
 }
 
 async function loadDatabaseLibrary() {
-  if (!userWorkspace) return;
+  if (!databaseWorkspace) return;
   const status = document.getElementById("databaseProgramLibraryStatus");
   try {
     const response = await fetch("/api/workoutplanner/programs");
@@ -746,7 +761,7 @@ function cancelCloneDatabaseProgram() {
 }
 
 async function createClientDatabaseProgram() {
-  if (!userWorkspace || !planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
+  if (!databaseWorkspace || !planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
   const input = document.getElementById("cloneProgramNameInput");
   const clientSelect = document.getElementById("cloneProgramClientInput");
   const button = document.getElementById("cloneProgramSubmit");
@@ -798,7 +813,7 @@ async function createClientDatabaseProgram() {
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
     cancelCloneDatabaseProgram();
-    window.history.pushState({}, "", "/plans/?view=editor");
+    window.history.pushState({}, "", `${plannerPath}?view=editor`);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
     await loadClients();
@@ -857,7 +872,7 @@ async function openDatabaseProgram(programId) {
     planState.selectedWeekIndex = 0;
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
-    window.history.pushState({}, "", `${userWorkspace ? "/plans/" : "/admin/plans/"}?view=editor`);
+    window.history.pushState({}, "", `${plannerPath}?view=editor`);
     TrackerData.save(planState.data);
     renderAllPlan();
     showPlanToast("Database program opened.");
@@ -867,7 +882,7 @@ async function openDatabaseProgram(programId) {
 }
 
 async function saveDatabaseProgram({ silent = false } = {}) {
-  if (!userWorkspace || planState.databaseSaving) return;
+  if (!databaseWorkspace || planState.databaseSaving) return;
   const button = document.getElementById("saveDatabaseProgramBtn");
   const program = TrackerData.normalizeProgram(planState.data.draftProgram);
   planState.databaseSaving = true;
@@ -906,13 +921,15 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     planState.databaseSaving = false;
     if (button) {
       button.disabled = false;
-      button.textContent = "Save to program library";
+      button.textContent = planState.databaseProgramKind === "client"
+        ? "Save client draft"
+        : "Save to program library";
     }
   }
 }
 
 async function publishDatabaseProgram() {
-  if (!userWorkspace || planState.databaseProgramKind !== "client" || !planState.databaseProgramId) return;
+  if (!databaseWorkspace || planState.databaseProgramKind !== "client" || !planState.databaseProgramId) return;
   if (planState.publishing) return;
 
   planState.publishing = true;
@@ -954,6 +971,11 @@ async function publishDatabaseProgram() {
 }
 
 function renderAllPlan() {
+  if (adminDatabaseWorkspace) {
+    document.querySelector(".library-toolbar")?.setAttribute("hidden", "");
+    document.querySelector(".library-access-note")?.setAttribute("hidden", "");
+    document.getElementById("planLibrary")?.setAttribute("hidden", "");
+  }
   if (planState.editorMode) {
     renderPlanOverview();
     renderBuilder();
@@ -1293,6 +1315,14 @@ function clearDay(weekday) {
 }
 
 async function publishPlan() {
+  if (adminDatabaseWorkspace) {
+    if (planState.databaseProgramKind === "client" && planState.databaseProgramId) {
+      await publishDatabaseProgram();
+    } else {
+      showPlanToast("Save reusable programs with the database save button.");
+    }
+    return;
+  }
   if (userWorkspace && planState.databaseProgramKind === "client" && planState.databaseProgramId) {
     await publishDatabaseProgram();
     return;
@@ -1415,6 +1445,10 @@ async function publishPlan() {
 }
 
 async function loadLibrary() {
+  if (adminDatabaseWorkspace) {
+    planState.library = [];
+    return;
+  }
   try {
     const response = await fetch(userWorkspace ? "/api/user/plans" : "/api/plans/owner");
     const result = await response.json();
@@ -1435,7 +1469,7 @@ async function loadLibrary() {
 }
 
 async function loadTemplates() {
-  if (userWorkspace) return;
+  if (databaseWorkspace) return;
   try {
     const response = await fetch("/api/templates");
     const result = await response.json();
@@ -1461,7 +1495,7 @@ async function loadClients() {
     const clients = Array.isArray(result.clients) ? result.clients : [];
     planState.clients = clients;
     renderCloneClientOptions();
-    if (userWorkspace) {
+    if (databaseWorkspace) {
       const section = document.getElementById("clientCreateSection");
       if (section) section.hidden = false;
     }
@@ -1585,7 +1619,7 @@ async function createClient(event) {
 }
 
 async function seedRequestedDemo() {
-  if (userWorkspace) return;
+  if (databaseWorkspace) return;
   if (new URLSearchParams(window.location.search).get("demo") !== "jerry") return;
   try {
     const response = await fetch("/api/plans/demo/jerry", {
@@ -1632,11 +1666,11 @@ function bindPlanEvents() {
   document.getElementById("publishBtn").addEventListener("click", publishPlan);
   const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
   if (saveDatabaseButton) {
-    saveDatabaseButton.hidden = !userWorkspace;
+    saveDatabaseButton.hidden = !databaseWorkspace;
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
   const clientCreateSection = document.getElementById("clientCreateSection");
-  if (userWorkspace) {
+  if (databaseWorkspace) {
     clientCreateSection.hidden = false;
     document.getElementById("clientCreateForm").addEventListener("submit", createClient);
     document.getElementById("clientList").addEventListener("click", event => {
@@ -1729,5 +1763,5 @@ renderAllPlan();
 seedRequestedDemo().then(() => Promise.all([
   loadLibrary(),
   loadTemplates(),
-  ...(userWorkspace ? [loadDatabaseLibrary(), loadClients()] : [])
+  ...(databaseWorkspace ? [loadDatabaseLibrary(), loadClients()] : [])
 ]));

@@ -233,7 +233,7 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
   res.json({ ok: true, profile: publicProfile(req.workoutPlannerProfile) });
 });
 
-app.get('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await getWorkoutPlannerPool().query(
       `SELECT c.id AS client_id, c.display_name, c.active,
@@ -282,7 +282,7 @@ app.get('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, r
   }
 });
 
-app.post('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, res) => {
   const displayName = typeof req.body?.displayName === 'string'
     ? req.body.displayName.trim()
     : '';
@@ -303,7 +303,7 @@ app.post('/api/workoutplanner/clients', requireWorkoutPlannerCoach, async (req, 
   }
 });
 
-app.get('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const programs = await listPrograms(
       getWorkoutPlannerPool(),
@@ -316,7 +316,7 @@ app.get('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, 
   }
 });
 
-app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, async (req, res) => {
+app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await loadProgram(
       getWorkoutPlannerPool(),
@@ -336,7 +336,7 @@ app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
   }
 });
 
-app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await cloneLibraryProgramVersion(
       getWorkoutPlannerPool(),
@@ -360,7 +360,7 @@ app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerC
   }
 });
 
-app.post('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await saveProgram(
       getWorkoutPlannerPool(),
@@ -381,7 +381,7 @@ app.post('/api/workoutplanner/programs', requireWorkoutPlannerCoach, async (req,
   }
 });
 
-app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, async (req, res) => {
+app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await saveProgram(
       getWorkoutPlannerPool(),
@@ -403,7 +403,7 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerCoach, a
   }
 });
 
-app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await publishProgram(
       getWorkoutPlannerPool(),
@@ -424,7 +424,7 @@ app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlanne
   }
 });
 
-app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
+app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const generated = await regenerateClientAccessLink(
       getWorkoutPlannerPool(),
@@ -455,7 +455,7 @@ app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link', requi
   }
 });
 
-app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerCoach, async (req, res) => {
+app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await revokeClientAccessLink(
       getWorkoutPlannerPool(),
@@ -742,6 +742,13 @@ function requireWorkoutPlannerCoach(req, res, next) {
     }
     next();
   });
+}
+
+function requireWorkoutPlannerOwner(req, res, next) {
+  if (readAdminSession(req)) {
+    return requireLocalWorkoutPlannerCoach(req, res, next);
+  }
+  return requireWorkoutPlannerCoach(req, res, next);
 }
 
 async function requireLocalWorkoutPlannerCoach(req, res, next) {
