@@ -693,11 +693,34 @@ function renderDatabaseProgramLibrary() {
     container.innerHTML = `<div class="empty-panel">Save a draft to build your program library.</div>`;
     return;
   }
-  container.innerHTML = programs.map(program => `
+  container.innerHTML = programs.map(program => {
+    const client = program.kind === "client"
+      ? planState.clients.find(item => item.programs.some(clientProgram => clientProgram.id === program.id))
+      : null;
+    const clientProgram = client?.programs.find(item => item.id === program.id);
+    const linkActions = client && clientProgram
+      ? clientProgram.hasActivePrivateLink
+        ? `
+          <button class="button button-secondary button-small" type="button"
+            data-copy-client-link="${escapePlanHtml(client.id)}"
+            data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
+          <button class="button button-secondary button-small" type="button"
+            data-rotate-client-link="${escapePlanHtml(client.id)}"
+            data-program-id="${escapePlanHtml(program.id)}">Rotate link</button>
+          <button class="button button-danger button-small" type="button"
+            data-revoke-client-link="${escapePlanHtml(client.id)}"
+            data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
+        : program.versionStatus === "published"
+          ? `<button class="button button-secondary button-small" type="button"
+            data-create-client-link="${escapePlanHtml(client.id)}"
+            data-program-id="${escapePlanHtml(program.id)}">Create private link</button>`
+          : `<span class="client-create-status">Publish a version to create a private link.</span>`
+      : "";
+    return `
     <article class="library-item">
       <div class="library-item-main">
         <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="${program.versionStatus === "published" ? "current-tag" : "draft-status is-draft"}">${program.kind === "client" ? "Client copy" : "Library"} · ${escapePlanHtml(program.versionStatus || "draft")}</span></div>
-        <span>Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
+        ${program.kind === "client" ? `<span>${client ? `For ${escapePlanHtml(client.displayName)} · ` : ""}` : "<span>"}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
         ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
       </div>
       <div class="library-actions">
@@ -705,9 +728,11 @@ function renderDatabaseProgramLibrary() {
         ${program.kind === "library"
           ? `<button class="button button-secondary button-small" type="button" data-clone-database-program="${escapePlanHtml(program.id)}" data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Create client program</button>`
           : ""}
+        ${linkActions}
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
 }
 
 async function loadDatabaseLibrary() {
@@ -738,16 +763,16 @@ function beginCloneDatabaseProgram(programId, versionId) {
   }
   planState.cloneSourceProgramId = programId;
   planState.cloneSourceVersionId = versionId;
-  renderCloneClientOptions();
   const form = document.getElementById("cloneProgramForm");
-  const input = document.getElementById("cloneProgramNameInput");
+  const clientInput = document.getElementById("cloneProgramClientNameInput");
+  const nameInput = document.getElementById("cloneProgramNameInput");
   const status = document.getElementById("cloneProgramStatus");
   if (form) form.hidden = false;
-  if (input) {
-    input.value = `${program.name} — Client copy`;
-    input.focus();
-    input.select();
+  if (clientInput) {
+    clientInput.value = "";
+    clientInput.focus();
   }
+  if (nameInput) nameInput.value = `${program.name} — Client copy`;
   if (status) status.textContent = `Copying version ${program.version} from ${program.name}.`;
 }
 
@@ -762,17 +787,17 @@ function cancelCloneDatabaseProgram() {
 
 async function createClientDatabaseProgram() {
   if (!databaseWorkspace || !planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
-  const input = document.getElementById("cloneProgramNameInput");
-  const clientSelect = document.getElementById("cloneProgramClientInput");
+  const clientInput = document.getElementById("cloneProgramClientNameInput");
+  const nameInput = document.getElementById("cloneProgramNameInput");
   const button = document.getElementById("cloneProgramSubmit");
-  const name = input?.value.trim() || "";
-  const clientId = clientSelect?.value || "";
-  if (!name) {
-    if (input) input.focus();
+  const clientName = clientInput?.value.trim() || "";
+  const name = nameInput?.value.trim() || "";
+  if (!clientName) {
+    if (clientInput) clientInput.focus();
     return;
   }
-  if (!clientId) {
-    if (clientSelect) clientSelect.focus();
+  if (!name) {
+    if (nameInput) nameInput.focus();
     return;
   }
   if (button) {
@@ -787,7 +812,7 @@ async function createClientDatabaseProgram() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceVersionId: planState.cloneSourceVersionId,
-          clientId,
+          clientName,
           name
         })
       }
@@ -797,7 +822,7 @@ async function createClientDatabaseProgram() {
       throw new Error(result.error || "Could not create the client program.");
     }
     const fresh = TrackerData.defaultData();
-    fresh.person = { name };
+    fresh.person = { name: clientName };
     fresh.goal = "Build a consistent training habit";
     fresh.draftGoal = fresh.goal;
     fresh.publishedGoal = fresh.goal;
@@ -818,28 +843,15 @@ async function createClientDatabaseProgram() {
     await loadDatabaseLibrary();
     await loadClients();
     renderAllPlan();
-    showPlanToast("Independent client program created.");
+    showPlanToast("Client program created.");
   } catch (error) {
     const status = document.getElementById("cloneProgramStatus");
     if (status) status.textContent = error.message || "Could not create the client program.";
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = "Create copy";
+      button.textContent = "Create client program";
     }
-  }
-}
-
-function renderCloneClientOptions() {
-  const select = document.getElementById("cloneProgramClientInput");
-  if (!select) return;
-  const currentValue = select.value;
-  const options = planState.clients
-    .filter(client => client.active)
-    .map(client => `<option value="${escapePlanHtml(client.id)}">${escapePlanHtml(client.displayName)}</option>`);
-  select.innerHTML = `<option value="">Choose a client…</option>${options.join("")}`;
-  if (options.some(option => option.includes(`value="${currentValue}"`))) {
-    select.value = currentValue;
   }
 }
 
@@ -1482,65 +1494,52 @@ async function loadTemplates() {
 }
 
 async function loadClients() {
-  const list = document.getElementById("clientList");
-  const status = document.getElementById("clientCreateStatus");
-  if (!list || !status) return;
+  if (!databaseWorkspace) return;
+  const status = document.getElementById("clientLinkStatus");
 
   try {
     const response = await fetch("/api/workoutplanner/clients");
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) {
-      throw new Error(result.error || "Could not load clients.");
+      throw new Error(result.error || "Could not load client program details.");
     }
-    const clients = Array.isArray(result.clients) ? result.clients : [];
-    planState.clients = clients;
-    renderCloneClientOptions();
-    if (databaseWorkspace) {
-      const section = document.getElementById("clientCreateSection");
-      if (section) section.hidden = false;
+    planState.clients = Array.isArray(result.clients) ? result.clients : [];
+    if (status) {
+      status.textContent = "";
+      status.classList.remove("is-error");
     }
-    list.innerHTML = clients.length
-      ? clients.map(client => `
-        <div class="client-list-item">
-          <div>
-            <strong>${escapePlanHtml(client.displayName)}</strong>
-            <span>${client.active ? "Active" : "Inactive"} · ${client.programs.length} ${client.programs.length === 1 ? "program" : "programs"}</span>
-          </div>
-          <div class="client-program-list">
-            ${client.programs.length
-              ? client.programs.map(program => `
-                <div class="client-program-row">
-                  <span><strong>${escapePlanHtml(program.name)}</strong> · ${escapePlanHtml(program.status || "draft")}</span>
-                  <div class="library-actions">
-                    <button class="button button-secondary button-small" type="button"
-                      data-create-client-link="${escapePlanHtml(client.id)}"
-                      data-program-id="${escapePlanHtml(program.id)}">
-                      ${program.hasActivePrivateLink ? "Rotate link" : "Create link"}
-                    </button>
-                    ${program.hasActivePrivateLink
-                      ? `<button class="button button-danger button-small" type="button"
-                          data-revoke-client-link="${escapePlanHtml(client.id)}"
-                          data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
-                      : ""}
-                  </div>
-                </div>
-              `).join("")
-              : '<span>No client programs yet.</span>'}
-          </div>
-        </div>
-      `).join("")
-      : '<p class="client-list-empty">No clients yet.</p>';
+    renderDatabaseProgramLibrary();
   } catch (error) {
-    list.innerHTML = "";
-    status.textContent = error.message || "Could not load clients.";
+    if (status) {
+      status.textContent = error.message || "Could not load client program details.";
+      status.classList.add("is-error");
+    }
+  }
+}
+
+async function copyClientLink(clientId, programId) {
+  const status = document.getElementById("clientLinkStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Retrieving current private link…";
+  try {
+    const response = await fetch(`/api/workoutplanner/clients/${encodeURIComponent(clientId)}/programs/${encodeURIComponent(programId)}/link`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not retrieve the current private link.");
+    }
+    await copyPlanLink(result.path);
+    status.textContent = "Current private link copied. It has not been changed.";
+  } catch (error) {
+    status.textContent = error.message || "Could not retrieve the current private link.";
     status.classList.add("is-error");
   }
 }
 
-async function createClientLink(clientId, programId) {
-  const status = document.getElementById("clientCreateStatus");
+async function createClientLink(clientId, programId, { rotate = false } = {}) {
+  if (rotate && !window.confirm("Replace this private link? Anyone using the current link will lose access.")) return;
+  const status = document.getElementById("clientLinkStatus");
   status.classList.remove("is-error");
-  status.textContent = "Generating private link…";
+  status.textContent = rotate ? "Replacing private link…" : "Creating private link…";
   try {
     const response = await fetch(`/api/workoutplanner/clients/${encodeURIComponent(clientId)}/programs/${encodeURIComponent(programId)}/link`, {
       method: "POST"
@@ -1550,8 +1549,11 @@ async function createClientLink(clientId, programId) {
       throw new Error(result.error || "Could not generate the private link.");
     }
     await copyPlanLink(result.path);
-    status.textContent = "Private link copied. Any previous link for this program is no longer valid.";
+    const successMessage = rotate
+      ? "New private link copied. The previous link no longer works."
+      : "Private link created and copied.";
     await loadClients();
+    status.textContent = successMessage;
   } catch (error) {
     status.textContent = error.message || "Could not generate the private link.";
     status.classList.add("is-error");
@@ -1560,7 +1562,7 @@ async function createClientLink(clientId, programId) {
 
 async function revokeClientLink(clientId, programId) {
   if (!window.confirm("Revoke this private client link? Anyone using the old link will lose access.")) return;
-  const status = document.getElementById("clientCreateStatus");
+  const status = document.getElementById("clientLinkStatus");
   status.classList.remove("is-error");
   status.textContent = "Revoking private link…";
   try {
@@ -1571,50 +1573,12 @@ async function revokeClientLink(clientId, programId) {
     if (!response.ok || !result.ok) {
       throw new Error(result.error || "Could not revoke the private link.");
     }
-    status.textContent = result.revoked ? "Private link revoked." : "No active private link was found.";
+    const successMessage = result.revoked ? "Private link revoked." : "No active private link was found.";
     await loadClients();
+    status.textContent = successMessage;
   } catch (error) {
     status.textContent = error.message || "Could not revoke the private link.";
     status.classList.add("is-error");
-  }
-}
-
-async function createClient(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const input = document.getElementById("clientNameInput");
-  const status = document.getElementById("clientCreateStatus");
-  const button = form.querySelector("button[type=\"submit\"]");
-  const displayName = input.value.trim();
-  status.classList.remove("is-error");
-
-  if (!displayName) {
-    status.textContent = "Enter a client name first.";
-    status.classList.add("is-error");
-    input.focus();
-    return;
-  }
-
-  button.disabled = true;
-  status.textContent = "Adding client…";
-  try {
-    const response = await fetch("/api/workoutplanner/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName })
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok) {
-      throw new Error(result.error || "Could not add client.");
-    }
-    form.reset();
-    status.textContent = `Added ${result.client.displayName} (ID: ${result.client.id}).`;
-    await loadClients();
-  } catch (error) {
-    status.textContent = error.message || "Could not add client.";
-    status.classList.add("is-error");
-  } finally {
-    button.disabled = false;
   }
 }
 
@@ -1669,14 +1633,15 @@ function bindPlanEvents() {
     saveDatabaseButton.hidden = !databaseWorkspace;
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
-  const clientCreateSection = document.getElementById("clientCreateSection");
   if (databaseWorkspace) {
-    clientCreateSection.hidden = false;
-    document.getElementById("clientCreateForm").addEventListener("submit", createClient);
-    document.getElementById("clientList").addEventListener("click", event => {
+    document.getElementById("databaseProgramList").addEventListener("click", event => {
       const create = event.target.closest("[data-create-client-link]");
+      const copy = event.target.closest("[data-copy-client-link]");
+      const rotate = event.target.closest("[data-rotate-client-link]");
       const revoke = event.target.closest("[data-revoke-client-link]");
       if (create) createClientLink(create.dataset.createClientLink, create.dataset.programId);
+      if (copy) copyClientLink(copy.dataset.copyClientLink, copy.dataset.programId);
+      if (rotate) createClientLink(rotate.dataset.rotateClientLink, rotate.dataset.programId, { rotate: true });
       if (revoke) revokeClientLink(revoke.dataset.revokeClientLink, revoke.dataset.programId);
     });
   }

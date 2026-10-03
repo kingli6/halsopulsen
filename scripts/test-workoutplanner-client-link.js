@@ -1,9 +1,11 @@
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
+process.env.SESSION_SECRET = "workoutplanner-link-unit-test-secret";
 const {
   findClientDataByToken,
   generateClientAccessToken,
+  getClientAccessLink,
   hashClientAccessToken,
   revokeClientAccessLink,
   regenerateClientAccessLink
@@ -14,8 +16,15 @@ async function run() {
   assert.strictEqual(Buffer.from(token, "base64url").length, 32);
   assert.match(hashClientAccessToken(token), /^[0-9a-f]{64}$/);
   assert.notStrictEqual(hashClientAccessToken(token), token);
+  assert.strictEqual(
+    generateClientAccessToken("link-id-a"),
+    generateClientAccessToken("link-id-a")
+  );
+  assert.notStrictEqual(
+    generateClientAccessToken("link-id-a"),
+    generateClientAccessToken("link-id-b")
+  );
 
-  let storedValue;
   const transactionQueries = [];
   const transactionClient = {
     async query(sql, values) {
@@ -43,12 +52,51 @@ async function run() {
   );
   assert.ok(generated.token);
   const insert = transactionQueries.find(query => query.sql.includes("INSERT INTO public.client_access_links"));
-  storedValue = insert.values[2];
-  assert.strictEqual(insert.values[0], "client-a");
-  assert.strictEqual(insert.values[1], "program-a");
-  assert.strictEqual(insert.values[3], "coach-a");
+  const linkId = insert.values[0];
+  const storedValue = insert.values[3];
+  assert.strictEqual(insert.values[1], "client-a");
+  assert.strictEqual(insert.values[2], "program-a");
+  assert.strictEqual(insert.values[4], "coach-a");
   assert.strictEqual(storedValue, hashClientAccessToken(generated.token));
   assert.notStrictEqual(storedValue, generated.token);
+
+  const recovered = await getClientAccessLink({
+    async query(sql, values) {
+      assert.deepStrictEqual(values, ["coach-a", "client-a", "program-a"]);
+      assert.match(sql, /l\.revoked_at IS NULL/);
+      return {
+        rowCount: 1,
+        rows: [{
+          id: linkId,
+          token_hash: storedValue,
+          client_id: "client-a",
+          display_name: "Ada",
+          program_id: "program-a",
+          program_name: "Strength"
+        }]
+      };
+    }
+  }, "coach-a", "client-a", "program-a");
+  assert.strictEqual(recovered.recoverable, true);
+  assert.strictEqual(recovered.token, generated.token);
+
+  const legacyLink = await getClientAccessLink({
+    async query() {
+      return {
+        rowCount: 1,
+        rows: [{
+          id: linkId,
+          token_hash: hashClientAccessToken("legacy-random-token"),
+          client_id: "client-a",
+          display_name: "Ada",
+          program_id: "program-a",
+          program_name: "Strength"
+        }]
+      };
+    }
+  }, "coach-a", "client-a", "program-a");
+  assert.strictEqual(legacyLink.recoverable, false);
+  assert.strictEqual(legacyLink.token, null);
 
   const queries = [];
   const data = await findClientDataByToken({
@@ -122,8 +170,10 @@ async function run() {
   assert.match(migration, /client_access_links_one_active_per_program/);
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /app\.get\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
   assert.match(server, /app\.post\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
   assert.match(server, /app\.delete\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
+  assert.doesNotMatch(server, /app\.post\('\/api\/workoutplanner\/clients',/);
   assert.match(server, /function requireWorkoutPlannerOwner\(req, res, next\)[\s\S]*?if \(readAdminSession\(req\)\)[\s\S]*?requireLocalWorkoutPlannerCoach/);
   assert.match(server, /app\.get\('\/api\/client\/:token'/);
   assert.match(server, /app\.get\(\['\/p\/:token'/);
@@ -133,6 +183,17 @@ async function run() {
     fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.js"), "utf8"),
     /api\/plans\/share|method:\s*["'](?:PUT|POST|DELETE)|sessionList|renderSessions/
   );
+  const adminPage = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan", "index.html"), "utf8");
+  assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
+  assert.match(adminPage, /id="cloneProgramClientNameInput"/);
+  const planner = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
+  assert.match(planner, /data-copy-client-link/);
+  assert.match(planner, /Current private link copied\. It has not been changed\./);
+  assert.match(planner, /data-rotate-client-link/);
+  const programLibrary = fs.readFileSync(path.join(__dirname, "..", "workoutplanner", "program-library.js"), "utf8");
+  assert.match(programLibrary, /lower\(trim\(c\.display_name\)\) = lower\(trim\(\$1\)\)/);
+  assert.match(programLibrary, /values \('client', \$1, NULL\)/);
+  assert.match(server, /req\.body\?\.clientName/);
 
   console.log("WorkoutPlanner private client-link tests passed.");
 }

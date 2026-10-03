@@ -32,7 +32,7 @@
       <div>
         <p class="eyebrow">OWNER WORKSPACE</p>
         <h1>Plan with intent. Keep every version.</h1>
-        <p class="intro-copy">Create reusable plans, assign independent programs to clients, and update an ongoing program without changing its private link.</p>
+        <p class="intro-copy">Create reusable plans, make a named client copy, and update an ongoing program without changing its private link.</p>
       </div>
       <div class="intro-actions">
         <span class="local-owner-badge">Admin workspace · signed in</span>
@@ -50,33 +50,19 @@
         <div>
           <p class="section-kicker">WORKOUT PROGRAMS</p>
           <h2 id="libraryHeading">Plan library</h2>
-          <p>Build reusable plans or manage each client’s ongoing program. Publishing an update keeps that client’s private link.</p>
+          <p>Build reusable plans or manage an ongoing client program. Publishing an update keeps its private link.</p>
         </div>
          <a class="button button-primary" href="/admin/plans/?view=editor" id="createPlanBtn">+ Create new plan</a>
       </div>
       <div class="library-toolbar">
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
       </div>
-       <section class="client-create-row" id="clientCreateSection" aria-labelledby="clientCreateHeading" hidden>
-         <div>
-           <p class="section-kicker">CLIENTS</p>
-           <h2 id="clientCreateHeading">Add client</h2>
-         </div>
-         <form class="client-create-form" id="clientCreateForm">
-           <label class="sr-only" for="clientNameInput">Client name</label>
-           <input id="clientNameInput" name="displayName" type="text" required placeholder="Client name" autocomplete="off" />
-           <button class="button button-secondary" type="submit">Add client</button>
-         </form>
-         <p class="client-create-status" id="clientCreateStatus" role="status" aria-live="polite"></p>
-           <p class="client-create-status">Private links are read-only. Each client program has its own link; rotating one does not affect the others.</p>
-          <div class="client-list" id="clientList" aria-live="polite"></div>
-       </section>
        <section class="library-view card" id="databaseProgramLibrary" aria-labelledby="databaseProgramLibraryHeading" hidden>
          <div class="library-view-header">
            <div>
               <p class="section-kicker">PROGRAM LIBRARY</p>
              <h2 id="databaseProgramLibraryHeading">Program library</h2>
-              <p>Open reusable programs or create independent client copies. Each client program can be updated and shared through its own private link.</p>
+               <p>Open reusable programs or create a named client copy. Each client program can be updated through its private link.</p>
            </div>
            <span class="draft-status is-current" id="databaseProgramLibrarySummary">0 programs</span>
          </div>
@@ -84,21 +70,20 @@
          <form class="client-create-row" id="cloneProgramForm" hidden>
            <div>
              <p class="section-kicker">CLIENT PROGRAM COPY</p>
-             <h3>Create independent client program</h3>
+              <h3>Create a client program</h3>
            </div>
+            <label class="sr-only" for="cloneProgramClientNameInput">Client name</label>
+            <input id="cloneProgramClientNameInput" type="text" required placeholder="Client name" autocomplete="off" />
            <label class="sr-only" for="cloneProgramNameInput">Client program name</label>
            <input id="cloneProgramNameInput" type="text" required placeholder="Client program name" autocomplete="off" />
-            <label class="sr-only" for="cloneProgramClientInput">Client</label>
-            <select id="cloneProgramClientInput" required>
-              <option value="">Choose a client…</option>
-            </select>
-           <button class="button button-secondary" id="cloneProgramSubmit" type="submit">Create copy</button>
+            <button class="button button-secondary" id="cloneProgramSubmit" type="submit">Create client program</button>
            <button class="button button-secondary" id="cloneProgramCancel" type="button">Cancel</button>
          </form>
          <p class="client-create-status" id="cloneProgramStatus" role="status" aria-live="polite"></p>
+          <p class="client-create-status" id="clientLinkStatus" role="status" aria-live="polite"></p>
          <div class="plan-library" id="databaseProgramList"></div>
        </section>
-      <p class="library-access-note">One participant uses each published share link by design. Deleting a version permanently removes its plan, participant link, logs, and saved history.</p>
+       <p class="library-access-note">Clients do not need an account. Each private link is a bearer secret: share it only with the intended person, and revoke it if it is exposed.</p>
       <div class="plan-library" id="planLibrary"></div>
     </section>
 
@@ -199,7 +184,7 @@
           <p class="section-kicker">CURRENTLY LIVE</p>
           <h2 id="publishedPreviewHeading">Published program preview</h2>
         </div>
-         <span class="text-button">Open a participant link from the library ↗</span>
+         <span class="text-button">Open a client link from the library ↗</span>
       </div>
       <div class="published-preview" id="publishedPreview"></div>
     </section>
