@@ -226,8 +226,7 @@ async function run() {
       fixture.coachId,
       fixture.sourceProgramId,
       fixture.sourceVersionId,
-      fixture.clientId,
-      "Cloned client program"
+      fixture.clientId
     );
     fixture.cloneProgramId = cloned.id;
     const cloneRow = await pool.query(

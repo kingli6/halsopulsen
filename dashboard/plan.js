@@ -11,6 +11,7 @@ const planState = {
   databaseProgramKind: null,
   databaseProgramVersion: null,
   databaseProgramVersionStatus: null,
+  databaseProgramClientId: null,
   databaseSaving: false,
   clients: [],
   cloneSourceProgramId: null,
@@ -23,6 +24,8 @@ const userWorkspace = window.location.pathname.startsWith("/plans");
 const databaseWorkspace = adminDatabaseWorkspace || userWorkspace;
 const plannerPath = userWorkspace ? "/plans/" : "/admin/plans/";
 planState.databaseProgramId = planState.data.databaseProgramId || null;
+planState.databaseProgramKind = planState.data.databaseProgramKind || null;
+planState.databaseProgramClientId = planState.data.databaseProgramClientId || null;
 
 function userPlanSummary(saved) {
   const data = saved.data || {};
@@ -48,6 +51,22 @@ function userPlanSummary(saved) {
 function setPlanText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value;
+}
+
+function applyAdminWorkspaceCopy() {
+  if (!adminDatabaseWorkspace) return;
+  const intro = document.querySelector(".intro-copy");
+  if (intro) {
+    intro.textContent = "Create reusable programs, prepare copies for existing clients, and publish updates without changing a client’s private link.";
+  }
+  const libraryDescription = document.querySelector("#libraryHeading")?.parentElement?.querySelector("p");
+  if (libraryDescription) {
+    libraryDescription.textContent = "Build reusable programs or manage client-specific copies. Publishing an update keeps the client’s private link.";
+  }
+  const programDescription = document.querySelector("#databaseProgramLibraryHeading")?.parentElement?.querySelector("p");
+  if (programDescription) {
+    programDescription.textContent = "Open reusable programs or make a copy for an existing client. Each client program can be updated through its private link.";
+  }
 }
 
 function escapePlanHtml(value) {
@@ -247,12 +266,13 @@ function startNewDraft() {
   planState.data.draftSourceVersion = null;
   planState.data.assignmentPrefix = "";
   planState.data.databaseProgramId = null;
+  planState.data.databaseProgramKind = null;
+  planState.data.databaseProgramClientId = null;
   planState.databaseProgramId = null;
   planState.databaseProgramKind = null;
+  planState.databaseProgramClientId = null;
   planState.databaseProgramVersion = null;
   planState.databaseProgramVersionStatus = null;
-  planState.cloneSourceProgramId = null;
-  planState.cloneSourceVersionId = null;
   planState.editingCurrentPlanId = null;
   enterEditor();
   TrackerData.save(planState.data);
@@ -680,6 +700,89 @@ function renderLibrary() {
   `).join("");
 }
 
+function ensureLegacyCloneForm() {
+  if (!userWorkspace || document.getElementById("legacyCloneProgramForm")) return;
+  const list = document.getElementById("databaseProgramList");
+  if (!list) return;
+  list.insertAdjacentHTML("beforebegin", `
+    <form class="client-create-row" id="legacyCloneProgramForm" hidden>
+      <div>
+        <p class="section-kicker">CLIENT PROGRAM COPY</p>
+        <h3>Create a client program</h3>
+      </div>
+      <label class="sr-only" for="legacyCloneClientNameInput">Client name</label>
+      <input id="legacyCloneClientNameInput" type="text" required placeholder="Client name" autocomplete="off" />
+      <label class="sr-only" for="legacyCloneProgramNameInput">Client program name</label>
+      <input id="legacyCloneProgramNameInput" type="text" required placeholder="Client program name" autocomplete="off" />
+      <button class="button button-secondary" id="legacyCloneProgramSubmit" type="submit">Create client program</button>
+      <button class="button button-secondary" id="legacyCloneProgramCancel" type="button">Cancel</button>
+    </form>
+  `);
+  document.getElementById("legacyCloneProgramForm").addEventListener("submit", submitLegacyClone);
+  document.getElementById("legacyCloneProgramCancel").addEventListener("click", cancelLegacyClone);
+}
+
+function beginLegacyClone(programId, versionId) {
+  const program = planState.databasePrograms.find(item => item.id === programId);
+  if (!program || !versionId) {
+    showPlanToast("The selected library version is unavailable.");
+    return;
+  }
+  planState.cloneSourceProgramId = programId;
+  planState.cloneSourceVersionId = versionId;
+  const form = document.getElementById("legacyCloneProgramForm");
+  const clientInput = document.getElementById("legacyCloneClientNameInput");
+  const nameInput = document.getElementById("legacyCloneProgramNameInput");
+  const status = document.getElementById("cloneProgramStatus");
+  if (form) form.hidden = false;
+  if (clientInput) {
+    clientInput.value = "";
+    clientInput.focus();
+  }
+  if (nameInput) nameInput.value = `${program.name} — Client copy`;
+  if (status) status.textContent = `Copying version ${program.version} from ${program.name}.`;
+}
+
+function cancelLegacyClone() {
+  planState.cloneSourceProgramId = null;
+  planState.cloneSourceVersionId = null;
+  const form = document.getElementById("legacyCloneProgramForm");
+  const status = document.getElementById("cloneProgramStatus");
+  if (form) form.hidden = true;
+  if (status) status.textContent = "";
+  if (status) status.classList.remove("is-error");
+}
+
+async function submitLegacyClone(event) {
+  event.preventDefault();
+  const clientName = document.getElementById("legacyCloneClientNameInput")?.value.trim() || "";
+  const programName = document.getElementById("legacyCloneProgramNameInput")?.value.trim() || "";
+  const status = document.getElementById("cloneProgramStatus");
+  const button = document.getElementById("legacyCloneProgramSubmit");
+  const existingClient = planState.clients.find(client =>
+    client.active && client.displayName.trim().toLocaleLowerCase() === clientName.toLocaleLowerCase()
+  );
+  if (!planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
+  if (!existingClient) {
+    if (status) {
+      status.textContent = "No existing active client matches that name. Client records are not created from this form.";
+      status.classList.add("is-error");
+    }
+    return;
+  }
+  if (!programName) {
+    document.getElementById("legacyCloneProgramNameInput")?.focus();
+    return;
+  }
+  await createClientDatabaseProgram(
+    planState.cloneSourceProgramId,
+    planState.cloneSourceVersionId,
+    existingClient.id,
+    button,
+    programName
+  );
+}
+
 function renderDatabaseProgramLibrary() {
   const section = document.getElementById("databaseProgramLibrary");
   const container = document.getElementById("databaseProgramList");
@@ -687,17 +790,25 @@ function renderDatabaseProgramLibrary() {
   if (!section || !container || !databaseWorkspace) return;
 
   section.hidden = false;
+  if (userWorkspace) ensureLegacyCloneForm();
   const programs = planState.databasePrograms;
   if (summary) summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"}`;
   if (!programs.length) {
     container.innerHTML = `<div class="empty-panel">Save a draft to build your program library.</div>`;
     return;
   }
+  const activeClients = planState.clients.filter(client => client.active);
   container.innerHTML = programs.map(program => {
     const client = program.kind === "client"
-      ? planState.clients.find(item => item.programs.some(clientProgram => clientProgram.id === program.id))
+      ? planState.clients.find(item =>
+        item.id === program.clientId
+        || item.programs.some(clientProgram => clientProgram.id === program.id)
+      )
       : null;
     const clientProgram = client?.programs.find(item => item.id === program.id);
+    const programId = escapePlanHtml(program.id);
+    const panelId = `use-client-${programId}`;
+    const historyPanelId = `program-history-${programId}`;
     const linkActions = client && clientProgram
       ? clientProgram.hasActivePrivateLink
         ? `
@@ -722,11 +833,40 @@ function renderDatabaseProgramLibrary() {
         <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="${program.versionStatus === "published" ? "current-tag" : "draft-status is-draft"}">${program.kind === "client" ? "Client copy" : "Library"} · ${escapePlanHtml(program.versionStatus || "draft")}</span></div>
         ${program.kind === "client" ? `<span>${client ? `For ${escapePlanHtml(client.displayName)} · ` : ""}` : "<span>"}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
         ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
+        ${adminDatabaseWorkspace && program.kind === "library" ? `
+          <div class="program-action-panel" id="${panelId}" data-use-client-panel="${programId}" hidden>
+            ${activeClients.length
+              ? `<label for="client-select-${programId}">Select an existing client
+                  <select id="client-select-${programId}" data-client-for-program="${programId}">
+                    <option value="">Choose a client…</option>
+                    ${activeClients.map(item => `<option value="${escapePlanHtml(item.id)}">${escapePlanHtml(item.displayName)}</option>`).join("")}
+                  </select>
+                </label>
+                <button class="button button-primary button-small" type="button"
+                  data-create-client-copy="${programId}"
+                  data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Open client copy</button>`
+              : `<p>No existing active clients are available. Select an existing client before using this program.</p>`}
+          </div>` : ""}
+        ${adminDatabaseWorkspace && program.kind === "client" ? `
+          <div class="program-action-panel program-history-panel" id="${historyPanelId}" data-program-history-panel="${programId}" hidden>
+            <div class="program-version-list"></div>
+          </div>` : ""}
       </div>
       <div class="library-actions">
         <button class="button button-primary button-small" type="button" data-open-database-program="${escapePlanHtml(program.id)}">Open program</button>
         ${program.kind === "library"
-          ? `<button class="button button-secondary button-small" type="button" data-clone-database-program="${escapePlanHtml(program.id)}" data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Create client program</button>`
+          ? adminDatabaseWorkspace
+            ? `<button class="button button-secondary button-small" type="button"
+                data-use-for-client="${programId}" aria-expanded="false" aria-controls="${panelId}">Use for client</button>`
+            : userWorkspace
+              ? `<button class="button button-secondary button-small" type="button"
+                  data-clone-database-program="${programId}"
+                  data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Create client program</button>`
+              : ""
+          : ""}
+        ${adminDatabaseWorkspace && program.kind === "client"
+          ? `<button class="button button-secondary button-small" type="button"
+              data-toggle-program-history="${programId}" aria-expanded="false" aria-controls="${historyPanelId}">Version history</button>`
           : ""}
         ${linkActions}
       </div>
@@ -745,6 +885,8 @@ async function loadDatabaseLibrary() {
       throw new Error(result.error || "Could not load the database program library.");
     }
     planState.databasePrograms = Array.isArray(result.programs) ? result.programs : [];
+    restoreSelectedDatabaseProgramMetadata();
+    renderPlanOverview();
     if (status) status.textContent = "";
     renderDatabaseProgramLibrary();
   } catch (error) {
@@ -755,65 +897,55 @@ async function loadDatabaseLibrary() {
   }
 }
 
-function beginCloneDatabaseProgram(programId, versionId) {
+function restoreSelectedDatabaseProgramMetadata() {
+  const selectedProgram = planState.databasePrograms.find(
+    program => program.id === planState.databaseProgramId
+  );
+  if (!selectedProgram) return;
+
+  planState.databaseProgramKind = selectedProgram.kind || null;
+  planState.databaseProgramClientId = selectedProgram.clientId || null;
+  planState.databaseProgramVersion = Number(selectedProgram.version) || null;
+  planState.databaseProgramVersionStatus = selectedProgram.versionStatus || null;
+  planState.data.databaseProgramId = selectedProgram.id;
+  planState.data.databaseProgramKind = planState.databaseProgramKind;
+  planState.data.databaseProgramClientId = planState.databaseProgramClientId;
+  TrackerData.save(planState.data);
+}
+
+async function createClientDatabaseProgram(programId, versionId, clientId, button, programName = "") {
+  if (!databaseWorkspace) return;
   const program = planState.databasePrograms.find(item => item.id === programId);
-  if (!program || !versionId) {
-    showPlanToast("The selected library version is unavailable.");
+  const selectedClient = planState.clients.find(item => item.id === clientId && item.active);
+  const status = document.getElementById("cloneProgramStatus");
+  if (!program || program.kind !== "library" || !versionId) {
+    if (status) status.textContent = "The selected reusable program version is unavailable.";
     return;
   }
-  planState.cloneSourceProgramId = programId;
-  planState.cloneSourceVersionId = versionId;
-  const form = document.getElementById("cloneProgramForm");
-  const clientInput = document.getElementById("cloneProgramClientNameInput");
-  const nameInput = document.getElementById("cloneProgramNameInput");
-  const status = document.getElementById("cloneProgramStatus");
-  if (form) form.hidden = false;
-  if (clientInput) {
-    clientInput.value = "";
-    clientInput.focus();
+  if (!selectedClient) {
+    if (status) {
+      status.textContent = planState.clients.some(item => item.active)
+        ? "Choose an existing client first."
+        : "No existing active clients are available. Select an existing client before using this program.";
+    }
+    return;
   }
-  if (nameInput) nameInput.value = `${program.name} — Client copy`;
-  if (status) status.textContent = `Copying version ${program.version} from ${program.name}.`;
-}
-
-function cancelCloneDatabaseProgram() {
-  planState.cloneSourceProgramId = null;
-  planState.cloneSourceVersionId = null;
-  const form = document.getElementById("cloneProgramForm");
-  const status = document.getElementById("cloneProgramStatus");
-  if (form) form.hidden = true;
   if (status) status.textContent = "";
-}
-
-async function createClientDatabaseProgram() {
-  if (!databaseWorkspace || !planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
-  const clientInput = document.getElementById("cloneProgramClientNameInput");
-  const nameInput = document.getElementById("cloneProgramNameInput");
-  const button = document.getElementById("cloneProgramSubmit");
-  const clientName = clientInput?.value.trim() || "";
-  const name = nameInput?.value.trim() || "";
-  if (!clientName) {
-    if (clientInput) clientInput.focus();
-    return;
-  }
-  if (!name) {
-    if (nameInput) nameInput.focus();
-    return;
-  }
+  if (status) status.classList.remove("is-error");
   if (button) {
     button.disabled = true;
-    button.textContent = "Creating…";
+    button.textContent = "Preparing…";
   }
   try {
     const response = await fetch(
-      `/api/workoutplanner/programs/${encodeURIComponent(planState.cloneSourceProgramId)}/clone`,
+      `/api/workoutplanner/programs/${encodeURIComponent(programId)}/clone`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sourceVersionId: planState.cloneSourceVersionId,
-          clientName,
-          name
+          sourceVersionId: versionId,
+          clientId,
+          ...(programName ? { name: programName } : {})
         })
       }
     );
@@ -822,36 +954,72 @@ async function createClientDatabaseProgram() {
       throw new Error(result.error || "Could not create the client program.");
     }
     const fresh = TrackerData.defaultData();
-    fresh.person = { name: clientName };
+    fresh.person = { name: selectedClient.displayName };
     fresh.goal = "Build a consistent training habit";
     fresh.draftGoal = fresh.goal;
     fresh.publishedGoal = fresh.goal;
     fresh.draftProgram = TrackerData.normalizeProgram(result.program);
     fresh.publishedProgram = null;
     fresh.databaseProgramId = result.meta?.id;
+    fresh.databaseProgramKind = result.meta?.kind || "client";
+    fresh.databaseProgramClientId = result.meta?.clientId || clientId;
     planState.data = fresh;
     planState.databaseProgramId = result.meta?.id || null;
-    planState.databaseProgramKind = "client";
+    planState.databaseProgramKind = fresh.databaseProgramKind;
+    planState.databaseProgramClientId = fresh.databaseProgramClientId;
     planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
     planState.selectedWeekIndex = 0;
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
-    cancelCloneDatabaseProgram();
+    if (userWorkspace) cancelLegacyClone();
     window.history.pushState({}, "", `${plannerPath}?view=editor`);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
     await loadClients();
     renderAllPlan();
-    showPlanToast("Client program created.");
+    showPlanToast(`Client copy prepared for ${selectedClient.displayName}.`);
   } catch (error) {
-    const status = document.getElementById("cloneProgramStatus");
     if (status) status.textContent = error.message || "Could not create the client program.";
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = "Create client program";
+      button.textContent = userWorkspace ? "Create client program" : "Open client copy";
     }
+  }
+}
+
+async function toggleProgramVersionHistory(programId, button) {
+  const panel = document.querySelector(`[data-program-history-panel="${CSS.escape(programId)}"]`);
+  const list = panel?.querySelector(".program-version-list");
+  if (!panel || !list) return;
+  const opening = panel.hidden;
+  panel.hidden = !opening;
+  button?.setAttribute("aria-expanded", String(opening));
+  if (!opening || panel.dataset.loaded === "true") return;
+
+  list.innerHTML = `<p class="program-history-status">Loading published versions…</p>`;
+  try {
+    const response = await fetch(`/api/workoutplanner/programs/${encodeURIComponent(programId)}/versions`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not load program history.");
+    }
+    const versions = Array.isArray(result.versions) ? result.versions : [];
+    list.innerHTML = versions.length
+      ? versions.map(version => {
+        const isCurrent = version.status === "published";
+        return `
+          <div class="program-version-row">
+            <strong>Version ${Number(version.version) || "—"}</strong>
+            <span class="${isCurrent ? "current-tag" : "archived-tag"}">${isCurrent ? "Current published" : "Archived"}</span>
+            <span>Created ${formatPublishedDate(version.createdAt)} · Published ${formatPublishedDate(version.publishedAt)}</span>
+          </div>`;
+      }).join("")
+      : `<p class="program-history-status">No published versions yet.</p>`;
+    panel.dataset.loaded = "true";
+  } catch (error) {
+    list.innerHTML = `<p class="program-history-status is-error">${escapePlanHtml(error.message || "Could not load program history.")}</p>`;
   }
 }
 
@@ -863,7 +1031,12 @@ async function openDatabaseProgram(programId) {
       throw new Error(result.error || "Could not load that database program.");
     }
     const fresh = TrackerData.defaultData();
-    fresh.person = { name: result.meta?.kind === "client" ? result.program.name : "Coach library" };
+    const linkedClient = planState.clients.find(item => item.id === result.meta?.clientId);
+    fresh.person = {
+      name: result.meta?.kind === "client"
+        ? linkedClient?.displayName || result.program.name
+        : "Coach library"
+    };
     fresh.goal = "Build a consistent training habit";
     fresh.draftGoal = fresh.goal;
     fresh.publishedGoal = fresh.goal;
@@ -876,9 +1049,12 @@ async function openDatabaseProgram(programId) {
     fresh.logs = [];
     fresh.history = [];
     fresh.databaseProgramId = result.meta?.id || programId;
+    fresh.databaseProgramKind = result.meta?.kind || "library";
+    fresh.databaseProgramClientId = result.meta?.clientId || null;
     planState.data = fresh;
     planState.databaseProgramId = fresh.databaseProgramId;
-    planState.databaseProgramKind = result.meta?.kind || "library";
+    planState.databaseProgramKind = fresh.databaseProgramKind;
+    planState.databaseProgramClientId = fresh.databaseProgramClientId;
     planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
     planState.selectedWeekIndex = 0;
@@ -917,9 +1093,12 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     }
     planState.databaseProgramId = result.meta?.id || planState.databaseProgramId;
     planState.databaseProgramKind = result.meta?.kind || planState.databaseProgramKind || "library";
+    planState.databaseProgramClientId = result.meta?.clientId || planState.databaseProgramClientId || null;
     planState.databaseProgramVersion = Number(result.meta?.version || program.version) || 1;
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
     planState.data.databaseProgramId = planState.databaseProgramId;
+    planState.data.databaseProgramKind = planState.databaseProgramKind;
+    planState.data.databaseProgramClientId = planState.databaseProgramClientId;
     planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
@@ -965,6 +1144,9 @@ async function publishDatabaseProgram() {
     planState.databaseProgramVersion = Number(result.meta?.version || planState.databaseProgramVersion || 1);
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "published";
     planState.data.databaseProgramId = planState.databaseProgramId;
+    planState.data.databaseProgramKind = planState.databaseProgramKind;
+    planState.data.databaseProgramClientId = result.meta?.clientId || planState.databaseProgramClientId || null;
+    planState.databaseProgramClientId = planState.data.databaseProgramClientId;
     planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
@@ -1682,21 +1864,41 @@ function bindPlanEvents() {
   if (databaseProgramList) {
     databaseProgramList.addEventListener("click", event => {
       const open = event.target.closest("[data-open-database-program]");
-      const clone = event.target.closest("[data-clone-database-program]");
+      const useForClient = event.target.closest("[data-use-for-client]");
+      const createClientCopy = event.target.closest("[data-create-client-copy]");
+      const legacyClone = event.target.closest("[data-clone-database-program]");
+      const history = event.target.closest("[data-toggle-program-history]");
       if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
-      if (clone) beginCloneDatabaseProgram(
-        clone.dataset.cloneDatabaseProgram,
-        clone.dataset.cloneVersionId
-      );
+      if (legacyClone && userWorkspace) {
+        beginLegacyClone(
+          legacyClone.dataset.cloneDatabaseProgram,
+          legacyClone.dataset.cloneVersionId
+        );
+      }
+      if (useForClient) {
+        const panel = databaseProgramList.querySelector(
+          `[data-use-client-panel="${CSS.escape(useForClient.dataset.useForClient)}"]`
+        );
+        if (panel) {
+          panel.hidden = !panel.hidden;
+          useForClient.setAttribute("aria-expanded", String(!panel.hidden));
+        }
+      }
+      if (createClientCopy) {
+        const programId = createClientCopy.dataset.createClientCopy;
+        const select = databaseProgramList.querySelector(
+          `[data-client-for-program="${CSS.escape(programId)}"]`
+        );
+        createClientDatabaseProgram(
+          programId,
+          createClientCopy.dataset.cloneVersionId,
+          select?.value || "",
+          createClientCopy
+        );
+      }
+      if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
     });
   }
-  const cloneForm = document.getElementById("cloneProgramForm");
-  if (cloneForm) cloneForm.addEventListener("submit", event => {
-    event.preventDefault();
-    createClientDatabaseProgram();
-  });
-  const cloneCancel = document.getElementById("cloneProgramCancel");
-  if (cloneCancel) cloneCancel.addEventListener("click", cancelCloneDatabaseProgram);
   document.getElementById("createPlanBtn").addEventListener("click", event => {
     event.preventDefault();
     startNewDraft();
@@ -1723,6 +1925,7 @@ function bindPlanEvents() {
 
 TrackerData.ensureAssignments(planState.data);
 TrackerData.save(planState.data);
+applyAdminWorkspaceCopy();
 bindPlanEvents();
 renderAllPlan();
 seedRequestedDemo().then(() => Promise.all([

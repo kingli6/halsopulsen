@@ -278,6 +278,8 @@ const TrackerData = (() => {
         publishedAt: raw.publishedAt || "",
         assignmentPrefix: String(raw.assignmentPrefix || ""),
         databaseProgramId: raw.databaseProgramId || null,
+        databaseProgramKind: raw.databaseProgramKind || null,
+        databaseProgramClientId: raw.databaseProgramClientId || null,
         assignments: (raw.assignments || []).map(normalizeAssignment),
         logs: Array.isArray(raw.logs) ? raw.logs : []
       };
@@ -302,7 +304,9 @@ const TrackerData = (() => {
       draftSourceVersion: null,
       publishedAt: "",
       assignmentPrefix: "",
-        databaseProgramId: null,
+      databaseProgramId: raw?.databaseProgramId || null,
+      databaseProgramKind: raw?.databaseProgramKind || null,
+      databaseProgramClientId: raw?.databaseProgramClientId || null,
       assignments: (raw?.assignments || []).map(normalizeAssignment),
       logs: Array.isArray(raw?.logs) ? raw.logs : []
     };
@@ -358,7 +362,9 @@ const TrackerData = (() => {
       draftSourceVersion: null,
       publishedAt: "",
       assignmentPrefix: "",
-        databaseProgramId: null,
+      databaseProgramId: null,
+      databaseProgramKind: null,
+      databaseProgramClientId: null,
       assignments: [],
       logs: []
     };
@@ -402,6 +408,8 @@ const TrackerData = (() => {
       publishedAt: plan?.publishedAt || "",
       assignmentPrefix: `v${Number(plan?.version) || 1}-assignment`,
       databaseProgramId: null,
+      databaseProgramKind: null,
+      databaseProgramClientId: null,
       assignments: Array.isArray(plan?.assignments) ? plan.assignments.map(normalizeAssignment) : [],
       logs: Array.isArray(plan?.logs) ? plan.logs : []
     };

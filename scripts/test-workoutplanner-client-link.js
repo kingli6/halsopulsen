@@ -10,6 +10,7 @@ const {
   revokeClientAccessLink,
   regenerateClientAccessLink
 } = require("../workoutplanner/client-access");
+const { listProgramVersions } = require("../workoutplanner/program-library");
 
 async function run() {
   const token = generateClientAccessToken();
@@ -24,6 +25,41 @@ async function run() {
     generateClientAccessToken("link-id-a"),
     generateClientAccessToken("link-id-b")
   );
+
+  let historyQuery = "";
+  const versions = await listProgramVersions({
+    async query(sql, values) {
+      historyQuery = sql;
+      assert.deepStrictEqual(values, [
+        "22222222-2222-4222-8222-222222222222",
+        "11111111-1111-4111-8111-111111111111"
+      ]);
+      return {
+        rows: [
+          {
+            id: "version-current",
+            version_number: 3,
+            status: "published",
+            created_at: "2026-10-01T10:00:00.000Z",
+            published_at: "2026-10-02T10:00:00.000Z"
+          },
+          {
+            id: "version-old",
+            version_number: 2,
+            status: "archived",
+            created_at: "2026-09-20T10:00:00.000Z",
+            published_at: "2026-09-21T10:00:00.000Z"
+          }
+        ]
+      };
+    }
+  }, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222");
+  assert.match(historyQuery, /p\.coach_profile_id = \$2/);
+  assert.match(historyQuery, /pv\.status in \('published', 'archived'\)/);
+  assert.deepStrictEqual(versions.map(version => [version.version, version.status]), [
+    [3, "published"],
+    [2, "archived"]
+  ]);
 
   const transactionQueries = [];
   const transactionClient = {
@@ -185,15 +221,26 @@ async function run() {
   );
   const adminPage = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan", "index.html"), "utf8");
   assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
-  assert.match(adminPage, /id="cloneProgramClientNameInput"/);
+  assert.doesNotMatch(adminPage, /cloneProgramClientNameInput|cloneProgramNameInput|id="cloneProgramForm"/);
   const planner = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
+  assert.match(planner, /Use for client/);
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);
   assert.match(planner, /data-rotate-client-link/);
+  assert.match(planner, /data-create-client-copy/);
+  assert.match(planner, /data-toggle-program-history/);
+  assert.match(planner, /restoreSelectedDatabaseProgramMetadata/);
   const programLibrary = fs.readFileSync(path.join(__dirname, "..", "workoutplanner", "program-library.js"), "utf8");
-  assert.match(programLibrary, /lower\(trim\(c\.display_name\)\) = lower\(trim\(\$1\)\)/);
-  assert.match(programLibrary, /values \('client', \$1, NULL\)/);
-  assert.match(server, /req\.body\?\.clientName/);
+  const cloneImplementation = programLibrary.slice(
+    programLibrary.indexOf("async function cloneLibraryProgramVersion"),
+    programLibrary.indexOf("module.exports")
+  );
+  assert.match(cloneImplementation, /where c\.id = \$1/);
+  assert.doesNotMatch(cloneImplementation, /insert into public\.(?:profiles|clients)\s*\(/i);
+  assert.doesNotMatch(cloneImplementation, /clientName|clientIdentity/);
+  assert.match(server, /req\.body\?\.clientId/);
+  assert.doesNotMatch(server, /req\.body\?\.clientName/);
+  assert.match(server, /\/api\/workoutplanner\/programs\/:programId\/versions/);
 
   console.log("WorkoutPlanner private client-link tests passed.");
 }
