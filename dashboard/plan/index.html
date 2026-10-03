@@ -32,7 +32,7 @@
       <div>
         <p class="eyebrow">OWNER WORKSPACE</p>
         <h1>Plan with intent. Keep every version.</h1>
-        <p class="intro-copy">Browse published programs in the library, or open a separate editor to create a new plan and publish an immutable version for logging.</p>
+        <p class="intro-copy">Create reusable plans, assign independent programs to clients, and update an ongoing program without changing its private link.</p>
       </div>
       <div class="intro-actions">
         <span class="local-owner-badge">Admin workspace · signed in</span>
@@ -42,15 +42,15 @@
 
     <section class="owner-notice">
       <span class="notice-icon">i</span>
-      <div><strong>This is the planning side.</strong><span>Only the signed-in owner can edit, publish, or delete programs. Participant links expose logging only.</span></div>
+      <div><strong>This is the planning side.</strong><span>Only the admin can edit or publish programs. Clients do not need an account; their private link shows their program read-only.</span></div>
     </section>
 
     <section class="library-view card" id="libraryView" aria-labelledby="libraryHeading">
       <div class="library-view-header">
         <div>
-          <p class="section-kicker">PUBLISHED PROGRAMS</p>
+          <p class="section-kicker">WORKOUT PROGRAMS</p>
           <h2 id="libraryHeading">Plan library</h2>
-          <p>Edit the current plan while it is ongoing. Existing participant records stay intact, and future planned assignments use your updates. Archived versions can still be used to create a new version.</p>
+          <p>Build reusable plans or manage each client’s ongoing program. Publishing an update keeps that client’s private link.</p>
         </div>
          <a class="button button-primary" href="/admin/plans/?view=editor" id="createPlanBtn">+ Create new plan</a>
       </div>
@@ -74,9 +74,9 @@
        <section class="library-view card" id="databaseProgramLibrary" aria-labelledby="databaseProgramLibraryHeading" hidden>
          <div class="library-view-header">
            <div>
-             <p class="section-kicker">DATABASE PROGRAM LIBRARY</p>
+              <p class="section-kicker">PROGRAM LIBRARY</p>
              <h2 id="databaseProgramLibraryHeading">Program library</h2>
-             <p>Open reusable library programs or create independent client copies. Anonymous access is not part of this pass.</p>
+              <p>Open reusable programs or create independent client copies. Each client program can be updated and shared through its own private link.</p>
            </div>
            <span class="draft-status is-current" id="databaseProgramLibrarySummary">0 programs</span>
          </div>

@@ -122,8 +122,9 @@ async function run() {
   assert.match(migration, /client_access_links_one_active_per_program/);
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
-  assert.match(server, /app\.post\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerCoach/);
-  assert.match(server, /app\.delete\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerCoach/);
+  assert.match(server, /app\.post\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
+  assert.match(server, /app\.delete\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
+  assert.match(server, /function requireWorkoutPlannerOwner\(req, res, next\)[\s\S]*?if \(readAdminSession\(req\)\)[\s\S]*?requireLocalWorkoutPlannerCoach/);
   assert.match(server, /app\.get\('\/api\/client\/:token'/);
   assert.match(server, /app\.get\(\['\/p\/:token'/);
   assert.match(server, /res\.setHeader\('Cache-Control', 'no-store'\)/);
