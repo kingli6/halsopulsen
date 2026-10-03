@@ -16,8 +16,8 @@ const {
   publicProfile
 } = require('./workoutplanner/identity');
 const {
-  createClientForCoach,
   findClientDataByToken,
+  getClientAccessLink,
   hasClientAccessToken,
   revokeClientAccessLink,
   regenerateClientAccessLink
@@ -282,27 +282,6 @@ app.get('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, r
   }
 });
 
-app.post('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, res) => {
-  const displayName = typeof req.body?.displayName === 'string'
-    ? req.body.displayName.trim()
-    : '';
-  if (!displayName) {
-    return res.status(400).json({ ok: false, error: 'Client name is required.' });
-  }
-
-  try {
-    const client = await createClientForCoach(
-      getWorkoutPlannerPool(),
-      req.workoutPlannerProfile.id,
-      displayName
-    );
-    return res.status(201).json({ ok: true, client });
-  } catch (error) {
-    console.error('Could not create WorkoutPlanner client:', error.message);
-    return res.status(503).json({ ok: false, error: 'The client could not be created.' });
-  }
-});
-
 app.get('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const programs = await listPrograms(
@@ -343,7 +322,7 @@ app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerO
       req.workoutPlannerProfile.id,
       req.params.programId,
       req.body?.sourceVersionId,
-      req.body?.clientId,
+      req.body?.clientName,
       req.body?.name
     );
     return res.status(201).json({
@@ -421,6 +400,35 @@ app.post('/api/workoutplanner/programs/:programId/publish', requireWorkoutPlanne
       ok: false,
       error: error.statusCode ? error.message : 'The program could not be published.'
     });
+  }
+});
+
+app.get('/api/workoutplanner/clients/:clientId/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const link = await getClientAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId,
+      req.params.programId
+    );
+    if (!link) {
+      return res.status(404).json({ ok: false, error: 'Active private client link not found.' });
+    }
+    if (!link.recoverable) {
+      return res.status(409).json({
+        ok: false,
+        error: 'This link remains active, but its original address cannot be recovered. Replace it once to make future copies available.'
+      });
+    }
+    const clientPath = `/p/${link.token}`;
+    return res.json({
+      ok: true,
+      path: clientPath,
+      url: `${req.protocol}://${req.get('host')}${clientPath}`
+    });
+  } catch (error) {
+    console.error('Could not retrieve WorkoutPlanner client link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The private client link could not be retrieved.' });
   }
 });
 
