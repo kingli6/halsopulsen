@@ -24,6 +24,7 @@ const {
 } = require('./workoutplanner/client-access');
 const {
   cloneLibraryProgramVersion,
+  listProgramVersions,
   listPrograms,
   loadProgram,
   publishProgram,
@@ -315,6 +316,23 @@ app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, a
   }
 });
 
+app.get('/api/workoutplanner/programs/:programId/versions', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const versions = await listProgramVersions(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    return res.json({ ok: true, versions });
+  } catch (error) {
+    console.error('Could not list WorkoutPlanner program versions:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The program history could not be loaded.'
+    });
+  }
+});
+
 app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const result = await cloneLibraryProgramVersion(
@@ -322,7 +340,7 @@ app.post('/api/workoutplanner/programs/:programId/clone', requireWorkoutPlannerO
       req.workoutPlannerProfile.id,
       req.params.programId,
       req.body?.sourceVersionId,
-      req.body?.clientName,
+      req.body?.clientId,
       req.body?.name
     );
     return res.status(201).json({

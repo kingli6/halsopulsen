@@ -315,6 +315,7 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
   const result = await client.query(
     `select
        p.id as program_id,
+       p.client_id,
        p.name as program_name,
        p.description as program_description,
        p.status as program_status,
@@ -445,6 +446,7 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
   };
   return {
     id: first.program_id,
+    clientId: first.client_id || null,
     kind: first.program_kind || "library",
     sourceProgramId: first.source_program_id,
     sourceVersionId: first.source_version_id,
@@ -468,6 +470,7 @@ async function listPrograms(db, coachProfileId) {
        p.description,
        p.status,
        p.kind,
+       p.client_id,
        p.source_program_id,
        p.source_version_id,
        p.start_date,
@@ -502,6 +505,7 @@ async function listPrograms(db, coachProfileId) {
   );
   return result.rows.map(row => ({
      id: row.id,
+     clientId: row.client_id || null,
      kind: row.kind || "library",
      sourceProgramId: row.source_program_id,
      sourceVersionId: row.source_version_id,
@@ -514,6 +518,42 @@ async function listPrograms(db, coachProfileId) {
     version: Number(row.version_number) || 1,
     versionStatus: row.version_status || "draft",
     durationWeeks: Number(row.week_count) || 0
+  }));
+}
+
+async function listProgramVersions(db, coachProfileId, programId) {
+  if (!isUuid(coachProfileId)) {
+    const error = new Error("A valid coach profile is required.");
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!isUuid(programId)) {
+    const error = new Error("That program ID is invalid.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const result = await db.query(
+    `select pv.id,
+            pv.version_number,
+            pv.status,
+            pv.created_at,
+            pv.published_at
+       from public.programs p
+       join public.program_versions pv on pv.program_id = p.id
+      where p.id = $1
+        and p.coach_profile_id = $2
+        and p.kind = 'client'
+        and pv.status in ('published', 'archived')
+      order by pv.version_number desc`,
+    [programId, coachProfileId]
+  );
+  return result.rows.map(row => ({
+    id: row.id,
+    version: Number(row.version_number),
+    status: row.status,
+    createdAt: row.created_at,
+    publishedAt: row.published_at
   }));
 }
 
@@ -876,29 +916,16 @@ async function cloneLibraryProgramVersion(
   coachProfileId,
   sourceProgramId,
   sourceVersionId,
-  clientNameOrId,
-  clientProgramName
+  targetClientId,
+  clientProgramName = null
 ) {
   if (
     !isUuid(coachProfileId) ||
     !isUuid(sourceProgramId) ||
-    !isUuid(sourceVersionId)
+    !isUuid(sourceVersionId) ||
+    !isUuid(targetClientId)
   ) {
-    const error = new Error("Valid coach, program, and version IDs are required.");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const clientIdentity = text(clientNameOrId);
-  if (!clientIdentity) {
-    const error = new Error("A client name is required.");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const name = text(clientProgramName);
-  if (!name) {
-    const error = new Error("A name is required for the client program.");
+    const error = new Error("Valid coach, program, version, and existing client IDs are required.");
     error.statusCode = 400;
     throw error;
   }
@@ -907,54 +934,18 @@ async function cloneLibraryProgramVersion(
   try {
     await client.query("begin");
 
-    let targetClientResult;
-    if (isUuid(clientIdentity)) {
-      targetClientResult = await client.query(
-        `select c.id, c.display_name
-           from public.clients c
-           join public.coach_clients cc on cc.client_id = c.id
-          where c.id = $1
-            and cc.coach_profile_id = $2
-            and c.active = true
-          for update of c`,
-        [clientIdentity, coachProfileId]
-      );
-    } else {
-      targetClientResult = await client.query(
-        `select c.id, c.display_name
-           from public.clients c
-           join public.coach_clients cc on cc.client_id = c.id
-          where lower(trim(c.display_name)) = lower(trim($1))
-            and cc.coach_profile_id = $2
-            and c.active = true
-          order by c.created_at asc
-          limit 1
-          for update of c`,
-        [clientIdentity, coachProfileId]
-      );
-      if (targetClientResult.rowCount === 0) {
-        const profileResult = await client.query(
-          `insert into public.profiles (role, display_name, clerk_user_id)
-           values ('client', $1, NULL)
-           returning id`,
-          [clientIdentity]
-        );
-        const newClientResult = await client.query(
-          `insert into public.clients (profile_id, display_name)
-           values ($1, $2)
-           returning id, display_name`,
-          [profileResult.rows[0].id, clientIdentity]
-        );
-        targetClientResult = newClientResult;
-        await client.query(
-          `insert into public.coach_clients (coach_profile_id, client_id)
-           values ($1, $2)`,
-          [coachProfileId, targetClientResult.rows[0].id]
-        );
-      }
-    }
+    const targetClientResult = await client.query(
+      `select c.id, c.display_name
+         from public.clients c
+         join public.coach_clients cc on cc.client_id = c.id
+        where c.id = $1
+          and cc.coach_profile_id = $2
+          and c.active = true
+        for update of c`,
+      [targetClientId, coachProfileId]
+    );
     if (targetClientResult.rowCount !== 1) {
-      const error = new Error("The target client was not found.");
+      const error = new Error("Select an existing active client.");
       error.statusCode = 404;
       throw error;
     }
@@ -985,6 +976,7 @@ async function cloneLibraryProgramVersion(
       throw error;
     }
     const source = sourceResult.rows[0];
+    const clientCopyName = text(clientProgramName) || source.name;
 
     const clientProgramResult = await client.query(
       `insert into public.programs
@@ -997,7 +989,7 @@ async function cloneLibraryProgramVersion(
         clientId,
         source.id,
         source.version_id,
-        name,
+        clientCopyName,
         source.description || "",
         source.status,
         dateValue(source.start_date)
@@ -1134,6 +1126,7 @@ async function cloneLibraryProgramVersion(
 
 module.exports = {
   cloneLibraryProgramVersion,
+  listProgramVersions,
   listPrograms,
   loadProgram,
   normalizeProgram,
