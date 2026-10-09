@@ -57,15 +57,15 @@ function applyAdminWorkspaceCopy() {
   if (!adminDatabaseWorkspace) return;
   const intro = document.querySelector(".intro-copy");
   if (intro) {
-    intro.textContent = "Create reusable programs, prepare copies for existing clients, and publish updates without changing a client’s private link.";
+    intro.textContent = "Create a program for a named person, publish it directly, and share a private link. Drafts stay private until you publish.";
   }
   const libraryDescription = document.querySelector("#libraryHeading")?.parentElement?.querySelector("p");
   if (libraryDescription) {
-    libraryDescription.textContent = "Build reusable programs or manage client-specific copies. Publishing an update keeps the client’s private link.";
+    libraryDescription.textContent = "Save a program draft, then publish it for the person named in its details. Republished versions keep the same private link.";
   }
   const programDescription = document.querySelector("#databaseProgramLibraryHeading")?.parentElement?.querySelector("p");
   if (programDescription) {
-    programDescription.textContent = "Open reusable programs or make a copy for an existing client. Each client program can be updated through its private link.";
+    programDescription.textContent = "Programs and their published version history stay in this library. Create a private link to share the latest published version.";
   }
 }
 
@@ -204,15 +204,15 @@ function renderPlanOverview() {
   const isDatabaseClientProgram = databaseWorkspace
     && planState.databaseProgramId
     && planState.databaseProgramKind === "client";
-  setPlanText("publishHeading", isDatabaseClientProgram
+  setPlanText("publishHeading", adminDatabaseWorkspace
+    ? (databaseStatus === "published" ? "Publish an update when this program is ready" : "Publish this program when it is ready")
+    : isDatabaseClientProgram
     ? (databaseStatus === "published" ? "Publish an update when this program is ready" : "Publish when this program is ready")
-    : adminDatabaseWorkspace
-    ? "Save this reusable program to the library"
     : changed ? "Publish when this program is ready" : "Your published program is current");
-  setPlanText("publishDescription", isDatabaseClientProgram
+  setPlanText("publishDescription", adminDatabaseWorkspace
+    ? "Publishing makes this version available through the private program page. Draft changes stay hidden until then; saved versions remain in history."
+    : isDatabaseClientProgram
     ? "Save edits as a draft, then publish them to the same private client link. Draft changes stay hidden until publishing."
-    : adminDatabaseWorkspace
-    ? "Save a reusable program here, then create an independent copy for each client."
     : changed
     ? (planState.editingCurrentPlanId
       ? "Existing completed, skipped, or moved records stay unchanged. Future planned assignments will use these updates, with the same version and share link."
@@ -220,16 +220,21 @@ function renderPlanOverview() {
     : "The logging page and its share link are already showing this version.");
   const publishButton = document.getElementById("publishBtn");
   if (publishButton && !planState.publishing) {
-    publishButton.hidden = adminDatabaseWorkspace && !isDatabaseClientProgram;
+    if (adminDatabaseWorkspace) publishButton.hidden = false;
     publishButton.textContent = planState.editingCurrentPlanId
       ? "Save current plan"
+      : adminDatabaseWorkspace ? "Publish program"
       : isDatabaseClientProgram ? "Publish client program" : "Publish plan";
   }
   const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
   if (saveDatabaseButton && databaseWorkspace) {
-    saveDatabaseButton.textContent = isDatabaseClientProgram ? "Save client draft" : "Save to program library";
+    saveDatabaseButton.textContent = isDatabaseClientProgram && userWorkspace
+      ? "Save client draft"
+      : adminDatabaseWorkspace ? "Save program draft" : "Save to program library";
   }
-  setPlanText("detailsModalContext", planState.editingCurrentPlanId
+  setPlanText("detailsModalContext", adminDatabaseWorkspace
+    ? "Person is a descriptive label, not a client account. Draft changes remain private until you publish."
+    : planState.editingCurrentPlanId
     ? "These changes update the current plan. Existing participant records stay intact; future planned assignments follow the updated program."
     : "These details are part of the version you publish. The live logging page changes only after saving or publishing.");
   const currentLink = document.getElementById("currentShareLink");
@@ -794,77 +799,91 @@ function renderDatabaseProgramLibrary() {
   const programs = planState.databasePrograms;
   if (summary) summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"}`;
   if (!programs.length) {
-    container.innerHTML = `<div class="empty-panel">Save a draft to build your program library.</div>`;
+    container.innerHTML = `<div class="empty-panel">${adminDatabaseWorkspace
+      ? "Save a draft to begin publishing programs."
+      : "Save a draft to build your program library."}</div>`;
     return;
   }
-  const activeClients = planState.clients.filter(client => client.active);
   container.innerHTML = programs.map(program => {
-    const client = program.kind === "client"
+    const legacyClient = userWorkspace && program.kind === "client"
       ? planState.clients.find(item =>
         item.id === program.clientId
         || item.programs.some(clientProgram => clientProgram.id === program.id)
       )
       : null;
-    const clientProgram = client?.programs.find(item => item.id === program.id);
+    const legacyClientProgram = legacyClient?.programs.find(item => item.id === program.id);
     const programId = escapePlanHtml(program.id);
-    const panelId = `use-client-${programId}`;
     const historyPanelId = `program-history-${programId}`;
-    const linkActions = client && clientProgram
-      ? clientProgram.hasActivePrivateLink
+    let linkActions = "";
+    if (adminDatabaseWorkspace && program.kind === "library") {
+      linkActions = program.hasActivePrivateLink
         ? `
           <button class="button button-secondary button-small" type="button"
-            data-copy-client-link="${escapePlanHtml(client.id)}"
+            data-copy-program-link="${programId}">Copy current link</button>
+          <button class="button button-secondary button-small" type="button"
+            data-rotate-program-link="${programId}">Rotate link</button>
+          <button class="button button-danger button-small" type="button"
+            data-revoke-program-link="${programId}">Revoke</button>`
+        : program.hasPublishedVersion && program.publishedStartDate
+          ? `<button class="button button-secondary button-small" type="button"
+              data-create-program-link="${programId}">Create private link</button>`
+          : program.hasPublishedVersion
+            ? `<span class="client-create-status">Publish the current version before creating a private link.</span>`
+            : `<span class="client-create-status">Publish a version to create a private link.</span>`;
+    } else if (adminDatabaseWorkspace && program.kind === "client" && program.clientId) {
+      linkActions = program.hasActivePrivateLink
+        ? `
+          <button class="button button-secondary button-small" type="button"
+            data-copy-client-link="${escapePlanHtml(program.clientId)}"
             data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
           <button class="button button-secondary button-small" type="button"
-            data-rotate-client-link="${escapePlanHtml(client.id)}"
+            data-rotate-client-link="${escapePlanHtml(program.clientId)}"
             data-program-id="${escapePlanHtml(program.id)}">Rotate link</button>
           <button class="button button-danger button-small" type="button"
-            data-revoke-client-link="${escapePlanHtml(client.id)}"
+            data-revoke-client-link="${escapePlanHtml(program.clientId)}"
+            data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
+        : program.hasPublishedVersion
+          ? `<button class="button button-secondary button-small" type="button"
+            data-create-client-link="${escapePlanHtml(program.clientId)}"
+            data-program-id="${escapePlanHtml(program.id)}">Create private link</button>`
+          : `<span class="client-create-status">Publish a version to create a private link.</span>`
+    } else if (legacyClient && legacyClientProgram) {
+      linkActions = legacyClientProgram.hasActivePrivateLink
+        ? `
+          <button class="button button-secondary button-small" type="button"
+            data-copy-client-link="${escapePlanHtml(legacyClient.id)}"
+            data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
+          <button class="button button-secondary button-small" type="button"
+            data-rotate-client-link="${escapePlanHtml(legacyClient.id)}"
+            data-program-id="${escapePlanHtml(program.id)}">Rotate link</button>
+          <button class="button button-danger button-small" type="button"
+            data-revoke-client-link="${escapePlanHtml(legacyClient.id)}"
             data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
         : program.versionStatus === "published"
           ? `<button class="button button-secondary button-small" type="button"
-            data-create-client-link="${escapePlanHtml(client.id)}"
+            data-create-client-link="${escapePlanHtml(legacyClient.id)}"
             data-program-id="${escapePlanHtml(program.id)}">Create private link</button>`
-          : `<span class="client-create-status">Publish a version to create a private link.</span>`
-      : "";
+          : `<span class="client-create-status">Publish a version to create a private link.</span>`;
+    }
     return `
     <article class="library-item">
       <div class="library-item-main">
         <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="${program.versionStatus === "published" ? "current-tag" : "draft-status is-draft"}">${program.kind === "client" ? "Client copy" : "Library"} · ${escapePlanHtml(program.versionStatus || "draft")}</span></div>
-        ${program.kind === "client" ? `<span>${client ? `For ${escapePlanHtml(client.displayName)} · ` : ""}` : "<span>"}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
+        <span>${(adminDatabaseWorkspace ? program.personName : legacyClient?.displayName) ? `For ${escapePlanHtml(adminDatabaseWorkspace ? program.personName : legacyClient.displayName)} · ` : ""}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
         ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
-        ${adminDatabaseWorkspace && program.kind === "library" ? `
-          <div class="program-action-panel" id="${panelId}" data-use-client-panel="${programId}" hidden>
-            ${activeClients.length
-              ? `<label for="client-select-${programId}">Select an existing client
-                  <select id="client-select-${programId}" data-client-for-program="${programId}">
-                    <option value="">Choose a client…</option>
-                    ${activeClients.map(item => `<option value="${escapePlanHtml(item.id)}">${escapePlanHtml(item.displayName)}</option>`).join("")}
-                  </select>
-                </label>
-                <button class="button button-primary button-small" type="button"
-                  data-create-client-copy="${programId}"
-                  data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Open client copy</button>`
-              : `<p>No existing active clients are available. Select an existing client before using this program.</p>`}
-          </div>` : ""}
-        ${adminDatabaseWorkspace && program.kind === "client" ? `
+        ${adminDatabaseWorkspace ? `
           <div class="program-action-panel program-history-panel" id="${historyPanelId}" data-program-history-panel="${programId}" hidden>
             <div class="program-version-list"></div>
           </div>` : ""}
       </div>
       <div class="library-actions">
         <button class="button button-primary button-small" type="button" data-open-database-program="${escapePlanHtml(program.id)}">Open program</button>
-        ${program.kind === "library"
-          ? adminDatabaseWorkspace
-            ? `<button class="button button-secondary button-small" type="button"
-                data-use-for-client="${programId}" aria-expanded="false" aria-controls="${panelId}">Use for client</button>`
-            : userWorkspace
-              ? `<button class="button button-secondary button-small" type="button"
+        ${program.kind === "library" && userWorkspace
+          ? `<button class="button button-secondary button-small" type="button"
                   data-clone-database-program="${programId}"
                   data-clone-version-id="${escapePlanHtml(program.versionId || "")}">Create client program</button>`
-              : ""
           : ""}
-        ${adminDatabaseWorkspace && program.kind === "client"
+        ${adminDatabaseWorkspace
           ? `<button class="button button-secondary button-small" type="button"
               data-toggle-program-history="${programId}" aria-expanded="false" aria-controls="${historyPanelId}">Version history</button>`
           : ""}
@@ -907,6 +926,12 @@ function restoreSelectedDatabaseProgramMetadata() {
   planState.databaseProgramClientId = selectedProgram.clientId || null;
   planState.databaseProgramVersion = Number(selectedProgram.version) || null;
   planState.databaseProgramVersionStatus = selectedProgram.versionStatus || null;
+  if (adminDatabaseWorkspace) {
+    planState.data.person = {
+      ...(planState.data.person || {}),
+      name: selectedProgram.personName || selectedProgram.name || "My dashboard"
+    };
+  }
   planState.data.databaseProgramId = selectedProgram.id;
   planState.data.databaseProgramKind = planState.databaseProgramKind;
   planState.data.databaseProgramClientId = planState.databaseProgramClientId;
@@ -1033,9 +1058,11 @@ async function openDatabaseProgram(programId) {
     const fresh = TrackerData.defaultData();
     const linkedClient = planState.clients.find(item => item.id === result.meta?.clientId);
     fresh.person = {
-      name: result.meta?.kind === "client"
-        ? linkedClient?.displayName || result.program.name
-        : "Coach library"
+      name: userWorkspace
+        ? result.meta?.kind === "client"
+          ? linkedClient?.displayName || result.program.name
+          : "Coach library"
+        : result.meta?.personName || result.program.name
     };
     fresh.goal = "Build a consistent training habit";
     fresh.draftGoal = fresh.goal;
@@ -1085,7 +1112,10 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     const response = await fetch(endpoint, {
       method: planState.databaseProgramId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ program })
+      body: JSON.stringify({
+        program,
+        ...(adminDatabaseWorkspace ? { personName: planState.data.person?.name || "" } : {})
+      })
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) {
@@ -1120,7 +1150,7 @@ async function saveDatabaseProgram({ silent = false } = {}) {
 }
 
 async function publishDatabaseProgram() {
-  if (!databaseWorkspace || planState.databaseProgramKind !== "client" || !planState.databaseProgramId) return;
+  if (!databaseWorkspace) return;
   if (planState.publishing) return;
 
   planState.publishing = true;
@@ -1138,7 +1168,7 @@ async function publishDatabaseProgram() {
     );
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) {
-      throw new Error(result.error || "Could not publish the client program.");
+      throw new Error(result.error || "Could not publish the program.");
     }
 
     planState.databaseProgramVersion = Number(result.meta?.version || planState.databaseProgramVersion || 1);
@@ -1150,16 +1180,22 @@ async function publishDatabaseProgram() {
     planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
-    await loadClients();
+    if (userWorkspace) await loadClients();
     renderAllPlan();
-    showPlanToast(`Client program published. ${result.meta?.publishedAssignmentCount || 0} assignments created.`);
+    showPlanToast(planState.databaseProgramKind === "library"
+      ? "Program published. Create its private link from the program library."
+      : `Client program published. ${result.meta?.publishedAssignmentCount || 0} assignments created.`);
   } catch (error) {
-    showPlanToast(error.message || "Could not publish the client program.");
+    showPlanToast(error.message || "Could not publish the program.");
   } finally {
     planState.publishing = false;
     if (button) {
       button.disabled = false;
-      button.textContent = "Publish plan";
+      button.textContent = adminDatabaseWorkspace
+        ? "Publish program"
+        : planState.databaseProgramKind === "client"
+          ? "Publish client program"
+          : "Publish plan";
     }
   }
 }
@@ -1510,11 +1546,7 @@ function clearDay(weekday) {
 
 async function publishPlan() {
   if (adminDatabaseWorkspace) {
-    if (planState.databaseProgramKind === "client" && planState.databaseProgramId) {
-      await publishDatabaseProgram();
-    } else {
-      showPlanToast("Save reusable programs with the database save button.");
-    }
+    await publishDatabaseProgram();
     return;
   }
   if (userWorkspace && planState.databaseProgramKind === "client" && planState.databaseProgramId) {
@@ -1676,7 +1708,7 @@ async function loadTemplates() {
 }
 
 async function loadClients() {
-  if (!databaseWorkspace) return;
+  if (!databaseWorkspace || !userWorkspace) return;
   const status = document.getElementById("clientLinkStatus");
 
   try {
@@ -1734,7 +1766,8 @@ async function createClientLink(clientId, programId, { rotate = false } = {}) {
     const successMessage = rotate
       ? "New private link copied. The previous link no longer works."
       : "Private link created and copied.";
-    await loadClients();
+    if (userWorkspace) await loadClients();
+    else await loadDatabaseLibrary();
     status.textContent = successMessage;
   } catch (error) {
     status.textContent = error.message || "Could not generate the private link.";
@@ -1756,7 +1789,8 @@ async function revokeClientLink(clientId, programId) {
       throw new Error(result.error || "Could not revoke the private link.");
     }
     const successMessage = result.revoked ? "Private link revoked." : "No active private link was found.";
-    await loadClients();
+    if (userWorkspace) await loadClients();
+    else await loadDatabaseLibrary();
     status.textContent = successMessage;
   } catch (error) {
     status.textContent = error.message || "Could not revoke the private link.";
@@ -1796,6 +1830,76 @@ function previewPlan(path) {
   window.open(url.href, "_blank", "noopener");
 }
 
+async function copyProgramLink(programId) {
+  const status = document.getElementById("clientLinkStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Retrieving current private link…";
+  try {
+    const response = await fetch(
+      `/api/workoutplanner/programs/${encodeURIComponent(programId)}/link`
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not retrieve the current private link.");
+    }
+    await copyPlanLink(result.path);
+    status.textContent = "Current private program link copied. It has not been changed.";
+  } catch (error) {
+    status.textContent = error.message || "Could not retrieve the current private link.";
+    status.classList.add("is-error");
+  }
+}
+
+async function createProgramLink(programId, { rotate = false } = {}) {
+  if (rotate && !window.confirm("Replace this private link? Anyone using the current link will lose access.")) return;
+  const status = document.getElementById("clientLinkStatus");
+  status.classList.remove("is-error");
+  status.textContent = rotate ? "Replacing private link…" : "Creating private link…";
+  try {
+    const response = await fetch(
+      `/api/workoutplanner/programs/${encodeURIComponent(programId)}/link`,
+      { method: "POST" }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not generate the private link.");
+    }
+    await copyPlanLink(result.path);
+    const successMessage = rotate
+      ? "New private link copied. The previous link no longer works."
+      : "Private link created and copied.";
+    await loadDatabaseLibrary();
+    status.textContent = successMessage;
+  } catch (error) {
+    status.textContent = error.message || "Could not generate the private link.";
+    status.classList.add("is-error");
+  }
+}
+
+async function revokeProgramLink(programId) {
+  if (!window.confirm("Revoke this private program link? Anyone using the old link will lose access.")) return;
+  const status = document.getElementById("clientLinkStatus");
+  status.classList.remove("is-error");
+  status.textContent = "Revoking private link…";
+  try {
+    const response = await fetch(
+      `/api/workoutplanner/programs/${encodeURIComponent(programId)}/link`,
+      { method: "DELETE" }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "Could not revoke the private link.");
+    }
+    await loadDatabaseLibrary();
+    status.textContent = result.revoked
+      ? "Private program link revoked."
+      : "No active private program link was found.";
+  } catch (error) {
+    status.textContent = error.message || "Could not revoke the private link.";
+    status.classList.add("is-error");
+  }
+}
+
 function bindPlanEvents() {
   document.getElementById("adminLogoutBtn").addEventListener("click", async () => {
     if (userWorkspace) {
@@ -1817,10 +1921,18 @@ function bindPlanEvents() {
   }
   if (databaseWorkspace) {
     document.getElementById("databaseProgramList").addEventListener("click", event => {
+      const createProgram = event.target.closest("[data-create-program-link]");
+      const copyProgram = event.target.closest("[data-copy-program-link]");
+      const rotateProgram = event.target.closest("[data-rotate-program-link]");
+      const revokeProgram = event.target.closest("[data-revoke-program-link]");
       const create = event.target.closest("[data-create-client-link]");
       const copy = event.target.closest("[data-copy-client-link]");
       const rotate = event.target.closest("[data-rotate-client-link]");
       const revoke = event.target.closest("[data-revoke-client-link]");
+      if (createProgram) createProgramLink(createProgram.dataset.createProgramLink);
+      if (copyProgram) copyProgramLink(copyProgram.dataset.copyProgramLink);
+      if (rotateProgram) createProgramLink(rotateProgram.dataset.rotateProgramLink, { rotate: true });
+      if (revokeProgram) revokeProgramLink(revokeProgram.dataset.revokeProgramLink);
       if (create) createClientLink(create.dataset.createClientLink, create.dataset.programId);
       if (copy) copyClientLink(copy.dataset.copyClientLink, copy.dataset.programId);
       if (rotate) createClientLink(rotate.dataset.rotateClientLink, rotate.dataset.programId, { rotate: true });
@@ -1864,8 +1976,6 @@ function bindPlanEvents() {
   if (databaseProgramList) {
     databaseProgramList.addEventListener("click", event => {
       const open = event.target.closest("[data-open-database-program]");
-      const useForClient = event.target.closest("[data-use-for-client]");
-      const createClientCopy = event.target.closest("[data-create-client-copy]");
       const legacyClone = event.target.closest("[data-clone-database-program]");
       const history = event.target.closest("[data-toggle-program-history]");
       if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
@@ -1873,27 +1983,6 @@ function bindPlanEvents() {
         beginLegacyClone(
           legacyClone.dataset.cloneDatabaseProgram,
           legacyClone.dataset.cloneVersionId
-        );
-      }
-      if (useForClient) {
-        const panel = databaseProgramList.querySelector(
-          `[data-use-client-panel="${CSS.escape(useForClient.dataset.useForClient)}"]`
-        );
-        if (panel) {
-          panel.hidden = !panel.hidden;
-          useForClient.setAttribute("aria-expanded", String(!panel.hidden));
-        }
-      }
-      if (createClientCopy) {
-        const programId = createClientCopy.dataset.createClientCopy;
-        const select = databaseProgramList.querySelector(
-          `[data-client-for-program="${CSS.escape(programId)}"]`
-        );
-        createClientDatabaseProgram(
-          programId,
-          createClientCopy.dataset.cloneVersionId,
-          select?.value || "",
-          createClientCopy
         );
       }
       if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
@@ -1931,5 +2020,7 @@ renderAllPlan();
 seedRequestedDemo().then(() => Promise.all([
   loadLibrary(),
   loadTemplates(),
-  ...(databaseWorkspace ? [loadDatabaseLibrary(), loadClients()] : [])
+  ...(databaseWorkspace
+    ? [loadDatabaseLibrary(), ...(userWorkspace ? [loadClients()] : [])]
+    : [])
 ]));

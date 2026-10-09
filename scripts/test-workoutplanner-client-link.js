@@ -6,9 +6,13 @@ const {
   findClientDataByToken,
   generateClientAccessToken,
   getClientAccessLink,
+  getProgramAccessLink,
   hashClientAccessToken,
+  hasClientAccessToken,
   revokeClientAccessLink,
-  regenerateClientAccessLink
+  revokeProgramAccessLink,
+  regenerateClientAccessLink,
+  regenerateProgramAccessLink
 } = require("../workoutplanner/client-access");
 const { listProgramVersions } = require("../workoutplanner/program-library");
 
@@ -56,6 +60,7 @@ async function run() {
   }, "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222");
   assert.match(historyQuery, /p\.coach_profile_id = \$2/);
   assert.match(historyQuery, /pv\.status in \('published', 'archived'\)/);
+  assert.doesNotMatch(historyQuery, /p\.kind = 'client'/);
   assert.deepStrictEqual(versions.map(version => [version.version, version.status]), [
     [3, "published"],
     [2, "archived"]
@@ -142,11 +147,12 @@ async function run() {
         return {
           rowCount: 1,
           rows: [{
-            id: "client-a",
+            client_id: "client-a",
             display_name: "Ada",
             active: true,
             program_id: "program-a",
-            program_name: "Strength"
+            program_name: "Strength",
+            program_kind: "client"
           }]
         };
       }
@@ -160,6 +166,137 @@ async function run() {
   assert.deepStrictEqual(data.program, { id: "program-a", name: "Strength" });
   assert.strictEqual(data.assignments[0].id, "assignment-a");
   assert.deepStrictEqual(queries[1].values, ["client-a", "program-a"]);
+
+  const directLinkId = "direct-link-a";
+  const directToken = generateClientAccessToken(directLinkId);
+  const directTokenHash = hashClientAccessToken(directToken);
+  const directTransactionQueries = [];
+  const directTransactionClient = {
+    async query(sql, values) {
+      directTransactionQueries.push({ sql, values });
+      if (sql.includes("SELECT p.id, p.name, p.person_name")) {
+        assert.match(sql, /p\.kind = 'library'/);
+        assert.match(sql, /p\.published_start_date IS NOT NULL/);
+        return {
+          rowCount: 1,
+          rows: [{ id: "program-a", name: "Strength", person_name: "Ada" }]
+        };
+      }
+      return { rowCount: 1, rows: [] };
+    },
+    release() {}
+  };
+  const directGenerated = await regenerateProgramAccessLink(
+    { async connect() { return directTransactionClient; } },
+    "coach-a",
+    "program-a"
+  );
+  assert.ok(directGenerated.token);
+  const directInsert = directTransactionQueries.find(query =>
+    query.sql.includes("INSERT INTO public.client_access_links")
+  );
+  assert.match(directInsert.sql, /VALUES \(\$1, NULL, \$2, \$3, \$4\)/);
+  assert.strictEqual(directInsert.values[1], "program-a");
+  assert.strictEqual(directInsert.values[2], hashClientAccessToken(directGenerated.token));
+  assert.strictEqual(directInsert.values[3], "coach-a");
+
+  const directRecovered = await getProgramAccessLink({
+    async query(sql, values) {
+      assert.deepStrictEqual(values, ["coach-a", "program-a"]);
+      assert.match(sql, /l\.client_id IS NULL/);
+      assert.match(sql, /p\.published_start_date IS NOT NULL/);
+      return {
+        rowCount: 1,
+        rows: [{
+          id: directLinkId,
+          token_hash: directTokenHash,
+          program_id: "program-a",
+          program_name: "Strength",
+          person_name: "Ada"
+        }]
+      };
+    }
+  }, "coach-a", "program-a");
+  assert.strictEqual(directRecovered.recoverable, true);
+  assert.strictEqual(directRecovered.token, directToken);
+
+  const directQueries = [];
+  const directData = await findClientDataByToken({
+    async query(sql, values) {
+      directQueries.push({ sql, values });
+      if (directQueries.length === 1) {
+        return {
+          rowCount: 1,
+          rows: [{
+            client_id: null,
+            display_name: null,
+            active: null,
+            program_id: "program-a",
+            program_name: "Unpublished draft title",
+            program_kind: "library"
+          }]
+        };
+      }
+      return {
+        rowCount: 1,
+        rows: [{
+          program_name: "Published program",
+          version_number: 4,
+          scheduled_date: "2026-10-05",
+          day_of_week: 1,
+          week_number: 1,
+          workout_name: "Published workout",
+          exercises: []
+        }]
+      };
+    }
+  }, directToken);
+  assert.strictEqual(directData.directProgram, true);
+  assert.strictEqual(directData.client, null);
+  assert.strictEqual(directData.program.name, "Published program");
+  assert.strictEqual(directData.program.version, 4);
+  assert.strictEqual(directData.assignments[0].program_name, "Published program");
+  assert.match(directQueries[1].sql, /published_start_date/);
+  assert.match(directQueries[1].sql, /candidate\.status IN \('published', 'archived'\)/);
+  assert.doesNotMatch(directQueries[1].sql, /FROM public\.assignments/i);
+
+  let directAccessQuery = "";
+  assert.strictEqual(await hasClientAccessToken({
+    async query(sql, values) {
+      directAccessQuery = sql;
+      assert.deepStrictEqual(values, [directTokenHash]);
+      return { rowCount: 1, rows: [{ "?column?": 1 }] };
+    }
+  }, directToken), true);
+  assert.match(directAccessQuery, /l\.client_id IS NULL/);
+  assert.match(directAccessQuery, /p\.published_start_date IS NOT NULL/);
+
+  const directRevokeQueries = [];
+  const directRevoked = await revokeProgramAccessLink({
+    async connect() {
+      return {
+        async query(sql, values) {
+          directRevokeQueries.push({ sql, values });
+          if (sql.includes("SELECT p.id, p.name, p.person_name")) {
+            return {
+              rowCount: 1,
+              rows: [{ id: "program-a", name: "Strength", person_name: "Ada" }]
+            };
+          }
+          if (sql.includes("UPDATE public.client_access_links")) {
+            return { rowCount: 1, rows: [{ id: "direct-link-a" }] };
+          }
+          return { rowCount: 1, rows: [] };
+        },
+        release() {}
+      };
+    }
+  }, "coach-a", "program-a");
+  assert.strictEqual(directRevoked.revoked, true);
+  assert.match(
+    directRevokeQueries.find(query => query.sql.includes("UPDATE public.client_access_links")).sql,
+    /client_id IS NULL/
+  );
 
   const revokeQueries = [];
   const revoked = await revokeClientAccessLink({
@@ -204,11 +341,23 @@ async function run() {
   assert.match(migration, /add column program_id uuid/);
   assert.match(migration, /client_access_links_program_client_fkey/);
   assert.match(migration, /client_access_links_one_active_per_program/);
+  const directMigration = fs.readFileSync(
+    path.join(__dirname, "..", "db", "workoutplanner-migrations", "011_direct-program-publishing.sql"),
+    "utf8"
+  );
+  assert.match(directMigration, /add column person_name text not null default ''/i);
+  assert.match(directMigration, /add column published_start_date date/i);
+  assert.match(directMigration, /alter column client_id drop not null/i);
+  assert.match(directMigration, /client_access_links_one_active_per_direct_program/i);
+  assert.match(directMigration, /new\.client_id is distinct from old\.client_id/i);
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /app\.get\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
   assert.match(server, /app\.post\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
   assert.match(server, /app\.delete\('\/api\/workoutplanner\/clients\/:clientId\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
+  assert.match(server, /app\.get\('\/api\/workoutplanner\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
+  assert.match(server, /app\.post\('\/api\/workoutplanner\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
+  assert.match(server, /app\.delete\('\/api\/workoutplanner\/programs\/:programId\/link', requireWorkoutPlannerOwner/);
   assert.doesNotMatch(server, /app\.post\('\/api\/workoutplanner\/clients',/);
   assert.match(server, /function requireWorkoutPlannerOwner\(req, res, next\)[\s\S]*?if \(readAdminSession\(req\)\)[\s\S]*?requireLocalWorkoutPlannerCoach/);
   assert.match(server, /app\.get\('\/api\/client\/:token'/);
@@ -223,14 +372,24 @@ async function run() {
   assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
   assert.doesNotMatch(adminPage, /cloneProgramClientNameInput|cloneProgramNameInput|id="cloneProgramForm"/);
   const planner = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
-  assert.match(planner, /Use for client/);
+  assert.doesNotMatch(planner, /Use for client|data-use-for-client|data-client-for-program|data-create-client-copy/);
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);
   assert.match(planner, /data-rotate-client-link/);
-  assert.match(planner, /data-create-client-copy/);
+  assert.match(planner, /data-create-program-link/);
+  assert.match(planner, /data-rotate-program-link/);
+  assert.match(planner, /data-revoke-program-link/);
   assert.match(planner, /data-toggle-program-history/);
   assert.match(planner, /restoreSelectedDatabaseProgramMetadata/);
   const programLibrary = fs.readFileSync(path.join(__dirname, "..", "workoutplanner", "program-library.js"), "utf8");
+  const publishImplementation = programLibrary.slice(
+    programLibrary.indexOf("async function publishProgram"),
+    programLibrary.indexOf("async function cloneLibraryProgramVersion")
+  );
+  assert.match(publishImplementation, /p\.kind = 'library' and p\.client_id is null/);
+  assert.match(publishImplementation, /and p\.client_id is not null/);
+  assert.match(publishImplementation, /set published_start_date = start_date/);
+  assert.doesNotMatch(publishImplementation, /client_access_links/i);
   const cloneImplementation = programLibrary.slice(
     programLibrary.indexOf("async function cloneLibraryProgramVersion"),
     programLibrary.indexOf("module.exports")
@@ -241,6 +400,14 @@ async function run() {
   assert.match(server, /req\.body\?\.clientId/);
   assert.doesNotMatch(server, /req\.body\?\.clientName/);
   assert.match(server, /\/api\/workoutplanner\/programs\/:programId\/versions/);
+  const publicPage = fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.js"), "utf8");
+  assert.match(publicPage, /Boolean\(result\.data\.directProgram\)/);
+  assert.match(publicPage, /Published training plan/);
+  assert.match(publicPage, /directProgram && item\.version_number/);
+  assert.match(
+    fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.html"), "utf8"),
+    /href="https:\/\/halsopulsen\.se\/"/
+  );
 
   console.log("WorkoutPlanner private client-link tests passed.");
 }
