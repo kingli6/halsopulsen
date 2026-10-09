@@ -318,6 +318,10 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
        p.client_id,
        p.name as program_name,
        p.description as program_description,
+       coalesce(
+         nullif(btrim(p.person_name), ''),
+         (select c.display_name from public.clients c where c.id = p.client_id)
+       ) as person_name,
        p.status as program_status,
        p.kind as program_kind,
        p.source_program_id,
@@ -447,6 +451,7 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
   return {
     id: first.program_id,
     clientId: first.client_id || null,
+    personName: first.person_name || "",
     kind: first.program_kind || "library",
     sourceProgramId: first.source_program_id,
     sourceVersionId: first.source_version_id,
@@ -471,13 +476,30 @@ async function listPrograms(db, coachProfileId) {
        p.status,
        p.kind,
        p.client_id,
+       coalesce(
+         nullif(btrim(p.person_name), ''),
+         (select c.display_name from public.clients c where c.id = p.client_id)
+       ) as person_name,
        p.source_program_id,
        p.source_version_id,
        p.start_date,
+       p.published_start_date,
        p.updated_at,
        latest.version_id,
        latest.version_number,
        latest.version_status,
+       exists (
+         select 1
+           from public.client_access_links active_link
+          where active_link.program_id = p.id
+            and active_link.revoked_at is null
+       ) as has_active_private_link,
+       exists (
+         select 1
+           from public.program_versions published_version
+          where published_version.program_id = p.id
+            and published_version.status in ('published', 'archived')
+       ) as has_published_version,
        count(pw.id)::int as week_count
      from public.programs p
      left join lateral (
@@ -504,19 +526,23 @@ async function listPrograms(db, coachProfileId) {
     [coachProfileId]
   );
   return result.rows.map(row => ({
-     id: row.id,
-     clientId: row.client_id || null,
-     kind: row.kind || "library",
-     sourceProgramId: row.source_program_id,
-     sourceVersionId: row.source_version_id,
+    id: row.id,
+    clientId: row.client_id || null,
+    personName: row.person_name || "",
+    kind: row.kind || "library",
+    sourceProgramId: row.source_program_id,
+    sourceVersionId: row.source_version_id,
      versionId: row.version_id,
     name: row.name,
     description: row.description,
     status: row.status,
     startDate: dateValue(row.start_date),
+    publishedStartDate: dateValue(row.published_start_date),
     updatedAt: row.updated_at,
     version: Number(row.version_number) || 1,
     versionStatus: row.version_status || "draft",
+    hasActivePrivateLink: Boolean(row.has_active_private_link),
+    hasPublishedVersion: Boolean(row.has_published_version),
     durationWeeks: Number(row.week_count) || 0
   }));
 }
@@ -543,7 +569,6 @@ async function listProgramVersions(db, coachProfileId, programId) {
        join public.program_versions pv on pv.program_id = p.id
       where p.id = $1
         and p.coach_profile_id = $2
-        and p.kind = 'client'
         and pv.status in ('published', 'archived')
       order by pv.version_number desc`,
     [programId, coachProfileId]
@@ -557,7 +582,7 @@ async function listProgramVersions(db, coachProfileId, programId) {
   }));
 }
 
-async function saveProgram(db, coachProfileId, inputProgram, programId = null) {
+async function saveProgram(db, coachProfileId, inputProgram, programId = null, personName = null) {
   if (!isUuid(coachProfileId)) {
     const error = new Error("A valid coach profile is required.");
     error.statusCode = 403;
@@ -570,6 +595,9 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null) {
   }
 
   const program = normalizeProgram(inputProgram);
+  const normalizedPersonName = personName == null
+    ? null
+    : text(personName).slice(0, 100);
   const client = await db.connect();
   try {
     await client.query("begin");
@@ -594,18 +622,32 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null) {
             set name = $1,
                 description = $2,
                 start_date = $3,
+                person_name = coalesce($4, person_name),
                 updated_at = now()
-          where id = $4
-            and coach_profile_id = $5`,
-        [program.name, program.description, program.startDate, resolvedProgramId, coachProfileId]
+          where id = $5
+            and coach_profile_id = $6`,
+        [
+          program.name,
+          program.description,
+          program.startDate,
+          normalizedPersonName,
+          resolvedProgramId,
+          coachProfileId
+        ]
       );
     } else {
       const inserted = await client.query(
         `insert into public.programs
-          (coach_profile_id, client_id, kind, name, description, status, start_date)
-         values ($1, null, 'library', $2, $3, 'draft', $4)
+          (coach_profile_id, client_id, kind, person_name, name, description, status, start_date)
+         values ($1, null, 'library', $2, $3, $4, 'draft', $5)
          returning id`,
-        [coachProfileId, program.name, program.description, program.startDate]
+        [
+          coachProfileId,
+          normalizedPersonName || "",
+          program.name,
+          program.description,
+          program.startDate
+        ]
       );
       resolvedProgramId = inserted.rows[0].id;
     }
@@ -757,22 +799,29 @@ async function publishProgram(db, coachProfileId, programId) {
     transactionStarted = true;
 
     const programResult = await client.query(
-      `select p.id, p.client_id, p.start_date
+      `select p.id, p.client_id, p.kind, p.start_date
          from public.programs p
-         join public.clients c on c.id = p.client_id
-         join public.coach_clients cc
-           on cc.client_id = p.client_id
-          and cc.coach_profile_id = p.coach_profile_id
         where p.id = $1
           and p.coach_profile_id = $2
-          and p.kind = 'client'
-          and c.active = true
-          and cc.coach_profile_id = $2
+          and (
+            (p.kind = 'library' and p.client_id is null)
+            or (
+              p.kind = 'client'
+              and exists (
+                select 1
+                  from public.clients c
+                  join public.coach_clients cc on cc.client_id = c.id
+                 where c.id = p.client_id
+                   and c.active = true
+                   and cc.coach_profile_id = p.coach_profile_id
+              )
+            )
+          )
         for update of p`,
       [programId, coachProfileId]
     );
     if (programResult.rowCount !== 1) {
-      const error = new Error("Client program not found.");
+      const error = new Error("Program not found or is no longer publishable.");
       error.statusCode = 404;
       throw error;
     }
@@ -858,6 +907,12 @@ async function publishProgram(db, coachProfileId, programId) {
         returning id, version_number`,
       [draft.id, programId]
     );
+    await client.query(
+      `update public.programs
+          set published_start_date = start_date
+        where id = $1`,
+      [programId]
+    );
 
     const assignmentResult = await client.query(
       `insert into public.assignments
@@ -878,6 +933,7 @@ async function publishProgram(db, coachProfileId, programId) {
          join public.workouts w on w.program_week_id = pw.id
         where p.id = $1
           and pv.id = $2
+           and p.client_id is not null
           and w.is_rest = false
           and exists (
             select 1

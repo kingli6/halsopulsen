@@ -18,9 +18,12 @@ const {
 const {
   findClientDataByToken,
   getClientAccessLink,
+  getProgramAccessLink,
   hasClientAccessToken,
   revokeClientAccessLink,
-  regenerateClientAccessLink
+  regenerateClientAccessLink,
+  regenerateProgramAccessLink,
+  revokeProgramAccessLink
 } = require('./workoutplanner/client-access');
 const {
   cloneLibraryProgramVersion,
@@ -362,7 +365,9 @@ app.post('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req,
     const result = await saveProgram(
       getWorkoutPlannerPool(),
       req.workoutPlannerProfile.id,
-      req.body?.program
+      req.body?.program,
+      null,
+      req.body?.personName
     );
     return res.status(201).json({
       ok: true,
@@ -384,7 +389,8 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, a
       getWorkoutPlannerPool(),
       req.workoutPlannerProfile.id,
       req.body?.program,
-      req.params.programId
+      req.params.programId,
+      req.body?.personName
     );
     return res.json({
       ok: true,
@@ -510,6 +516,86 @@ app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', req
   }
 });
 
+app.get('/api/workoutplanner/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const link = await getProgramAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    if (!link) {
+      return res.status(404).json({ ok: false, error: 'Active private program link not found.' });
+    }
+    if (!link.recoverable) {
+      return res.status(409).json({
+        ok: false,
+        error: 'This link remains active, but its original address cannot be recovered. Replace it once to make future copies available.'
+      });
+    }
+    const programPath = `/p/${link.token}`;
+    return res.json({
+      ok: true,
+      path: programPath,
+      url: `${req.protocol}://${req.get('host')}${programPath}`
+    });
+  } catch (error) {
+    console.error('Could not retrieve WorkoutPlanner program link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The private program link could not be retrieved.' });
+  }
+});
+
+app.post('/api/workoutplanner/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const generated = await regenerateProgramAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    if (!generated) {
+      return res.status(404).json({ ok: false, error: 'Published library program not found.' });
+    }
+    const programPath = `/p/${generated.token}`;
+    return res.json({
+      ok: true,
+      program: {
+        id: generated.program.id,
+        name: generated.program.name,
+        personName: generated.program.person_name || ''
+      },
+      path: programPath,
+      url: `${req.protocol}://${req.get('host')}${programPath}`
+    });
+  } catch (error) {
+    console.error('Could not generate WorkoutPlanner program link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The private program link could not be generated.' });
+  }
+});
+
+app.delete('/api/workoutplanner/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const result = await revokeProgramAccessLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    if (!result) {
+      return res.status(404).json({ ok: false, error: 'Published library program not found.' });
+    }
+    return res.json({
+      ok: true,
+      program: {
+        id: result.program.id,
+        name: result.program.name,
+        personName: result.program.person_name || ''
+      },
+      revoked: result.revoked
+    });
+  } catch (error) {
+    console.error('Could not revoke WorkoutPlanner program link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The private program link could not be revoked.' });
+  }
+});
+
 app.get('/api/client/:token', async (req, res) => {
   if (!isWorkoutPlannerConfigured()) {
     return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
@@ -517,7 +603,7 @@ app.get('/api/client/:token', async (req, res) => {
   try {
     const data = await findClientDataByToken(getWorkoutPlannerPool(), req.params.token);
     if (!data) {
-      return res.status(404).json({ ok: false, error: 'Private client link not found.' });
+      return res.status(404).json({ ok: false, error: 'Private training link not found.' });
     }
     res.json({ ok: true, data });
   } catch (error) {
