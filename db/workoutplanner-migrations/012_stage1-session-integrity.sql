@@ -146,6 +146,90 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION private.assert_program_week_version(
+  target_week_id uuid,
+  expected_version_id uuid,
+  allow_missing boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+DECLARE
+  actual_version_id uuid;
+BEGIN
+  IF target_week_id IS NULL THEN
+    IF allow_missing THEN
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'Program content must belong to an existing program week'
+      USING ERRCODE = '23514';
+  END IF;
+
+  SELECT pw.program_version_id
+    INTO actual_version_id
+    FROM public.program_weeks pw
+   WHERE pw.id = target_week_id
+   FOR SHARE NOWAIT;
+
+  IF NOT FOUND THEN
+    IF allow_missing THEN
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'Program content must belong to an existing program week'
+      USING ERRCODE = '23503';
+  END IF;
+
+  IF actual_version_id IS DISTINCT FROM expected_version_id THEN
+    RAISE EXCEPTION 'Program-week membership changed during the content edit; retry the operation'
+      USING ERRCODE = '40001';
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION private.assert_workout_program_week(
+  target_workout_id uuid,
+  expected_week_id uuid,
+  allow_missing boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $$
+DECLARE
+  actual_week_id uuid;
+BEGIN
+  IF target_workout_id IS NULL THEN
+    IF allow_missing THEN
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'Program content must belong to an existing workout'
+      USING ERRCODE = '23514';
+  END IF;
+
+  SELECT w.program_week_id
+    INTO actual_week_id
+    FROM public.workouts w
+   WHERE w.id = target_workout_id
+   FOR SHARE NOWAIT;
+
+  IF NOT FOUND THEN
+    IF allow_missing THEN
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'Program content must belong to an existing workout'
+      USING ERRCODE = '23503';
+  END IF;
+
+  IF actual_week_id IS DISTINCT FROM expected_week_id THEN
+    RAISE EXCEPTION 'Workout-week membership changed during the content edit; retry the operation'
+      USING ERRCODE = '40001';
+  END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION private.protect_program_version_lifecycle()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -198,7 +282,15 @@ AS $$
 DECLARE
   old_version_id uuid;
   new_version_id uuid;
+  old_week_id uuid;
+  new_week_id uuid;
+  old_workout_id uuid;
+  new_workout_id uuid;
+  lock_membership record;
+  allow_missing boolean;
 BEGIN
+  allow_missing := TG_OP = 'DELETE';
+
   IF TG_TABLE_NAME = 'program_weeks' THEN
     IF TG_OP <> 'INSERT' THEN
       old_version_id := OLD.program_version_id;
@@ -208,33 +300,43 @@ BEGIN
     END IF;
   ELSIF TG_TABLE_NAME = 'workouts' THEN
     IF TG_OP <> 'INSERT' THEN
+      old_week_id := OLD.program_week_id;
       SELECT pw.program_version_id
         INTO old_version_id
-        FROM public.workouts w
-        JOIN public.program_weeks pw ON pw.id = w.program_week_id
-       WHERE w.id = OLD.id;
+        FROM public.program_weeks pw
+       WHERE pw.id = old_week_id;
     END IF;
     IF TG_OP <> 'DELETE' THEN
+      new_week_id := NEW.program_week_id;
       SELECT pw.program_version_id
         INTO new_version_id
         FROM public.program_weeks pw
-       WHERE pw.id = NEW.program_week_id;
+       WHERE pw.id = new_week_id;
     END IF;
   ELSIF TG_TABLE_NAME = 'workout_exercises' THEN
     IF TG_OP <> 'INSERT' THEN
+      old_workout_id := OLD.workout_id;
       SELECT pw.program_version_id
         INTO old_version_id
-        FROM public.workout_exercises we
-        JOIN public.workouts w ON w.id = we.workout_id
+        FROM public.workouts w
         JOIN public.program_weeks pw ON pw.id = w.program_week_id
-       WHERE we.id = OLD.id;
+       WHERE w.id = old_workout_id;
+      SELECT w.program_week_id
+        INTO old_week_id
+        FROM public.workouts w
+       WHERE w.id = old_workout_id;
     END IF;
     IF TG_OP <> 'DELETE' THEN
+      new_workout_id := NEW.workout_id;
       SELECT pw.program_version_id
         INTO new_version_id
         FROM public.workouts w
         JOIN public.program_weeks pw ON pw.id = w.program_week_id
-       WHERE w.id = NEW.workout_id;
+       WHERE w.id = new_workout_id;
+      SELECT w.program_week_id
+        INTO new_week_id
+        FROM public.workouts w
+       WHERE w.id = new_workout_id;
     END IF;
   ELSE
     RAISE EXCEPTION 'Unsupported program-version content table: %', TG_TABLE_NAME
@@ -242,9 +344,10 @@ BEGIN
   END IF;
 
   IF TG_OP = 'UPDATE' THEN
-    -- A row moved between versions locks both parents in UUID order. Share
-    -- locks are compatible with other content edits; NOWAIT avoids waiting
-    -- behind a status change or parent delete while already holding a child row.
+    -- Lock both versions in UUID order. A content row is already locked by
+    -- UPDATE before this trigger runs, so all ancestor locks use NOWAIT.
+    -- This avoids waiting on a parent move/delete that may itself need a
+    -- version lock. A changed parent mapping is rechecked after locking below.
     IF old_version_id IS NULL OR new_version_id IS NULL THEN
       PERFORM private.assert_program_version_is_draft(old_version_id, false);
       PERFORM private.assert_program_version_is_draft(new_version_id, false);
@@ -261,6 +364,48 @@ BEGIN
     PERFORM private.assert_program_version_is_draft(old_version_id, true);
   ELSE
     PERFORM private.assert_program_version_is_draft(new_version_id, false);
+  END IF;
+
+  -- Lock/recheck ancestors in hierarchy order: versions (above), then weeks,
+  -- then workouts. Within each level, parent IDs are sorted to keep concurrent
+  -- moves consistent. The initial IDs above are only candidates; the helper
+  -- functions lock each row and verify its current membership still matches.
+  IF TG_TABLE_NAME IN ('workouts', 'workout_exercises') THEN
+    FOR lock_membership IN
+      SELECT membership.week_id, membership.version_id
+        FROM (
+          VALUES
+            (old_week_id, old_version_id),
+            (new_week_id, new_version_id)
+        ) AS membership(week_id, version_id)
+       WHERE membership.week_id IS NOT NULL
+       ORDER BY membership.week_id, membership.version_id
+    LOOP
+      PERFORM private.assert_program_week_version(
+        lock_membership.week_id,
+        lock_membership.version_id,
+        allow_missing
+      );
+    END LOOP;
+  END IF;
+
+  IF TG_TABLE_NAME = 'workout_exercises' THEN
+    FOR lock_membership IN
+      SELECT membership.workout_id, membership.week_id
+        FROM (
+          VALUES
+            (old_workout_id, old_week_id),
+            (new_workout_id, new_week_id)
+        ) AS membership(workout_id, week_id)
+       WHERE membership.workout_id IS NOT NULL
+       ORDER BY membership.workout_id, membership.week_id
+    LOOP
+      PERFORM private.assert_workout_program_week(
+        lock_membership.workout_id,
+        lock_membership.week_id,
+        allow_missing
+      );
+    END LOOP;
   END IF;
 
   IF TG_OP = 'DELETE' THEN
@@ -814,6 +959,8 @@ FOR EACH ROW
 EXECUTE FUNCTION private.validate_session_set_provenance();
 
 REVOKE ALL ON FUNCTION private.assert_program_version_is_draft(uuid, boolean) FROM PUBLIC, authenticated;
+REVOKE ALL ON FUNCTION private.assert_program_week_version(uuid, uuid, boolean) FROM PUBLIC, authenticated;
+REVOKE ALL ON FUNCTION private.assert_workout_program_week(uuid, uuid, boolean) FROM PUBLIC, authenticated;
 REVOKE ALL ON FUNCTION private.protect_program_version_lifecycle() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.protect_program_version_content() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.prevent_program_version_content_truncate() FROM PUBLIC;

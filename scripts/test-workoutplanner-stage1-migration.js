@@ -109,7 +109,47 @@ function run() {
   requireMatch(
     normalized,
     /old_version_id <= new_version_id/,
-    "Rows moved between versions must acquire parent-version locks in a deterministic order."
+    "Rows moved between versions must acquire version locks in a deterministic order."
+  );
+  const contentGuardStart = normalized.indexOf(
+    "create or replace function private.protect_program_version_content"
+  );
+  const contentGuardEnd = normalized.indexOf(
+    "create or replace function private.prevent_program_version_content_truncate",
+    contentGuardStart
+  );
+  const contentGuard = normalized.slice(contentGuardStart, contentGuardEnd);
+  const versionLockIndex = contentGuard.indexOf(
+    "perform private.assert_program_version_is_draft"
+  );
+  const weekLockIndex = contentGuard.indexOf(
+    "perform private.assert_program_week_version"
+  );
+  const workoutLockIndex = contentGuard.indexOf(
+    "perform private.assert_workout_program_week"
+  );
+  assert.ok(
+    contentGuardStart >= 0 &&
+      contentGuardEnd > contentGuardStart &&
+      versionLockIndex >= 0 &&
+      weekLockIndex > versionLockIndex &&
+      workoutLockIndex > weekLockIndex,
+    "Content protection must lock versions, then weeks, then workouts."
+  );
+  requireMatch(
+    normalized,
+    /create or replace function private\.assert_program_week_version\(\s*target_week_id uuid,\s*expected_version_id uuid,\s*allow_missing boolean\s*\)[\s\S]*?where pw\.id = target_week_id for share nowait[\s\S]*?actual_version_id is distinct from expected_version_id[\s\S]*?using errcode = '40001'/,
+    "Week membership must be locked and rechecked after the version lock."
+  );
+  requireMatch(
+    normalized,
+    /create or replace function private\.assert_workout_program_week\(\s*target_workout_id uuid,\s*expected_week_id uuid,\s*allow_missing boolean\s*\)[\s\S]*?where w\.id = target_workout_id for share nowait[\s\S]*?actual_week_id is distinct from expected_week_id[\s\S]*?using errcode = '40001'/,
+    "Workout membership must be locked and rechecked after its week."
+  );
+  requireMatch(
+    normalized,
+    /order by membership\.week_id, membership\.version_id[\s\S]*?perform private\.assert_program_week_version\(\s*lock_membership\.week_id, lock_membership\.version_id, allow_missing\s*\)[\s\S]*?order by membership\.workout_id, membership\.week_id[\s\S]*?perform private\.assert_workout_program_week\(\s*lock_membership\.workout_id, lock_membership\.week_id, allow_missing\s*\)/,
+    "Content protection must lock/recheck weeks before workouts in stable ID order."
   );
   requireMatch(
     normalized,
@@ -121,9 +161,19 @@ function run() {
     /revoke all on function private\.assert_session_set_assumptions_match\(uuid, uuid, uuid\) from public, authenticated/,
     "The prescription assertion helper must not be directly executable by authenticated users."
   );
+  requireMatch(
+    normalized,
+    /revoke all on function private\.assert_program_week_version\(uuid, uuid, boolean\) from public, authenticated/,
+    "The week-membership helper must not be directly executable by authenticated users."
+  );
+  requireMatch(
+    normalized,
+    /revoke all on function private\.assert_workout_program_week\(uuid, uuid, boolean\) from public, authenticated/,
+    "The workout-membership helper must not be directly executable by authenticated users."
+  );
   assert.doesNotMatch(
     normalized,
-    /grant execute on function private\.assert_program_version_is_draft\(uuid, boolean\) to authenticated|grant execute on function private\.assert_session_set_assumptions_match\(uuid, uuid, uuid\) to authenticated/,
+    /grant execute on function private\.assert_program_version_is_draft\(uuid, boolean\) to authenticated|grant execute on function private\.assert_program_week_version\(uuid, uuid, boolean\) to authenticated|grant execute on function private\.assert_workout_program_week\(uuid, uuid, boolean\) to authenticated|grant execute on function private\.assert_session_set_assumptions_match\(uuid, uuid, uuid\) to authenticated/,
     "Internal assertion helpers must not receive direct authenticated grants."
   );
 
@@ -236,6 +286,31 @@ function run() {
     /require\(["'](?:pg|\.{1,2}\/workoutplanner\/db)["']\)/,
     "Static checks must not connect to a database."
   );
+
+  // Future isolated-PostgreSQL concurrency regression test (not run here):
+  // 1. Use a disposable database and seed draft versions A/B with weeks,
+  //    workouts, and exercises. In a test-only copy of the trigger function, add
+  //    a conditional advisory-lock pause after the initial ancestry reads and
+  //    before the version lock; activate it only for the editor connection with
+  //    a custom transaction-local setting. Have a controller connection hold
+  //    that advisory lock, start the edit on a second connection, and wait until
+  //    it blocks at the hook.
+  // 2. On a third connection, move the containing week (for a workout edit) or
+  //    containing workout/week (for an exercise edit) from A to B and commit.
+  //    Publish B, release the controller lock, and assert the edit returns
+  //    SQLSTATE 40001 and leaves the content row unchanged. Repeat with moves
+  //    between two versions in both UUID orders.
+  // 3. Pause after all locks are acquired while the version is still draft;
+  //    attempt publication on another connection and verify it waits for the
+  //    edit to commit, then verify later content edits are rejected.
+  // 4. Separately race an edit/move with archiving an already-published version.
+  //    If archive owns the version lock first, the edit must fail with 55P03;
+  //    if the edit gets the lock first, it must reject published content with
+  //    23514 and archive must then complete. Also try archive-first against a
+  //    move involving the other affected version.
+  // 5. Repeat with the lifecycle transaction acquiring its version lock first;
+  //    the content operation must fail promptly with 55P03, not deadlock.
+  //    Remove all test-only hooks with the disposable database.
 
   console.log(`WorkoutPlanner Stage 1 migration static checks passed (${migrationName}).`);
 }
