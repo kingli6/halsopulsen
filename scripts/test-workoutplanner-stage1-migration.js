@@ -52,6 +52,16 @@ function run() {
   );
   requireMatch(
     normalized,
+    /add column program_id uuid[\s\S]*?foreign key \(program_id\)[\s\S]*?references public\.programs\(id\)[\s\S]*?on delete restrict[\s\S]*?workout_sessions_program_association_check check\s*\(\s*program_id is null or \(workout_id is null and assignment_id is null\)\s*\)/,
+    "Standalone sessions need a durable program reference that cannot conflict with a planned source."
+  );
+  requireMatch(
+    normalized,
+    /create index workout_sessions_program_id_idx on public\.workout_sessions \(program_id\)/,
+    "Program-associated session lookups need an index."
+  );
+  requireMatch(
+    normalized,
     /alter column client_id drop not null/,
     "Direct-link and standalone sessions must not require a client row."
   );
@@ -91,6 +101,31 @@ function run() {
     /before truncate on public\.program_versions/,
     "Published content protection must also prevent TRUNCATE bypasses."
   );
+  requireMatch(
+    normalized,
+    /where pv\.id = target_version_id for share nowait/,
+    "Content edits must lock the version status without waiting behind a conflicting status change or delete."
+  );
+  requireMatch(
+    normalized,
+    /old_version_id <= new_version_id/,
+    "Rows moved between versions must acquire parent-version locks in a deterministic order."
+  );
+  requireMatch(
+    normalized,
+    /revoke all on function private\.assert_program_version_is_draft\(uuid, boolean\) from public, authenticated/,
+    "The version assertion helper must not be directly executable by authenticated users."
+  );
+  requireMatch(
+    normalized,
+    /revoke all on function private\.assert_session_set_assumptions_match\(uuid, uuid, uuid\) from public, authenticated/,
+    "The prescription assertion helper must not be directly executable by authenticated users."
+  );
+  assert.doesNotMatch(
+    normalized,
+    /grant execute on function private\.assert_program_version_is_draft\(uuid, boolean\) to authenticated|grant execute on function private\.assert_session_set_assumptions_match\(uuid, uuid, uuid\) to authenticated/,
+    "Internal assertion helpers must not receive direct authenticated grants."
+  );
 
   requireMatch(
     normalized,
@@ -111,6 +146,36 @@ function run() {
     normalized,
     /we\.workout_id = effective_workout_id and we\.exercise_id = new\.exercise_id/,
     "Planned exercise references must match the session workout and exercise."
+  );
+  requireMatch(
+    normalized,
+    /new\.program_id is distinct from old\.program_id/,
+    "Program association changes must be treated as source-relationship changes."
+  );
+  requireMatch(
+    normalized,
+    /if effective_workout_id is null then[\s\S]*?if new\.program_id is null and \(tg_op = 'insert' or source_relationship_changed\) then raise exception 'standalone sessions must reference a program'/,
+    "New or reassociated standalone sessions must name their program."
+  );
+  requireMatch(
+    normalized,
+    /if source_relationship_changed and exists\s*\(/,
+    "Exact planned-exercise checks must run when a session source relationship changes."
+  );
+  requireMatch(
+    normalized,
+    /if tg_op = 'update' then if new\.session_id is not distinct from old\.session_id and new\.workout_exercise_id is not distinct from old\.workout_exercise_id and new\.exercise_id is not distinct from old\.exercise_id then/,
+    "Metadata-only exercise edits must preserve legacy rows missing a source pointer."
+  );
+  requireMatch(
+    normalized,
+    /if effective_workout_id is null then if session_program_id is null then raise exception 'standalone activity sessions must reference a program'/,
+    "New or source-relinked standalone exercises must belong to a program-associated session."
+  );
+  requireMatch(
+    normalized,
+    /if effective_workout_id is null and session_program_id is null then if tg_op = 'insert' then raise exception 'standalone activity sessions must reference a program'/,
+    "New standalone set rows must not be added to an unassociated legacy session."
   );
 
   const metrics = [

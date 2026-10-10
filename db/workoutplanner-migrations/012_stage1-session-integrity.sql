@@ -12,13 +12,26 @@ ALTER TABLE public.programs
 ALTER TABLE public.workout_sessions
   ALTER COLUMN client_id DROP NOT NULL,
   ADD COLUMN workout_id uuid,
+  ADD COLUMN program_id uuid,
   ADD CONSTRAINT workout_sessions_workout_id_fkey
     FOREIGN KEY (workout_id)
     REFERENCES public.workouts(id)
-    ON DELETE RESTRICT;
+    ON DELETE RESTRICT,
+  ADD CONSTRAINT workout_sessions_program_id_fkey
+    FOREIGN KEY (program_id)
+    REFERENCES public.programs(id)
+    ON DELETE RESTRICT,
+  ADD CONSTRAINT workout_sessions_program_association_check
+    CHECK (
+      program_id IS NULL
+      OR (workout_id IS NULL AND assignment_id IS NULL)
+    );
 
 CREATE INDEX workout_sessions_workout_id_idx
   ON public.workout_sessions (workout_id);
+
+CREATE INDEX workout_sessions_program_id_idx
+  ON public.workout_sessions (program_id);
 
 ALTER TABLE public.session_exercises
   ALTER COLUMN exercise_id DROP NOT NULL,
@@ -113,7 +126,8 @@ BEGIN
   SELECT pv.status
     INTO version_status
     FROM public.program_versions pv
-   WHERE pv.id = target_version_id;
+   WHERE pv.id = target_version_id
+   FOR SHARE NOWAIT;
 
   IF NOT FOUND THEN
     IF allow_missing THEN
@@ -227,14 +241,25 @@ BEGIN
       USING ERRCODE = '0A000';
   END IF;
 
-  IF TG_OP <> 'INSERT' THEN
-    PERFORM private.assert_program_version_is_draft(
-      old_version_id,
-      TG_OP = 'DELETE'
-    );
-  END IF;
-
-  IF TG_OP <> 'DELETE' THEN
+  IF TG_OP = 'UPDATE' THEN
+    -- A row moved between versions locks both parents in UUID order. Share
+    -- locks are compatible with other content edits; NOWAIT avoids waiting
+    -- behind a status change or parent delete while already holding a child row.
+    IF old_version_id IS NULL OR new_version_id IS NULL THEN
+      PERFORM private.assert_program_version_is_draft(old_version_id, false);
+      PERFORM private.assert_program_version_is_draft(new_version_id, false);
+    ELSIF old_version_id <= new_version_id THEN
+      PERFORM private.assert_program_version_is_draft(old_version_id, false);
+      IF new_version_id IS DISTINCT FROM old_version_id THEN
+        PERFORM private.assert_program_version_is_draft(new_version_id, false);
+      END IF;
+    ELSE
+      PERFORM private.assert_program_version_is_draft(new_version_id, false);
+      PERFORM private.assert_program_version_is_draft(old_version_id, false);
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    PERFORM private.assert_program_version_is_draft(old_version_id, true);
+  ELSE
     PERFORM private.assert_program_version_is_draft(new_version_id, false);
   END IF;
 
@@ -309,7 +334,18 @@ DECLARE
   assignment_client_id uuid;
   effective_workout_id uuid;
   version_status text;
+  source_relationship_changed boolean;
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    source_relationship_changed := true;
+  ELSE
+    source_relationship_changed :=
+      NEW.client_id IS DISTINCT FROM OLD.client_id
+      OR NEW.assignment_id IS DISTINCT FROM OLD.assignment_id
+      OR NEW.workout_id IS DISTINCT FROM OLD.workout_id
+      OR NEW.program_id IS DISTINCT FROM OLD.program_id;
+  END IF;
+
   IF NEW.assignment_id IS NOT NULL THEN
     SELECT a.workout_id, a.client_id
       INTO assignment_workout_id, assignment_client_id
@@ -353,6 +389,20 @@ BEGIN
     effective_workout_id := NEW.workout_id;
   END IF;
 
+  IF effective_workout_id IS NULL THEN
+    -- Preserve existing unassociated history on unrelated edits only. New
+    -- standalone sessions and any source reassociation must name a program.
+    IF NEW.program_id IS NULL
+       AND (TG_OP = 'INSERT' OR source_relationship_changed)
+    THEN
+      RAISE EXCEPTION 'Standalone sessions must reference a program'
+        USING ERRCODE = '23514';
+    END IF;
+  ELSIF NEW.program_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Planned sessions derive their program from the workout'
+      USING ERRCODE = '23514';
+  END IF;
+
   IF effective_workout_id IS NOT NULL THEN
     SELECT pv.status
       INTO version_status
@@ -367,7 +417,7 @@ BEGIN
     END IF;
   END IF;
 
-  IF EXISTS (
+  IF source_relationship_changed AND EXISTS (
     SELECT 1
       FROM public.session_exercises se
      WHERE se.session_id = NEW.id
@@ -530,14 +580,26 @@ AS $$
 DECLARE
   session_workout_id uuid;
   session_assignment_id uuid;
+  session_program_id uuid;
   effective_workout_id uuid;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     RETURN OLD;
   END IF;
 
-  SELECT ws.workout_id, ws.assignment_id
-    INTO session_workout_id, session_assignment_id
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.session_id IS NOT DISTINCT FROM OLD.session_id
+       AND NEW.workout_exercise_id IS NOT DISTINCT FROM OLD.workout_exercise_id
+       AND NEW.exercise_id IS NOT DISTINCT FROM OLD.exercise_id
+    THEN
+      -- Metadata-only edits must not strand legacy planned rows that predate
+      -- workout_exercise_id. Any change to the source relationship is validated.
+      RETURN NEW;
+    END IF;
+  END IF;
+
+  SELECT ws.workout_id, ws.assignment_id, ws.program_id
+    INTO session_workout_id, session_assignment_id, session_program_id
     FROM public.workout_sessions ws
    WHERE ws.id = NEW.session_id
    FOR SHARE;
@@ -562,6 +624,10 @@ BEGIN
   END IF;
 
   IF effective_workout_id IS NULL THEN
+    IF session_program_id IS NULL THEN
+      RAISE EXCEPTION 'Standalone activity sessions must reference a program'
+        USING ERRCODE = '23514';
+    END IF;
     IF NEW.workout_exercise_id IS NOT NULL THEN
       RAISE EXCEPTION 'Standalone activities cannot reference a planned exercise'
         USING ERRCODE = '23514';
@@ -606,6 +672,7 @@ DECLARE
   source_exercise_id uuid;
   session_workout_id uuid;
   session_assignment_id uuid;
+  session_program_id uuid;
   effective_workout_id uuid;
   prescription record;
   has_assumed_metric boolean;
@@ -618,25 +685,23 @@ BEGIN
     OR NEW.rir_provenance = 'assumed'
     OR NEW.intensity_provenance = 'assumed';
 
-  IF NOT has_assumed_metric THEN
-    RETURN NEW;
-  END IF;
-
   SELECT se.workout_exercise_id,
          se.exercise_id,
          ws.workout_id,
-         ws.assignment_id
+         ws.assignment_id,
+         ws.program_id
     INTO source_workout_exercise_id,
          source_exercise_id,
          session_workout_id,
-         session_assignment_id
+         session_assignment_id,
+         session_program_id
     FROM public.session_exercises se
     JOIN public.workout_sessions ws ON ws.id = se.session_id
    WHERE se.id = NEW.session_exercise_id
    FOR SHARE OF se, ws;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Assumed metrics require an existing session exercise'
+    RAISE EXCEPTION 'Session sets require an existing session exercise'
       USING ERRCODE = '23503';
   END IF;
 
@@ -647,6 +712,20 @@ BEGIN
       FROM public.assignments a
      WHERE a.id = session_assignment_id
      FOR SHARE;
+  END IF;
+
+  IF effective_workout_id IS NULL AND session_program_id IS NULL THEN
+    IF TG_OP = 'INSERT' THEN
+      RAISE EXCEPTION 'Standalone activity sessions must reference a program'
+        USING ERRCODE = '23514';
+    ELSIF NEW.session_exercise_id IS DISTINCT FROM OLD.session_exercise_id THEN
+      RAISE EXCEPTION 'Standalone activity sessions must reference a program'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  IF NOT has_assumed_metric THEN
+    RETURN NEW;
   END IF;
 
   IF effective_workout_id IS NULL OR source_workout_exercise_id IS NULL THEN
@@ -734,21 +813,19 @@ BEFORE INSERT OR UPDATE ON public.session_sets
 FOR EACH ROW
 EXECUTE FUNCTION private.validate_session_set_provenance();
 
-REVOKE ALL ON FUNCTION private.assert_program_version_is_draft(uuid, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION private.assert_program_version_is_draft(uuid, boolean) FROM PUBLIC, authenticated;
 REVOKE ALL ON FUNCTION private.protect_program_version_lifecycle() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.protect_program_version_content() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.prevent_program_version_content_truncate() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.validate_workout_session_source() FROM PUBLIC;
-REVOKE ALL ON FUNCTION private.assert_session_set_assumptions_match(uuid, uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION private.assert_session_set_assumptions_match(uuid, uuid, uuid) FROM PUBLIC, authenticated;
 REVOKE ALL ON FUNCTION private.validate_session_exercise_source() FROM PUBLIC;
 REVOKE ALL ON FUNCTION private.validate_session_set_provenance() FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION private.assert_program_version_is_draft(uuid, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.protect_program_version_lifecycle() TO authenticated;
 GRANT EXECUTE ON FUNCTION private.protect_program_version_content() TO authenticated;
 GRANT EXECUTE ON FUNCTION private.prevent_program_version_content_truncate() TO authenticated;
 GRANT EXECUTE ON FUNCTION private.validate_workout_session_source() TO authenticated;
-GRANT EXECUTE ON FUNCTION private.assert_session_set_assumptions_match(uuid, uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.validate_session_exercise_source() TO authenticated;
 GRANT EXECUTE ON FUNCTION private.validate_session_set_provenance() TO authenticated;
 
