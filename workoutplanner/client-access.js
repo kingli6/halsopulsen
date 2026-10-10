@@ -416,7 +416,7 @@ async function findClientDataByToken(db, token) {
              FROM public.workout_exercises active_exercise
             WHERE active_exercise.workout_id = w.id
          )
-       GROUP BY p.id, pv.id, pw.id, w.id
+        GROUP BY p.id, pv.id, pw.id, w.id, pv.version_number, pv.published_at
        ORDER BY pw.week_number, w.day_of_week`,
       [client.program_id]
     );

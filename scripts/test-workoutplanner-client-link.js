@@ -258,6 +258,10 @@ async function run() {
   assert.strictEqual(directData.assignments[0].program_name, "Published program");
   assert.match(directQueries[1].sql, /published_start_date/);
   assert.match(directQueries[1].sql, /candidate\.status IN \('published', 'archived'\)/);
+  assert.match(
+    directQueries[1].sql,
+    /GROUP BY p\.id, pv\.id, pw\.id, w\.id, pv\.version_number, pv\.published_at/
+  );
   assert.doesNotMatch(directQueries[1].sql, /FROM public\.assignments/i);
 
   let directAccessQuery = "";
