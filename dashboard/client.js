@@ -20,10 +20,12 @@ function exerciseSummary(exercise) {
   return parts.join(" · ");
 }
 
-function renderAssignments(assignments) {
+function renderAssignments(assignments, directProgram = false) {
   const target = document.getElementById("assignmentList");
   if (!assignments.length) {
-    target.innerHTML = '<p class="client-empty">No published workouts are assigned yet.</p>';
+    target.innerHTML = `<p class="client-empty">${directProgram
+      ? "No workouts are scheduled in the published program."
+      : "No published workouts are assigned yet."}</p>`;
     return;
   }
   target.innerHTML = assignments.map(item => `
@@ -32,7 +34,7 @@ function renderAssignments(assignments) {
         <div>
           <p class="section-kicker">${escapeHtml(formatDate(item.scheduled_date))}</p>
           <h3>${escapeHtml(item.workout_name || "Workout")}</h3>
-          <p class="client-meta">${escapeHtml(item.program_name)} · Week ${escapeHtml(item.week_number)}</p>
+          <p class="client-meta">${escapeHtml(item.program_name)}${directProgram && item.version_number ? ` · Version ${escapeHtml(item.version_number)}` : ""} · Week ${escapeHtml(item.week_number)}</p>
         </div>
         <span class="client-status">${escapeHtml(item.status)}</span>
       </div>
@@ -57,10 +59,23 @@ async function loadClientPlan() {
     const response = await fetch(`/api/client/${encodeURIComponent(token)}`);
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.error || "This private link is invalid or has been replaced.");
-    document.title = `${result.data.client.displayName}'s training plan — HälsoPulsen`;
-    document.getElementById("pageHeading").textContent = `${result.data.client.displayName}'s training plan`;
-    document.getElementById("pageCopy").textContent = "Your assigned workouts are shown below. Changes are disabled for this private link.";
-    renderAssignments(result.data.assignments);
+    const personName = result.data.personName
+      || result.data.client?.displayName
+      || result.data.program?.name
+      || "Training";
+    const directProgram = Boolean(result.data.directProgram);
+    const versionText = result.data.program?.version
+      ? ` (version ${result.data.program.version})`
+      : "";
+    const planTitle = directProgram
+      ? "Published training plan"
+      : `${personName}'s training plan`;
+    document.title = `${planTitle} — HälsoPulsen`;
+    document.getElementById("pageHeading").textContent = planTitle;
+    document.getElementById("pageCopy").textContent = directProgram
+      ? `The latest published version${versionText} is shown below. Changes are disabled for this private link.`
+      : "Your assigned workouts are shown below. Changes are disabled for this private link.";
+    renderAssignments(result.data.assignments, directProgram);
   } catch (error) {
     document.getElementById("pageHeading").textContent = "Training plan unavailable";
     document.getElementById("assignmentList").innerHTML = "";
