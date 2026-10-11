@@ -36,6 +36,13 @@ async function run() {
           targetValue: 8,
           targetUnit: "reps",
           sets: 1
+        }, {
+          name: "Easy run",
+          activityType: "cardio",
+          format: "continuous",
+          targetValue: 35,
+          targetUnit: "minutes",
+          sets: 1
         }] : []
       }))
     }]
@@ -69,75 +76,95 @@ async function run() {
   const coachId = "11111111-1111-4111-8111-111111111111";
   const programId = "22222222-2222-4222-8222-222222222222";
   const versionId = "33333333-3333-4333-8333-333333333333";
-  const savedRows = completeProgram.weeks[0].days.map(day => {
-    const hasActivity = day.weekday === 1;
-    return {
-      program_id: programId,
-      client_id: null,
-      program_name: completeProgram.name,
-      program_description: completeProgram.description || "",
-      person_name: "Ada",
-      program_status: "active",
-      program_kind: "library",
-      source_program_id: null,
-      source_version_id: null,
-      current_version_id: versionId,
-      program_revision: 5,
-      program_updated_at: "2026-10-11T10:00:00.000Z",
-      start_date: completeProgram.startDate,
-      version_id: versionId,
-      version_number: 1,
-      version_status: "published",
-      week_id: "week-a",
-      week_number: 1,
-      week_name: "Week 1",
-      phase: "Foundation",
-      progression_notes: "",
-      success_metric: "",
-      workout_id: `workout-${day.weekday}`,
-      day_of_week: day.weekday === 0 ? 7 : day.weekday,
-      workout_name: hasActivity ? "Workout" : "Rest / open day",
-      workout_description: "",
-      session_type: "Other",
-      warmup: "",
-      cooldown: "",
-      is_rest: !hasActivity,
-      workout_exercise_id: hasActivity ? "exercise-row" : null,
-      sort_order: hasActivity ? 1 : null,
-      exercise_id: hasActivity ? "44444444-4444-4444-8444-444444444444" : null,
-      sets: hasActivity ? 1 : null,
-      reps: hasActivity ? 8 : null,
-      duration: null,
-      duration_unit: null,
-      distance: null,
-      distance_unit: null,
-      load: null,
-      load_unit: "kg",
-      rir: null,
-      tempo: null,
-      rest_seconds: hasActivity ? 0 : null,
-      intensity: null,
-      intensity_unit: null,
-      work_seconds: null,
-      recovery_seconds: null,
-      rounds: null,
-      notes: null,
-      resource_url: null,
-      planner_metadata: hasActivity ? {
-        activityType: "strength",
-        format: "sets",
-        targetUnit: "reps",
-        goal: "",
-        heartRateTarget: "",
-        intensity: "",
-        description: ""
-      } : null,
-      exercise_name: hasActivity ? "Squat" : null,
-      category: hasActivity ? "strength" : null,
-      current_version_number: 1
-    };
-  });
-  function createNoOpDatabase() {
+  const editedVersionId = "55555555-5555-4555-8555-555555555555";
+  function makeSavedRows(program, options = {}) {
+    const savedVersionId = options.versionId || versionId;
+    const currentVersionId = options.currentVersionId || savedVersionId;
+    const revision = options.revision ?? 5;
+    const versionNumber = options.versionNumber ?? 1;
+    const versionStatus = options.versionStatus || "published";
+    return program.weeks.flatMap(week => week.days.flatMap(day => {
+      const activities = day.exercises.length ? day.exercises : [null];
+      const isRest = !day.enabled || !day.exercises.length;
+      return activities.map((activity, activityIndex) => {
+        const isStrengthReps = activity?.activityType === "strength"
+          && !["seconds", "minutes"].includes(activity.targetUnit);
+        const isTimedActivity = activity
+          && (activity.activityType === "guided" || activity.activityType === "cardio");
+        return {
+          program_id: programId,
+          client_id: null,
+          program_name: program.name,
+          program_description: program.description || "",
+          person_name: "Ada",
+          program_status: "active",
+          program_kind: "library",
+          source_program_id: null,
+          source_version_id: null,
+          current_version_id: currentVersionId,
+          program_revision: revision,
+          program_updated_at: "2026-10-11T10:00:00.000Z",
+          start_date: program.startDate,
+          version_id: savedVersionId,
+          version_number: versionNumber,
+          version_status: versionStatus,
+          week_id: "week-a",
+          week_number: week.weekNumber,
+          week_name: week.name || week.phase || "Week 1",
+          phase: week.phase || "Foundation",
+          progression_notes: week.progressionNotes || "",
+          success_metric: week.successMetric || "",
+          workout_id: `workout-${day.weekday}`,
+          day_of_week: day.weekday === 0 ? 7 : day.weekday,
+          workout_name: day.name || (isRest ? "Rest / open day" : "Workout"),
+          workout_description: day.description || "",
+          session_type: day.sessionType || "Other",
+          warmup: day.warmup || "",
+          cooldown: day.cooldown || "",
+          is_rest: isRest,
+          workout_exercise_id: activity ? `exercise-row-${day.weekday}-${activityIndex}` : null,
+          sort_order: activity ? activityIndex + 1 : null,
+          exercise_id: activity
+            ? (isStrengthReps
+              ? "44444444-4444-4444-8444-444444444444"
+              : "66666666-6666-4666-8666-666666666666")
+            : null,
+          sets: activity ? activity.sets : null,
+          reps: isStrengthReps ? Math.trunc(activity.targetValue) : null,
+          duration: isTimedActivity ? activity.targetValue : null,
+          duration_unit: isTimedActivity ? "minutes" : null,
+          distance: null,
+          distance_unit: null,
+          load: activity?.load ?? null,
+          load_unit: activity?.loadUnit || "kg",
+          rir: activity?.rir ?? null,
+          tempo: activity?.tempo || null,
+          rest_seconds: activity ? activity.restSeconds || 0 : null,
+          intensity: typeof activity?.intensity === "number" ? activity.intensity : null,
+          intensity_unit: null,
+          work_seconds: null,
+          recovery_seconds: null,
+          rounds: null,
+          notes: activity?.notes || null,
+          resource_url: activity?.resourceUrl || null,
+          planner_metadata: activity ? {
+            activityType: activity.activityType,
+            format: activity.format,
+            targetUnit: activity.targetUnit,
+            goal: activity.goal || "",
+            heartRateTarget: activity.heartRateTarget || "",
+            intensity: activity.intensity ?? "",
+            description: activity.description || ""
+          } : null,
+          exercise_name: activity?.name || null,
+          category: activity?.activityType || null,
+          current_version_number: versionNumber
+        };
+      });
+    }));
+  }
+  const savedRows = makeSavedRows(completeProgram);
+  function createNoOpDatabase(rows = savedRows, revision = 5) {
     const queries = [];
     return {
       queries,
@@ -156,12 +183,12 @@ async function run() {
                   kind: "library",
                   client_id: null,
                   current_version_id: versionId,
-                  revision: 5,
+                  revision,
                   person_name: "Ada"
                 }]
               };
             }
-            return { rowCount: savedRows.length, rows: savedRows };
+            return { rowCount: rows.length, rows };
           },
           release() {}
         };
@@ -181,10 +208,162 @@ async function run() {
   assert.strictEqual(noOpSave.version, 1);
   assert.strictEqual(noOpSave.revision, 5);
   assert.strictEqual(noOpSave.isCurrent, true);
+  assert.strictEqual(completeProgram.weeks[0].days[1].exercises[0].exerciseId, undefined);
+  assert.strictEqual(savedRows.find(row => row.category === "strength").reps, 8);
+  assert.strictEqual(completeProgram.weeks[0].days[1].exercises[1].durationMinutes, undefined);
+  assert.strictEqual(
+    savedRows.find(row => row.category === "cardio").duration,
+    35,
+    "The saved cardio row should restore its derived duration."
+  );
   assert.doesNotMatch(
     noOpDatabase.queries.map(query => query.sql).join("\n"),
     /insert into public\.program_versions|delete from public\.program_weeks|update public\.programs/i
   );
+
+  const restOnlyProgram = {
+    ...completeProgram,
+    weeks: completeProgram.weeks.map(week => ({
+      ...week,
+      days: week.days.map(day => ({ ...day, enabled: false, exercises: [] }))
+    }))
+  };
+  const restDatabase = createNoOpDatabase(makeSavedRows(restOnlyProgram));
+  const restSave = await saveProgram(
+    restDatabase,
+    coachId,
+    restOnlyProgram,
+    programId,
+    "Ada",
+    { makeCurrentWhenValid: true, expectedRevision: 5 }
+  );
+  assert.strictEqual(restSave.unchanged, true, "An unchanged all-rest program must remain unchanged.");
+  assert.strictEqual(restSave.version, 1);
+  assert.doesNotMatch(
+    restDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions|delete from public\.program_weeks|update public\.programs/i
+  );
+
+  const editedProgram = {
+    ...completeProgram,
+    weeks: completeProgram.weeks.map(week => ({
+      ...week,
+      days: week.days.map(day => ({
+        ...day,
+        exercises: day.exercises.map(activity => activity.activityType === "strength"
+          ? { ...activity, targetValue: 9 }
+          : activity)
+      }))
+    }))
+  };
+  const editedRows = makeSavedRows(editedProgram, {
+    revision: 6,
+    versionId: editedVersionId,
+    currentVersionId: editedVersionId,
+    versionNumber: 2
+  });
+  function createEditDatabase(finalRows) {
+    const queries = [];
+    let createdWorkouts = 0;
+    let loadedProgramCount = 0;
+    return {
+      queries,
+      async connect() {
+        return {
+          async query(sql, values) {
+            queries.push({ sql, values });
+            const normalizedSql = sql.toLowerCase();
+            if (["begin", "commit", "rollback"].includes(normalizedSql)) {
+              return { rowCount: 0, rows: [] };
+            }
+            if (normalizedSql.includes("select id, kind, client_id, current_version_id, revision")) {
+              return {
+                rowCount: 1,
+                rows: [{
+                  id: programId,
+                  kind: "library",
+                  client_id: null,
+                  current_version_id: versionId,
+                  revision: 5,
+                  person_name: "Ada"
+                }]
+              };
+            }
+            if (normalizedSql.includes("from public.programs p")) {
+              loadedProgramCount += 1;
+              const rows = loadedProgramCount === 1 ? savedRows : finalRows;
+              return { rowCount: rows.length, rows };
+            }
+            if (normalizedSql.includes("from public.program_versions") && normalizedSql.includes("for update")) {
+              return {
+                rowCount: 1,
+                rows: [{ id: versionId, version_number: 1, status: "published" }]
+              };
+            }
+            if (normalizedSql.includes("insert into public.program_versions")) {
+              return { rowCount: 1, rows: [{ id: editedVersionId }] };
+            }
+            if (normalizedSql.includes("insert into public.program_weeks")) {
+              return { rowCount: 1, rows: [{ id: "edited-week" }] };
+            }
+            if (normalizedSql.includes("insert into public.workouts")) {
+              createdWorkouts += 1;
+              return { rowCount: 1, rows: [{ id: `edited-workout-${createdWorkouts}` }] };
+            }
+            if (normalizedSql.includes("from public.exercises")) {
+              const exerciseId = values[0] === "Squat"
+                ? "44444444-4444-4444-8444-444444444444"
+                : "66666666-6666-4666-8666-666666666666";
+              return { rowCount: 1, rows: [{ id: exerciseId }] };
+            }
+            if (normalizedSql.includes("group by pw.id")) {
+              return { rowCount: 1, rows: [{ workout_count: 7, day_count: 7 }] };
+            }
+            if (normalizedSql.includes("active_workout_count")) {
+              return { rowCount: 1, rows: [{ active_workout_count: 1 }] };
+            }
+            return { rowCount: 1, rows: [] };
+          },
+          release() {}
+        };
+      }
+    };
+  }
+  const editDatabase = createEditDatabase(editedRows);
+  const editSave = await saveProgram(
+    editDatabase,
+    coachId,
+    editedProgram,
+    programId,
+    "Ada",
+    { makeCurrentWhenValid: true, expectedRevision: 5 }
+  );
+  assert.strictEqual(editSave.unchanged, false, "Changing prescribed reps must trigger a save.");
+  assert.strictEqual(editSave.version, 2, "A changed published program must create the next version.");
+  assert.strictEqual(editSave.revision, 6);
+  assert.strictEqual(editSave.becameCurrent, true);
+  assert.match(
+    editDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions/i
+  );
+  const editExerciseWrite = editDatabase.queries.find(query =>
+    /insert into public\.workout_exercises/i.test(query.sql)
+    && query.values[1] === "44444444-4444-4444-8444-444444444444"
+  );
+  assert.ok(editExerciseWrite, "The edited strength exercise must be written.");
+  assert.strictEqual(editExerciseWrite.values[4], 9, "The edited prescribed reps must be persisted.");
+  assert.ok(editDatabase.queries.some(query =>
+    /update public\.program_versions/i.test(query.sql)
+    && /status = 'published'/i.test(query.sql)
+  ), "The valid edited version must be promoted.");
+  assert.ok(editDatabase.queries.some(query =>
+    /update public\.programs/i.test(query.sql)
+    && /current_version_id = \$1/i.test(query.sql)
+  ), "The program must point at the promoted version.");
+  assert.ok(editDatabase.queries.some(query =>
+    /update public\.programs/i.test(query.sql)
+    && /revision = revision \+ 1/i.test(query.sql)
+  ), "A real edit must increment the program revision.");
 
   const staleDatabase = createNoOpDatabase();
   await assert.rejects(
