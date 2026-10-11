@@ -16,7 +16,8 @@ const {
 } = require("../workoutplanner/client-access");
 const {
   isCompleteProgramForCurrent,
-  listProgramVersions
+  listProgramVersions,
+  saveProgram
 } = require("../workoutplanner/program-library");
 
 async function run() {
@@ -28,7 +29,10 @@ async function run() {
       days: Array.from({ length: 7 }, (_, weekday) => ({
         weekday,
         enabled: weekday === 1,
-        exercises: weekday === 1 ? [{ name: "Squat" }] : []
+        exercises: weekday === 1 ? [{
+          name: "Squat",
+          exerciseId: "44444444-4444-4444-8444-444444444444"
+        }] : []
       }))
     }]
   };
@@ -56,6 +60,144 @@ async function run() {
     }),
     false,
     "A program without an active workout must leave the save as a draft."
+  );
+
+  const coachId = "11111111-1111-4111-8111-111111111111";
+  const programId = "22222222-2222-4222-8222-222222222222";
+  const versionId = "33333333-3333-4333-8333-333333333333";
+  const savedRows = completeProgram.weeks[0].days.map(day => {
+    const hasActivity = day.weekday === 1;
+    return {
+      program_id: programId,
+      client_id: null,
+      program_name: completeProgram.name,
+      program_description: completeProgram.description || "",
+      person_name: "Ada",
+      program_status: "active",
+      program_kind: "library",
+      source_program_id: null,
+      source_version_id: null,
+      current_version_id: versionId,
+      program_revision: 5,
+      program_updated_at: "2026-10-11T10:00:00.000Z",
+      start_date: completeProgram.startDate,
+      version_id: versionId,
+      version_number: 1,
+      version_status: "published",
+      week_id: "week-a",
+      week_number: 1,
+      week_name: "Week 1",
+      phase: "Foundation",
+      progression_notes: "",
+      success_metric: "",
+      workout_id: `workout-${day.weekday}`,
+      day_of_week: day.weekday === 0 ? 7 : day.weekday,
+      workout_name: hasActivity ? "Workout" : "Rest / open day",
+      workout_description: "",
+      session_type: "Other",
+      warmup: "",
+      cooldown: "",
+      is_rest: !hasActivity,
+      workout_exercise_id: hasActivity ? "exercise-row" : null,
+      sort_order: hasActivity ? 1 : null,
+      exercise_id: hasActivity ? "44444444-4444-4444-8444-444444444444" : null,
+      sets: hasActivity ? 1 : null,
+      reps: hasActivity ? 1 : null,
+      duration: null,
+      duration_unit: null,
+      distance: null,
+      distance_unit: null,
+      load: null,
+      load_unit: "kg",
+      rir: null,
+      tempo: null,
+      rest_seconds: hasActivity ? 0 : null,
+      intensity: null,
+      intensity_unit: null,
+      work_seconds: null,
+      recovery_seconds: null,
+      rounds: null,
+      notes: null,
+      resource_url: null,
+      planner_metadata: hasActivity ? {
+        activityType: "strength",
+        format: "sets",
+        targetUnit: "reps",
+        goal: "",
+        heartRateTarget: "",
+        intensity: "",
+        description: ""
+      } : null,
+      exercise_name: hasActivity ? "Squat" : null,
+      category: hasActivity ? "strength" : null,
+      current_version_number: 1
+    };
+  });
+  function createNoOpDatabase() {
+    const queries = [];
+    return {
+      queries,
+      async connect() {
+        return {
+          async query(sql, values) {
+            queries.push({ sql, values });
+            if (sql === "begin" || sql === "commit" || sql === "rollback") {
+              return { rowCount: 0, rows: [] };
+            }
+            if (sql.includes("for update")) {
+              return {
+                rowCount: 1,
+                rows: [{
+                  id: programId,
+                  kind: "library",
+                  client_id: null,
+                  current_version_id: versionId,
+                  revision: 5,
+                  person_name: "Ada"
+                }]
+              };
+            }
+            return { rowCount: savedRows.length, rows: savedRows };
+          },
+          release() {}
+        };
+      }
+    };
+  }
+  const noOpDatabase = createNoOpDatabase();
+  const noOpSave = await saveProgram(
+    noOpDatabase,
+    coachId,
+    { ...completeProgram, version: 9 },
+    programId,
+    "Ada",
+    { makeCurrentWhenValid: true, expectedRevision: 5 }
+  );
+  assert.strictEqual(noOpSave.unchanged, true, "An unchanged save must not create another program version.");
+  assert.strictEqual(noOpSave.version, 1);
+  assert.strictEqual(noOpSave.revision, 5);
+  assert.strictEqual(noOpSave.isCurrent, true);
+  assert.doesNotMatch(
+    noOpDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions|delete from public\.program_weeks|update public\.programs/i
+  );
+
+  const staleDatabase = createNoOpDatabase();
+  await assert.rejects(
+    () => saveProgram(
+      staleDatabase,
+      coachId,
+      completeProgram,
+      programId,
+      "Ada",
+      { makeCurrentWhenValid: true, expectedRevision: 4 }
+    ),
+    error => error.statusCode === 409 && error.code === "STALE_REVISION"
+  );
+  assert.doesNotMatch(
+    staleDatabase.queries.map(query => query.sql).join("\n"),
+    /from public\.programs p/i,
+    "Stale revisions must be rejected before loading or writing the program."
   );
 
   const token = generateClientAccessToken();

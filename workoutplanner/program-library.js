@@ -180,6 +180,15 @@ function isCompleteProgramForCurrent(inputProgram) {
 function programContentKey(program) {
   const normalized = normalizeProgram(program);
   delete normalized.version;
+  for (const week of normalized.weeks) {
+    for (const day of week.days) {
+      if (!day.name) {
+        day.name = day.enabled && day.exercises.length
+          ? "Workout"
+          : "Rest / open day";
+      }
+    }
+  }
   return JSON.stringify(normalized);
 }
 
