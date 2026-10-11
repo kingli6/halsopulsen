@@ -31,7 +31,11 @@ async function run() {
         enabled: weekday === 1,
         exercises: weekday === 1 ? [{
           name: "Squat",
-          exerciseId: "44444444-4444-4444-8444-444444444444"
+          activityType: "strength",
+          format: "sets",
+          targetValue: 8,
+          targetUnit: "reps",
+          sets: 1
         }] : []
       }))
     }]
@@ -102,7 +106,7 @@ async function run() {
       sort_order: hasActivity ? 1 : null,
       exercise_id: hasActivity ? "44444444-4444-4444-8444-444444444444" : null,
       sets: hasActivity ? 1 : null,
-      reps: hasActivity ? 1 : null,
+      reps: hasActivity ? 8 : null,
       duration: null,
       duration_unit: null,
       distance: null,
@@ -197,7 +201,12 @@ async function run() {
   assert.doesNotMatch(
     staleDatabase.queries.map(query => query.sql).join("\n"),
     /from public\.programs p/i,
-    "Stale revisions must be rejected before loading or writing the program."
+    "Stale revisions must be rejected after the root revision check but before loading program content."
+  );
+  assert.doesNotMatch(
+    staleDatabase.queries.map(query => query.sql).join("\n"),
+    /\b(?:insert\s+into|update|delete\s+from)\s+public\.(?:programs|program_versions|program_weeks|workouts|workout_exercises|assignments)\b/i,
+    "A stale revision must not write program or assignment records."
   );
 
   const token = generateClientAccessToken();
