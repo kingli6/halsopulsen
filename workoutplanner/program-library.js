@@ -154,6 +154,45 @@ function normalizeProgram(program) {
   };
 }
 
+function isCompleteProgramForCurrent(inputProgram) {
+  if (!inputProgram || typeof inputProgram !== "object" || Array.isArray(inputProgram)) return false;
+  const weeks = Array.isArray(inputProgram.weeks) && inputProgram.weeks.length
+    ? inputProgram.weeks
+    : [{ days: inputProgram.days }];
+  if (!dateOrNull(inputProgram.startDate) || weeks.length === 0) return false;
+
+  let hasActiveWorkout = false;
+  for (const week of weeks) {
+    if (!Array.isArray(week?.days) || week.days.length !== 7) return false;
+    const weekdays = new Set(week.days.map(day => Number(day?.weekday)));
+    if (weekdays.size !== 7 || Array.from({ length: 7 }, (_, weekday) => weekday).some(day => !weekdays.has(day))) {
+      return false;
+    }
+    if (week.days.some(day =>
+      Boolean(day?.enabled) && Array.isArray(day.exercises) && day.exercises.length > 0
+    )) {
+      hasActiveWorkout = true;
+    }
+  }
+  return hasActiveWorkout;
+}
+
+function programContentKey(program) {
+  const normalized = normalizeProgram(program);
+  delete normalized.version;
+  for (const week of normalized.weeks) {
+    for (const day of week.days) {
+      if (!day.name) {
+        day.name = day.enabled && day.exercises.length
+          ? "Workout"
+          : "Rest / open day";
+      }
+      day.exercises = day.exercises.map(activityForContentKey);
+    }
+  }
+  return JSON.stringify(normalized);
+}
+
 function activityColumns(activity) {
   const type = activity.activityType;
   const format = activity.format;
@@ -270,6 +309,37 @@ function activityFromRow(row) {
   };
 }
 
+function activityForContentKey(activity) {
+  const columns = activityColumns(activity);
+  const loaded = activityFromRow({
+    exercise_name: activity.name,
+    category: activity.activityType,
+    sets: activity.sets,
+    reps: columns.reps,
+    duration: columns.duration,
+    duration_unit: columns.durationUnit,
+    distance: columns.distance,
+    distance_unit: columns.distanceUnit,
+    load: columns.load,
+    load_unit: columns.loadUnit,
+    rir: columns.rir,
+    tempo: columns.tempo,
+    rest_seconds: columns.restSeconds,
+    intensity: columns.intensity,
+    intensity_unit: columns.intensityUnit,
+    work_seconds: columns.workSeconds,
+    recovery_seconds: columns.recoverySeconds,
+    rounds: columns.rounds,
+    notes: columns.notes,
+    resource_url: columns.resourceUrl,
+    planner_metadata: columns.plannerMetadata,
+    exercise_id: null
+  });
+  const normalized = normalizeActivity(loaded);
+  delete normalized.exerciseId;
+  return normalized;
+}
+
 async function resolveExercise(client, activity) {
   if (activity.exerciseId) {
     const byId = await client.query(
@@ -326,6 +396,8 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
        p.kind as program_kind,
        p.source_program_id,
        p.source_version_id,
+       p.current_version_id,
+       p.revision as program_revision,
        p.updated_at as program_updated_at,
        p.start_date,
        pv.id as version_id,
@@ -368,8 +440,11 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
        we.resource_url,
        we.planner_metadata,
        e.name as exercise_name,
-       e.category
+        e.category,
+        current_version.version_number as current_version_number
      from public.programs p
+      left join public.program_versions current_version
+        on current_version.id = p.current_version_id
      left join lateral (
        select *
          from public.program_versions candidate
@@ -457,6 +532,10 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
     sourceVersionId: first.source_version_id,
     status: first.program_status,
     versionStatus: first.version_status || "draft",
+    versionId: first.version_id,
+    revision: Number(first.program_revision) || 0,
+    currentVersionId: first.current_version_id || null,
+    currentVersion: Number(first.current_version_number) || null,
     updatedAt: first.program_updated_at,
     program
   };
@@ -482,12 +561,16 @@ async function listPrograms(db, coachProfileId) {
        ) as person_name,
        p.source_program_id,
        p.source_version_id,
+       p.current_version_id,
+       p.revision,
        p.start_date,
        p.published_start_date,
        p.updated_at,
        latest.version_id,
        latest.version_number,
        latest.version_status,
+       current_version.version_number as current_version_number,
+       (p.current_version_id is not null) as has_current_version,
        exists (
          select 1
            from public.client_access_links active_link
@@ -502,6 +585,8 @@ async function listPrograms(db, coachProfileId) {
        ) as has_published_version,
        count(pw.id)::int as week_count
      from public.programs p
+      left join public.program_versions current_version
+        on current_version.id = p.current_version_id
      left join lateral (
        select
          candidate.id as version_id,
@@ -521,7 +606,8 @@ async function listPrograms(db, coachProfileId) {
           limit 1
        )
     where p.coach_profile_id = $1
-     group by p.id, latest.version_id, latest.version_number, latest.version_status
+     group by p.id, latest.version_id, latest.version_number, latest.version_status,
+              current_version.version_number
     order by p.updated_at desc`,
     [coachProfileId]
   );
@@ -532,7 +618,10 @@ async function listPrograms(db, coachProfileId) {
     kind: row.kind || "library",
     sourceProgramId: row.source_program_id,
     sourceVersionId: row.source_version_id,
-     versionId: row.version_id,
+    versionId: row.version_id,
+    revision: Number(row.revision) || 0,
+    currentVersionId: row.current_version_id || null,
+    currentVersion: Number(row.current_version_number) || null,
     name: row.name,
     description: row.description,
     status: row.status,
@@ -542,6 +631,7 @@ async function listPrograms(db, coachProfileId) {
     version: Number(row.version_number) || 1,
     versionStatus: row.version_status || "draft",
     hasActivePrivateLink: Boolean(row.has_active_private_link),
+    hasCurrentVersion: Boolean(row.has_current_version),
     hasPublishedVersion: Boolean(row.has_published_version),
     durationWeeks: Number(row.week_count) || 0
   }));
@@ -582,7 +672,14 @@ async function listProgramVersions(db, coachProfileId, programId) {
   }));
 }
 
-async function saveProgram(db, coachProfileId, inputProgram, programId = null, personName = null) {
+async function saveProgram(
+  db,
+  coachProfileId,
+  inputProgram,
+  programId = null,
+  personName = null,
+  options = {}
+) {
   if (!isUuid(coachProfileId)) {
     const error = new Error("A valid coach profile is required.");
     error.statusCode = 403;
@@ -598,14 +695,27 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null, p
   const normalizedPersonName = personName == null
     ? null
     : text(personName).slice(0, 100);
+  const makeCurrentWhenValid = options.makeCurrentWhenValid === true;
+  const expectedRevision = Number(options.expectedRevision);
+  if (
+    makeCurrentWhenValid
+    && programId
+    && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)
+  ) {
+    const error = new Error("Reload the program before saving so its revision can be checked.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const candidateIsComplete = makeCurrentWhenValid && isCompleteProgramForCurrent(inputProgram);
   const client = await db.connect();
   try {
     await client.query("begin");
     let resolvedProgramId = programId;
+    let root = null;
 
     if (resolvedProgramId) {
       const owned = await client.query(
-        `select id
+        `select id, kind, client_id, current_version_id, revision, person_name
            from public.programs
           where id = $1
             and coach_profile_id = $2
@@ -617,6 +727,35 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null, p
         error.statusCode = 404;
         throw error;
       }
+      root = owned.rows[0];
+      if (makeCurrentWhenValid && (root.kind !== "library" || root.client_id != null)) {
+        const error = new Error("Immediate current saves are only supported for shared library programs.");
+        error.statusCode = 400;
+        throw error;
+      }
+      if (makeCurrentWhenValid && Number(root.revision) !== expectedRevision) {
+        const error = new Error("This program changed after you opened it. Your edits were not saved; reload the latest version.");
+        error.statusCode = 409;
+        error.code = "STALE_REVISION";
+        throw error;
+      }
+
+      const previous = await loadProgramWithClient(client, coachProfileId, resolvedProgramId);
+      const sameProgram = previous
+        && programContentKey(previous.program) === programContentKey(program)
+        && (normalizedPersonName == null || previous.personName === normalizedPersonName);
+      const shouldPromoteSavedDraft = candidateIsComplete && previous?.versionStatus === "draft";
+      if (sameProgram && !shouldPromoteSavedDraft) {
+        await client.query("commit");
+        return {
+          ...previous,
+          version: previous.program.version,
+          revision: Number(root.revision) || 0,
+          unchanged: true,
+          isCurrent: Boolean(previous.versionId && previous.versionId === previous.currentVersionId)
+        };
+      }
+
       await client.query(
         `update public.programs
             set name = $1,
@@ -766,11 +905,83 @@ async function saveProgram(db, coachProfileId, inputProgram, programId = null, p
       }
     }
 
+    let becameCurrent = false;
+    if (candidateIsComplete) {
+      const weekValidation = await client.query(
+        `select pw.id,
+                count(w.id)::int as workout_count,
+                count(distinct w.day_of_week)::int as day_count
+           from public.program_weeks pw
+           left join public.workouts w on w.program_week_id = pw.id
+          where pw.program_version_id = $1
+          group by pw.id`,
+        [versionId]
+      );
+      const completeWeeks = weekValidation.rowCount > 0
+        && weekValidation.rows.every(row =>
+          Number(row.workout_count) === 7 && Number(row.day_count) === 7
+        );
+      const activeWorkoutResult = await client.query(
+        `select count(*)::int as active_workout_count
+           from public.workouts w
+           join public.program_weeks pw on pw.id = w.program_week_id
+          where pw.program_version_id = $1
+            and w.is_rest = false
+            and exists (
+              select 1
+                from public.workout_exercises we
+               where we.workout_id = w.id
+            )`,
+        [versionId]
+      );
+      const hasActiveWorkout = Number(activeWorkoutResult.rows[0]?.active_workout_count || 0) > 0;
+
+      if (program.startDate && completeWeeks && hasActiveWorkout) {
+        await client.query(
+          `update public.program_versions
+              set status = 'archived'
+            where program_id = $1
+              and status = 'published'
+              and id <> $2`,
+          [resolvedProgramId, versionId]
+        );
+        await client.query(
+          `update public.program_versions
+              set status = 'published',
+                  published_at = now()
+            where id = $1
+              and program_id = $2
+              and status = 'draft'`,
+          [versionId, resolvedProgramId]
+        );
+        await client.query(
+          `update public.programs
+              set current_version_id = $1,
+                  published_start_date = start_date
+            where id = $2
+              and coach_profile_id = $3`,
+          [versionId, resolvedProgramId, coachProfileId]
+        );
+        becameCurrent = true;
+      }
+    }
+
+    await client.query(
+      `update public.programs
+          set revision = revision + 1,
+              updated_at = now()
+        where id = $1
+          and coach_profile_id = $2`,
+      [resolvedProgramId, coachProfileId]
+    );
     const saved = await loadProgramWithClient(client, coachProfileId, resolvedProgramId);
     await client.query("commit");
     return {
       ...saved,
-      version: versionNumber
+      version: versionNumber,
+      becameCurrent,
+      unchanged: false,
+      isCurrent: Boolean(saved.versionId && saved.versionId === saved.currentVersionId)
     };
   } catch (error) {
     await client.query("rollback").catch(() => {});
@@ -799,7 +1010,7 @@ async function publishProgram(db, coachProfileId, programId) {
     transactionStarted = true;
 
     const programResult = await client.query(
-      `select p.id, p.client_id, p.kind, p.start_date
+      `select p.id, p.client_id, p.kind, p.start_date, p.revision
          from public.programs p
         where p.id = $1
           and p.coach_profile_id = $2
@@ -907,11 +1118,15 @@ async function publishProgram(db, coachProfileId, programId) {
         returning id, version_number`,
       [draft.id, programId]
     );
-    await client.query(
+    const programUpdate = await client.query(
       `update public.programs
-          set published_start_date = start_date
-        where id = $1`,
-      [programId]
+          set current_version_id = $1,
+              published_start_date = start_date,
+              revision = revision + 1,
+              updated_at = now()
+        where id = $2
+        returning revision`,
+      [draft.id, programId]
     );
 
     const assignmentResult = await client.query(
@@ -957,6 +1172,7 @@ async function publishProgram(db, coachProfileId, programId) {
       ...saved,
       clientId: program.client_id,
       version: Number(draft.version_number),
+      revision: Number(programUpdate.rows[0]?.revision) || 0,
       publishedAssignmentCount: assignmentResult.rowCount
     };
   } catch (error) {
@@ -1185,6 +1401,7 @@ module.exports = {
   listProgramVersions,
   listPrograms,
   loadProgram,
+  isCompleteProgramForCurrent,
   normalizeProgram,
   publishProgram,
   saveProgram

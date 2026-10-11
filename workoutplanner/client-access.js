@@ -165,12 +165,14 @@ async function regenerateProgramAccessLink(db, coachProfileId, programId) {
           AND p.coach_profile_id = $2
           AND p.kind = 'library'
           AND p.client_id IS NULL
-          AND p.published_start_date IS NOT NULL
+           AND p.current_version_id IS NOT NULL
+           AND COALESCE(p.published_start_date, p.start_date) IS NOT NULL
           AND EXISTS (
             SELECT 1
               FROM public.program_versions pv
-             WHERE pv.program_id = p.id
-               AND pv.status IN ('published', 'archived')
+              WHERE pv.id = p.current_version_id
+                AND pv.program_id = p.id
+                AND pv.status = 'published'
           )
         FOR UPDATE OF p`,
       [programId, coachProfileId]
@@ -213,7 +215,8 @@ async function getProgramAccessLink(db, coachProfileId, programId) {
          ON p.id = l.program_id
         AND p.kind = 'library'
         AND p.client_id IS NULL
-        AND p.published_start_date IS NOT NULL
+         AND p.current_version_id IS NOT NULL
+         AND COALESCE(p.published_start_date, p.start_date) IS NOT NULL
         AND p.coach_profile_id = $1
       WHERE l.program_id = $2
         AND l.client_id IS NULL
@@ -221,8 +224,9 @@ async function getProgramAccessLink(db, coachProfileId, programId) {
         AND EXISTS (
           SELECT 1
             FROM public.program_versions pv
-           WHERE pv.program_id = p.id
-             AND pv.status IN ('published', 'archived')
+            WHERE pv.id = p.current_version_id
+              AND pv.program_id = p.id
+              AND pv.status = 'published'
         )
       LIMIT 2`,
     [coachProfileId, programId]
@@ -255,12 +259,14 @@ async function revokeProgramAccessLink(db, coachProfileId, programId) {
           AND p.coach_profile_id = $2
           AND p.kind = 'library'
           AND p.client_id IS NULL
-          AND p.published_start_date IS NOT NULL
+           AND p.current_version_id IS NOT NULL
+           AND COALESCE(p.published_start_date, p.start_date) IS NOT NULL
           AND EXISTS (
             SELECT 1
               FROM public.program_versions pv
-             WHERE pv.program_id = p.id
-               AND pv.status IN ('published', 'archived')
+              WHERE pv.id = p.current_version_id
+                AND pv.program_id = p.id
+                AND pv.status = 'published'
           )
         FOR UPDATE OF p`,
       [programId, coachProfileId]
@@ -311,7 +317,8 @@ async function findClientDataByToken(db, token) {
             l.client_id IS NULL
             AND p.kind = 'library'
             AND p.client_id IS NULL
-            AND p.published_start_date IS NOT NULL
+           AND p.current_version_id IS NOT NULL
+           AND COALESCE(p.published_start_date, p.start_date) IS NOT NULL
           )
           OR (
             l.client_id IS NOT NULL
@@ -323,8 +330,9 @@ async function findClientDataByToken(db, token) {
         AND EXISTS (
           SELECT 1
             FROM public.program_versions available_version
-           WHERE available_version.program_id = p.id
-             AND available_version.status IN ('published', 'archived')
+            WHERE available_version.id = p.current_version_id
+              AND available_version.program_id = p.id
+              AND available_version.status = 'published'
         )
       LIMIT 2`,
     [tokenHash]
@@ -336,13 +344,13 @@ async function findClientDataByToken(db, token) {
     const scheduleResult = await db.query(
       `SELECT
           to_char(
-            p.published_start_date + (
+             COALESCE(p.published_start_date, p.start_date) + (
               ((pw.week_number - 1) * 7) + (w.day_of_week - 1)
             )::integer,
             'YYYY-MM-DD'
           ) AS recommended_date,
           to_char(
-            p.published_start_date + (
+             COALESCE(p.published_start_date, p.start_date) + (
               ((pw.week_number - 1) * 7) + (w.day_of_week - 1)
             )::integer,
             'YYYY-MM-DD'
@@ -395,13 +403,12 @@ async function findClientDataByToken(db, token) {
             '[]'::json
           ) AS exercises
         FROM public.programs p
-        JOIN LATERAL (
+         JOIN LATERAL (
           SELECT candidate.id, candidate.version_number, candidate.published_at
             FROM public.program_versions candidate
-           WHERE candidate.program_id = p.id
-             AND candidate.status IN ('published', 'archived')
-           ORDER BY candidate.version_number DESC
-           LIMIT 1
+            WHERE candidate.id = p.current_version_id
+              AND candidate.program_id = p.id
+              AND candidate.status = 'published'
         ) pv ON true
         JOIN public.program_weeks pw ON pw.program_version_id = pv.id
         JOIN public.workouts w ON w.program_week_id = pw.id
@@ -529,7 +536,8 @@ async function hasClientAccessToken(db, token) {
             l.client_id IS NULL
             AND p.kind = 'library'
             AND p.client_id IS NULL
-            AND p.published_start_date IS NOT NULL
+            AND p.current_version_id IS NOT NULL
+            AND COALESCE(p.published_start_date, p.start_date) IS NOT NULL
           )
           OR (
             l.client_id IS NOT NULL
@@ -541,8 +549,9 @@ async function hasClientAccessToken(db, token) {
         AND EXISTS (
           SELECT 1
             FROM public.program_versions available_version
-           WHERE available_version.program_id = p.id
-             AND available_version.status IN ('published', 'archived')
+           WHERE available_version.id = p.current_version_id
+             AND available_version.program_id = p.id
+             AND available_version.status = 'published'
         )
       LIMIT 1`,
     [tokenHash]

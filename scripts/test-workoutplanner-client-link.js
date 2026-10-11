@@ -14,9 +14,380 @@ const {
   regenerateClientAccessLink,
   regenerateProgramAccessLink
 } = require("../workoutplanner/client-access");
-const { listProgramVersions } = require("../workoutplanner/program-library");
+const {
+  isCompleteProgramForCurrent,
+  listProgramVersions,
+  saveProgram
+} = require("../workoutplanner/program-library");
 
 async function run() {
+  const completeProgram = {
+    name: "Current version candidate",
+    startDate: "2026-10-12",
+    weeks: [{
+      weekNumber: 1,
+      days: Array.from({ length: 7 }, (_, weekday) => ({
+        weekday,
+        enabled: weekday === 1,
+        exercises: weekday === 1 ? [{
+          name: "Squat",
+          activityType: "strength",
+          format: "sets",
+          targetValue: 8,
+          targetUnit: "reps",
+          sets: 1
+        }, {
+          name: "Easy run",
+          activityType: "cardio",
+          format: "continuous",
+          targetValue: 35,
+          targetUnit: "minutes",
+          sets: 1
+        }] : []
+      }))
+    }]
+  };
+  assert.strictEqual(isCompleteProgramForCurrent(completeProgram), true);
+  assert.strictEqual(
+    isCompleteProgramForCurrent({ ...completeProgram, startDate: "" }),
+    false,
+    "A missing start date must leave the save as a draft."
+  );
+  assert.strictEqual(
+    isCompleteProgramForCurrent({
+      ...completeProgram,
+      weeks: [{ ...completeProgram.weeks[0], days: completeProgram.weeks[0].days.slice(1) }]
+    }),
+    false,
+    "A week with fewer than seven explicit days must leave the save as a draft."
+  );
+  assert.strictEqual(
+    isCompleteProgramForCurrent({
+      ...completeProgram,
+      weeks: [{
+        ...completeProgram.weeks[0],
+        days: completeProgram.weeks[0].days.map(day => ({ ...day, enabled: false, exercises: [] }))
+      }]
+    }),
+    false,
+    "A program without an active workout must leave the save as a draft."
+  );
+
+  const coachId = "11111111-1111-4111-8111-111111111111";
+  const programId = "22222222-2222-4222-8222-222222222222";
+  const versionId = "33333333-3333-4333-8333-333333333333";
+  const editedVersionId = "55555555-5555-4555-8555-555555555555";
+  function makeSavedRows(program, options = {}) {
+    const savedVersionId = options.versionId || versionId;
+    const currentVersionId = options.currentVersionId || savedVersionId;
+    const revision = options.revision ?? 5;
+    const versionNumber = options.versionNumber ?? 1;
+    const versionStatus = options.versionStatus || "published";
+    return program.weeks.flatMap(week => week.days.flatMap(day => {
+      const activities = day.exercises.length ? day.exercises : [null];
+      const isRest = !day.enabled || !day.exercises.length;
+      return activities.map((activity, activityIndex) => {
+        const isStrengthReps = activity?.activityType === "strength"
+          && !["seconds", "minutes"].includes(activity.targetUnit);
+        const isTimedActivity = activity
+          && (activity.activityType === "guided" || activity.activityType === "cardio");
+        return {
+          program_id: programId,
+          client_id: null,
+          program_name: program.name,
+          program_description: program.description || "",
+          person_name: "Ada",
+          program_status: "active",
+          program_kind: "library",
+          source_program_id: null,
+          source_version_id: null,
+          current_version_id: currentVersionId,
+          program_revision: revision,
+          program_updated_at: "2026-10-11T10:00:00.000Z",
+          start_date: program.startDate,
+          version_id: savedVersionId,
+          version_number: versionNumber,
+          version_status: versionStatus,
+          week_id: "week-a",
+          week_number: week.weekNumber,
+          week_name: week.name || week.phase || "Week 1",
+          phase: week.phase || "Foundation",
+          progression_notes: week.progressionNotes || "",
+          success_metric: week.successMetric || "",
+          workout_id: `workout-${day.weekday}`,
+          day_of_week: day.weekday === 0 ? 7 : day.weekday,
+          workout_name: day.name || (isRest ? "Rest / open day" : "Workout"),
+          workout_description: day.description || "",
+          session_type: day.sessionType || "Other",
+          warmup: day.warmup || "",
+          cooldown: day.cooldown || "",
+          is_rest: isRest,
+          workout_exercise_id: activity ? `exercise-row-${day.weekday}-${activityIndex}` : null,
+          sort_order: activity ? activityIndex + 1 : null,
+          exercise_id: activity
+            ? (isStrengthReps
+              ? "44444444-4444-4444-8444-444444444444"
+              : "66666666-6666-4666-8666-666666666666")
+            : null,
+          sets: activity ? activity.sets : null,
+          reps: isStrengthReps ? Math.trunc(activity.targetValue) : null,
+          duration: isTimedActivity ? activity.targetValue : null,
+          duration_unit: isTimedActivity ? "minutes" : null,
+          distance: null,
+          distance_unit: null,
+          load: activity?.load ?? null,
+          load_unit: activity?.loadUnit || "kg",
+          rir: activity?.rir ?? null,
+          tempo: activity?.tempo || null,
+          rest_seconds: activity ? activity.restSeconds || 0 : null,
+          intensity: typeof activity?.intensity === "number" ? activity.intensity : null,
+          intensity_unit: null,
+          work_seconds: null,
+          recovery_seconds: null,
+          rounds: null,
+          notes: activity?.notes || null,
+          resource_url: activity?.resourceUrl || null,
+          planner_metadata: activity ? {
+            activityType: activity.activityType,
+            format: activity.format,
+            targetUnit: activity.targetUnit,
+            goal: activity.goal || "",
+            heartRateTarget: activity.heartRateTarget || "",
+            intensity: activity.intensity ?? "",
+            description: activity.description || ""
+          } : null,
+          exercise_name: activity?.name || null,
+          category: activity?.activityType || null,
+          current_version_number: versionNumber
+        };
+      });
+    }));
+  }
+  const savedRows = makeSavedRows(completeProgram);
+  function createNoOpDatabase(rows = savedRows, revision = 5) {
+    const queries = [];
+    return {
+      queries,
+      async connect() {
+        return {
+          async query(sql, values) {
+            queries.push({ sql, values });
+            if (sql === "begin" || sql === "commit" || sql === "rollback") {
+              return { rowCount: 0, rows: [] };
+            }
+            if (sql.includes("for update")) {
+              return {
+                rowCount: 1,
+                rows: [{
+                  id: programId,
+                  kind: "library",
+                  client_id: null,
+                  current_version_id: versionId,
+                  revision,
+                  person_name: "Ada"
+                }]
+              };
+            }
+            return { rowCount: rows.length, rows };
+          },
+          release() {}
+        };
+      }
+    };
+  }
+  const noOpDatabase = createNoOpDatabase();
+  const noOpSave = await saveProgram(
+    noOpDatabase,
+    coachId,
+    { ...completeProgram, version: 9 },
+    programId,
+    "Ada",
+    { makeCurrentWhenValid: true, expectedRevision: 5 }
+  );
+  assert.strictEqual(noOpSave.unchanged, true, "An unchanged save must not create another program version.");
+  assert.strictEqual(noOpSave.version, 1);
+  assert.strictEqual(noOpSave.revision, 5);
+  assert.strictEqual(noOpSave.isCurrent, true);
+  assert.strictEqual(completeProgram.weeks[0].days[1].exercises[0].exerciseId, undefined);
+  assert.strictEqual(savedRows.find(row => row.category === "strength").reps, 8);
+  assert.strictEqual(completeProgram.weeks[0].days[1].exercises[1].durationMinutes, undefined);
+  assert.strictEqual(
+    savedRows.find(row => row.category === "cardio").duration,
+    35,
+    "The saved cardio row should restore its derived duration."
+  );
+  assert.doesNotMatch(
+    noOpDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions|delete from public\.program_weeks|update public\.programs/i
+  );
+
+  const restOnlyProgram = {
+    ...completeProgram,
+    weeks: completeProgram.weeks.map(week => ({
+      ...week,
+      days: week.days.map(day => ({ ...day, enabled: false, exercises: [] }))
+    }))
+  };
+  const restDatabase = createNoOpDatabase(makeSavedRows(restOnlyProgram));
+  const restSave = await saveProgram(
+    restDatabase,
+    coachId,
+    restOnlyProgram,
+    programId,
+    "Ada",
+    { makeCurrentWhenValid: true, expectedRevision: 5 }
+  );
+  assert.strictEqual(restSave.unchanged, true, "An unchanged all-rest program must remain unchanged.");
+  assert.strictEqual(restSave.version, 1);
+  assert.doesNotMatch(
+    restDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions|delete from public\.program_weeks|update public\.programs/i
+  );
+
+  const editedProgram = {
+    ...completeProgram,
+    weeks: completeProgram.weeks.map(week => ({
+      ...week,
+      days: week.days.map(day => ({
+        ...day,
+        exercises: day.exercises.map(activity => activity.activityType === "strength"
+          ? { ...activity, targetValue: 9 }
+          : activity)
+      }))
+    }))
+  };
+  const editedRows = makeSavedRows(editedProgram, {
+    revision: 6,
+    versionId: editedVersionId,
+    currentVersionId: editedVersionId,
+    versionNumber: 2
+  });
+  function createEditDatabase(finalRows) {
+    const queries = [];
+    let createdWorkouts = 0;
+    let loadedProgramCount = 0;
+    return {
+      queries,
+      async connect() {
+        return {
+          async query(sql, values) {
+            queries.push({ sql, values });
+            const normalizedSql = sql.toLowerCase();
+            if (["begin", "commit", "rollback"].includes(normalizedSql)) {
+              return { rowCount: 0, rows: [] };
+            }
+            if (normalizedSql.includes("select id, kind, client_id, current_version_id, revision")) {
+              return {
+                rowCount: 1,
+                rows: [{
+                  id: programId,
+                  kind: "library",
+                  client_id: null,
+                  current_version_id: versionId,
+                  revision: 5,
+                  person_name: "Ada"
+                }]
+              };
+            }
+            if (normalizedSql.includes("from public.programs p")) {
+              loadedProgramCount += 1;
+              const rows = loadedProgramCount === 1 ? savedRows : finalRows;
+              return { rowCount: rows.length, rows };
+            }
+            if (normalizedSql.includes("from public.program_versions") && normalizedSql.includes("for update")) {
+              return {
+                rowCount: 1,
+                rows: [{ id: versionId, version_number: 1, status: "published" }]
+              };
+            }
+            if (normalizedSql.includes("insert into public.program_versions")) {
+              return { rowCount: 1, rows: [{ id: editedVersionId }] };
+            }
+            if (normalizedSql.includes("insert into public.program_weeks")) {
+              return { rowCount: 1, rows: [{ id: "edited-week" }] };
+            }
+            if (normalizedSql.includes("insert into public.workouts")) {
+              createdWorkouts += 1;
+              return { rowCount: 1, rows: [{ id: `edited-workout-${createdWorkouts}` }] };
+            }
+            if (normalizedSql.includes("from public.exercises")) {
+              const exerciseId = values[0] === "Squat"
+                ? "44444444-4444-4444-8444-444444444444"
+                : "66666666-6666-4666-8666-666666666666";
+              return { rowCount: 1, rows: [{ id: exerciseId }] };
+            }
+            if (normalizedSql.includes("group by pw.id")) {
+              return { rowCount: 1, rows: [{ workout_count: 7, day_count: 7 }] };
+            }
+            if (normalizedSql.includes("active_workout_count")) {
+              return { rowCount: 1, rows: [{ active_workout_count: 1 }] };
+            }
+            return { rowCount: 1, rows: [] };
+          },
+          release() {}
+        };
+      }
+    };
+  }
+  const editDatabase = createEditDatabase(editedRows);
+  const editSave = await saveProgram(
+    editDatabase,
+    coachId,
+    editedProgram,
+    programId,
+    "Ada",
+    { makeCurrentWhenValid: true, expectedRevision: 5 }
+  );
+  assert.strictEqual(editSave.unchanged, false, "Changing prescribed reps must trigger a save.");
+  assert.strictEqual(editSave.version, 2, "A changed published program must create the next version.");
+  assert.strictEqual(editSave.revision, 6);
+  assert.strictEqual(editSave.becameCurrent, true);
+  assert.match(
+    editDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions/i
+  );
+  const editExerciseWrite = editDatabase.queries.find(query =>
+    /insert into public\.workout_exercises/i.test(query.sql)
+    && query.values[1] === "44444444-4444-4444-8444-444444444444"
+  );
+  assert.ok(editExerciseWrite, "The edited strength exercise must be written.");
+  assert.strictEqual(editExerciseWrite.values[4], 9, "The edited prescribed reps must be persisted.");
+  assert.ok(editDatabase.queries.some(query =>
+    /update public\.program_versions/i.test(query.sql)
+    && /status = 'published'/i.test(query.sql)
+  ), "The valid edited version must be promoted.");
+  assert.ok(editDatabase.queries.some(query =>
+    /update public\.programs/i.test(query.sql)
+    && /current_version_id = \$1/i.test(query.sql)
+  ), "The program must point at the promoted version.");
+  assert.ok(editDatabase.queries.some(query =>
+    /update public\.programs/i.test(query.sql)
+    && /revision = revision \+ 1/i.test(query.sql)
+  ), "A real edit must increment the program revision.");
+
+  const staleDatabase = createNoOpDatabase();
+  await assert.rejects(
+    () => saveProgram(
+      staleDatabase,
+      coachId,
+      completeProgram,
+      programId,
+      "Ada",
+      { makeCurrentWhenValid: true, expectedRevision: 4 }
+    ),
+    error => error.statusCode === 409 && error.code === "STALE_REVISION"
+  );
+  assert.doesNotMatch(
+    staleDatabase.queries.map(query => query.sql).join("\n"),
+    /from public\.programs p/i,
+    "Stale revisions must be rejected after the root revision check but before loading program content."
+  );
+  assert.doesNotMatch(
+    staleDatabase.queries.map(query => query.sql).join("\n"),
+    /\b(?:insert\s+into|update|delete\s+from)\s+public\.(?:programs|program_versions|program_weeks|workouts|workout_exercises|assignments)\b/i,
+    "A stale revision must not write program or assignment records."
+  );
+
   const token = generateClientAccessToken();
   assert.strictEqual(Buffer.from(token, "base64url").length, 32);
   assert.match(hashClientAccessToken(token), /^[0-9a-f]{64}$/);
@@ -176,7 +547,8 @@ async function run() {
       directTransactionQueries.push({ sql, values });
       if (sql.includes("SELECT p.id, p.name, p.person_name")) {
         assert.match(sql, /p\.kind = 'library'/);
-        assert.match(sql, /p\.published_start_date IS NOT NULL/);
+        assert.match(sql, /p\.current_version_id IS NOT NULL/i);
+        assert.match(sql, /COALESCE\(p\.published_start_date, p\.start_date\) IS NOT NULL/i);
         return {
           rowCount: 1,
           rows: [{ id: "program-a", name: "Strength", person_name: "Ada" }]
@@ -204,7 +576,8 @@ async function run() {
     async query(sql, values) {
       assert.deepStrictEqual(values, ["coach-a", "program-a"]);
       assert.match(sql, /l\.client_id IS NULL/);
-      assert.match(sql, /p\.published_start_date IS NOT NULL/);
+      assert.match(sql, /p\.current_version_id IS NOT NULL/i);
+      assert.match(sql, /COALESCE\(p\.published_start_date, p\.start_date\) IS NOT NULL/i);
       return {
         rowCount: 1,
         rows: [{
@@ -256,8 +629,10 @@ async function run() {
   assert.strictEqual(directData.program.name, "Published program");
   assert.strictEqual(directData.program.version, 4);
   assert.strictEqual(directData.assignments[0].program_name, "Published program");
-  assert.match(directQueries[1].sql, /published_start_date/);
-  assert.match(directQueries[1].sql, /candidate\.status IN \('published', 'archived'\)/);
+  assert.match(directQueries[1].sql, /COALESCE\(p\.published_start_date, p\.start_date\)/i);
+  assert.match(directQueries[1].sql, /candidate\.id = p\.current_version_id/i);
+  assert.match(directQueries[1].sql, /candidate\.status = 'published'/i);
+  assert.doesNotMatch(directQueries[1].sql, /ORDER BY candidate\.version_number DESC/i);
   assert.match(
     directQueries[1].sql,
     /GROUP BY p\.id, pv\.id, pw\.id, w\.id, pv\.version_number, pv\.published_at/
@@ -273,7 +648,8 @@ async function run() {
     }
   }, directToken), true);
   assert.match(directAccessQuery, /l\.client_id IS NULL/);
-  assert.match(directAccessQuery, /p\.published_start_date IS NOT NULL/);
+  assert.match(directAccessQuery, /p\.current_version_id IS NOT NULL/i);
+  assert.match(directAccessQuery, /COALESCE\(p\.published_start_date, p\.start_date\) IS NOT NULL/i);
 
   const directRevokeQueries = [];
   const directRevoked = await revokeProgramAccessLink({
@@ -392,7 +768,9 @@ async function run() {
   );
   assert.match(publishImplementation, /p\.kind = 'library' and p\.client_id is null/);
   assert.match(publishImplementation, /and p\.client_id is not null/);
-  assert.match(publishImplementation, /set published_start_date = start_date/);
+   assert.match(publishImplementation, /current_version_id = \$1/);
+   assert.match(publishImplementation, /published_start_date = start_date/);
+   assert.match(publishImplementation, /revision = revision \+ 1/);
   assert.doesNotMatch(publishImplementation, /client_access_links/i);
   const cloneImplementation = programLibrary.slice(
     programLibrary.indexOf("async function cloneLibraryProgramVersion"),
