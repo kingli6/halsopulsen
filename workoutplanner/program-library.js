@@ -187,6 +187,7 @@ function programContentKey(program) {
           ? "Workout"
           : "Rest / open day";
       }
+      day.exercises = day.exercises.map(activityForContentKey);
     }
   }
   return JSON.stringify(normalized);
@@ -306,6 +307,37 @@ function activityFromRow(row) {
     unit: targetUnit,
     exerciseId: row.exercise_id
   };
+}
+
+function activityForContentKey(activity) {
+  const columns = activityColumns(activity);
+  const loaded = activityFromRow({
+    exercise_name: activity.name,
+    category: activity.activityType,
+    sets: activity.sets,
+    reps: columns.reps,
+    duration: columns.duration,
+    duration_unit: columns.durationUnit,
+    distance: columns.distance,
+    distance_unit: columns.distanceUnit,
+    load: columns.load,
+    load_unit: columns.loadUnit,
+    rir: columns.rir,
+    tempo: columns.tempo,
+    rest_seconds: columns.restSeconds,
+    intensity: columns.intensity,
+    intensity_unit: columns.intensityUnit,
+    work_seconds: columns.workSeconds,
+    recovery_seconds: columns.recoverySeconds,
+    rounds: columns.rounds,
+    notes: columns.notes,
+    resource_url: columns.resourceUrl,
+    planner_metadata: columns.plannerMetadata,
+    exercise_id: null
+  });
+  const normalized = normalizeActivity(loaded);
+  delete normalized.exerciseId;
+  return normalized;
 }
 
 async function resolveExercise(client, activity) {
