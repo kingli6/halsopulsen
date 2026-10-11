@@ -367,7 +367,8 @@ app.post('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req,
       req.workoutPlannerProfile.id,
       req.body?.program,
       null,
-      req.body?.personName
+      req.body?.personName,
+      { makeCurrentWhenValid: req.body?.makeCurrentWhenValid === true }
     );
     return res.status(201).json({
       ok: true,
@@ -378,7 +379,8 @@ app.post('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req,
     console.error('Could not save WorkoutPlanner program:', error.message);
     return res.status(error.statusCode || 503).json({
       ok: false,
-      error: error.statusCode ? error.message : 'The program could not be saved.'
+      error: error.statusCode ? error.message : 'The program could not be saved.',
+      code: error.code || undefined
     });
   }
 });
@@ -390,7 +392,11 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, a
       req.workoutPlannerProfile.id,
       req.body?.program,
       req.params.programId,
-      req.body?.personName
+      req.body?.personName,
+      {
+        makeCurrentWhenValid: req.body?.makeCurrentWhenValid === true,
+        expectedRevision: req.body?.expectedRevision
+      }
     );
     return res.json({
       ok: true,
@@ -401,7 +407,8 @@ app.put('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, a
     console.error('Could not update WorkoutPlanner program:', error.message);
     return res.status(error.statusCode || 503).json({
       ok: false,
-      error: error.statusCode ? error.message : 'The program could not be updated.'
+      error: error.statusCode ? error.message : 'The program could not be updated.',
+      code: error.code || undefined
     });
   }
 });

@@ -14,9 +14,50 @@ const {
   regenerateClientAccessLink,
   regenerateProgramAccessLink
 } = require("../workoutplanner/client-access");
-const { listProgramVersions } = require("../workoutplanner/program-library");
+const {
+  isCompleteProgramForCurrent,
+  listProgramVersions
+} = require("../workoutplanner/program-library");
 
 async function run() {
+  const completeProgram = {
+    name: "Current version candidate",
+    startDate: "2026-10-12",
+    weeks: [{
+      weekNumber: 1,
+      days: Array.from({ length: 7 }, (_, weekday) => ({
+        weekday,
+        enabled: weekday === 1,
+        exercises: weekday === 1 ? [{ name: "Squat" }] : []
+      }))
+    }]
+  };
+  assert.strictEqual(isCompleteProgramForCurrent(completeProgram), true);
+  assert.strictEqual(
+    isCompleteProgramForCurrent({ ...completeProgram, startDate: "" }),
+    false,
+    "A missing start date must leave the save as a draft."
+  );
+  assert.strictEqual(
+    isCompleteProgramForCurrent({
+      ...completeProgram,
+      weeks: [{ ...completeProgram.weeks[0], days: completeProgram.weeks[0].days.slice(1) }]
+    }),
+    false,
+    "A week with fewer than seven explicit days must leave the save as a draft."
+  );
+  assert.strictEqual(
+    isCompleteProgramForCurrent({
+      ...completeProgram,
+      weeks: [{
+        ...completeProgram.weeks[0],
+        days: completeProgram.weeks[0].days.map(day => ({ ...day, enabled: false, exercises: [] }))
+      }]
+    }),
+    false,
+    "A program without an active workout must leave the save as a draft."
+  );
+
   const token = generateClientAccessToken();
   assert.strictEqual(Buffer.from(token, "base64url").length, 32);
   assert.match(hashClientAccessToken(token), /^[0-9a-f]{64}$/);
@@ -176,7 +217,8 @@ async function run() {
       directTransactionQueries.push({ sql, values });
       if (sql.includes("SELECT p.id, p.name, p.person_name")) {
         assert.match(sql, /p\.kind = 'library'/);
-        assert.match(sql, /p\.published_start_date IS NOT NULL/);
+        assert.match(sql, /p\.current_version_id IS NOT NULL/i);
+        assert.match(sql, /COALESCE\(p\.published_start_date, p\.start_date\) IS NOT NULL/i);
         return {
           rowCount: 1,
           rows: [{ id: "program-a", name: "Strength", person_name: "Ada" }]
@@ -204,7 +246,8 @@ async function run() {
     async query(sql, values) {
       assert.deepStrictEqual(values, ["coach-a", "program-a"]);
       assert.match(sql, /l\.client_id IS NULL/);
-      assert.match(sql, /p\.published_start_date IS NOT NULL/);
+      assert.match(sql, /p\.current_version_id IS NOT NULL/i);
+      assert.match(sql, /COALESCE\(p\.published_start_date, p\.start_date\) IS NOT NULL/i);
       return {
         rowCount: 1,
         rows: [{
@@ -256,8 +299,10 @@ async function run() {
   assert.strictEqual(directData.program.name, "Published program");
   assert.strictEqual(directData.program.version, 4);
   assert.strictEqual(directData.assignments[0].program_name, "Published program");
-  assert.match(directQueries[1].sql, /published_start_date/);
-  assert.match(directQueries[1].sql, /candidate\.status IN \('published', 'archived'\)/);
+  assert.match(directQueries[1].sql, /COALESCE\(p\.published_start_date, p\.start_date\)/i);
+  assert.match(directQueries[1].sql, /candidate\.id = p\.current_version_id/i);
+  assert.match(directQueries[1].sql, /candidate\.status = 'published'/i);
+  assert.doesNotMatch(directQueries[1].sql, /ORDER BY candidate\.version_number DESC/i);
   assert.match(
     directQueries[1].sql,
     /GROUP BY p\.id, pv\.id, pw\.id, w\.id, pv\.version_number, pv\.published_at/
@@ -273,7 +318,8 @@ async function run() {
     }
   }, directToken), true);
   assert.match(directAccessQuery, /l\.client_id IS NULL/);
-  assert.match(directAccessQuery, /p\.published_start_date IS NOT NULL/);
+  assert.match(directAccessQuery, /p\.current_version_id IS NOT NULL/i);
+  assert.match(directAccessQuery, /COALESCE\(p\.published_start_date, p\.start_date\) IS NOT NULL/i);
 
   const directRevokeQueries = [];
   const directRevoked = await revokeProgramAccessLink({
@@ -392,7 +438,9 @@ async function run() {
   );
   assert.match(publishImplementation, /p\.kind = 'library' and p\.client_id is null/);
   assert.match(publishImplementation, /and p\.client_id is not null/);
-  assert.match(publishImplementation, /set published_start_date = start_date/);
+   assert.match(publishImplementation, /current_version_id = \$1/);
+   assert.match(publishImplementation, /published_start_date = start_date/);
+   assert.match(publishImplementation, /revision = revision \+ 1/);
   assert.doesNotMatch(publishImplementation, /client_access_links/i);
   const cloneImplementation = programLibrary.slice(
     programLibrary.indexOf("async function cloneLibraryProgramVersion"),

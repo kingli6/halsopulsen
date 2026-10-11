@@ -11,6 +11,9 @@ const planState = {
   databaseProgramKind: null,
   databaseProgramVersion: null,
   databaseProgramVersionStatus: null,
+  databaseProgramRevision: null,
+  databaseProgramCurrentVersionId: null,
+  databaseProgramCurrentVersion: null,
   databaseProgramClientId: null,
   databaseSaving: false,
   clients: [],
@@ -198,19 +201,31 @@ function renderPlanOverview() {
     : "Not published to a share link yet");
   const databaseVersion = planState.databaseProgramVersion || program.version || 1;
   const databaseStatus = planState.databaseProgramVersionStatus || "draft";
-  setPlanText("databaseSaveDetail", planState.databaseProgramId
-    ? `Saved to database · Version ${databaseVersion} · ${databaseStatus}`
-    : "Not saved to the database library");
   const isDatabaseClientProgram = databaseWorkspace
     && planState.databaseProgramId
     && planState.databaseProgramKind === "client";
+  const immediateLibrarySave = adminDatabaseWorkspace
+    && (!planState.databaseProgramId || planState.databaseProgramKind === "library");
+  setPlanText("databaseSaveDetail", planState.databaseProgramId
+    ? immediateLibrarySave
+      ? databaseStatus === "published"
+        ? `Current version ${planState.databaseProgramCurrentVersion || databaseVersion} · Revision ${planState.databaseProgramRevision || 0}`
+        : `Draft version ${databaseVersion} saved · ${planState.databaseProgramCurrentVersion
+          ? `Shared version ${planState.databaseProgramCurrentVersion} is unchanged`
+          : "No shared version is current yet"}`
+      : `Saved to database · Version ${databaseVersion} · ${databaseStatus}`
+    : "Not saved to the database library");
   setPlanText("publishHeading", adminDatabaseWorkspace
-    ? (databaseStatus === "published" ? "Publish an update when this program is ready" : "Publish this program when it is ready")
+    ? immediateLibrarySave
+      ? "Save to update the shared program"
+      : (databaseStatus === "published" ? "Publish an update when this program is ready" : "Publish this program when it is ready")
     : isDatabaseClientProgram
     ? (databaseStatus === "published" ? "Publish an update when this program is ready" : "Publish when this program is ready")
     : changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", adminDatabaseWorkspace
-    ? "Publishing makes this version available through the private program page. Draft changes stay hidden until then; saved versions remain in history."
+    ? immediateLibrarySave
+      ? "Complete saves become current automatically. Incomplete saves stay private and do not change what the active link shows."
+      : "Publishing makes this version available through the private program page. Draft changes stay hidden until then; saved versions remain in history."
     : isDatabaseClientProgram
     ? "Save edits as a draft, then publish them to the same private client link. Draft changes stay hidden until publishing."
     : changed
@@ -220,20 +235,26 @@ function renderPlanOverview() {
     : "The logging page and its share link are already showing this version.");
   const publishButton = document.getElementById("publishBtn");
   if (publishButton && !planState.publishing) {
-    if (adminDatabaseWorkspace) publishButton.hidden = false;
-    publishButton.textContent = planState.editingCurrentPlanId
-      ? "Save current plan"
-      : adminDatabaseWorkspace ? "Publish program"
-      : isDatabaseClientProgram ? "Publish client program" : "Publish plan";
+    publishButton.hidden = immediateLibrarySave;
+    if (!immediateLibrarySave) {
+      publishButton.textContent = planState.editingCurrentPlanId
+        ? "Save current plan"
+        : adminDatabaseWorkspace ? "Publish program"
+        : isDatabaseClientProgram ? "Publish client program" : "Publish plan";
+    }
   }
   const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
   if (saveDatabaseButton && databaseWorkspace) {
-    saveDatabaseButton.textContent = isDatabaseClientProgram && userWorkspace
-      ? "Save client draft"
-      : adminDatabaseWorkspace ? "Save program draft" : "Save to program library";
+    saveDatabaseButton.textContent = immediateLibrarySave
+      ? "Save program"
+      : isDatabaseClientProgram && userWorkspace
+        ? "Save client draft"
+        : adminDatabaseWorkspace ? "Save program draft" : "Save to program library";
   }
   setPlanText("detailsModalContext", adminDatabaseWorkspace
-    ? "Person is a descriptive label, not a client account. Draft changes remain private until you publish."
+    ? immediateLibrarySave
+      ? "Person is a descriptive label, not a client account. Complete saves update the shared program; incomplete saves stay private."
+      : "Person is a descriptive label, not a client account. Draft changes remain private until you publish."
     : planState.editingCurrentPlanId
     ? "These changes update the current plan. Existing participant records stay intact; future planned assignments follow the updated program."
     : "These details are part of the version you publish. The live logging page changes only after saving or publishing.");
@@ -278,6 +299,9 @@ function startNewDraft() {
   planState.databaseProgramClientId = null;
   planState.databaseProgramVersion = null;
   planState.databaseProgramVersionStatus = null;
+  planState.databaseProgramRevision = null;
+  planState.databaseProgramCurrentVersionId = null;
+  planState.databaseProgramCurrentVersion = null;
   planState.editingCurrentPlanId = null;
   enterEditor();
   TrackerData.save(planState.data);
@@ -800,7 +824,7 @@ function renderDatabaseProgramLibrary() {
   if (summary) summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"}`;
   if (!programs.length) {
     container.innerHTML = `<div class="empty-panel">${adminDatabaseWorkspace
-      ? "Save a draft to begin publishing programs."
+      ? "Save a complete program to create a private link."
       : "Save a draft to build your program library."}</div>`;
     return;
   }
@@ -824,12 +848,12 @@ function renderDatabaseProgramLibrary() {
             data-rotate-program-link="${programId}">Rotate link</button>
           <button class="button button-danger button-small" type="button"
             data-revoke-program-link="${programId}">Revoke</button>`
-        : program.hasPublishedVersion && program.publishedStartDate
+        : program.hasCurrentVersion && (program.publishedStartDate || program.startDate)
           ? `<button class="button button-secondary button-small" type="button"
               data-create-program-link="${programId}">Create private link</button>`
-          : program.hasPublishedVersion
-            ? `<span class="client-create-status">Publish the current version before creating a private link.</span>`
-            : `<span class="client-create-status">Publish a version to create a private link.</span>`;
+          : program.hasCurrentVersion
+            ? `<span class="client-create-status">Save a complete program with a start date before creating a private link.</span>`
+            : `<span class="client-create-status">Save a complete program to create a private link.</span>`;
     } else if (adminDatabaseWorkspace && program.kind === "client" && program.clientId) {
       linkActions = program.hasActivePrivateLink
         ? `
@@ -926,6 +950,9 @@ function restoreSelectedDatabaseProgramMetadata() {
   planState.databaseProgramClientId = selectedProgram.clientId || null;
   planState.databaseProgramVersion = Number(selectedProgram.version) || null;
   planState.databaseProgramVersionStatus = selectedProgram.versionStatus || null;
+  planState.databaseProgramRevision = Number(selectedProgram.revision) || 0;
+  planState.databaseProgramCurrentVersionId = selectedProgram.currentVersionId || null;
+  planState.databaseProgramCurrentVersion = Number(selectedProgram.currentVersion) || null;
   if (adminDatabaseWorkspace) {
     planState.data.person = {
       ...(planState.data.person || {}),
@@ -1078,12 +1105,18 @@ async function openDatabaseProgram(programId) {
     fresh.databaseProgramId = result.meta?.id || programId;
     fresh.databaseProgramKind = result.meta?.kind || "library";
     fresh.databaseProgramClientId = result.meta?.clientId || null;
+    fresh.databaseProgramRevision = Number(result.meta?.revision) || 0;
+    fresh.databaseProgramCurrentVersionId = result.meta?.currentVersionId || null;
+    fresh.databaseProgramCurrentVersion = Number(result.meta?.currentVersion) || null;
     planState.data = fresh;
     planState.databaseProgramId = fresh.databaseProgramId;
     planState.databaseProgramKind = fresh.databaseProgramKind;
     planState.databaseProgramClientId = fresh.databaseProgramClientId;
     planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
+    planState.databaseProgramRevision = Number(result.meta?.revision) || 0;
+    planState.databaseProgramCurrentVersionId = result.meta?.currentVersionId || null;
+    planState.databaseProgramCurrentVersion = Number(result.meta?.currentVersion) || null;
     planState.selectedWeekIndex = 0;
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
@@ -1100,6 +1133,8 @@ async function saveDatabaseProgram({ silent = false } = {}) {
   if (!databaseWorkspace || planState.databaseSaving) return;
   const button = document.getElementById("saveDatabaseProgramBtn");
   const program = TrackerData.normalizeProgram(planState.data.draftProgram);
+  const makeCurrentWhenValid = adminDatabaseWorkspace
+    && (!planState.databaseProgramId || planState.databaseProgramKind === "library");
   planState.databaseSaving = true;
   if (button) {
     button.disabled = true;
@@ -1114,6 +1149,12 @@ async function saveDatabaseProgram({ silent = false } = {}) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         program,
+        ...(makeCurrentWhenValid ? {
+          makeCurrentWhenValid: true,
+          ...(planState.databaseProgramId
+            ? { expectedRevision: planState.databaseProgramRevision }
+            : {})
+        } : {}),
         ...(adminDatabaseWorkspace ? { personName: planState.data.person?.name || "" } : {})
       })
     });
@@ -1126,14 +1167,28 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     planState.databaseProgramClientId = result.meta?.clientId || planState.databaseProgramClientId || null;
     planState.databaseProgramVersion = Number(result.meta?.version || program.version) || 1;
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
+    planState.databaseProgramRevision = Number(result.meta?.revision) || 0;
+    planState.databaseProgramCurrentVersionId = result.meta?.currentVersionId || null;
+    planState.databaseProgramCurrentVersion = Number(result.meta?.currentVersion) || null;
     planState.data.databaseProgramId = planState.databaseProgramId;
     planState.data.databaseProgramKind = planState.databaseProgramKind;
     planState.data.databaseProgramClientId = planState.databaseProgramClientId;
+    planState.data.databaseProgramRevision = planState.databaseProgramRevision;
+    planState.data.databaseProgramCurrentVersionId = planState.databaseProgramCurrentVersionId;
+    planState.data.databaseProgramCurrentVersion = planState.databaseProgramCurrentVersion;
     planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
     renderAllPlan();
-    if (!silent) showPlanToast("Program saved to the database library.");
+    if (!silent) {
+      if (makeCurrentWhenValid) {
+        showPlanToast(result.meta?.isCurrent
+          ? `Version ${result.meta.version} is current. The private link shows the updated program.`
+          : "Draft saved. The shared version is unchanged until the program is complete.");
+      } else {
+        showPlanToast("Program saved to the database library.");
+      }
+    }
     return result;
   } catch (error) {
     if (!silent) showPlanToast(error.message || "Could not save the database program.");
@@ -1142,9 +1197,12 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     planState.databaseSaving = false;
     if (button) {
       button.disabled = false;
-      button.textContent = planState.databaseProgramKind === "client"
-        ? "Save client draft"
-        : "Save to program library";
+      button.textContent = adminDatabaseWorkspace
+        && (!planState.databaseProgramId || planState.databaseProgramKind === "library")
+        ? "Save program"
+        : planState.databaseProgramKind === "client"
+          ? "Save client draft"
+          : "Save to program library";
     }
   }
 }
@@ -1152,6 +1210,13 @@ async function saveDatabaseProgram({ silent = false } = {}) {
 async function publishDatabaseProgram() {
   if (!databaseWorkspace) return;
   if (planState.publishing) return;
+  if (
+    adminDatabaseWorkspace
+    && (!planState.databaseProgramId || planState.databaseProgramKind === "library")
+  ) {
+    await saveDatabaseProgram();
+    return;
+  }
 
   planState.publishing = true;
   const button = document.getElementById("publishBtn");
