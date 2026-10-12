@@ -120,6 +120,14 @@ async function testEmailConfigurationAndPayloads() {
       "https://booking.example.test/booking/manage/request-token"
     )
   );
+  const spamFolderNotice =
+    "Obs! Bekräftelsemejlet kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.";
+  assert(deliveries[0].body.text.includes(spamFolderNotice));
+  assert(
+    deliveries[0].body.html.includes(
+      `<strong>Obs!</strong> ${spamFolderNotice.slice("Obs! ".length)}`
+    )
+  );
   assert(
     deliveries[2].body.text.includes(
       "https://booking.example.test/booking/manage/confirmed-token"
@@ -323,6 +331,11 @@ async function testRouteTriggersAndProviderFailure() {
 
   mockModule("../booking/email", emailMock);
   mockModule("../booking/db", { getPool: () => ({}) });
+  const defaultBookingConfig = require("../booking/config").DEFAULT_BOOKING_CONFIG;
+  mockModule("../booking/config", {
+    getBookingConfig: () => defaultBookingConfig,
+    loadBookingConfig: async () => defaultBookingConfig
+  });
   mockModule("../booking/service", {
     BookingError: class BookingError extends Error {},
     createBookingRequest: async () => requestBooking,
