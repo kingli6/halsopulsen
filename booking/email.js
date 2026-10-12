@@ -256,11 +256,11 @@ async function sendRequestReceivedEmail({ booking, token, suppress }) {
       "Tiden är inte tilldelad eller bekräftad ännu.",
       "Du får en bekräftelse efter att förfrågan har granskats.",
       "",
-      "Obs! Bekräftelsemejlet kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.",
+      "Obs! När din bokning har bekräftats skickas ett bekräftelsemejl. Det kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.",
       "",
       `Hantera förfrågan: ${manageLink}`
     ].join("\n"),
-    html: `<p>Tack för din bokningsförfrågan till HälsoPulsen.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>Tiden är inte tilldelad eller bekräftad ännu.</strong></p><p>Du får en bekräftelse efter att förfrågan har granskats.</p><p><strong>Obs!</strong> Bekräftelsemejlet kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.</p><p><a href="${escapeHtml(manageLink)}">Hantera förfrågan</a></p>`
+    html: `<p>Tack för din bokningsförfrågan till HälsoPulsen.</p><p>${escapeHtml(details).replace(/\n/g, "<br>")}</p><p><strong>Tiden är inte tilldelad eller bekräftad ännu.</strong></p><p>Du får en bekräftelse efter att förfrågan har granskats.</p><p><strong>Obs!</strong> När din bokning har bekräftats skickas ett bekräftelsemejl. Det kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.</p><p><a href="${escapeHtml(manageLink)}">Hantera förfrågan</a></p>`
   });
 }
 

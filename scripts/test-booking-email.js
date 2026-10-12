@@ -121,7 +121,7 @@ async function testEmailConfigurationAndPayloads() {
     )
   );
   const spamFolderNotice =
-    "Obs! Bekräftelsemejlet kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.";
+    "Obs! När din bokning har bekräftats skickas ett bekräftelsemejl. Det kan ibland hamna i skräpposten. Om du inte ser det i inkorgen, kontrollera gärna skräppostmappen.";
   assert(deliveries[0].body.text.includes(spamFolderNotice));
   assert(
     deliveries[0].body.html.includes(
