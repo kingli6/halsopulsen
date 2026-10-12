@@ -1,5 +1,14 @@
 (() => {
   const MAX_NOTES_LENGTH = 1000;
+  const BOOKING_SUBMISSION_TIMEOUT_MS = 120_000;
+  const BOOKING_SUBMISSION_LOADING_MESSAGE =
+    "Skickar din bokningsförfrågan. Det kan ta en liten stund.";
+  const BOOKING_SUBMISSION_UNCERTAIN_MESSAGE =
+    "Vi kunde inte bekräfta att din bokningsförfrågan skickades. Kontrollera gärna din e-post innan du försöker igen, så att du inte råkar skicka samma förfrågan två gånger. Kontakta oss gärna på halsopulsen@gmail.com om du är osäker.";
+  const BOOKING_SUBMISSION_FAILURE_MESSAGE =
+    "Vi kunde inte skicka din bokningsförfrågan. Kontrollera uppgifterna och försök igen.";
+  const BOOKING_SUBMISSION_RATE_LIMIT_MESSAGE =
+    "Tjänsten hanterar många förfrågningar just nu. Vänta en stund och försök igen.";
   const state = {
     services: [],
     selectedService: null,
@@ -336,13 +345,20 @@
     if (state.submitting || !state.selectedService || !state.selectedSlot) return;
     state.submitting = true;
     const button = $("submit-booking");
+    const controller = new AbortController();
+    let requestTimedOut = false;
+    const timeoutId = setTimeout(() => {
+      requestTimedOut = true;
+      controller.abort();
+    }, BOOKING_SUBMISSION_TIMEOUT_MS);
     button.disabled = true;
     button.classList.add("is-loading");
-    clearMessage();
+    showMessage(BOOKING_SUBMISSION_LOADING_MESSAGE);
     try {
       const details = detailsPayload();
       const result = await api("/api/booking/requests", {
         method: "POST",
+        signal: controller.signal,
         body: JSON.stringify({
           service: state.selectedService.id,
           startAt: state.selectedSlot.startAt,
@@ -364,10 +380,21 @@
         state.selectedService = null;
         setStep("service");
         await loadServices();
+      } else if (
+        requestTimedOut
+        || error.name === "AbortError"
+        || error.status === 408
+        || error.status >= 500
+        || !Number.isInteger(error.status)
+      ) {
+        showMessage(BOOKING_SUBMISSION_UNCERTAIN_MESSAGE, { error: true });
+      } else if (error.status === 429) {
+        showMessage(BOOKING_SUBMISSION_RATE_LIMIT_MESSAGE, { error: true });
       } else {
-        showMessage(error.message, { error: true });
+        showMessage(BOOKING_SUBMISSION_FAILURE_MESSAGE, { error: true });
       }
     } finally {
+      clearTimeout(timeoutId);
       state.submitting = false;
       button.disabled = false;
       button.classList.remove("is-loading");
