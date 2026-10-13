@@ -1,3 +1,8 @@
+if (!process.env.WORKOUTPLANNER_TEST_DATABASE_URL) {
+  throw new Error("Set WORKOUTPLANNER_TEST_DATABASE_URL to a dedicated non-production database; refusing the default WorkoutPlanner URL.");
+}
+process.env.NODE_ENV = "test";
+
 const assert = require("assert");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -71,11 +76,19 @@ async function run() {
     programId: null,
     versionOneId: null,
     firstWorkoutId: null,
-    exerciseIds: [],
+    exerciseCountBefore: null,
     tokenHash: null
   };
 
   try {
+    const nameColumn = await pool.query(
+      `select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'workout_exercises'
+          and column_name = 'exercise_name'`
+    );
+    assert.strictEqual(nameColumn.rowCount, 1, "Apply migration 013 to the dedicated test database before this publish integration test.");
+    const exerciseCount = await pool.query("select count(*)::int as count from public.exercises");
+    fixture.exerciseCountBefore = exerciseCount.rows[0].count;
     const coachResult = await pool.query(
       `select id from public.profiles where role = 'coach' order by created_at limit 1`
     );
@@ -128,13 +141,6 @@ async function run() {
        returning id`,
       [fixture.versionOneId]
     );
-    const exerciseResult = await pool.query(
-      `insert into public.exercises (name, category)
-       values ('Pass 1 squat', 'strength')
-       returning id`
-    );
-    fixture.exerciseIds.push(exerciseResult.rows[0].id);
-
     for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek += 1) {
       const workoutResult = await pool.query(
         `insert into public.workouts
@@ -147,9 +153,9 @@ async function run() {
         fixture.firstWorkoutId = workoutResult.rows[0].id;
         await pool.query(
           `insert into public.workout_exercises
-            (workout_id, exercise_id, sort_order, sets, reps)
-           values ($1, $2, 1, 3, 8)`,
-          [fixture.firstWorkoutId, fixture.exerciseIds[0]]
+            (workout_id, exercise_name, sort_order, sets, reps)
+           values ($1, 'Pass 1 squat', 1, 3, 8)`,
+          [fixture.firstWorkoutId]
         );
       }
     }
@@ -257,6 +263,12 @@ async function run() {
       [fixture.clientId]
     );
     assert.strictEqual(Number(assignmentCount.rows[0].count), 3);
+    const exerciseCountAfter = await pool.query("select count(*)::int as count from public.exercises");
+    assert.strictEqual(
+      exerciseCountAfter.rows[0].count,
+      fixture.exerciseCountBefore,
+      "Program save and publish must not create global exercise catalog rows."
+    );
     console.log("WorkoutPlanner database publish checks passed.");
   } finally {
     if (fixture.clientId) {
@@ -272,9 +284,6 @@ async function run() {
     }
     await pool.query(`delete from public.profiles where id = $1`, [fixture.clientProfileId]).catch(() => {});
     await pool.query(`delete from public.profiles where id = $1`, [fixture.otherCoachId]).catch(() => {});
-    for (const exerciseId of fixture.exerciseIds) {
-      await pool.query(`delete from public.exercises where id = $1`, [exerciseId]).catch(() => {});
-    }
     await closePool();
   }
 }

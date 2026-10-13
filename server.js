@@ -25,6 +25,7 @@ const {
   regenerateProgramAccessLink,
   revokeProgramAccessLink
 } = require('./workoutplanner/client-access');
+const { saveClientSession } = require('./workoutplanner/session-logging');
 const {
   cloneLibraryProgramVersion,
   listProgramVersions,
@@ -619,6 +620,26 @@ app.get('/api/client/:token', async (req, res) => {
   }
 });
 
+app.post('/api/client/:token/sessions', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const session = await saveClientSession(
+      getWorkoutPlannerPool(),
+      req.params.token,
+      req.body
+    );
+    return res.status(201).json({ ok: true, session });
+  } catch (error) {
+    console.error('Could not save WorkoutPlanner client performance:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The workout performance could not be saved.'
+    });
+  }
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
 });
@@ -1056,8 +1077,8 @@ function publicTemplate(template) {
 
 function validateTemplatePayload(body) {
   const type = String(body?.type || '');
-  const allowedTypes = new Set(['activity', 'workout', 'week']);
-  if (!allowedTypes.has(type)) return 'Choose an activity, day workout, or week template.';
+  const allowedTypes = new Set(['workout', 'week']);
+  if (!allowedTypes.has(type)) return 'Choose a complete workout or week template.';
   if (!body?.data || typeof body.data !== 'object' || Array.isArray(body.data)) {
     return 'A template snapshot is required.';
   }
@@ -1065,7 +1086,6 @@ function validateTemplatePayload(body) {
     return 'Template names must be 100 characters or fewer.';
   }
   if (JSON.stringify(body.data).length > 120000) return 'That template is too large.';
-  if (type === 'activity' && !String(body.data.name || '').trim()) return 'An activity needs a name.';
   if (type === 'workout' && (!String(body.data.name || '').trim() || !Array.isArray(body.data.exercises) || !body.data.exercises.length)) {
     return 'A workout needs a name and at least one activity.';
   }
@@ -1083,6 +1103,7 @@ function validateTemplatePayload(body) {
 
 app.get('/api/templates', requireAdmin, (req, res) => {
   const templates = readTemplates()
+    .filter(template => template.type === 'workout' || template.type === 'week')
     .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
   res.json({ ok: true, templates: templates.map(publicTemplate) });
 });
@@ -1101,7 +1122,7 @@ app.post('/api/templates', requireAdmin, (req, res) => {
     updatedAt: now
   };
   const templates = readTemplates();
-  if (templates.length >= MAX_TEMPLATES) {
+  if (templates.filter(item => item.type === 'workout' || item.type === 'week').length >= MAX_TEMPLATES) {
     return res.status(429).json({ ok: false, error: 'The reusable library has reached its limit. Delete an old template before adding another.' });
   }
   templates.push(template);

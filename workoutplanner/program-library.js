@@ -282,7 +282,7 @@ function activityFromRow(row) {
   }
 
   return {
-    name: row.exercise_name,
+    name: row.exercise_name || row.legacy_exercise_name,
     activityType,
     format,
     description: text(metadata.description),
@@ -338,40 +338,6 @@ function activityForContentKey(activity) {
   const normalized = normalizeActivity(loaded);
   delete normalized.exerciseId;
   return normalized;
-}
-
-async function resolveExercise(client, activity) {
-  if (activity.exerciseId) {
-    const byId = await client.query(
-      "select id from public.exercises where id = $1 and active = true",
-      [activity.exerciseId]
-    );
-    if (byId.rowCount === 1) return byId.rows[0].id;
-  }
-
-  const existing = await client.query(
-    `select id
-       from public.exercises
-      where lower(name) = lower($1)
-        and active = true
-      order by created_at asc
-      limit 1`,
-    [activity.name]
-  );
-  if (existing.rowCount === 1) return existing.rows[0].id;
-
-  const inserted = await client.query(
-    `insert into public.exercises (name, description, category, default_resource_url)
-     values ($1, $2, $3, $4)
-     returning id`,
-    [
-      activity.name,
-      activity.description,
-      activity.activityType,
-      activity.resourceUrl || null
-    ]
-  );
-  return inserted.rows[0].id;
 }
 
 function dateValue(value) {
@@ -439,8 +405,9 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
        we.notes,
        we.resource_url,
        we.planner_metadata,
-       e.name as exercise_name,
-        e.category,
+       we.exercise_name,
+       e.name as legacy_exercise_name,
+       coalesce(we.planner_metadata->>'activityType', e.category) as category,
         current_version.version_number as current_version_number
      from public.programs p
       left join public.program_versions current_version
@@ -865,20 +832,19 @@ async function saveProgram(
         const workoutId = workoutResult.rows[0].id;
 
         for (const [activityIndex, activity] of day.exercises.entries()) {
-          const exerciseId = await resolveExercise(client, activity);
           const columns = activityColumns(activity);
           await client.query(
             `insert into public.workout_exercises
-              (workout_id, exercise_id, sort_order, sets, reps, duration, duration_unit,
+              (workout_id, exercise_name, sort_order, sets, reps, duration, duration_unit,
                distance, distance_unit, load, load_unit, rir, tempo, rest_seconds,
                intensity, intensity_unit, work_seconds, recovery_seconds, rounds, notes,
                resource_url, planner_metadata)
              values
-              ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-               $15, $16, $17, $18, $19, $20, $21, $22::jsonb)`,
+               ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                $15, $16, $17, $18, $19, $20, $21, $22::jsonb)`,
             [
               workoutId,
-              exerciseId,
+              activity.name,
               activityIndex + 1,
               activity.sets,
               columns.reps,
@@ -1329,7 +1295,7 @@ async function cloneLibraryProgramVersion(
         );
         const clientWorkoutId = clientWorkoutResult.rows[0].id;
         const exercises = await client.query(
-          `select exercise_id, sort_order, sets, reps, duration, duration_unit,
+          `select exercise_name, sort_order, sets, reps, duration, duration_unit,
                   distance, distance_unit, load, load_unit, rir, tempo, rest_seconds,
                   intensity, intensity_unit, work_seconds, recovery_seconds, rounds,
                   notes, resource_url, planner_metadata
@@ -1342,7 +1308,7 @@ async function cloneLibraryProgramVersion(
         for (const sourceExercise of exercises.rows) {
           await client.query(
             `insert into public.workout_exercises
-              (workout_id, exercise_id, sort_order, sets, reps, duration, duration_unit,
+              (workout_id, exercise_name, sort_order, sets, reps, duration, duration_unit,
                distance, distance_unit, load, load_unit, rir, tempo, rest_seconds,
                intensity, intensity_unit, work_seconds, recovery_seconds, rounds, notes,
                resource_url, planner_metadata)
@@ -1351,7 +1317,7 @@ async function cloneLibraryProgramVersion(
                $15, $16, $17, $18, $19, $20, $21, $22)`,
             [
               clientWorkoutId,
-              sourceExercise.exercise_id,
+              sourceExercise.exercise_name,
               sourceExercise.sort_order,
               sourceExercise.sets,
               sourceExercise.reps,
