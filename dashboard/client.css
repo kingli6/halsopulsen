@@ -140,14 +140,6 @@
   padding: .15rem 0;
 }
 
-.previous-empty {
-  background: transparent;
-  color: var(--muted, #5f6b65);
-  font-size: .84rem;
-  min-height: .5rem;
-  padding: 0;
-}
-
 .performance-sets {
   display: grid;
   gap: .55rem;
