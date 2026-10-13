@@ -87,11 +87,10 @@ function showPlanToast(message) {
 }
 
 function templateTypeLabel(type) {
-  return type === "activity" ? "Activity" : type === "workout" ? "Individual workout" : "Week";
+  return type === "workout" ? "Individual workout" : "Week";
 }
 
 function templateDataSummary(template) {
-  if (template.type === "activity") return activitySummary(template.data);
   if (template.type === "workout") return `${template.data.exercises?.length || 0} activities · ${template.data.sessionType || "Workout"}`;
   const activeDays = (template.data.days || []).filter(day => day.enabled && day.exercises?.length).length;
   return `${activeDays} training ${activeDays === 1 ? "day" : "days"} · 7-day schedule`;
@@ -111,18 +110,16 @@ function weekdaySelectOptions() {
 }
 
 function renderTemplateLibrary() {
-  const templates = planState.templates;
+  const templates = planState.templates.filter(template => template.type === "workout" || template.type === "week");
   const summary = document.getElementById("templateLibrarySummary");
   if (summary) summary.textContent = `${templates.length} saved ${templates.length === 1 ? "item" : "items"}`;
 
-  const activitySelect = document.getElementById("activityTemplateLibrarySelect");
   const workoutSelect = document.getElementById("workoutTemplateLibrarySelect");
   const weekSelect = document.getElementById("weekTemplateSelect");
-  if (activitySelect) activitySelect.innerHTML = templateSelectOptions("activity", "Choose saved activity…");
   if (workoutSelect) workoutSelect.innerHTML = templateSelectOptions("workout", "Choose saved day…");
   if (weekSelect) weekSelect.innerHTML = templateSelectOptions("week", "Use saved week…");
 
-  for (const id of ["activityTemplateTargetWeekday", "workoutTemplateTargetWeekday"]) {
+  for (const id of ["workoutTemplateTargetWeekday"]) {
     const select = document.getElementById(id);
     if (select && !select.options.length) select.innerHTML = weekdaySelectOptions();
   }
@@ -141,7 +138,6 @@ function renderTemplateLibrary() {
       </div>
     `).join("") : `<p class="template-empty">${emptyMessage}</p>`;
   };
-  renderList("activity", "activityTemplateList", "Saved activities will appear here.");
   renderList("workout", "workoutTemplateList", "Saved day workouts will appear here.");
   renderList("week", "weekTemplateList", "Saved weeks will appear here.");
 }
@@ -425,28 +421,6 @@ function workoutForTargetWeekday(weekday) {
   if (!week) return null;
   return week.days.find(item => Number(item.weekday) === Number(weekday))
     || TrackerData.emptyDay(Number(weekday));
-}
-
-function useActivityTemplate() {
-  const template = templateById(document.getElementById("activityTemplateLibrarySelect")?.value);
-  const weekday = Number(document.getElementById("activityTemplateTargetWeekday")?.value);
-  if (!template) {
-    showPlanToast("Choose a saved activity first.");
-    return;
-  }
-  const week = currentDraftWeek();
-  const target = workoutForTargetWeekday(weekday);
-  if (!week || !target) return;
-  const activity = TrackerData.normalizeExercise(TrackerData.clone(template.data));
-  target.exercises = [...(target.exercises || []), activity];
-  target.enabled = true;
-  target.weekday = weekday;
-  if (!target.name || target.name === "Workout") target.name = activity.name;
-  week.days[weekday] = target;
-  planState.data.draftProgram = TrackerData.normalizeProgram(planState.data.draftProgram);
-  TrackerData.save(planState.data);
-  showPlanToast(`"${template.name}" added to ${TrackerData.DAY_NAMES[weekday]}.`);
-  renderAllPlan();
 }
 
 function useWorkoutTemplate() {
@@ -1483,7 +1457,6 @@ function updateActivityRow(row, activity = readActivityRow(row)) {
     <div class="activity-editor-head">
       <label class="activity-name">${infoLabel("Activity", "Name the movement, sport, class, video, or session.")}<input data-field="name" required maxlength="80" value="${escapePlanHtml(activity.name)}" placeholder="${strength ? "e.g. Goblet squat" : cardio ? "e.g. Running or cycling" : "e.g. SOMA Move or Zumba"}" /></label>
       <label>${infoLabel("Prescription format", "Choose the kind of instructions this activity needs. The fields below will adapt.")}<select data-field="activityType">${typeOptions}</select></label>
-      <button class="text-button activity-save-template" type="button" aria-label="Save activity to library">Save</button>
       <button class="remove-exercise" type="button" aria-label="Remove activity">×</button>
     </div>
     <div class="activity-editor-fields">${fields}</div>
@@ -1512,15 +1485,6 @@ function updateActivityRow(row, activity = readActivityRow(row)) {
       return;
     }
     row.remove();
-  };
-  row.querySelector(".activity-save-template").onclick = () => {
-    const current = TrackerData.normalizeExercise(readActivityRow(row));
-    if (!current.name) {
-      showPlanToast("Name the activity before saving it.");
-      return;
-    }
-    const name = askTemplateName(current.name);
-    if (name) saveTemplate("activity", name, current);
   };
 }
 
@@ -2058,7 +2022,6 @@ function bindPlanEvents() {
     startNewDraft();
   });
   document.getElementById("addExerciseBtn").addEventListener("click", () => addActivityRow(undefined, { focus: true }));
-  document.getElementById("useActivityTemplateBtn").addEventListener("click", useActivityTemplate);
   document.getElementById("useWorkoutTemplateBtn").addEventListener("click", useWorkoutTemplate);
   document.getElementById("saveDayTemplateBtn").addEventListener("click", saveDayTemplateFromModal);
   document.getElementById("workoutForm").addEventListener("submit", saveWorkout);

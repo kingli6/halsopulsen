@@ -48,3 +48,173 @@
   padding: .35rem .65rem;
   text-transform: uppercase;
 }
+
+.session-open-button {
+  margin-top: 1rem;
+}
+
+.session-log-form {
+  border-top: 1px solid var(--border, #dde4df);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.session-log-form[hidden] {
+  display: none;
+}
+
+.session-log-form h4,
+.performance-exercise h4 {
+  margin: 0;
+}
+
+.session-date-field,
+.session-note-field,
+.performance-set label {
+  color: var(--muted, #5f6b65);
+  display: grid;
+  font-size: .82rem;
+  gap: .35rem;
+}
+
+.session-log-form input,
+.session-log-form select,
+.session-log-form textarea {
+  background: #fff;
+  border: 1px solid var(--border, #dde4df);
+  border-radius: 8px;
+  color: var(--ink, #24342b);
+  font: inherit;
+  min-width: 0;
+  padding: .6rem .7rem;
+}
+
+.session-date-field {
+  max-width: 250px;
+}
+
+.performance-exercise {
+  background: #f8fbf8;
+  border: 1px solid var(--border, #dde4df);
+  border-radius: 12px;
+  display: grid;
+  gap: .8rem;
+  padding: 1rem;
+}
+
+.performance-exercise-heading,
+.history-performance-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.previous-date {
+  color: var(--muted, #5f6b65);
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.previous-performance {
+  background: #eef5ef;
+  border-radius: 9px;
+  padding: .7rem .85rem;
+}
+
+.previous-performance p {
+  margin-bottom: .4rem;
+}
+
+.previous-performance ol,
+.history-performance-card ol {
+  margin: .35rem 0 .5rem;
+  padding-left: 1.3rem;
+}
+
+.previous-performance li,
+.history-performance-card li {
+  font-size: .88rem;
+  padding: .15rem 0;
+}
+
+.previous-empty {
+  background: transparent;
+  color: var(--muted, #5f6b65);
+  font-size: .84rem;
+  min-height: .5rem;
+  padding: 0;
+}
+
+.performance-sets {
+  display: grid;
+  gap: .55rem;
+}
+
+.performance-set {
+  align-items: end;
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: 3.5rem repeat(4, minmax(90px, 1fr));
+}
+
+.performance-set strong {
+  align-self: center;
+  font-size: .82rem;
+}
+
+.performance-set label {
+  grid-template-columns: 1fr;
+}
+
+.performance-set label:has(select) {
+  grid-template-columns: 1fr 4rem;
+}
+
+.performance-set label:has(select) select {
+  grid-column: 2;
+  grid-row: 2;
+  padding: .55rem .35rem;
+}
+
+.performance-set label:has(select) input {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.session-log-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .8rem;
+}
+
+.session-log-status {
+  color: var(--muted, #5f6b65);
+  margin: 0;
+}
+
+.history-performance-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #dde4df);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+}
+
+.history-performance-card h3 {
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .performance-set {
+    grid-template-columns: 3rem repeat(2, minmax(90px, 1fr));
+  }
+
+  .performance-exercise-heading,
+  .history-performance-heading {
+    flex-direction: column;
+    gap: .3rem;
+  }
+}
