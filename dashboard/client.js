@@ -59,7 +59,7 @@ function renderPerformanceExercise(exercise) {
          <ol>${previousSets.map((set, index) => `<li>Set ${index + 1}: ${escapeHtml(formatPerformanceSet(set))}</li>`).join("")}</ol>
          <button class="text-button" type="button" data-use-previous="${escapeHtml(exercise.id)}">Use previous values</button>
        </div>`
-    : `<div class="previous-performance previous-empty">No previous performance recorded.</div>`;
+    : "";
 
   return `<section class="performance-exercise" data-workout-exercise-id="${escapeHtml(exercise.id)}">
     <div class="performance-exercise-heading">

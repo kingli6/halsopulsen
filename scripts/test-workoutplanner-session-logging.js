@@ -176,6 +176,7 @@ async function run() {
   assert.match(clientUi, /value="" inputmode="decimal"/);
   assert.match(clientUi, /Use previous values/);
   assert.match(clientUi, /programId: clientPage\.data\.program\.id/);
+  assert.doesNotMatch(clientUi, /No previous performance recorded/);
 
   const planUi = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
   assert.doesNotMatch(planUi, /activityTemplateLibrarySelect|activityTemplateList|useActivityTemplateBtn|saveTemplate\("activity"/);
