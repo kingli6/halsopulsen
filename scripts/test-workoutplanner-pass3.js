@@ -5,7 +5,7 @@ process.env.NODE_ENV = "test";
 
 const assert = require("assert");
 const crypto = require("crypto");
-const { getPool, closePool } = require("../workoutplanner/db");
+const { createRollbackTestDatabase } = require("./workoutplanner-test-transaction");
 const {
   findClientDataByToken,
   hashClientAccessToken,
@@ -22,7 +22,8 @@ function id() {
 }
 
 async function run() {
-  const pool = getPool();
+  const transaction = await createRollbackTestDatabase();
+  const pool = transaction.database;
   const fixture = {
     coachId: null,
     otherCoachId: id(),
@@ -30,7 +31,7 @@ async function run() {
     clientId: null,
     sourceProgramId: null,
     sourceVersionId: null,
-    exerciseId: null,
+    sourceDraftVersionId: null,
     programAId: null,
     programBId: null,
     cloneProgramId: null,
@@ -82,12 +83,12 @@ async function run() {
     const sourceVersionResult = await pool.query(
       `insert into public.program_versions
         (program_id, version_number, status, published_at, created_by)
-       values ($1, 1, 'published', now(), $2)
+       values ($1, 1, 'draft', null, $2)
        returning id`,
       [fixture.sourceProgramId, fixture.coachId]
     );
     fixture.sourceVersionId = sourceVersionResult.rows[0].id;
-    const sourceWeekResult = await pool.query(
+    const publishedWeekResult = await pool.query(
       `insert into public.program_weeks
         (program_version_id, week_number, name)
        values ($1, 1, 'Source week')
@@ -99,20 +100,52 @@ async function run() {
         (program_week_id, day_of_week, name)
        values ($1, 1, 'Source workout')
        returning id`,
-      [sourceWeekResult.rows[0].id]
+      [publishedWeekResult.rows[0].id]
     );
-    const exerciseResult = await pool.query(
-      `insert into public.exercises (name)
-       values ('Pass 3 exercise')
-       returning id`
-    );
-    fixture.exerciseId = exerciseResult.rows[0].id;
     await pool.query(
       `insert into public.workout_exercises
-        (workout_id, exercise_id, sort_order, sets, reps)
-       values ($1, $2, 1, 3, 8)`,
-      [sourceWorkoutResult.rows[0].id, fixture.exerciseId]
+        (workout_id, exercise_name, sort_order, sets, reps)
+       values ($1, 'Pass 3 exercise', 1, 3, 8)`,
+      [sourceWorkoutResult.rows[0].id]
     );
+    await pool.query(
+      `update public.program_versions
+          set status = 'published',
+              published_at = now()
+        where id = $1
+          and status = 'draft'`,
+      [fixture.sourceVersionId]
+    );
+    await pool.query(
+      `update public.programs
+          set current_version_id = $1
+        where id = $2`,
+      [fixture.sourceVersionId, fixture.sourceProgramId]
+    );
+    const sourceDraftResult = await pool.query(
+      `insert into public.program_versions
+        (program_id, version_number, status, created_by)
+       values ($1, 2, 'draft', $2)
+       returning id`,
+      [fixture.sourceProgramId, fixture.coachId]
+    );
+    fixture.sourceDraftVersionId = sourceDraftResult.rows[0].id;
+    const sourceWeekResult = await pool.query(
+      `insert into public.program_weeks
+        (program_version_id, week_number, name)
+       values ($1, 1, 'Source week')
+       returning id`,
+      [fixture.sourceDraftVersionId]
+    );
+    const publishedStatus = await pool.query(
+      `select pv.status, p.current_version_id
+         from public.program_versions pv
+         join public.programs p on p.id = pv.program_id
+        where pv.id = $1`,
+      [fixture.sourceVersionId]
+    );
+    assert.strictEqual(publishedStatus.rows[0].status, "published");
+    assert.strictEqual(publishedStatus.rows[0].current_version_id, fixture.sourceVersionId);
 
     for (const [name, key] of [["Program A", "programAId"], ["Program B", "programBId"]]) {
       const result = await pool.query(
@@ -123,6 +156,27 @@ async function run() {
         [fixture.coachId, fixture.clientId, name]
       );
       fixture[key] = result.rows[0].id;
+      const versionResult = await pool.query(
+        `insert into public.program_versions
+          (program_id, version_number, status, created_by)
+         values ($1, 1, 'draft', $2)
+         returning id`,
+        [fixture[key], fixture.coachId]
+      );
+      await pool.query(
+        `update public.program_versions
+            set status = 'published',
+                published_at = now()
+          where id = $1
+            and status = 'draft'`,
+        [versionResult.rows[0].id]
+      );
+      await pool.query(
+        `update public.programs
+            set current_version_id = $1
+          where id = $2`,
+        [versionResult.rows[0].id, fixture[key]]
+      );
     }
 
     const linkA = await regenerateClientAccessLink(
@@ -279,29 +333,7 @@ async function run() {
     assert.strictEqual(await findClientDataByToken(pool, "not-a-real-token"), null);
     console.log("WorkoutPlanner program-bound client-link checks passed.");
   } finally {
-    await pool.query(
-      `delete from public.client_access_links
-        where client_id = $1`,
-      [fixture.clientId]
-    ).catch(() => {});
-    if (fixture.cloneProgramId) {
-      await pool.query(`delete from public.programs where id = $1`, [fixture.cloneProgramId]).catch(() => {});
-    }
-    for (const programId of [fixture.programAId, fixture.programBId, fixture.sourceProgramId]) {
-      if (programId) {
-        await pool.query(`delete from public.programs where id = $1`, [programId]).catch(() => {});
-      }
-    }
-    if (fixture.clientId) {
-      await pool.query(`delete from public.coach_clients where client_id = $1`, [fixture.clientId]).catch(() => {});
-      await pool.query(`delete from public.clients where id = $1`, [fixture.clientId]).catch(() => {});
-    }
-    await pool.query(`delete from public.profiles where id = $1`, [fixture.clientProfileId]).catch(() => {});
-    await pool.query(`delete from public.profiles where id = $1`, [fixture.otherCoachId]).catch(() => {});
-    if (fixture.exerciseId) {
-      await pool.query(`delete from public.exercises where id = $1`, [fixture.exerciseId]).catch(() => {});
-    }
-    await closePool();
+    await transaction.close();
   }
 }
 

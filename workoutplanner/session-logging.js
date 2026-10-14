@@ -56,9 +56,17 @@ function normalizeSessionEntries(body) {
       const reps = optionalNumber(set?.reps, { integer: true });
       const duration = optionalNumber(set?.duration);
       const distance = optionalNumber(set?.distance);
+      const distanceUnit = distance === null
+        ? null
+        : String(set?.distanceUnit || "").trim().toLowerCase() || null;
       const load = optionalNumber(set?.load);
       if ([reps, duration, distance, load].some(Number.isNaN)) {
         const error = new Error("Set values must be non-negative numbers.");
+        error.statusCode = 400;
+        throw error;
+      }
+      if (distanceUnit !== null && !["km", "mi"].includes(distanceUnit)) {
+        const error = new Error("Choose km or mi for each recorded distance.");
         error.statusCode = 400;
         throw error;
       }
@@ -73,6 +81,7 @@ function normalizeSessionEntries(body) {
         reps,
         duration,
         distance,
+        distanceUnit,
         load,
         loadUnit: load === null ? null : set.loadUnit
       };
@@ -290,7 +299,9 @@ async function saveClientSession(db, token, body) {
             set.duration,
             set.duration === null ? null : prescription.duration_unit,
             set.distance,
-            set.distance === null ? null : prescription.distance_unit,
+            set.distance === null
+              ? null
+              : (set.distanceUnit || prescription.distance_unit || "km"),
             set.load,
             set.load === null ? null : set.loadUnit
           ]

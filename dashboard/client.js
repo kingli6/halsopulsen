@@ -35,6 +35,31 @@ function formatPerformanceSet(set) {
   return parts.join(" · ") || "No values recorded";
 }
 
+function formatPrescription(prescription) {
+  if (!prescription) return "Prescription not recorded";
+  const parts = [];
+  const activityType = String(prescription.activityType || "strength").toLowerCase();
+  const format = String(prescription.format || "").toLowerCase();
+  if (activityType === "strength") {
+    if (prescription.sets != null) parts.push(`${prescription.sets} sets`);
+    if (prescription.reps != null) parts.push(`${prescription.reps} reps`);
+    if (prescription.load != null) {
+      parts.push(`${prescription.load}${prescription.loadUnit ? ` ${prescription.loadUnit}` : ""}`);
+    }
+  } else if (format === "intervals") {
+    if (prescription.rounds != null) parts.push(`${prescription.rounds} rounds`);
+    if (prescription.workSeconds != null) parts.push(`${prescription.workSeconds} sec work`);
+    if (prescription.recoverySeconds != null) parts.push(`${prescription.recoverySeconds} sec recovery`);
+  }
+  if (prescription.duration != null) {
+    parts.push(`${prescription.duration} ${prescription.durationUnit || "time"}`);
+  }
+  if (prescription.distance != null) {
+    parts.push(`${prescription.distance} ${prescription.distanceUnit || "distance"}`);
+  }
+  return parts.join(" · ") || "Prescription not recorded";
+}
+
 function inputField(metric, label, value = "", step = "0.1") {
   return `<label>${label}<input data-metric="${metric}" type="number" min="0" step="${step}" value="" inputmode="decimal" /></label>`;
 }
@@ -45,10 +70,17 @@ function renderPerformanceExercise(exercise) {
     : [];
   const setCount = Math.min(20, Math.max(1, Number(exercise.sets) || 1, previousSets.length));
   const type = String(exercise.category || "").toLowerCase();
+  const format = String(exercise.format || "").toLowerCase();
   const strength = !["cardio", "guided"].includes(type);
+  const continuousCardio = type === "cardio" && (!format || format === "continuous");
   const showDuration = !strength || exercise.duration !== null && exercise.duration !== undefined
     || previousSets.some(set => set.duration != null);
-  const showDistance = exercise.distance !== null && exercise.distance !== undefined
+  const previousDistance = previousSets.find(set => set.distance != null);
+  const distanceUnit = exercise.distanceUnit
+    || previousDistance?.distanceUnit
+    || (continuousCardio ? "km" : "");
+  const showDistance = continuousCardio
+    || exercise.distance !== null && exercise.distance !== undefined
     || previousSets.some(set => set.distance != null);
   const showLoad = strength || previousSets.some(set => set.load != null);
 
@@ -61,7 +93,7 @@ function renderPerformanceExercise(exercise) {
        </div>`
     : "";
 
-  return `<section class="performance-exercise" data-workout-exercise-id="${escapeHtml(exercise.id)}">
+  return `<section class="performance-exercise" data-workout-exercise-id="${escapeHtml(exercise.id)}" data-distance-unit="${escapeHtml(distanceUnit)}">
     <div class="performance-exercise-heading">
       <div>
         <h4>${escapeHtml(exercise.name)}</h4>
@@ -76,7 +108,7 @@ function renderPerformanceExercise(exercise) {
         ${strength ? inputField("reps", "Reps", "", "1") : ""}
         ${showLoad ? `<label>Load<select data-metric="loadUnit"><option value="kg"${exercise.loadUnit === "lb" ? "" : " selected"}>kg</option><option value="lb"${exercise.loadUnit === "lb" ? " selected" : ""}>lb</option></select><input data-metric="load" type="number" min="0" step="0.1" value="" inputmode="decimal" /></label>` : ""}
         ${showDuration ? inputField("duration", `Duration${exercise.durationUnit ? ` · ${escapeHtml(exercise.durationUnit)}` : ""}`) : ""}
-        ${showDistance ? inputField("distance", `Distance${exercise.distanceUnit ? ` · ${escapeHtml(exercise.distanceUnit)}` : ""}`) : ""}
+        ${showDistance ? inputField("distance", `Distance${distanceUnit ? ` · ${escapeHtml(distanceUnit)}` : ""}`) : ""}
       </div>`).join("")}
     </div>
   </section>`;
@@ -143,6 +175,8 @@ function renderPerformanceHistory(history = []) {
       <div><p class="section-kicker">${escapeHtml(formatDate(item.performedOn))}</p><h3>${escapeHtml(item.exerciseName)}</h3></div>
       <span class="client-meta">${escapeHtml(item.workoutName)}</span>
     </div>
+    <p class="client-exercise-meta"><strong>Prescription at the time${item.prescription?.version ? ` · Version ${escapeHtml(item.prescription.version)}` : ""}:</strong> ${escapeHtml(formatPrescription(item.prescription))}</p>
+    <p class="client-exercise-meta"><strong>Completed:</strong></p>
     <ol>${(item.sets || []).map((set, index) => `<li>Set ${index + 1}: ${escapeHtml(formatPerformanceSet(set))}</li>`).join("")}</ol>
   </article>`).join("");
 }
@@ -160,6 +194,8 @@ function copyPreviousValues(button) {
   const exercise = assignment?.exercises?.find(item => item.id === exerciseId);
   const previousSets = exercise?.previousPerformance?.sets || [];
   if (!block || !previousSets.length) return;
+  const previousDistance = previousSets.find(set => set.distance != null);
+  if (previousDistance?.distanceUnit) block.dataset.distanceUnit = previousDistance.distanceUnit;
 
   block.querySelectorAll("[data-performance-set]").forEach((row, index) => {
     const previous = previousSets[index] || {};
@@ -181,6 +217,7 @@ function readSessionForm(form) {
         reps: value("reps"),
         duration: value("duration"),
         distance: value("distance"),
+        distanceUnit: value("distance") ? block.dataset.distanceUnit : "",
         load: value("load"),
         loadUnit: value("loadUnit")
       };

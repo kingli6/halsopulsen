@@ -7,7 +7,7 @@ const assert = require("assert");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { getPool, closePool } = require("../workoutplanner/db");
+const { createRollbackTestDatabase } = require("./workoutplanner-test-transaction");
 const {
   findClientDataByToken,
   regenerateClientAccessLink,
@@ -67,7 +67,8 @@ async function run() {
   assert.match(editorSource, /\/api\/workoutplanner\/programs\/\$\{encodeURIComponent\(planState\.databaseProgramId\)\}\/publish/);
   assert.match(editorSource, /databaseProgramKind === "client"/);
 
-  const pool = getPool();
+  const transaction = await createRollbackTestDatabase();
+  const pool = transaction.database;
   const fixture = {
     coachId: null,
     otherCoachId: id(),
@@ -271,20 +272,7 @@ async function run() {
     );
     console.log("WorkoutPlanner database publish checks passed.");
   } finally {
-    if (fixture.clientId) {
-      await pool.query(`delete from public.assignments where client_id = $1`, [fixture.clientId]).catch(() => {});
-      await pool.query(`delete from public.client_access_links where client_id = $1`, [fixture.clientId]).catch(() => {});
-    }
-    if (fixture.programId) {
-      await pool.query(`delete from public.programs where id = $1`, [fixture.programId]).catch(() => {});
-    }
-    if (fixture.clientId) {
-      await pool.query(`delete from public.coach_clients where client_id = $1`, [fixture.clientId]).catch(() => {});
-      await pool.query(`delete from public.clients where id = $1`, [fixture.clientId]).catch(() => {});
-    }
-    await pool.query(`delete from public.profiles where id = $1`, [fixture.clientProfileId]).catch(() => {});
-    await pool.query(`delete from public.profiles where id = $1`, [fixture.otherCoachId]).catch(() => {});
-    await closePool();
+    await transaction.close();
   }
 }
 
