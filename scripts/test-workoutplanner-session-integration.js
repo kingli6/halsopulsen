@@ -92,37 +92,35 @@ async function applyForwardMigrationIfNeeded(client) {
 }
 
 async function assertMigratedSchema(client) {
-  const [nameColumn, identityTable, activitySourceColumn, unlinkedClientRows, mismatchedIdentityRows] = await Promise.all([
-    client.query(
-      `select 1 from information_schema.columns
-        where table_schema = 'public' and table_name = 'workout_exercises'
-          and column_name = 'exercise_name'`
-    ),
-    client.query(
-      `select 1 from information_schema.tables
-        where table_schema = 'public' and table_name = 'client_exercises'`
-    ),
-    client.query(
-      `select 1 from information_schema.columns
-        where table_schema = 'public' and table_name = 'workout_exercises'
-          and column_name = 'activity_source'`
-    ),
-    client.query(
-      `select count(*)::int as count
-         from public.session_exercises se
-         join public.workout_sessions ws on ws.id = se.session_id
-        where ws.client_id is not null
-          and se.client_exercise_id is null`
-    ),
-    client.query(
-      `select count(*)::int as count
-         from public.session_exercises se
-         join public.workout_sessions ws on ws.id = se.session_id
-         join public.client_exercises ce on ce.id = se.client_exercise_id
-        where ws.client_id is not null
-          and ce.client_id <> ws.client_id`
-    )
-  ]);
+  const nameColumn = await client.query(
+    `select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'workout_exercises'
+        and column_name = 'exercise_name'`
+  );
+  const identityTable = await client.query(
+    `select 1 from information_schema.tables
+      where table_schema = 'public' and table_name = 'client_exercises'`
+  );
+  const activitySourceColumn = await client.query(
+    `select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'workout_exercises'
+        and column_name = 'activity_source'`
+  );
+  const unlinkedClientRows = await client.query(
+    `select count(*)::int as count
+       from public.session_exercises se
+       join public.workout_sessions ws on ws.id = se.session_id
+      where ws.client_id is not null
+        and se.client_exercise_id is null`
+  );
+  const mismatchedIdentityRows = await client.query(
+    `select count(*)::int as count
+       from public.session_exercises se
+       join public.workout_sessions ws on ws.id = se.session_id
+       join public.client_exercises ce on ce.id = se.client_exercise_id
+      where ws.client_id is not null
+        and ce.client_id <> ws.client_id`
+  );
   assert.strictEqual(nameColumn.rowCount, 1, "Prescription name column should exist.");
   assert.strictEqual(identityTable.rowCount, 1, "Client-scoped identity table should exist.");
   assert.strictEqual(activitySourceColumn.rowCount, 0, "No activity_source column should be added.");
@@ -132,7 +130,7 @@ async function assertMigratedSchema(client) {
 
 async function verifySessionLogging(pool, client) {
   const assignmentResult = await client.query(
-    `select a.client_id, a.workout_id, p.id as program_id,
+    `select p.client_id, w.id as workout_id, p.id as program_id,
             p.coach_profile_id, we.id as workout_exercise_id
        from public.programs p
        join public.clients c on c.id = p.client_id and c.active = true
