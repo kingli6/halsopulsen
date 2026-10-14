@@ -87,8 +87,26 @@ async function run() {
       reps: 8,
       duration: null,
       distance: null,
+      distanceUnit: null,
       load: 42.5,
       loadUnit: "kg"
+    }]
+  }]);
+  assert.deepStrictEqual(normalizeSessionEntries({
+    exercises: [{
+      workoutExerciseId: WORKOUT_EXERCISE_ID,
+      sets: [{ duration: "30", distance: "5", distanceUnit: "km" }]
+    }]
+  }), [{
+    workoutExerciseId: WORKOUT_EXERCISE_ID,
+    sets: [{
+      setNumber: 1,
+      reps: null,
+      duration: 30,
+      distance: 5,
+      distanceUnit: "km",
+      load: null,
+      loadUnit: null
     }]
   }]);
   assert.throws(
@@ -97,6 +115,10 @@ async function run() {
   );
   assert.throws(
     () => normalizeSessionEntries({ exercises: [{ workoutExerciseId: WORKOUT_EXERCISE_ID, sets: [{ load: "30" }] }] }),
+    error => error.statusCode === 400
+  );
+  assert.throws(
+    () => normalizeSessionEntries({ exercises: [{ workoutExerciseId: WORKOUT_EXERCISE_ID, sets: [{ distance: "5", distanceUnit: "yards" }] }] }),
     error => error.statusCode === 400
   );
   assert.throws(
@@ -133,6 +155,23 @@ async function run() {
   ), "Only actual values and their units should be saved.");
   assert.ok(pool.calls.some(call => call.sql === "commit"));
   assert.ok(!pool.calls.some(call => call.sql.includes("insert into public.exercises ")));
+
+  const conditioningPool = createFakePool();
+  await saveClientSession(conditioningPool, "conditioning-private-token", {
+    programId: PROGRAM_ID,
+    assignmentId: ASSIGNMENT_ID,
+    performedOn: "2026-10-13",
+    exercises: [{
+      workoutExerciseId: WORKOUT_EXERCISE_ID,
+      sets: [{ duration: "30", distance: "5", distanceUnit: "km" }]
+    }]
+  });
+  assert.ok(conditioningPool.calls.some(call =>
+    call.sql.startsWith("insert into public.session_sets")
+      && call.values[3] === 30
+      && call.values[5] === 5
+      && call.values[6] === "km"
+  ), "Continuous conditioning duration and distance must be stored independently with units.");
 
   const genericLinkPool = createFakePool({ scopeAvailable: false });
   await expectStatus(saveClientSession(genericLinkPool, "generic-library-token", {
@@ -176,6 +215,8 @@ async function run() {
   assert.match(clientUi, /value="" inputmode="decimal"/);
   assert.match(clientUi, /Use previous values/);
   assert.match(clientUi, /programId: clientPage\.data\.program\.id/);
+  assert.match(clientUi, /continuousCardio/);
+  assert.match(clientUi, /Prescription at the time/);
   assert.doesNotMatch(clientUi, /No previous performance recorded/);
 
   const planUi = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");

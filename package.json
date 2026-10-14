@@ -20,6 +20,7 @@
     "test:workoutplanner-migration": "node scripts/test-workoutplanner-stage1-migration.js",
     "test:workoutplanner-session-logging": "node scripts/test-workoutplanner-session-logging.js",
     "test:workoutplanner-session-integration": "NODE_ENV=test node scripts/test-workoutplanner-session-integration.js",
+    "test:workoutplanner-session-hardening": "NODE_ENV=test node scripts/test-workoutplanner-session-hardening.js",
     "test:workoutplanner-publish": "NODE_ENV=test node scripts/test-workoutplanner-publish.js",
     "test:workoutplanner-pass3": "NODE_ENV=test node scripts/test-workoutplanner-pass3.js",
     "db:migrate:supabase": "node scripts/migrate-supabase-booking.js",

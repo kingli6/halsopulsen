@@ -379,6 +379,7 @@ async function findClientDataByToken(db, token) {
                 'name', we.exercise_name,
                 'description', coalesce(we.planner_metadata->>'description', ''),
                 'category', coalesce(we.planner_metadata->>'activityType', e.category),
+                'format', coalesce(we.planner_metadata->>'format', 'continuous'),
                 'sets', we.sets,
                 'reps', we.reps,
                 'duration', we.duration,
@@ -471,6 +472,7 @@ async function findClientDataByToken(db, token) {
               'name', we.exercise_name,
               'description', coalesce(we.planner_metadata->>'description', ''),
               'category', coalesce(we.planner_metadata->>'activityType', e.category),
+              'format', coalesce(we.planner_metadata->>'format', 'continuous'),
               'sets', we.sets,
               'reps', we.reps,
               'duration', we.duration,
@@ -577,6 +579,34 @@ async function findClientDataByToken(db, token) {
               se.client_exercise_id,
               se.activity_name,
               se.sort_order,
+              (
+                select json_build_object(
+                  'version', pv.version_number,
+                  'activityType', coalesce(prescribed.planner_metadata->>'activityType', 'strength'),
+                  'format', coalesce(prescribed.planner_metadata->>'format', 'sets'),
+                  'sets', prescribed.sets,
+                  'reps', prescribed.reps,
+                  'duration', prescribed.duration,
+                  'durationUnit', prescribed.duration_unit,
+                  'distance', prescribed.distance,
+                  'distanceUnit', prescribed.distance_unit,
+                  'load', prescribed.load,
+                  'loadUnit', prescribed.load_unit,
+                  'rounds', prescribed.rounds,
+                  'workSeconds', prescribed.work_seconds,
+                  'recoverySeconds', prescribed.recovery_seconds,
+                  'intensity', prescribed.intensity,
+                  'intensityUnit', prescribed.intensity_unit
+                )
+                  from public.workout_exercises prescribed
+                  join public.workouts prescribed_workout
+                    on prescribed_workout.id = prescribed.workout_id
+                  join public.program_weeks prescribed_week
+                    on prescribed_week.id = prescribed_workout.program_week_id
+                  join public.program_versions pv
+                    on pv.id = prescribed_week.program_version_id
+                 where prescribed.id = se.workout_exercise_id
+              ) as prescription,
               coalesce(
                 json_agg(
                   json_build_object(
@@ -614,6 +644,7 @@ async function findClientDataByToken(db, token) {
       workoutName: row.workout_name,
       clientExerciseId: row.client_exercise_id,
       exerciseName: row.activity_name,
+      prescription: row.prescription,
       sets: row.sets || []
     }));
   }
