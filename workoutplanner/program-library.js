@@ -688,10 +688,11 @@ async function saveProgram(
     : text(personName).slice(0, 100);
   const makeCurrentWhenValid = options.makeCurrentWhenValid === true;
   const clientLinkSave = options.clientLinkSave === true;
+  const directLinkSave = options.directLinkSave === true;
   const clientAccessTokenHash = String(options.clientAccessTokenHash || "");
   const expectedRevision = Number(options.expectedRevision);
-  if (clientLinkSave && !/^[a-f0-9]{64}$/i.test(clientAccessTokenHash)) {
-    const error = new Error("An active private client link is required to edit this program.");
+  if ((clientLinkSave || directLinkSave) && !/^[a-f0-9]{64}$/i.test(clientAccessTokenHash)) {
+    const error = new Error("An active private program link is required to edit this program.");
     error.statusCode = 403;
     throw error;
   }
@@ -705,8 +706,8 @@ async function saveProgram(
     throw error;
   }
   const candidateIsComplete = makeCurrentWhenValid && isCompleteProgramForCurrent(inputProgram);
-  if (clientLinkSave && !candidateIsComplete) {
-    const error = new Error("A client edit must keep every program week complete.");
+  if ((clientLinkSave || directLinkSave) && !candidateIsComplete) {
+    const error = new Error("A shared program edit must keep every program week complete.");
     error.statusCode = 400;
     throw error;
   }
@@ -735,12 +736,23 @@ async function saveProgram(
       const isCurrentClientLinkSave = clientLinkSave
         && root.kind === "client"
         && root.client_id != null;
-      if (makeCurrentWhenValid && !isCurrentLibrarySave && !isCurrentClientLinkSave) {
+      const isCurrentDirectLinkSave = directLinkSave
+        && root.kind === "library"
+        && root.client_id == null;
+      if (makeCurrentWhenValid
+        && !isCurrentLibrarySave
+        && !isCurrentClientLinkSave
+        && !isCurrentDirectLinkSave) {
         const error = new Error("Immediate current saves are only supported for authorized shared programs.");
         error.statusCode = 400;
         throw error;
       }
       if (clientLinkSave && !isCurrentClientLinkSave) {
+        const error = new Error("This private link cannot edit the selected program.");
+        error.statusCode = 403;
+        throw error;
+      }
+      if (directLinkSave && !isCurrentDirectLinkSave) {
         const error = new Error("This private link cannot edit the selected program.");
         error.statusCode = 403;
         throw error;
@@ -764,6 +776,23 @@ async function saveProgram(
           throw error;
         }
       }
+      if (directLinkSave) {
+        const activeLink = await client.query(
+          `select l.id
+             from public.client_access_links l
+            where l.token_hash = $1
+              and l.program_id = $2
+              and l.client_id is null
+              and l.revoked_at is null
+            for update of l`,
+          [clientAccessTokenHash, resolvedProgramId]
+        );
+        if (activeLink.rowCount !== 1) {
+          const error = new Error("This private link is no longer active.");
+          error.statusCode = 403;
+          throw error;
+        }
+      }
       if (makeCurrentWhenValid && Number(root.revision) !== expectedRevision) {
         const error = new Error("This program changed after you opened it. Your edits were not saved; reload the latest version.");
         error.statusCode = 409;
@@ -775,7 +804,7 @@ async function saveProgram(
         client,
         coachProfileId,
         resolvedProgramId,
-        { currentOnly: clientLinkSave }
+        { currentOnly: clientLinkSave || directLinkSave }
       );
       const sameProgram = previous
         && programContentKey(previous.program) === programContentKey(program)
@@ -975,7 +1004,8 @@ async function saveProgram(
       );
       const hasActiveWorkout = Number(activeWorkoutResult.rows[0]?.active_workout_count || 0) > 0;
 
-      if (clientLinkSave && !(program.startDate && completeWeeks && hasActiveWorkout)) {
+      if ((clientLinkSave || directLinkSave)
+        && !(program.startDate && completeWeeks && hasActiveWorkout)) {
         const error = new Error("The updated program is incomplete and cannot replace the current plan.");
         error.statusCode = 400;
         throw error;

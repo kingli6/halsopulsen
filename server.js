@@ -17,7 +17,8 @@ const {
 } = require('./workoutplanner/identity');
 const {
   getClientOverview,
-  listCoachClients
+  listCoachClients,
+  getProgramOverview
 } = require('./workoutplanner/coach-overview');
 const {
   findClientDataByToken,
@@ -313,6 +314,26 @@ app.get('/api/workoutplanner/programs/:programId', requireWorkoutPlannerOwner, a
     return res.status(error.statusCode || 503).json({
       ok: false,
       error: error.statusCode ? error.message : 'The program could not be loaded.'
+    });
+  }
+});
+
+app.get('/api/workoutplanner/programs/:programId/overview', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const overview = await getProgramOverview(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.programId
+    );
+    if (!overview) {
+      return res.status(404).json({ ok: false, error: 'Program not found.' });
+    }
+    return res.json({ ok: true, overview });
+  } catch (error) {
+    console.error('Could not load WorkoutPlanner program overview:', error.message);
+    return res.status(503).json({
+      ok: false,
+      error: 'Program progress could not be loaded.'
     });
   }
 });
@@ -644,7 +665,6 @@ app.get('/api/client/:token/program', async (req, res) => {
     const loaded = await loadCurrentProgram(pool, context.coachProfileId, context.programId);
     if (
       !loaded
-      || loaded.kind !== 'client'
       || loaded.versionStatus !== 'published'
       || loaded.versionId !== loaded.currentVersionId
     ) {
@@ -686,11 +706,12 @@ app.put('/api/client/:token/program', async (req, res) => {
       context.coachProfileId,
       req.body?.program,
       context.programId,
-      null,
+      context.directProgram ? req.body?.personName : null,
       {
         makeCurrentWhenValid: true,
         expectedRevision: req.body?.expectedRevision,
-        clientLinkSave: true,
+        clientLinkSave: !context.directProgram,
+        directLinkSave: context.directProgram,
         clientAccessTokenHash: tokenHash
       }
     );
@@ -798,8 +819,11 @@ app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
 });
 app.get(['/admin/clients', '/admin/clients/'], (req, res) => {
+  return res.redirect('/admin/programs/');
+});
+app.get(['/admin/programs', '/admin/programs/'], (req, res) => {
   if (!readAdminSession(req)) {
-    return res.redirect(`/admin?next=${encodeURIComponent('/admin/clients/')}`);
+    return res.redirect(`/admin?next=${encodeURIComponent('/admin/programs/')}`);
   }
   res.sendFile(path.join(__dirname, 'dashboard', 'coach-overview.html'));
 });
@@ -817,7 +841,11 @@ app.get(['/p/:token', '/p/:token/'], async (req, res) => {
   if (isWorkoutPlannerConfigured()) {
     try {
       if (await hasClientAccessToken(getWorkoutPlannerPool(), req.params.token)) {
-        return res.sendFile(path.join(__dirname, 'dashboard', 'client.html'));
+        return res.sendFile(path.join(
+          __dirname,
+          'dashboard',
+          req.query.preview === '1' ? 'client.html' : path.join('plan', 'index.html')
+        ));
       }
     } catch (error) {
       console.error('Could not validate private WorkoutPlanner client link:', error.message);
@@ -842,7 +870,11 @@ app.get(['/client/:token', '/client/:token/'], async (req, res) => {
     if (!await hasClientAccessToken(getWorkoutPlannerPool(), req.params.token)) {
       return res.sendStatus(404);
     }
-    return res.sendFile(path.join(__dirname, 'dashboard', 'client.html'));
+    return res.sendFile(path.join(
+      __dirname,
+      'dashboard',
+      req.query.preview === '1' ? 'client.html' : path.join('plan', 'index.html')
+    ));
   } catch (error) {
     console.error('Could not validate private WorkoutPlanner client link:', error.message);
     return res.status(503).send('The private training plan is unavailable.');

@@ -40,8 +40,9 @@ function testAccountBasedCloneUiIsRemoved() {
     planner,
     /ensureLegacyCloneForm|legacyCloneProgramForm|data-clone-database-program|beginLegacyClone/
   );
-  assert.match(planner, /data-create-client-copy/);
-  assert.match(planner, /data-client-copy-select/);
+  assert.doesNotMatch(planner, /data-create-client-copy|data-client-copy-select/);
+  assert.match(planner, /Legacy linked program/);
+  assert.match(planner, /Existing private link controls/);
 }
 
 function testPrivateLinksOpenInNewTabs() {
@@ -113,14 +114,48 @@ function testPrivateClientCanEditTheCurrentProgram() {
   assert.match(getProgramRoute, /getClientProgramEditContext/);
   assert.match(getProgramRoute, /loadCurrentProgram/);
   assert.match(getProgramRoute, /loaded\.versionId !== loaded\.currentVersionId/);
+  assert.doesNotMatch(getProgramRoute, /loaded\.kind !== 'client'/);
   assert.match(saveProgramRoute, /req\.query\.preview === '1'[\s\S]*?status\(403\)/);
-  assert.match(saveProgramRoute, /clientLinkSave: true/);
+  assert.match(saveProgramRoute, /clientLinkSave: !context\.directProgram/);
+  assert.match(saveProgramRoute, /directLinkSave: context\.directProgram/);
   assert.match(saveProgramRoute, /clientAccessTokenHash: tokenHash/);
-  assert.match(clientUi, /<summary>Edit this workout<\/summary>/);
-  assert.match(clientUi, /Save updated workout/);
-  assert.match(clientUi, /expectedRevision: clientPage\.data\?\.program\?\.revision/);
-  assert.match(clientUi, /Reload the latest version before continuing/);
+  assert.match(clientUi, /shared-program-workspace/);
+  assert.match(clientUi, /workoutplanner:program-saved/);
+  assert.match(clientUi, /workoutId: assignment\.workout_id/);
+  assert.match(clientUi, /programVersionId: assignment\.program_version_id/);
   assert.match(clientPage, /id="programSaveBanner"/);
+}
+
+function testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging() {
+  const server = readProjectFile("server.js");
+  const planner = readProjectFile("dashboard/plan.js");
+  const clientUi = readProjectFile("dashboard/client.js");
+  const sessionLogger = readProjectFile("workoutplanner/session-logging.js");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+
+  assert.match(server, /req\.query\.preview === '1' \? 'client\.html' : path\.join\('plan', 'index\.html'\)/);
+  assert.match(planner, /sharedProgramWorkspace/);
+  assert.match(planner, /complete saves become current automatically/i);
+  assert.match(planner, /databaseStatus === "published"/);
+  assert.match(planner, /Saved\. The live program and this private link are updated\./);
+  assert.match(planPage, /id="sharedSessionSection"/);
+  assert.match(clientUi, /const canLog = !clientPage\.preview && item\.id/);
+  assert.match(sessionLogger, /directProgram/);
+  assert.match(sessionLogger, /programVersionId/);
+  assert.match(sessionLogger, /insert into public\.workout_sessions[\s\S]*?program_id/);
+}
+
+function testProgramOverviewReplacesClientOverview() {
+  const overviewPage = readProjectFile("dashboard/coach-overview.html");
+  const overviewUi = readProjectFile("dashboard/program-overview.js");
+  const server = readProjectFile("server.js");
+
+  assert.match(overviewPage, /<h1>Program overview<\/h1>/);
+  assert.match(overviewPage, /\/dashboard\/program-overview\.js/);
+  assert.doesNotMatch(overviewPage, /id="clientList"|id="clientDetail"/);
+  assert.match(server, /\/api\/workoutplanner\/programs\/:programId\/overview/);
+  assert.match(overviewUi, /Copy private link/);
+  assert.match(overviewUi, /Recorded workouts/);
 }
 
 testPlannerEntryUsesCoachRoute();
@@ -129,4 +164,6 @@ testAccountBasedCloneUiIsRemoved();
 testPrivateLinksOpenInNewTabs();
 testClientLinkPreviewIsReadOnly();
 testPrivateClientCanEditTheCurrentProgram();
+testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging();
+testProgramOverviewReplacesClientOverview();
 console.log("WorkoutPlanner UI/API regression checks passed.");

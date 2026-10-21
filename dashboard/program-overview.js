@@ -1,0 +1,270 @@
+const programOverviewState = {
+  programs: [],
+  selectedProgramId: null,
+  detail: null,
+  requestNumber: 0
+};
+
+function escapeProgramHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  }[character]));
+}
+
+function programDate(value) {
+  if (!value) return "Date not set";
+  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function programLinkEndpoint(program) {
+  return program.kind === "client" && program.clientId
+    ? `/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/programs/${encodeURIComponent(program.id)}/link`
+    : `/api/workoutplanner/programs/${encodeURIComponent(program.id)}/link`;
+}
+
+function isPublishedProgram(program) {
+  return Boolean(
+    program.hasCurrentVersion
+    && program.hasPublishedVersion
+    && program.currentVersion
+  );
+}
+
+function renderProgramList() {
+  const published = programOverviewState.programs.filter(isPublishedProgram);
+  const list = document.getElementById("programList");
+  const status = document.getElementById("programListStatus");
+  document.getElementById("programCount").textContent = String(published.length);
+
+  if (!published.length) {
+    status.textContent = "No published programs yet. Save and publish one from the program library.";
+    list.innerHTML = "";
+    document.getElementById("programDetail").innerHTML = `
+      <div class="empty-panel card">
+        <p>No published programs are available in the overview.</p>
+        <a class="button button-secondary" href="/admin/plans/">Open program library</a>
+      </div>`;
+    return;
+  }
+
+  status.textContent = "";
+  list.innerHTML = published.map(program => `
+    <button class="program-list-item${program.id === programOverviewState.selectedProgramId ? " is-selected" : ""}"
+      type="button" data-program-id="${escapeProgramHtml(program.id)}"
+      aria-pressed="${program.id === programOverviewState.selectedProgramId ? "true" : "false"}">
+      <strong>${escapeProgramHtml(program.name || "Untitled program")}</strong>
+      <span>Version ${escapeProgramHtml(program.currentVersion || "—")} · ${program.hasActivePrivateLink ? "Private link active" : "No private link"}</span>
+    </button>
+  `).join("");
+}
+
+function formatPrescriptionSummary(prescription = {}) {
+  const values = [];
+  if (prescription.sets != null) values.push(`${prescription.sets} sets`);
+  if (prescription.reps != null) values.push(`${prescription.reps} reps`);
+  if (prescription.duration != null) values.push(`${prescription.duration} ${prescription.durationUnit || "min"}`);
+  if (prescription.distance != null) values.push(`${prescription.distance} ${prescription.distanceUnit || "km"}`);
+  if (prescription.load != null) values.push(`${prescription.load} ${prescription.loadUnit || "kg"}`);
+  if (prescription.rir != null) values.push(`${prescription.rir} RIR`);
+  return values.join(" · ") || "No prescription values";
+}
+
+function formatActualSet(set) {
+  const values = [];
+  if (set.reps != null) values.push(`${set.reps} reps`);
+  if (set.duration != null) values.push(`${set.duration} ${set.durationUnit || "min"}`);
+  if (set.distance != null) values.push(`${set.distance} ${set.distanceUnit || "km"}`);
+  if (set.load != null) values.push(`${set.load} ${set.loadUnit || "kg"}`);
+  return values.join(" · ") || "No values recorded";
+}
+
+function renderRecentSessions(sessions = []) {
+  if (!sessions.length) {
+    return `<p class="program-empty">No workouts have been recorded for this program yet.</p>`;
+  }
+  return `<div class="program-session-list">${sessions.map(session => {
+    const source = session.program?.versionNumber
+      ? `Version ${escapeProgramHtml(session.program.versionNumber)}`
+      : "Program session";
+    const exercises = (session.exercises || []).map(exercise => {
+      const actual = (exercise.actualSets || []).map(formatActualSet).join("; ") || "No performance values recorded";
+      return `<li><strong>${escapeProgramHtml(exercise.name)}</strong>
+        <div class="program-exercise-detail">Planned: ${escapeProgramHtml(formatPrescriptionSummary(exercise.prescription))}</div>
+        <div class="program-exercise-detail">Recorded: ${escapeProgramHtml(actual)}</div>
+      </li>`;
+    }).join("");
+    return `<article class="program-session-card">
+      <div class="progress-card-heading">
+        <div><h3>${escapeProgramHtml(session.workoutName || "Workout")}</h3>
+          <p class="program-session-meta">${escapeProgramHtml(programDate(session.performedOn))} · ${escapeProgramHtml(source)}</p>
+        </div>
+        <span class="draft-status is-current">${escapeProgramHtml(session.status || "completed")}</span>
+      </div>
+      ${exercises ? `<ol class="program-exercise-list">${exercises}</ol>` : ""}
+      ${session.note ? `<p class="program-progress-note"><strong>Note:</strong> ${escapeProgramHtml(session.note)}</p>` : ""}
+    </article>`;
+  }).join("")}</div>`;
+}
+
+function renderProgramDetail() {
+  const program = programOverviewState.detail?.program;
+  const detail = document.getElementById("programDetail");
+  if (!program) {
+    detail.innerHTML = `<div class="empty-panel card">Select a published program to review its private link and recent sessions.</div>`;
+    return;
+  }
+  const legacy = program.kind === "client";
+  const linkStatus = program.hasActivePrivateLink
+    ? "A private link is active. It opens this program and its session history."
+    : "No active private link. Create one to share this program.";
+  detail.innerHTML = `
+    <div class="program-detail-stack">
+      <header class="program-overview-heading card">
+        <div>
+          <p class="section-kicker">${legacy ? "EXISTING LINKED PROGRAM" : "PUBLISHED PROGRAM"}</p>
+          <h2>${escapeProgramHtml(program.name)}</h2>
+          <p class="program-overview-meta">Current version ${escapeProgramHtml(program.currentVersionNumber || "—")}
+            ${program.startDate ? ` · Starts ${escapeProgramHtml(programDate(program.startDate))}` : ""}
+            ${legacy ? " · Older linked program" : ""}
+          </p>
+        </div>
+        <a class="button button-secondary button-small" href="/admin/plans/">Open program library</a>
+      </header>
+      <section class="program-link-card card" aria-labelledby="privateLinkHeading">
+        <div class="section-kicker">PRIVATE LINK</div>
+        <h2 id="privateLinkHeading">Share this program</h2>
+        <p class="program-link-status" id="programLinkStatus" role="status" aria-live="polite">${escapeProgramHtml(linkStatus)}</p>
+        <div class="program-link-actions">
+          ${program.hasActivePrivateLink
+            ? `<button class="button button-secondary button-small" type="button" data-link-action="copy">Copy private link</button>
+               <button class="text-button" type="button" data-link-action="replace">Replace link</button>
+               <button class="text-button danger-button" type="button" data-link-action="revoke">Revoke link</button>`
+            : `<button class="button button-primary button-small" type="button" data-link-action="create">Create private link</button>`
+          }
+        </div>
+      </section>
+      <section class="program-progress-card card program-progress" aria-labelledby="recentProgressHeading">
+        <p class="section-kicker">RECENT PROGRESS</p>
+        <h2 id="recentProgressHeading">Recorded workouts</h2>
+        ${renderRecentSessions(programOverviewState.detail.recentSessions || [])}
+      </section>
+    </div>`;
+}
+
+async function selectProgram(programId) {
+  programOverviewState.selectedProgramId = programId;
+  renderProgramList();
+  const detail = document.getElementById("programDetail");
+  detail.innerHTML = `<div class="empty-panel card">Loading program progress…</div>`;
+  const requestNumber = ++programOverviewState.requestNumber;
+  try {
+    const response = await fetch(`/api/workoutplanner/programs/${encodeURIComponent(programId)}/overview`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "Program progress could not be loaded.");
+    if (requestNumber !== programOverviewState.requestNumber) return;
+    programOverviewState.detail = result.overview;
+    renderProgramDetail();
+  } catch (error) {
+    if (requestNumber !== programOverviewState.requestNumber) return;
+    detail.innerHTML = `<p class="program-empty">${escapeProgramHtml(error.message)}</p>`;
+  }
+}
+
+async function loadPrograms() {
+  const status = document.getElementById("programListStatus");
+  try {
+    const response = await fetch("/api/workoutplanner/programs");
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "Published programs could not be loaded.");
+    programOverviewState.programs = Array.isArray(result.programs) ? result.programs : [];
+    const firstPublished = programOverviewState.programs.find(isPublishedProgram);
+    programOverviewState.selectedProgramId = firstPublished?.id || null;
+    renderProgramList();
+    if (firstPublished) await selectProgram(firstPublished.id);
+  } catch (error) {
+    status.textContent = error.message || "Published programs could not be loaded.";
+    status.classList.add("is-error");
+  }
+}
+
+async function copyProgramPrivateLink(program) {
+  const status = document.getElementById("programLinkStatus");
+  try {
+    status.textContent = "Retrieving private link…";
+    const response = await fetch(programLinkEndpoint(program));
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "The private link could not be retrieved.");
+    const url = new URL(result.path, window.location.origin).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      status.textContent = "Private link copied.";
+    } catch {
+      window.prompt("Copy this private link:", url);
+      status.textContent = "Private link ready to copy.";
+    }
+  } catch (error) {
+    status.textContent = error.message || "The private link could not be retrieved.";
+  }
+}
+
+async function updateProgramLink(program, action) {
+  const status = document.getElementById("programLinkStatus");
+  if (action === "replace" && !window.confirm("Replace this private link? The old link will stop working.")) return;
+  if (action === "revoke" && !window.confirm("Revoke this private link? Anyone using it will lose access.")) return;
+  try {
+    if (action === "revoke") {
+      const response = await fetch(programLinkEndpoint(program), { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || "The private link could not be revoked.");
+      program.hasActivePrivateLink = false;
+      status.textContent = result.revoked ? "Private link revoked." : "No active private link was found.";
+    } else {
+      status.textContent = action === "replace" ? "Replacing private link…" : "Creating private link…";
+      const response = await fetch(programLinkEndpoint(program), { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || "The private link could not be created.");
+      program.hasActivePrivateLink = true;
+      const url = new URL(result.path, window.location.origin).href;
+      try {
+        await navigator.clipboard.writeText(url);
+        status.textContent = action === "replace" ? "New private link copied. The old link no longer works." : "Private link created and copied.";
+      } catch {
+        window.prompt("Copy this private link:", url);
+        status.textContent = "Private link created. Copy the link shown above.";
+      }
+    }
+    const listProgram = programOverviewState.programs.find(item => item.id === program.id);
+    if (listProgram) listProgram.hasActivePrivateLink = program.hasActivePrivateLink;
+    if (programOverviewState.detail?.program?.id === program.id) {
+      programOverviewState.detail.program.hasActivePrivateLink = program.hasActivePrivateLink;
+    }
+    renderProgramList();
+    renderProgramDetail();
+  } catch (error) {
+    status.textContent = error.message || "The private link could not be updated.";
+  }
+}
+
+document.getElementById("programList").addEventListener("click", event => {
+  const item = event.target.closest("[data-program-id]");
+  if (item) selectProgram(item.dataset.programId);
+});
+
+document.getElementById("programDetail").addEventListener("click", event => {
+  const button = event.target.closest("[data-link-action]");
+  if (!button) return;
+  const program = programOverviewState.programs.find(item => item.id === programOverviewState.selectedProgramId);
+  if (!program) return;
+  if (button.dataset.linkAction === "copy") copyProgramPrivateLink(program);
+  else updateProgramLink(program, button.dataset.linkAction);
+});
+
+document.getElementById("adminLogoutBtn").addEventListener("click", async () => {
+  await fetch("/api/admin/logout", { method: "POST" });
+  window.location.assign("/admin");
+});
+
+loadPrograms();

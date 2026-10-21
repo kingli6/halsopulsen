@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/dashboard/portal.css" />
+  <link rel="stylesheet" href="/dashboard/client.css" />
 </head>
 <body>
   <header class="topbar">
@@ -19,11 +20,11 @@
         <span>Hälso<span class="brand-accent">Pulsen</span></span>
       </a>
       <nav class="topnav" aria-label="Main navigation">
-        <a class="topnav-link active" href="/admin/plans/">Plan programs</a>
-        <a class="topnav-link" id="coachOverviewNavLink" href="/admin/clients/" hidden>Clients</a>
-        <a class="topnav-link" href="/admin/booking/">Booking admin</a>
+        <a class="topnav-link active" href="/admin/plans/" data-owner-only>Program library</a>
+        <a class="topnav-link" id="coachOverviewNavLink" href="/admin/programs/" data-owner-only>Program overview</a>
+        <a class="topnav-link" href="/admin/booking/" data-owner-only>Booking admin</a>
         <a class="topnav-link" href="https://halsopulsen.se/">Main site</a>
-        <button class="topnav-link topnav-button" id="adminLogoutBtn" type="button">Sign out</button>
+        <button class="topnav-link topnav-button" id="adminLogoutBtn" type="button" data-owner-only>Sign out</button>
       </nav>
     </div>
   </header>
@@ -32,16 +33,16 @@
     <section class="page-intro plan-intro">
       <div>
         <p class="eyebrow">OWNER WORKSPACE</p>
-        <h1>Plan with intent. Keep every version.</h1>
-        <p class="intro-copy">Create and manage training programs, then share them through private links.</p>
+        <h1 id="pageHeading">Plan with intent. Keep every version.</h1>
+        <p class="intro-copy" id="pageCopy">Create and manage training programs, then share them through private links.</p>
       </div>
       <div class="intro-actions">
-        <span class="local-owner-badge">Admin workspace · signed in</span>
+          <span class="local-owner-badge" id="ownerBadge">Admin workspace · signed in</span>
         <a class="button button-primary" id="editorBackLink" href="/admin/plans/" hidden>Back to library</a>
       </div>
     </section>
 
-    <section class="owner-notice">
+    <section class="owner-notice" id="ownerNotice">
       <span class="notice-icon">i</span>
       <div><strong>This is the planning side.</strong><span>Only the admin can edit or publish programs. Clients do not need an account; their private link shows their program read-only.</span></div>
     </section>
@@ -50,7 +51,7 @@
       <div class="library-view-header">
         <div>
           <p class="section-kicker">WORKOUT PROGRAMS</p>
-          <h2 id="libraryHeading">Plan library</h2>
+          <h2 id="libraryHeading">Program library</h2>
           <p>Build reusable plans or manage an ongoing client program. Publishing an update keeps its private link.</p>
         </div>
          <a class="button button-primary" href="/admin/plans/?view=editor" id="createPlanBtn">+ Create new plan</a>
@@ -59,12 +60,11 @@
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
       </div>
        <section class="library-view card" id="databaseProgramLibrary" aria-labelledby="databaseProgramLibraryHeading" hidden>
-         <div class="library-view-header">
-           <div>
-              <p class="section-kicker">PROGRAM LIBRARY</p>
-             <h2 id="databaseProgramLibraryHeading">Program library</h2>
-                  <p>Open library and client programs. Manage private links from each program.</p>
-           </div>
+          <div class="library-view-header">
+            <div>
+              <p id="databaseProgramLibraryHeading" class="section-kicker">SAVED PROGRAMS</p>
+              <p>Open saved programs, manage private links, and review version history.</p>
+            </div>
            <span class="draft-status is-current" id="databaseProgramLibrarySummary">0 programs</span>
          </div>
          <p class="client-create-status" id="databaseProgramLibraryStatus" role="status" aria-live="polite"></p>
@@ -108,6 +108,22 @@
         </div>
       </div>
       <div class="builder-grid" id="builderGrid"></div>
+    </section>
+
+    <section class="section-block" id="sharedSessionSection" hidden>
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">RECIPIENT SESSION LOG</p>
+          <h2>Completed workouts</h2>
+        </div>
+      </div>
+      <div class="client-list" id="assignmentList" aria-live="polite"></div>
+    </section>
+    <section class="section-block" id="performanceHistorySection" hidden aria-labelledby="performanceHistoryHeading">
+      <div class="section-heading-row">
+        <div><p class="section-kicker">TRAINING HISTORY</p><h2 id="performanceHistoryHeading">Recent performance</h2></div>
+      </div>
+      <div class="client-list" id="performanceHistory" aria-live="polite"></div>
     </section>
 
     <section class="section-block template-library-panel card" id="templateLibraryPanel" aria-labelledby="templateLibraryHeading">
@@ -156,7 +172,7 @@
       </div>
     </section>
 
-    <section class="section-block published-preview-block" aria-labelledby="publishedPreviewHeading">
+    <section class="section-block published-preview-block" id="publishedPreviewBlock" aria-labelledby="publishedPreviewHeading">
       <div class="section-heading-row">
         <div>
           <p class="section-kicker">CURRENTLY LIVE</p>
@@ -252,5 +268,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/dashboard/data.js"></script>
   <script src="/dashboard/plan.js"></script>
+  <script src="/dashboard/client.js" defer></script>
 </body>
 </html>
