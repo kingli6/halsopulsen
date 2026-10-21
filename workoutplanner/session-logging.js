@@ -102,18 +102,27 @@ async function resolveClientProgramScope(client, token) {
   const tokenHash = hashClientAccessToken(token);
   if (!tokenHash) return null;
   const result = await client.query(
-    `select l.client_id, p.id as program_id
+    `select l.client_id, p.id as program_id, p.kind
        from public.client_access_links l
        join public.programs p
          on p.id = l.program_id
-        and p.client_id = l.client_id
-        and p.kind = 'client'
-       join public.clients c
+       left join public.clients c
          on c.id = l.client_id
-        and c.active = true
       where l.token_hash = $1
-        and l.client_id is not null
         and l.revoked_at is null
+        and (
+          (
+            l.client_id is null
+            and p.kind = 'library'
+            and p.client_id is null
+          )
+          or (
+            l.client_id is not null
+            and p.kind = 'client'
+            and p.client_id = l.client_id
+            and c.active = true
+          )
+        )
         and p.current_version_id is not null
         and exists (
           select 1
@@ -125,7 +134,11 @@ async function resolveClientProgramScope(client, token) {
       limit 2`,
     [tokenHash]
   );
-  return result.rowCount === 1 ? result.rows[0] : null;
+  if (result.rowCount !== 1) return null;
+  return {
+    ...result.rows[0],
+    directProgram: result.rows[0].client_id == null
+  };
 }
 
 async function createClientExerciseIdentity(client, clientId, name) {
@@ -155,9 +168,23 @@ async function createClientExerciseIdentity(client, clientId, name) {
 async function saveClientSession(db, token, body) {
   if (
     !isUuid(body?.programId)
-    || !isUuid(body?.assignmentId)
   ) {
     const error = new Error("A valid client program and workout assignment are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (body?.assignmentId && !isUuid(body.assignmentId)) {
+    const error = new Error("The selected workout assignment is invalid.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (body?.workoutId && !isUuid(body.workoutId)) {
+    const error = new Error("The selected workout is invalid.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (body?.programVersionId && !isUuid(body.programVersionId)) {
+    const error = new Error("The selected program version is invalid.");
     error.statusCode = 400;
     throw error;
   }
@@ -203,47 +230,86 @@ async function saveClientSession(db, token, body) {
       throw error;
     }
 
-    const assignment = await client.query(
-      `select a.id, a.client_id, a.workout_id, p.id as program_id
-         from public.assignments a
-         join public.workouts w on w.id = a.workout_id
-         join public.program_weeks pw on pw.id = w.program_week_id
-         join public.program_versions pv on pv.id = pw.program_version_id
-         join public.programs p on p.id = pv.program_id
-        where a.id = $1
-          and a.client_id = $2
-          and p.id = $3
-          and p.client_id = $2
-          and p.kind = 'client'
-          and pv.status in ('published', 'archived')
-        for update of a`,
-      [body.assignmentId, scope.client_id, scope.program_id]
-    );
-    if (assignment.rowCount !== 1) {
-      const error = new Error("This assignment does not belong to the linked client program.");
-      error.statusCode = 403;
-      throw error;
+    let workoutId;
+    let assignment = null;
+    if (scope.directProgram) {
+      if (!isUuid(body?.workoutId) || !isUuid(body?.programVersionId)) {
+        const error = new Error("A valid program workout and version are required.");
+        error.statusCode = 400;
+        throw error;
+      }
+      const workout = await client.query(
+        `select w.id
+           from public.workouts w
+           join public.program_weeks pw on pw.id = w.program_week_id
+           join public.program_versions pv on pv.id = pw.program_version_id
+           join public.programs p on p.id = pv.program_id
+          where w.id = $1
+            and pv.id = $2
+            and p.id = $3
+            and p.kind = 'library'
+            and p.client_id is null
+            and pv.status in ('published', 'archived')
+          for update of w`,
+        [body.workoutId, body.programVersionId, scope.program_id]
+      );
+      if (workout.rowCount !== 1) {
+        const error = new Error("This workout does not belong to the linked program version.");
+        error.statusCode = 403;
+        throw error;
+      }
+      workoutId = workout.rows[0].id;
+    } else {
+      if (!isUuid(body?.assignmentId)) {
+        const error = new Error("A valid client program and workout assignment are required.");
+        error.statusCode = 400;
+        throw error;
+      }
+      assignment = await client.query(
+        `select a.id, a.client_id, a.workout_id, p.id as program_id
+           from public.assignments a
+           join public.workouts w on w.id = a.workout_id
+           join public.program_weeks pw on pw.id = w.program_week_id
+           join public.program_versions pv on pv.id = pw.program_version_id
+           join public.programs p on p.id = pv.program_id
+          where a.id = $1
+            and a.client_id = $2
+            and p.id = $3
+            and p.client_id = $2
+            and p.kind = 'client'
+            and pv.status in ('published', 'archived')
+          for update of a`,
+        [body.assignmentId, scope.client_id, scope.program_id]
+      );
+      if (assignment.rowCount !== 1) {
+        const error = new Error("This assignment does not belong to the linked client program.");
+        error.statusCode = 403;
+        throw error;
+      }
+      workoutId = assignment.rows[0].workout_id;
     }
 
-    const duplicate = await client.query(
-      `select id
-         from public.workout_sessions
-        where assignment_id = $1
-          and client_id = $2
-        limit 1`,
-      [body.assignmentId, scope.client_id]
-    );
-    if (duplicate.rowCount) {
-      const error = new Error("Performance has already been saved for this workout.");
-      error.statusCode = 409;
-      throw error;
+    if (!scope.directProgram) {
+      const duplicate = await client.query(
+        `select id
+           from public.workout_sessions
+          where assignment_id = $1
+            and client_id = $2
+          limit 1`,
+        [body.assignmentId, scope.client_id]
+      );
+      if (duplicate.rowCount) {
+        const error = new Error("Performance has already been saved for this workout.");
+        error.statusCode = 409;
+        throw error;
+      }
     }
 
     const prescribedResult = await client.query(
       `select id, exercise_name, sort_order, duration_unit, distance_unit, load_unit
          from public.workout_exercises
         where workout_id = $1`,
-      [assignment.rows[0].workout_id]
+      [workoutId]
     );
     const prescribed = new Map(prescribedResult.rows.map(row => [row.id, row]));
     for (const entry of exercises) {
@@ -254,23 +320,34 @@ async function saveClientSession(db, token, body) {
       }
     }
 
-    const sessionResult = await client.query(
-      `insert into public.workout_sessions
-         (assignment_id, client_id, performed_on, status, difficulty, energy,
-          note, started_at, completed_at)
-       values ($1, $2, $3::date, 'completed', $4, $5, $6, now(), now())
-       returning id`,
-      [body.assignmentId, scope.client_id, body.performedOn, difficulty, energy, note]
-    );
+    const sessionResult = scope.directProgram
+      ? await client.query(
+        `insert into public.workout_sessions
+           (program_id, performed_on, status, difficulty, energy,
+            note, started_at, completed_at)
+         values ($1, $2::date, 'completed', $3, $4, $5, now(), now())
+         returning id`,
+        [scope.program_id, body.performedOn, difficulty, energy, note]
+      )
+      : await client.query(
+        `insert into public.workout_sessions
+           (assignment_id, client_id, performed_on, status, difficulty, energy,
+            note, started_at, completed_at)
+         values ($1, $2, $3::date, 'completed', $4, $5, $6, now(), now())
+         returning id`,
+        [body.assignmentId, scope.client_id, body.performedOn, difficulty, energy, note]
+      );
     const sessionId = sessionResult.rows[0].id;
 
     for (const entry of exercises) {
       const prescription = prescribed.get(entry.workoutExerciseId);
-      const identityId = await createClientExerciseIdentity(
-        client,
-        scope.client_id,
-        prescription.exercise_name
-      );
+      const identityId = scope.directProgram
+        ? null
+        : await createClientExerciseIdentity(
+          client,
+          scope.client_id,
+          prescription.exercise_name
+        );
       const sessionExerciseResult = await client.query(
         `insert into public.session_exercises
            (session_id, workout_exercise_id, exercise_id, client_exercise_id,
@@ -309,17 +386,24 @@ async function saveClientSession(db, token, body) {
       }
     }
 
-    await client.query(
-      `update public.assignments
-          set status = 'completed',
-              updated_at = now()
-        where id = $1
-          and client_id = $2`,
-      [body.assignmentId, scope.client_id]
-    );
+    if (!scope.directProgram) {
+      await client.query(
+        `update public.assignments
+            set status = 'completed',
+                updated_at = now()
+          where id = $1
+            and client_id = $2`,
+        [body.assignmentId, scope.client_id]
+      );
+    }
     await client.query("commit");
     transactionStarted = false;
-    return { id: sessionId, clientId: scope.client_id, programId: scope.program_id };
+    return {
+      id: sessionId,
+      clientId: scope.client_id || null,
+      programId: scope.program_id,
+      workoutId: workoutId || null
+    };
   } catch (error) {
     if (transactionStarted) await client.query("rollback").catch(() => {});
     throw error;

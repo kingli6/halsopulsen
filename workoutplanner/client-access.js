@@ -304,7 +304,7 @@ async function findClientDataByToken(db, token) {
 
   const clientResult = await db.query(
     `SELECT c.id AS client_id, c.display_name, c.active,
-            l.program_id, p.name AS program_name,
+            l.program_id, p.name AS program_name, p.person_name,
             p.kind AS program_kind
        FROM public.client_access_links l
        JOIN public.programs p
@@ -360,6 +360,7 @@ async function findClientDataByToken(db, token) {
           'Published program'::text AS program_name,
           NULL::text AS program_description,
           pv.version_number,
+           pv.id AS program_version_id,
           pv.published_at,
           pw.week_number,
           pw.name AS week_name,
@@ -430,16 +431,88 @@ async function findClientDataByToken(db, token) {
     );
 
     const latestVersion = scheduleResult.rows[0] || {};
+    const historyResult = await db.query(
+      `select ws.id as session_id,
+              to_char(ws.performed_on, 'YYYY-MM-DD') as performed_on,
+              coalesce(nullif(btrim(w.name), ''), 'Training session') as workout_name,
+              pv.version_number,
+              se.activity_name,
+              se.sort_order,
+              coalesce((
+                select json_agg(
+                         json_build_object(
+                           'setNumber', ss.set_number,
+                           'reps', ss.reps,
+                           'duration', ss.duration,
+                           'durationUnit', ss.duration_unit,
+                           'distance', ss.distance,
+                           'distanceUnit', ss.distance_unit,
+                           'load', ss.load,
+                           'loadUnit', ss.load_unit
+                         )
+                         order by ss.set_number
+                       )
+                  from public.session_sets ss
+                 where ss.session_exercise_id = se.id
+              ), '[]'::json) as sets,
+              case when we.id is null then null else
+                json_build_object(
+                  'version', pv.version_number,
+                  'sets', we.sets,
+                  'reps', we.reps,
+                  'duration', we.duration,
+                  'durationUnit', we.duration_unit,
+                  'distance', we.distance,
+                  'distanceUnit', we.distance_unit,
+                  'load', we.load,
+                  'loadUnit', we.load_unit,
+                  'rir', we.rir,
+                  'tempo', we.tempo,
+                  'notes', we.notes
+                )
+              end as prescription
+         from public.workout_sessions ws
+         join public.session_exercises se on se.session_id = ws.id
+         left join public.workout_exercises we on we.id = se.workout_exercise_id
+         left join public.workouts w on w.id = we.workout_id
+         left join public.program_weeks pw on pw.id = w.program_week_id
+         left join public.program_versions pv on pv.id = pw.program_version_id
+        where ws.program_id = $1
+          and ws.client_id is null
+          and ws.status = 'completed'
+        group by ws.id, ws.performed_on, ws.created_at, w.name,
+                 pv.version_number, se.id, se.activity_name, se.sort_order,
+                 we.id, we.sets, we.reps, we.duration, we.duration_unit,
+                 we.distance, we.distance_unit, we.load, we.load_unit,
+                 we.rir, we.tempo, we.notes
+        order by ws.performed_on desc, ws.created_at desc, se.sort_order
+        limit 100`,
+      [client.program_id]
+    );
+
     return {
       client: null,
       directProgram: true,
+      personName: client.person_name || "",
       program: {
         id: client.program_id,
-        name: "Published program",
+        name: client.program_name,
         version: Number(latestVersion.version_number) || null,
         publishedAt: latestVersion.published_at || null
       },
-      assignments: scheduleResult.rows
+      assignments: scheduleResult.rows.map(row => ({
+        ...row,
+        id: row.workout_id,
+        program_version_id: row.program_version_id
+      })),
+      performanceHistory: historyResult.rows.map(row => ({
+        sessionId: row.session_id,
+        performedOn: row.performed_on,
+        workoutName: row.workout_name,
+        exerciseName: row.activity_name || "Activity",
+        prescription: row.prescription,
+        sets: row.sets || []
+      }))
     };
   }
 
@@ -709,18 +782,28 @@ async function getClientProgramEditContext(db, tokenHash) {
             p.id as program_id,
             p.coach_profile_id,
             p.revision,
-            p.current_version_id
+            p.current_version_id,
+            p.kind
        from public.client_access_links l
        join public.programs p
          on p.id = l.program_id
-        and p.client_id = l.client_id
-        and p.kind = 'client'
-       join public.clients c
+       left join public.clients c
          on c.id = l.client_id
-        and c.active = true
       where l.token_hash = $1
-        and l.client_id is not null
         and l.revoked_at is null
+        and (
+          (
+            l.client_id is null
+            and p.kind = 'library'
+            and p.client_id is null
+          )
+          or (
+            l.client_id is not null
+            and p.kind = 'client'
+            and p.client_id = l.client_id
+            and c.active = true
+          )
+        )
         and p.current_version_id is not null
         and exists (
           select 1
@@ -738,6 +821,8 @@ async function getClientProgramEditContext(db, tokenHash) {
     clientId: row.client_id,
     programId: row.program_id,
     coachProfileId: row.coach_profile_id,
+    directProgram: row.client_id == null,
+    programKind: row.kind,
     revision: Number(row.revision) || 0,
     currentVersionId: row.current_version_id
   };

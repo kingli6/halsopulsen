@@ -119,9 +119,10 @@ function renderPerformanceExercise(exercise) {
 }
 
 function renderAssignment(item, directProgram) {
-  const canLog = !directProgram && !clientPage.preview && item.id;
+  const canLog = !clientPage.preview && item.id;
   const canEdit = !directProgram
     && !clientPage.preview
+    && !document.body.classList.contains("shared-program-workspace")
     && Boolean(findEditableDay(item.workout_id));
   const details = (item.exercises || []).map(exercise => `<li>
       <strong>${escapeHtml(exercise.name)}</strong>
@@ -173,7 +174,8 @@ function renderAssignments(assignments, directProgram = false) {
 function renderPerformanceHistory(history = []) {
   const section = document.getElementById("performanceHistorySection");
   const target = document.getElementById("performanceHistory");
-  section.hidden = Boolean(clientPage.data?.directProgram);
+  if (!section || !target) return;
+  section.hidden = false;
   if (!history.length) {
     target.innerHTML = `<p class="client-empty">Saved performance will appear here after your first workout log.</p>`;
     return;
@@ -302,7 +304,12 @@ async function saveSessionForm(form) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         programId: clientPage.data.program.id,
-        assignmentId,
+        ...(clientPage.data.directProgram
+          ? {
+            workoutId: assignment.workout_id,
+            programVersionId: assignment.program_version_id
+          }
+          : { assignmentId }),
         performedOn: form.elements.performedOn.value,
         note: form.elements.note.value,
         exercises
@@ -394,7 +401,7 @@ async function saveProgramEditForm(form) {
   }
 }
 
-document.getElementById("assignmentList").addEventListener("click", event => {
+document.getElementById("assignmentList")?.addEventListener("click", event => {
   const reload = event.target.closest("[data-reload-client-plan]");
   if (reload) {
     loadClientPlan();
@@ -426,7 +433,7 @@ document.getElementById("assignmentList").addEventListener("click", event => {
   if (usePrevious) copyPreviousValues(usePrevious);
 });
 
-document.getElementById("assignmentList").addEventListener("submit", event => {
+document.getElementById("assignmentList")?.addEventListener("submit", event => {
   if (event.target.matches("[data-program-edit]")) {
     event.preventDefault();
     saveProgramEditForm(event.target);
@@ -439,7 +446,9 @@ document.getElementById("assignmentList").addEventListener("submit", event => {
 
 async function loadClientPlan() {
   const match = window.location.pathname.match(/^\/(?:p|client)\/([^/]+)\/?$/);
+  if (!match) return;
   clientPage.token = match?.[1] || "";
+  const sharedEditor = document.body.classList.contains("shared-program-workspace");
   const previewBanner = document.getElementById("previewBanner");
   if (previewBanner) previewBanner.hidden = !clientPage.preview;
   try {
@@ -456,10 +465,13 @@ async function loadClientPlan() {
       ? ` (version ${result.data.program.version})`
       : "";
     const planTitle = directProgram
-      ? "Published training plan"
+      ? "Shared training program"
       : `${personName}'s training plan`;
-    document.title = `${planTitle} — HälsoPulsen`;
-    document.getElementById("pageHeading").textContent = planTitle;
+    if (!sharedEditor) {
+      document.title = `${planTitle} — HälsoPulsen`;
+      const heading = document.getElementById("pageHeading");
+      if (heading) heading.textContent = planTitle;
+    }
     const editErrorBanner = document.getElementById("programEditErrorBanner");
     const saveBanner = document.getElementById("programSaveBanner");
     if (editErrorBanner) editErrorBanner.hidden = true;
@@ -468,45 +480,52 @@ async function loadClientPlan() {
       document.getElementById("programSaveText").textContent = clientPage.notice || "";
       clientPage.notice = "";
     }
-    if (!directProgram) {
-      try {
-        const editResponse = await fetch(`/api/client/${encodeURIComponent(clientPage.token)}/program`);
-        const editResult = await editResponse.json().catch(() => ({}));
-        if (!editResponse.ok || !editResult.ok) {
-          throw new Error(editResult.error || "The current program could not be loaded.");
-        }
-        clientPage.data.editableProgram = editResult.program;
-        clientPage.data.program.revision = editResult.meta?.revision;
-        clientPage.data.program.version = editResult.meta?.version;
-      } catch (error) {
-        clientPage.data.editableProgram = null;
-        if (editErrorBanner) editErrorBanner.hidden = false;
-        document.getElementById("programEditErrorText").textContent = error.message;
+    try {
+      const editResponse = await fetch(`/api/client/${encodeURIComponent(clientPage.token)}/program`);
+      const editResult = await editResponse.json().catch(() => ({}));
+      if (!editResponse.ok || !editResult.ok) {
+        throw new Error(editResult.error || "The current program could not be loaded.");
       }
+      clientPage.data.editableProgram = editResult.program;
+      clientPage.data.program.revision = editResult.meta?.revision;
+      clientPage.data.program.version = editResult.meta?.version;
+    } catch (error) {
+      clientPage.data.editableProgram = null;
+      if (editErrorBanner) editErrorBanner.hidden = false;
+      const errorText = document.getElementById("programEditErrorText");
+      if (errorText) errorText.textContent = error.message;
     }
-    document.getElementById("pageEyebrow").textContent = clientPage.preview
-      ? "OWNER PREVIEW · READ ONLY"
-      : directProgram
-        ? "PUBLISHED PROGRAM · READ ONLY"
-        : "YOUR SHARED TRAINING PLAN";
-    document.getElementById("pageCopy").textContent = clientPage.preview
-      ? "This is the client's current training view. Program edits and performance logging are disabled in preview; nothing here will be saved."
-      : directProgram
-        ? `The latest published version${versionText} is shown below. This generic program link is read-only and cannot save client performance.`
-        : "Review your current workouts, adjust exercise names or targets, and record the work you complete. Your edits become a new version without changing past training records.";
-    document.getElementById("clientFooterNote").textContent = directProgram
-      ? "This generic program link is read-only."
-      : clientPage.preview
+    if (!sharedEditor) {
+      const eyebrow = document.getElementById("pageEyebrow");
+      if (eyebrow) eyebrow.textContent = clientPage.preview
+        ? "OWNER PREVIEW · READ ONLY"
+        : directProgram
+          ? "PUBLISHED PROGRAM"
+          : "YOUR SHARED TRAINING PLAN";
+      const copy = document.getElementById("pageCopy");
+      if (copy) copy.textContent = clientPage.preview
+        ? "This is the current training view. Program edits and performance logging are disabled in preview; nothing here will be saved."
+        : "Edit the program using the full editor and record completed workouts below. Saved program changes keep this private link.";
+      const footer = document.getElementById("clientFooterNote");
+      if (footer) footer.textContent = clientPage.preview
         ? "Preview only — plan edits and performance logging are disabled."
-        : "Performance history is scoped to this client.";
+        : "This is the shared program and session history.";
+    }
     renderAssignments(result.data.assignments || [], directProgram);
     renderPerformanceHistory(result.data.performanceHistory || []);
   } catch (error) {
-    document.getElementById("pageHeading").textContent = "Training plan unavailable";
-    document.getElementById("assignmentList").innerHTML = "";
-    document.getElementById("errorText").textContent = error.message;
-    document.getElementById("errorBanner").hidden = false;
+    const heading = document.getElementById("pageHeading");
+    if (heading && !document.body.classList.contains("shared-program-workspace")) {
+      heading.textContent = "Training plan unavailable";
+    }
+    const assignmentList = document.getElementById("assignmentList");
+    if (assignmentList) assignmentList.innerHTML = "";
+    const errorText = document.getElementById("errorText");
+    if (errorText) errorText.textContent = error.message;
+    const errorBanner = document.getElementById("errorBanner");
+    if (errorBanner) errorBanner.hidden = false;
   }
 }
 
 loadClientPlan();
+window.addEventListener("workoutplanner:program-saved", loadClientPlan);

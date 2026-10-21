@@ -417,7 +417,226 @@ async function getClientOverview(db, coachProfileId, clientId) {
   };
 }
 
+async function getProgramOverview(db, coachProfileId, programId) {
+  if (!CLIENT_ID_PATTERN.test(String(programId || ""))) return null;
+  const programResult = await db.query(
+    `select
+       p.id,
+       p.name,
+       p.kind,
+       p.status,
+       p.current_version_id,
+       p.start_date,
+       current_version.version_number,
+       current_version.status as version_status,
+       exists (
+         select 1
+           from public.client_access_links link
+          where link.program_id = p.id
+            and link.revoked_at is null
+       ) as has_active_private_link
+      from public.programs p
+      left join public.program_versions current_version
+        on current_version.id = p.current_version_id
+       and current_version.program_id = p.id
+     where p.id = $1
+       and p.coach_profile_id = $2
+     limit 1`,
+    [programId, coachProfileId]
+  );
+  if (programResult.rowCount !== 1) return null;
+
+  const sessionsResult = await db.query(
+    `with session_events as (
+       select
+         ws.id as session_id,
+         ws.performed_on,
+         ws.status,
+         ws.note,
+         ws.difficulty,
+         ws.energy,
+         coalesce(
+           a.workout_id,
+           ws.workout_id,
+           (
+             select prescribed.workout_id
+               from public.session_exercises session_exercise
+               join public.workout_exercises prescribed
+                 on prescribed.id = session_exercise.workout_exercise_id
+              where session_exercise.session_id = ws.id
+              order by prescribed.sort_order
+              limit 1
+           )
+         ) as workout_id,
+         ws.program_id
+       from public.workout_sessions ws
+       left join public.assignments a on a.id = ws.assignment_id
+      where ws.status in ('completed', 'skipped')
+        and (
+          ws.program_id = $1
+          or exists (
+            select 1
+              from public.workouts assigned_workout
+              join public.program_weeks assigned_week
+                on assigned_week.id = assigned_workout.program_week_id
+              join public.program_versions assigned_version
+                on assigned_version.id = assigned_week.program_version_id
+              join public.programs assigned_program
+                on assigned_program.id = assigned_version.program_id
+             where assigned_workout.id = coalesce(a.workout_id, ws.workout_id)
+               and assigned_program.id = $1
+          )
+        )
+      order by ws.performed_on desc, ws.id desc
+      limit $2
+     )
+     select
+       event.session_id,
+       event.performed_on,
+       event.status,
+       event.note,
+       event.difficulty,
+       event.energy,
+       event.workout_id,
+       workout.name as workout_name,
+       version.id as version_id,
+       version.version_number,
+       prescribed.id as prescribed_exercise_id,
+       prescribed.exercise_name as prescription_name,
+       prescribed.sort_order,
+       prescribed.sets as prescribed_sets,
+       prescribed.reps as prescribed_reps,
+       prescribed.duration as prescribed_duration,
+       prescribed.duration_unit as prescribed_duration_unit,
+       prescribed.distance as prescribed_distance,
+       prescribed.distance_unit as prescribed_distance_unit,
+       prescribed.load as prescribed_load,
+       prescribed.load_unit as prescribed_load_unit,
+       prescribed.rir as prescribed_rir,
+       prescribed.tempo as prescribed_tempo,
+       prescribed.notes as prescription_notes,
+       session_exercise.id as session_exercise_id,
+       session_exercise.activity_name as actual_activity_name,
+       session_set.id as session_set_id,
+       session_set.set_number,
+       session_set.reps as actual_reps,
+       session_set.duration as actual_duration,
+       session_set.duration_unit as actual_duration_unit,
+       session_set.distance as actual_distance,
+       session_set.distance_unit as actual_distance_unit,
+       session_set.load as actual_load,
+       session_set.load_unit as actual_load_unit,
+       session_set.rir as actual_rir,
+       session_set.intensity as actual_intensity,
+       session_set.intensity_unit as actual_intensity_unit,
+       session_set.note as actual_set_note
+      from session_events event
+      left join public.workouts workout on workout.id = event.workout_id
+      left join public.program_weeks week on week.id = workout.program_week_id
+      left join public.program_versions version on version.id = week.program_version_id
+      left join public.session_exercises session_exercise
+        on session_exercise.session_id = event.session_id
+      left join public.workout_exercises prescribed
+        on prescribed.id = session_exercise.workout_exercise_id
+      left join public.session_sets session_set
+        on session_set.session_exercise_id = session_exercise.id
+      order by event.performed_on desc,
+               event.session_id desc,
+               prescribed.sort_order nulls last,
+               session_set.set_number nulls last`,
+    [programId, RECENT_ACTIVITY_LIMIT]
+  );
+
+  const sessionsById = new Map();
+  for (const row of sessionsResult.rows) {
+    if (!sessionsById.has(row.session_id)) {
+      sessionsById.set(row.session_id, {
+        id: row.session_id,
+        performedOn: dateValue(row.performed_on),
+        workoutName: row.workout_name || "Workout",
+        status: row.status,
+        program: {
+          id: programId,
+          name: programResult.rows[0].name,
+          versionId: row.version_id,
+          versionNumber: numberValue(row.version_number)
+        },
+        note: row.note || "",
+        difficulty: numberValue(row.difficulty),
+        energy: numberValue(row.energy),
+        exercises: [],
+        exerciseMap: new Map()
+      });
+    }
+    const session = sessionsById.get(row.session_id);
+    if (!row.session_exercise_id) continue;
+    const exerciseKey = row.prescribed_exercise_id || row.session_exercise_id;
+    if (!session.exerciseMap.has(exerciseKey)) {
+      const exercise = {
+        id: exerciseKey,
+        name: row.prescription_name || row.actual_activity_name || "Activity",
+        actualName: row.actual_activity_name || null,
+        prescription: {
+          sets: numberValue(row.prescribed_sets),
+          reps: numberValue(row.prescribed_reps),
+          duration: numberValue(row.prescribed_duration),
+          durationUnit: row.prescribed_duration_unit || null,
+          distance: numberValue(row.prescribed_distance),
+          distanceUnit: row.prescribed_distance_unit || null,
+          load: numberValue(row.prescribed_load),
+          loadUnit: row.prescribed_load_unit || null,
+          rir: numberValue(row.prescribed_rir),
+          tempo: row.prescribed_tempo || null,
+          notes: row.prescription_notes || ""
+        },
+        actualSets: [],
+        actualSetNumbers: new Set()
+      };
+      session.exerciseMap.set(exerciseKey, exercise);
+      session.exercises.push(exercise);
+    }
+    const exercise = session.exerciseMap.get(exerciseKey);
+    if (row.session_set_id && !exercise.actualSetNumbers.has(row.set_number)) {
+      exercise.actualSetNumbers.add(row.set_number);
+      exercise.actualSets.push({
+        setNumber: Number(row.set_number),
+        reps: numberValue(row.actual_reps),
+        duration: numberValue(row.actual_duration),
+        durationUnit: row.actual_duration_unit || null,
+        distance: numberValue(row.actual_distance),
+        distanceUnit: row.actual_distance_unit || null,
+        load: numberValue(row.actual_load),
+        loadUnit: row.actual_load_unit || null,
+        rir: numberValue(row.actual_rir),
+        intensity: numberValue(row.actual_intensity),
+        intensityUnit: row.actual_intensity_unit || null,
+        note: row.actual_set_note || ""
+      });
+    }
+  }
+  const recentSessions = [...sessionsById.values()].map(session => {
+    const { exerciseMap, ...withoutMap } = session;
+    return withoutMap;
+  });
+  const row = programResult.rows[0];
+  return {
+    program: {
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      status: row.status,
+      currentVersionId: row.current_version_id,
+      currentVersionNumber: numberValue(row.version_number),
+      currentVersionStatus: row.version_status,
+      startDate: dateValue(row.start_date),
+      hasActivePrivateLink: Boolean(row.has_active_private_link)
+    },
+    recentSessions
+  };
+}
+
 module.exports = {
   getClientOverview,
-  listCoachClients
+  listCoachClients,
+  getProgramOverview
 };
