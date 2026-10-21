@@ -18,6 +18,10 @@ const {
   saveProgram
 } = require("../workoutplanner/program-library");
 const { saveClientSession } = require("../workoutplanner/session-logging");
+const {
+  getClientOverview,
+  listCoachClients
+} = require("../workoutplanner/coach-overview");
 
 const REQUIRED_MIGRATIONS = [
   "012_stage1-session-integrity.sql",
@@ -148,6 +152,12 @@ async function run() {
     );
     assert.strictEqual(coachResult.rowCount, 1, "The test database needs an existing coach profile.");
     const coachId = coachResult.rows[0].id;
+    const otherCoachId = crypto.randomUUID();
+    await db.query(
+      `insert into public.profiles (id, role, display_name, clerk_user_id)
+       values ($1, 'coach', 'Other Coach Overview Test', null)`,
+      [otherCoachId]
+    );
 
     const clientProfileId = crypto.randomUUID();
     const clientProfile = await db.query(
@@ -277,6 +287,15 @@ async function run() {
     const savedDraft = await saveProgram(db, coachId, versionTwoInput, clientProgramId);
     assert.strictEqual(savedDraft.version, 2);
     assert.strictEqual(savedDraft.versionStatus, "draft");
+    const draftOverview = await getClientOverview(db, coachId, clientId);
+    assert.strictEqual(draftOverview.activePrograms[0].currentVersionId, versionOneResult.rows[0].id);
+    assert.strictEqual(draftOverview.activePrograms[0].currentVersionNumber, 1);
+    const draftOverviewSquat = draftOverview.recentSessions
+      .flatMap(session => session.exercises)
+      .find(exercise => exercise.name === "Goblet squat");
+    assert.strictEqual(draftOverviewSquat.prescription.reps, 10);
+    assert.strictEqual(draftOverviewSquat.actualSets[0].reps, 10);
+
     await publishProgram(db, coachId, clientProgramId);
 
     const afterPublish = await sessionSnapshot(db, clientId);
@@ -363,6 +382,64 @@ async function run() {
       previousDistance: Number(currentBike.previousPerformance.sets[0].distance),
       previousDistanceUnit: currentBike.previousPerformance.sets[0].distanceUnit
     }, { previousDuration: 30, previousDistance: 5, previousDistanceUnit: "km" });
+
+    const historicalOverview = await getClientOverview(db, coachId, clientId);
+    const historicalSquatSession = historicalOverview.recentSessions
+      .find(session => session.status === "completed")
+      .exercises.find(exercise => exercise.name === "Goblet squat");
+    assert.strictEqual(historicalSquatSession.prescription.reps, 10);
+    assert.strictEqual(historicalSquatSession.prescription.load, 20);
+    assert.strictEqual(historicalSquatSession.actualSets[0].reps, 10);
+    assert.strictEqual(historicalOverview.recentSessions
+      .find(session => session.status === "completed").program.versionNumber, 1);
+
+    const secondClientProgram = await cloneLibraryProgramVersion(
+      db,
+      coachId,
+      sourceProgramId,
+      sourceVersionResult.rows[0].id,
+      clientId,
+      "Second active overview program"
+    );
+    await publishProgram(db, coachId, secondClientProgram.id);
+    const coachClients = await listCoachClients(db, coachId);
+    const listedClient = coachClients.find(client => client.id === clientId);
+    assert.ok(listedClient);
+    assert.strictEqual(
+      listedClient.activePrograms.length,
+      2,
+      "The coach client list must return every active program for this client."
+    );
+    assert.deepStrictEqual(await listCoachClients(db, otherCoachId), []);
+    assert.strictEqual(
+      await getClientOverview(db, otherCoachId, clientId),
+      null,
+      "A second coach must not read this client's overview."
+    );
+
+    const skippedAssignment = await db.query(
+      `insert into public.assignments
+         (client_id, workout_id, recommended_date, scheduled_date, status)
+       values ($1, $2, current_date - 365, current_date - 365, 'skipped')
+       returning id`,
+      [clientId, strength.workout_id]
+    );
+    const skippedAssignmentId = skippedAssignment.rows[0].id;
+    await db.query(
+      `insert into public.workout_sessions
+         (assignment_id, client_id, performed_on, status)
+       values ($1, $2, current_date - 365, 'skipped')`,
+      [skippedAssignmentId, clientId]
+    );
+    const skippedOverview = await getClientOverview(db, coachId, clientId);
+    const skippedSessions = skippedOverview.recentSessions
+      .filter(session => session.assignmentId === skippedAssignmentId);
+    assert.strictEqual(
+      skippedSessions.length,
+      1,
+      "A skipped assignment with a skipped session must appear once, not once per representation."
+    );
+    assert.strictEqual(skippedSessions[0].status, "skipped");
 
     console.log(`WorkoutPlanner session hardening checks passed on ${database.rows[0].name}.`);
   } finally {
