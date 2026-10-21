@@ -6,11 +6,20 @@ begin;
 alter table public.workout_exercises
   add column exercise_name text;
 
+-- This backfills a new name snapshot from the legacy catalog without changing
+-- any existing prescription fields. Published-version content is otherwise
+-- immutable; hold the table lock and bypass only its guard for this transaction.
+alter table public.workout_exercises
+  disable trigger workout_exercises_protect_version_content;
+
 update public.workout_exercises we
    set exercise_name = e.name
   from public.exercises e
  where e.id = we.exercise_id
    and we.exercise_name is null;
+
+alter table public.workout_exercises
+  enable trigger workout_exercises_protect_version_content;
 
 do $$
 begin

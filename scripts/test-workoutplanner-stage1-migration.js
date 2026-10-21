@@ -157,6 +157,11 @@ function run() {
   );
   requireMatch(
     nextNormalized,
+    /disable trigger workout_exercises_protect_version_content[\s\S]*?update public\.workout_exercises[\s\S]*?enable trigger workout_exercises_protect_version_content/,
+    "The transactional name-snapshot backfill must bypass only the published-content guard and re-enable it before commit."
+  );
+  requireMatch(
+    nextNormalized,
     /create table public\.client_exercises[\s\S]*?unique \(client_id, normalized_name\)/,
     "Performance identities must be unique within a client, not global."
   );
