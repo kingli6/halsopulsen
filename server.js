@@ -21,8 +21,10 @@ const {
 } = require('./workoutplanner/coach-overview');
 const {
   findClientDataByToken,
+  getClientProgramEditContext,
   getClientAccessLink,
   getProgramAccessLink,
+  hashClientAccessToken,
   hasClientAccessToken,
   revokeClientAccessLink,
   regenerateClientAccessLink,
@@ -34,6 +36,7 @@ const {
   cloneLibraryProgramVersion,
   listProgramVersions,
   listPrograms,
+  loadCurrentProgram,
   loadProgram,
   publishProgram,
   saveProgram
@@ -624,6 +627,91 @@ app.get('/api/client/:token', async (req, res) => {
   } catch (error) {
     console.error('Could not load private WorkoutPlanner client data:', error.message);
     res.status(503).json({ ok: false, error: 'The private training plan is unavailable.' });
+  }
+});
+
+app.get('/api/client/:token/program', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientProgramEditContext(pool, tokenHash);
+    if (!context) {
+      return res.status(404).json({ ok: false, error: 'Private training link not found.' });
+    }
+    const loaded = await loadCurrentProgram(pool, context.coachProfileId, context.programId);
+    if (
+      !loaded
+      || loaded.kind !== 'client'
+      || loaded.versionStatus !== 'published'
+      || loaded.versionId !== loaded.currentVersionId
+    ) {
+      return res.status(409).json({ ok: false, error: 'The current program is unavailable for editing.' });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({
+      ok: true,
+      program: loaded.program,
+      meta: {
+        revision: loaded.revision,
+        version: loaded.currentVersion,
+        versionId: loaded.currentVersionId
+      }
+    });
+  } catch (error) {
+    console.error('Could not load the current WorkoutPlanner client program:', error.message);
+    return res.status(503).json({ ok: false, error: 'The current training program is unavailable.' });
+  }
+});
+
+app.put('/api/client/:token/program', async (req, res) => {
+  if (req.query.preview === '1') {
+    return res.status(403).json({ ok: false, error: 'Preview mode is read-only.' });
+  }
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientProgramEditContext(pool, tokenHash);
+    if (!context) {
+      return res.status(404).json({ ok: false, error: 'Private training link not found.' });
+    }
+    const result = await saveProgram(
+      pool,
+      context.coachProfileId,
+      req.body?.program,
+      context.programId,
+      null,
+      {
+        makeCurrentWhenValid: true,
+        expectedRevision: req.body?.expectedRevision,
+        clientLinkSave: true,
+        clientAccessTokenHash: tokenHash
+      }
+    );
+    if (!result.unchanged && !result.isCurrent) {
+      return res.status(409).json({
+        ok: false,
+        error: 'The program was not promoted to the current version. Reload before editing again.'
+      });
+    }
+    return res.json({
+      ok: true,
+      program: result.program,
+      meta: result
+    });
+  } catch (error) {
+    console.error('Could not save WorkoutPlanner client program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The training program could not be saved.',
+      code: error.code || undefined
+    });
   }
 });
 

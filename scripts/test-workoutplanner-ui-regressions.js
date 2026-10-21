@@ -57,7 +57,8 @@ function testPrivateLinksOpenInNewTabs() {
   );
 
   assert.match(clientLinkRoute, /req\.query\.open === '1'/);
-  assert.match(clientLinkRoute, /res\.redirect\(302, clientPath\)/);
+  assert.match(clientLinkRoute, /res\.redirect\(302, previewPath\)/);
+  assert.match(clientLinkRoute, /req\.query\.preview === '1'[\s\S]*?\?preview=1/);
   assert.match(programLinkRoute, /req\.query\.open === '1'/);
   assert.match(programLinkRoute, /res\.redirect\(302, programPath\)/);
   assert.match(
@@ -85,10 +86,9 @@ function testClientLinkPreviewIsReadOnly() {
   );
 
   assert.match(clientLinkRoute, /req\.query\.preview === '1'[\s\S]*?\?preview=1/);
-  assert.match(
-    planner,
-    /program\.kind === "client"[\s\S]*?Preview as client[\s\S]*?open=1&amp;preview=1/
-  );
+  assert.match(planner, /else if \(adminDatabaseWorkspace && program\.kind === "client" && program\.clientId\)/);
+  assert.match(planner, /Preview as client/);
+  assert.match(planner, /open=1&amp;preview=1/);
   assert.match(clientUi, /preview: new URLSearchParams\(window\.location\.search\)\.get\("preview"\) === "1"/);
   assert.match(clientUi, /!clientPage\.preview && item\.id/);
   assert.match(clientUi, /if \(clientPage\.preview\)[\s\S]*?Preview mode is read-only\./);
@@ -97,9 +97,36 @@ function testClientLinkPreviewIsReadOnly() {
   assert.match(clientPage, /id="previewBanner" hidden role="status"/);
 }
 
+function testPrivateClientCanEditTheCurrentProgram() {
+  const server = readProjectFile("server.js");
+  const clientUi = readProjectFile("dashboard/client.js");
+  const clientPage = readProjectFile("dashboard/client.html");
+  const getProgramRoute = server.slice(
+    server.indexOf("app.get('/api/client/:token/program'"),
+    server.indexOf("app.put('/api/client/:token/program'")
+  );
+  const saveProgramRoute = server.slice(
+    server.indexOf("app.put('/api/client/:token/program'"),
+    server.indexOf("app.post('/api/client/:token/sessions'")
+  );
+
+  assert.match(getProgramRoute, /getClientProgramEditContext/);
+  assert.match(getProgramRoute, /loadCurrentProgram/);
+  assert.match(getProgramRoute, /loaded\.versionId !== loaded\.currentVersionId/);
+  assert.match(saveProgramRoute, /req\.query\.preview === '1'[\s\S]*?status\(403\)/);
+  assert.match(saveProgramRoute, /clientLinkSave: true/);
+  assert.match(saveProgramRoute, /clientAccessTokenHash: tokenHash/);
+  assert.match(clientUi, /<summary>Edit this workout<\/summary>/);
+  assert.match(clientUi, /Save updated workout/);
+  assert.match(clientUi, /expectedRevision: clientPage\.data\?\.program\?\.revision/);
+  assert.match(clientUi, /Reload the latest version before continuing/);
+  assert.match(clientPage, /id="programSaveBanner"/);
+}
+
 testPlannerEntryUsesCoachRoute();
 testCreateAndOpenUseOwnerApi();
 testAccountBasedCloneUiIsRemoved();
 testPrivateLinksOpenInNewTabs();
 testClientLinkPreviewIsReadOnly();
+testPrivateClientCanEditTheCurrentProgram();
 console.log("WorkoutPlanner UI/API regression checks passed.");

@@ -4,6 +4,7 @@ const path = require("path");
 process.env.SESSION_SECRET = "workoutplanner-link-unit-test-secret";
 const {
   findClientDataByToken,
+  getClientProgramEditContext,
   generateClientAccessToken,
   getClientAccessLink,
   getProgramAccessLink,
@@ -262,7 +263,11 @@ async function run() {
     currentVersionId: editedVersionId,
     versionNumber: 2
   });
-  function createEditDatabase(finalRows) {
+  function createEditDatabase(finalRows, {
+    rootKind = "library",
+    rootClientId = null,
+    clientLinkActive = true
+  } = {}) {
     const queries = [];
     let createdWorkouts = 0;
     let loadedProgramCount = 0;
@@ -281,12 +286,18 @@ async function run() {
                 rowCount: 1,
                 rows: [{
                   id: programId,
-                  kind: "library",
-                  client_id: null,
+                  kind: rootKind,
+                  client_id: rootClientId,
                   current_version_id: versionId,
                   revision: 5,
                   person_name: "Ada"
                 }]
+              };
+            }
+            if (normalizedSql.includes("from public.client_access_links l")) {
+              return {
+                rowCount: clientLinkActive ? 1 : 0,
+                rows: clientLinkActive ? [{ id: "client-link-a" }] : []
               };
             }
             if (normalizedSql.includes("from public.programs p")) {
@@ -374,6 +385,87 @@ async function run() {
     /update public\.programs/i.test(query.sql)
     && /revision = revision \+ 1/i.test(query.sql)
   ), "A real edit must increment the program revision.");
+
+  const linkedClientId = "77777777-7777-4777-8777-777777777778";
+  const clientProgramRows = makeSavedRows(completeProgram).map(row => ({
+    ...row,
+    client_id: linkedClientId,
+    program_kind: "client"
+  }));
+  const clientEditedRows = makeSavedRows(editedProgram, {
+    revision: 6,
+    versionId: editedVersionId,
+    currentVersionId: editedVersionId,
+    versionNumber: 2
+  }).map(row => ({
+    ...row,
+    client_id: linkedClientId,
+    program_kind: "client"
+  }));
+  const clientEditDatabase = createEditDatabase(clientEditedRows, {
+    rootKind: "client",
+    rootClientId: linkedClientId
+  });
+  const clientEdit = await saveProgram(
+    clientEditDatabase,
+    coachId,
+    editedProgram,
+    programId,
+    null,
+    {
+      makeCurrentWhenValid: true,
+      expectedRevision: 5,
+      clientLinkSave: true,
+      clientAccessTokenHash: "a".repeat(64)
+    }
+  );
+  assert.strictEqual(clientEdit.becameCurrent, true);
+  assert.strictEqual(clientEdit.isCurrent, true);
+  assert.strictEqual(clientEdit.revision, 6);
+  const clientEditSql = clientEditDatabase.queries.map(query => query.sql).join("\n");
+  assert.match(clientEditSql, /for update of l/i, "Client saves must lock and revalidate the active private link.");
+  assert.match(clientEditSql, /insert into public\.assignments/i, "A client edit must schedule the new version's workouts.");
+  assert.match(clientEditSql, /from public\.workout_sessions completed_session[\s\S]*?performed_on/i, "Previously completed dates must not become duplicate planned workouts.");
+  assert.ok(
+    clientEditDatabase.queries.some(query =>
+      /insert into public\.assignments/i.test(query.sql)
+      && query.values[0] === programId
+      && query.values[1] === editedVersionId
+      && query.values[2] === linkedClientId
+    ),
+    "New assignments must remain scoped to the linked client's program."
+  );
+  assert.match(clientEditSql, /on pv\.id = p\.current_version_id/i);
+  assert.ok(!clientEditDatabase.queries.some(query =>
+    /delete from public\.(?:workout_sessions|session_exercises|session_sets)/i.test(query.sql)
+  ), "Editing a plan must preserve saved workout performance.");
+
+  const revokedClientDatabase = createEditDatabase(clientProgramRows, {
+    rootKind: "client",
+    rootClientId: linkedClientId,
+    clientLinkActive: false
+  });
+  await assert.rejects(
+    () => saveProgram(
+      revokedClientDatabase,
+      coachId,
+      editedProgram,
+      programId,
+      null,
+      {
+        makeCurrentWhenValid: true,
+        expectedRevision: 5,
+        clientLinkSave: true,
+        clientAccessTokenHash: "b".repeat(64)
+      }
+    ),
+    error => error.statusCode === 403
+  );
+  assert.doesNotMatch(
+    revokedClientDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.program_versions|insert into public\.program_weeks|insert into public\.assignments/i,
+    "A revoked link must not write a program version or assignments."
+  );
 
   const staleDatabase = createNoOpDatabase();
   await assert.rejects(
@@ -732,6 +824,39 @@ async function run() {
   }, "invalid-token");
   assert.strictEqual(missing, null);
 
+  let editContextSql = "";
+  const editContext = await getClientProgramEditContext({
+    async query(sql, values) {
+      editContextSql = sql;
+      assert.deepStrictEqual(values, [hashClientAccessToken("client-edit-token")]);
+      return {
+        rowCount: 1,
+        rows: [{
+          client_id: "client-a",
+          program_id: "program-a",
+          coach_profile_id: "coach-a",
+          revision: 8,
+          current_version_id: "version-current"
+        }]
+      };
+    }
+  }, hashClientAccessToken("client-edit-token"));
+  assert.deepStrictEqual(editContext, {
+    clientId: "client-a",
+    programId: "program-a",
+    coachProfileId: "coach-a",
+    revision: 8,
+    currentVersionId: "version-current"
+  });
+  assert.match(editContextSql, /l\.revoked_at is null/i);
+  assert.match(editContextSql, /c\.active = true/i);
+  assert.match(editContextSql, /p\.kind = 'client'/i);
+  assert.strictEqual(await getClientProgramEditContext({
+    async query() {
+      throw new Error("Invalid token hashes must not reach the database.");
+    }
+  }, "invalid-token"), null);
+
   const migration = fs.readFileSync(
     path.join(__dirname, "..", "db", "workoutplanner-migrations", "010_program-bound-client-access-links.sql"),
     "utf8"
@@ -765,7 +890,9 @@ async function run() {
   const clientUi = fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.js"), "utf8");
   assert.match(clientUi, /\/api\/client\/\$\{encodeURIComponent\(clientPage\.token\)\}\/sessions/);
   assert.match(clientUi, /method:\s*["']POST["']/);
-  assert.doesNotMatch(clientUi, /api\/plans\/share|method:\s*["'](?:PUT|DELETE)|sessionList|renderSessions/);
+  assert.doesNotMatch(clientUi, /api\/plans\/share|method:\s*["']DELETE|sessionList|renderSessions/);
+  assert.match(clientUi, /\/api\/client\/\$\{encodeURIComponent\(clientPage\.token\)\}\/program/);
+  assert.match(clientUi, /method:\s*["']PUT["']/);
   const adminPage = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan", "index.html"), "utf8");
   assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
   assert.doesNotMatch(adminPage, /cloneProgramClientNameInput|cloneProgramNameInput|id="cloneProgramForm"/);

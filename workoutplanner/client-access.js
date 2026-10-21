@@ -702,9 +702,51 @@ async function hasClientAccessToken(db, token) {
   return result.rowCount === 1;
 }
 
+async function getClientProgramEditContext(db, tokenHash) {
+  if (!/^[a-f0-9]{64}$/i.test(String(tokenHash || ""))) return null;
+  const result = await db.query(
+    `select l.client_id,
+            p.id as program_id,
+            p.coach_profile_id,
+            p.revision,
+            p.current_version_id
+       from public.client_access_links l
+       join public.programs p
+         on p.id = l.program_id
+        and p.client_id = l.client_id
+        and p.kind = 'client'
+       join public.clients c
+         on c.id = l.client_id
+        and c.active = true
+      where l.token_hash = $1
+        and l.client_id is not null
+        and l.revoked_at is null
+        and p.current_version_id is not null
+        and exists (
+          select 1
+            from public.program_versions pv
+           where pv.id = p.current_version_id
+             and pv.program_id = p.id
+             and pv.status = 'published'
+        )
+      limit 2`,
+    [tokenHash]
+  );
+  if (result.rowCount !== 1) return null;
+  const row = result.rows[0];
+  return {
+    clientId: row.client_id,
+    programId: row.program_id,
+    coachProfileId: row.coach_profile_id,
+    revision: Number(row.revision) || 0,
+    currentVersionId: row.current_version_id
+  };
+}
+
 module.exports = {
   findClientDataByToken,
   generateClientAccessToken,
+  getClientProgramEditContext,
   getClientAccessLink,
   getProgramAccessLink,
   hashClientAccessToken,
