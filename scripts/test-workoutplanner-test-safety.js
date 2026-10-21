@@ -123,6 +123,36 @@ function testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget() {
   assert.doesNotMatch(migrationRunner, /process\.env\.WORKOUTPLANNER_POSTGRES_URL/);
 }
 
+function testMigrationStatusDiagnosticIsReadOnlyAndUsesOnlyCanonicalUrl() {
+  const diagnostic = fs.readFileSync(
+    path.join(__dirname, "status-workoutplanner-migrations.js"),
+    "utf8"
+  );
+  const packageJson = JSON.parse(fs.readFileSync(
+    path.join(__dirname, "..", "package.json"),
+    "utf8"
+  ));
+
+  assert.match(diagnostic, /process\.env\.WORKOUTPLANNER_DATABASE_URL/);
+  assert.doesNotMatch(
+    diagnostic,
+    /process\.env\.(?:WORKOUTPLANNER_TEST_DATABASE_URL|WORKOUTPLANNER_POSTGRES_URL|SUPABASE_DATABASE_URL)/
+  );
+  assert.match(
+    diagnostic,
+    /BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY/i
+  );
+  assert.match(diagnostic, /pendingMigrations/);
+  assert.doesNotMatch(
+    diagnostic,
+    /^\s*(?:INSERT\s+INTO|UPDATE\s+\w+|DELETE\s+FROM|CREATE\s+(?:SCHEMA|TABLE)|ALTER\s+TABLE|DROP\s+(?:TABLE|SCHEMA))\b/im
+  );
+  assert.strictEqual(
+    packageJson.scripts["db:status:workoutplanner"],
+    "node scripts/status-workoutplanner-migrations.js"
+  );
+}
+
 function run() {
   testMatchingTargetsAreBlockedWithoutLeakingConnectionDetails();
   testDistinctTargetsAreAllowed();
@@ -131,6 +161,7 @@ function run() {
   testUnparseableIdentifiersRequireExternalVerification();
   testDatabaseWritingScriptsRunTheGuardBeforeConnecting();
   testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget();
+  testMigrationStatusDiagnosticIsReadOnlyAndUsesOnlyCanonicalUrl();
   console.log("WorkoutPlanner test-target safety checks passed.");
 }
 

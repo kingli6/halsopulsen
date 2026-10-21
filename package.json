@@ -27,6 +27,7 @@
     "test:workoutplanner-coach-overview": "node scripts/test-workoutplanner-coach-overview.js",
     "test:workoutplanner-publish": "NODE_ENV=test node scripts/test-workoutplanner-publish.js",
     "test:workoutplanner-pass3": "NODE_ENV=test node scripts/test-workoutplanner-pass3.js",
+    "db:status:workoutplanner": "node scripts/status-workoutplanner-migrations.js",
     "db:migrate:supabase": "node scripts/migrate-supabase-booking.js",
     "db:migrate:workoutplanner": "node scripts/migrate-workoutplanner.js"
   },
