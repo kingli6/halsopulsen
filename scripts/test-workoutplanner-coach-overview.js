@@ -460,19 +460,18 @@ async function testClientSummaryFormattingAndClipboard() {
   assert.strictEqual(await tryCopyToClipboard(summary, null), false);
 
   const dashboard = fs.readFileSync(
-    path.join(__dirname, "..", "dashboard", "coach-overview.js"),
+    path.join(__dirname, "..", "dashboard", "program-overview.js"),
     "utf8"
   );
-  assert.match(dashboard, /Copy Client Summary/);
-  assert.match(dashboard, /Client summary copied to clipboard/);
-  assert.match(dashboard, /Clipboard unavailable\. Select the summary text below and copy it manually/);
-  assert.match(dashboard, /textArea\.select\(\)/);
-  assert.match(dashboard, /overviewState\.copyingSummary/);
+  assert.match(dashboard, /Copy private link/);
+  assert.match(dashboard, /Recorded workouts/);
+  assert.match(dashboard, /async function loadPrograms\(/);
   const html = fs.readFileSync(
     path.join(__dirname, "..", "dashboard", "coach-overview.html"),
     "utf8"
   );
-  assert.match(html, /\/dashboard\/client-summary\.js/);
+  assert.match(html, /\/dashboard\/program-overview\.js/);
+  assert.match(html, /<h1>Program overview<\/h1>/);
 }
 
 async function testProtectedOverviewRoute() {

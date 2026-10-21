@@ -187,13 +187,11 @@ function testProgramPublishAndDashboardContracts() {
   assert.match(librarySummary, /databaseWorkspace[\s\S]*planState\.databasePrograms/);
   assert.match(librarySummary, /: planState\.library\.length/);
 
-  const cloneFlow = planner.slice(
-    planner.indexOf("async function createClientDatabaseProgram"),
-    planner.indexOf("async function toggleProgramVersionHistory")
+  assert.doesNotMatch(
+    planner,
+    /createClientDatabaseProgram|data-create-client-copy|data-client-copy-select/,
+    "The program library must not restore the retired account-based client-copy flow."
   );
-  assert.match(cloneFlow, /\/api\/workoutplanner\/programs\/\$\{encodeURIComponent\(programId\)\}\/clone/);
-  assert.match(cloneFlow, /fresh\.publishedProgram = null/);
-  assert.doesNotMatch(cloneFlow, /\/publish|assignments/i);
 }
 
 async function run() {

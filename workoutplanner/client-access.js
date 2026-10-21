@@ -496,7 +496,7 @@ async function findClientDataByToken(db, token) {
       personName: client.person_name || "",
       program: {
         id: client.program_id,
-        name: client.program_name,
+        name: latestVersion.program_name || "Published program",
         version: Number(latestVersion.version_number) || null,
         publishedAt: latestVersion.published_at || null
       },
