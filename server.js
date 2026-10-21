@@ -447,6 +447,11 @@ app.get('/api/workoutplanner/clients/:clientId/programs/:programId/link', requir
       });
     }
     const clientPath = `/p/${link.token}`;
+    if (req.query.open === '1') {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      return res.redirect(302, clientPath);
+    }
     return res.json({
       ok: true,
       path: clientPath,
@@ -535,6 +540,11 @@ app.get('/api/workoutplanner/programs/:programId/link', requireWorkoutPlannerOwn
       });
     }
     const programPath = `/p/${link.token}`;
+    if (req.query.open === '1') {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      return res.redirect(302, programPath);
+    }
     return res.json({
       ok: true,
       path: programPath,
@@ -688,7 +698,7 @@ app.get(['/booking', '/booking/'], (req, res) => {
 app.get(['/booking/manage/:token', '/booking/manage/:token/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'booking', 'manage.html'));
 });
-app.get(['/plans', '/plans/'], (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html')));
+app.get(['/plans', '/plans/'], (req, res) => res.redirect('/admin/plans'));
 app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
