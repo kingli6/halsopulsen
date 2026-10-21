@@ -53,6 +53,68 @@
   margin-top: 1rem;
 }
 
+.program-edit-panel {
+  border-top: 1px solid var(--border, #dde4df);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.program-edit-panel summary {
+  color: var(--ink, #24342b);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.program-edit-form {
+  display: grid;
+  gap: .8rem;
+  margin-top: 1rem;
+}
+
+.program-edit-form > label,
+.program-edit-exercise > label,
+.program-edit-metrics label {
+  color: var(--muted, #5f6b65);
+  display: grid;
+  font-size: .82rem;
+  gap: .35rem;
+}
+
+.program-edit-form input,
+.program-edit-form textarea {
+  background: #fff;
+  border: 1px solid var(--border, #dde4df);
+  border-radius: 8px;
+  color: var(--ink, #24342b);
+  font: inherit;
+  min-width: 0;
+  padding: .6rem .7rem;
+}
+
+.program-edit-form h4 {
+  margin: .4rem 0 0;
+}
+
+.program-edit-exercise {
+  background: #f8fbf8;
+  border: 1px solid var(--border, #dde4df);
+  border-radius: 12px;
+  display: grid;
+  gap: .65rem;
+  padding: .9rem;
+}
+
+.program-edit-metrics {
+  display: grid;
+  gap: .65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.program-edit-status {
+  color: var(--muted, #5f6b65);
+  margin: 0;
+}
+
 .session-log-form {
   border-top: 1px solid var(--border, #dde4df);
   display: grid;

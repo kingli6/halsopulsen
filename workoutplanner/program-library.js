@@ -347,7 +347,18 @@ function dateValue(value) {
   return String(value).slice(0, 10);
 }
 
-async function loadProgramWithClient(client, coachProfileId, programId) {
+async function loadProgramWithClient(client, coachProfileId, programId, { currentOnly = false } = {}) {
+  const versionJoin = currentOnly
+    ? `left join public.program_versions pv
+         on pv.id = p.current_version_id
+        and pv.program_id = p.id`
+    : `left join lateral (
+        select *
+          from public.program_versions candidate
+         where candidate.program_id = p.id
+         order by candidate.version_number desc
+         limit 1
+      ) pv on true`;
   const result = await client.query(
     `select
        p.id as program_id,
@@ -412,13 +423,7 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
      from public.programs p
       left join public.program_versions current_version
         on current_version.id = p.current_version_id
-     left join lateral (
-       select *
-         from public.program_versions candidate
-        where candidate.program_id = p.id
-        order by candidate.version_number desc
-        limit 1
-     ) pv on true
+      ${versionJoin}
      left join public.program_weeks pw on pw.program_version_id = pv.id
      left join public.workouts w on w.program_week_id = pw.id
      left join public.workout_exercises we on we.workout_id = w.id
@@ -511,6 +516,11 @@ async function loadProgramWithClient(client, coachProfileId, programId) {
 async function loadProgram(db, coachProfileId, programId) {
   if (!isUuid(programId)) return null;
   return loadProgramWithClient(db, coachProfileId, programId);
+}
+
+async function loadCurrentProgram(db, coachProfileId, programId) {
+  if (!isUuid(programId)) return null;
+  return loadProgramWithClient(db, coachProfileId, programId, { currentOnly: true });
 }
 
 async function listPrograms(db, coachProfileId) {
@@ -677,7 +687,14 @@ async function saveProgram(
     ? null
     : text(personName).slice(0, 100);
   const makeCurrentWhenValid = options.makeCurrentWhenValid === true;
+  const clientLinkSave = options.clientLinkSave === true;
+  const clientAccessTokenHash = String(options.clientAccessTokenHash || "");
   const expectedRevision = Number(options.expectedRevision);
+  if (clientLinkSave && !/^[a-f0-9]{64}$/i.test(clientAccessTokenHash)) {
+    const error = new Error("An active private client link is required to edit this program.");
+    error.statusCode = 403;
+    throw error;
+  }
   if (
     makeCurrentWhenValid
     && programId
@@ -688,6 +705,11 @@ async function saveProgram(
     throw error;
   }
   const candidateIsComplete = makeCurrentWhenValid && isCompleteProgramForCurrent(inputProgram);
+  if (clientLinkSave && !candidateIsComplete) {
+    const error = new Error("A client edit must keep every program week complete.");
+    error.statusCode = 400;
+    throw error;
+  }
   const client = await db.connect();
   try {
     await client.query("begin");
@@ -709,10 +731,38 @@ async function saveProgram(
         throw error;
       }
       root = owned.rows[0];
-      if (makeCurrentWhenValid && (root.kind !== "library" || root.client_id != null)) {
-        const error = new Error("Immediate current saves are only supported for shared library programs.");
+      const isCurrentLibrarySave = root.kind === "library" && root.client_id == null;
+      const isCurrentClientLinkSave = clientLinkSave
+        && root.kind === "client"
+        && root.client_id != null;
+      if (makeCurrentWhenValid && !isCurrentLibrarySave && !isCurrentClientLinkSave) {
+        const error = new Error("Immediate current saves are only supported for authorized shared programs.");
         error.statusCode = 400;
         throw error;
+      }
+      if (clientLinkSave && !isCurrentClientLinkSave) {
+        const error = new Error("This private link cannot edit the selected program.");
+        error.statusCode = 403;
+        throw error;
+      }
+      if (clientLinkSave) {
+        const activeLink = await client.query(
+          `select l.id
+             from public.client_access_links l
+             join public.clients c on c.id = l.client_id
+            where l.token_hash = $1
+              and l.program_id = $2
+              and l.client_id = $3
+              and l.revoked_at is null
+              and c.active = true
+            for update of l`,
+          [clientAccessTokenHash, resolvedProgramId, root.client_id]
+        );
+        if (activeLink.rowCount !== 1) {
+          const error = new Error("This private link is no longer active.");
+          error.statusCode = 403;
+          throw error;
+        }
       }
       if (makeCurrentWhenValid && Number(root.revision) !== expectedRevision) {
         const error = new Error("This program changed after you opened it. Your edits were not saved; reload the latest version.");
@@ -721,7 +771,12 @@ async function saveProgram(
         throw error;
       }
 
-      const previous = await loadProgramWithClient(client, coachProfileId, resolvedProgramId);
+      const previous = await loadProgramWithClient(
+        client,
+        coachProfileId,
+        resolvedProgramId,
+        { currentOnly: clientLinkSave }
+      );
       const sameProgram = previous
         && programContentKey(previous.program) === programContentKey(program)
         && (normalizedPersonName == null || previous.personName === normalizedPersonName);
@@ -783,7 +838,11 @@ async function saveProgram(
     );
     let versionId;
     let versionNumber;
-    if (currentVersion.rowCount === 1 && currentVersion.rows[0].status === "draft") {
+    if (
+      currentVersion.rowCount === 1
+      && currentVersion.rows[0].status === "draft"
+      && !clientLinkSave
+    ) {
       versionId = currentVersion.rows[0].id;
       versionNumber = Number(currentVersion.rows[0].version_number);
       await client.query(
@@ -916,6 +975,12 @@ async function saveProgram(
       );
       const hasActiveWorkout = Number(activeWorkoutResult.rows[0]?.active_workout_count || 0) > 0;
 
+      if (clientLinkSave && !(program.startDate && completeWeeks && hasActiveWorkout)) {
+        const error = new Error("The updated program is incomplete and cannot replace the current plan.");
+        error.statusCode = 400;
+        throw error;
+      }
+
       if (program.startDate && completeWeeks && hasActiveWorkout) {
         await client.query(
           `update public.program_versions
@@ -937,11 +1002,53 @@ async function saveProgram(
         await client.query(
           `update public.programs
               set current_version_id = $1,
-                  published_start_date = start_date
+                  published_start_date = start_date,
+                  status = case when kind = 'client' then 'active' else status end
             where id = $2
               and coach_profile_id = $3`,
           [versionId, resolvedProgramId, coachProfileId]
         );
+        if (clientLinkSave) {
+          await client.query(
+            `insert into public.assignments
+              (client_id, workout_id, recommended_date, scheduled_date, status, moved)
+             select p.client_id,
+                    w.id,
+                    p.start_date + (((pw.week_number - 1) * 7) + (w.day_of_week - 1))::integer,
+                    p.start_date + (((pw.week_number - 1) * 7) + (w.day_of_week - 1))::integer,
+                    'planned',
+                    false
+               from public.programs p
+               join public.program_versions pv on pv.program_id = p.id
+               join public.program_weeks pw on pw.program_version_id = pv.id
+               join public.workouts w on w.program_week_id = pw.id
+              where p.id = $1
+                and p.client_id = $3
+                and pv.id = $2
+                and pv.status = 'published'
+                and w.is_rest = false
+                and exists (
+                  select 1
+                    from public.workout_exercises we
+                   where we.workout_id = w.id
+                )
+                and not exists (
+                  select 1
+                    from public.assignments existing
+                   where existing.client_id = p.client_id
+                     and existing.workout_id = w.id
+                )
+                and not exists (
+                  select 1
+                    from public.workout_sessions completed_session
+                   where completed_session.client_id = p.client_id
+                     and completed_session.performed_on =
+                       p.start_date + (((pw.week_number - 1) * 7) + (w.day_of_week - 1))::integer
+                     and completed_session.status = 'completed'
+                )`,
+            [resolvedProgramId, versionId, root.client_id]
+          );
+        }
         becameCurrent = true;
       }
     }
@@ -1382,6 +1489,7 @@ module.exports = {
   listProgramVersions,
   listPrograms,
   loadProgram,
+  loadCurrentProgram,
   isCompleteProgramForCurrent,
   normalizeProgram,
   publishProgram,

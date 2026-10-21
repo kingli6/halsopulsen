@@ -120,6 +120,9 @@ function renderPerformanceExercise(exercise) {
 
 function renderAssignment(item, directProgram) {
   const canLog = !directProgram && !clientPage.preview && item.id;
+  const canEdit = !directProgram
+    && !clientPage.preview
+    && Boolean(findEditableDay(item.workout_id));
   const details = (item.exercises || []).map(exercise => `<li>
       <strong>${escapeHtml(exercise.name)}</strong>
       <span class="client-exercise-meta">${escapeHtml(exerciseSummary(exercise))}</span>
@@ -150,6 +153,7 @@ function renderAssignment(item, directProgram) {
     ${item.warmup ? `<p><strong>Warm-up:</strong> ${escapeHtml(item.warmup)}</p>` : ""}
     <ol class="client-exercises">${details}</ol>
     ${item.cooldown ? `<p><strong>Cooldown:</strong> ${escapeHtml(item.cooldown)}</p>` : ""}
+    ${canEdit ? renderProgramEditForm(item.workout_id) : ""}
     ${canLog ? `<button class="button button-secondary session-open-button" type="button" data-open-log="${escapeHtml(item.id)}">Log performance</button>` : ""}
     ${form}
   </article>`;
@@ -183,6 +187,46 @@ function renderPerformanceHistory(history = []) {
     <p class="client-exercise-meta"><strong>Completed:</strong></p>
     <ol>${(item.sets || []).map((set, index) => `<li>Set ${index + 1}: ${escapeHtml(formatPerformanceSet(set))}</li>`).join("")}</ol>
   </article>`).join("");
+}
+
+function findEditableDay(workoutId) {
+  for (const week of clientPage.data?.editableProgram?.weeks || []) {
+    const day = week.days?.find(item => item.workoutId === workoutId);
+    if (day) return { week, day };
+  }
+  return null;
+}
+
+function renderProgramEditForm(workoutId) {
+  const match = findEditableDay(workoutId);
+  if (!match) return "";
+  const { week, day } = match;
+  return `<details class="program-edit-panel">
+    <summary>Edit this workout</summary>
+    <form class="program-edit-form" data-program-edit
+      data-workout-id="${escapeHtml(workoutId)}"
+      data-week-number="${escapeHtml(week.weekNumber)}"
+      data-weekday="${escapeHtml(day.weekday)}">
+      <label>Workout name<input name="workoutName" maxlength="120" required value="${escapeHtml(day.name || "")}" /></label>
+      <label>Workout notes<textarea name="description" rows="2" maxlength="1000">${escapeHtml(day.description || "")}</textarea></label>
+      <label>Warm-up<textarea name="warmup" rows="2" maxlength="1000">${escapeHtml(day.warmup || "")}</textarea></label>
+      <label>Cool-down<textarea name="cooldown" rows="2" maxlength="1000">${escapeHtml(day.cooldown || "")}</textarea></label>
+      <h4>Exercise prescriptions</h4>
+      ${(day.exercises || []).map((exercise, index) => `<section class="program-edit-exercise" data-exercise-edit>
+        <label>Exercise name<input data-exercise-name maxlength="120" required value="${escapeHtml(exercise.name)}" /></label>
+        <div class="program-edit-metrics">
+          <label>Sets<input data-exercise-sets type="number" min="1" max="30" step="1" required value="${escapeHtml(exercise.sets)}" /></label>
+          <label>Target · ${escapeHtml(exercise.targetUnit || "value")}<input data-exercise-target type="number" min="0.1" step="0.1" required value="${escapeHtml(exercise.targetValue)}" /></label>
+        </div>
+        <span class="client-meta">Exercise ${index + 1} · ${escapeHtml(exercise.activityType || "strength")}</span>
+      </section>`).join("")}
+      <p class="program-edit-status" data-program-status role="status" aria-live="polite"></p>
+      <div class="session-log-actions">
+        <button class="button button-primary" type="submit">Save updated workout</button>
+        <button class="text-button" type="button" data-close-program-edit>Cancel</button>
+      </div>
+    </form>
+  </details>`;
 }
 
 function findAssignment(assignmentId) {
@@ -273,7 +317,95 @@ async function saveSessionForm(form) {
   }
 }
 
+async function saveProgramEditForm(form) {
+  const status = form.querySelector("[data-program-status]");
+  const submit = form.querySelector('[type="submit"]');
+  if (clientPage.preview) {
+    status.textContent = "Preview mode is read-only.";
+    return;
+  }
+  const program = JSON.parse(JSON.stringify(clientPage.data?.editableProgram || {}));
+  const week = program.weeks?.find(item =>
+    Number(item.weekNumber) === Number(form.dataset.weekNumber)
+  );
+  const day = week?.days?.find(item =>
+    Number(item.weekday) === Number(form.dataset.weekday)
+      && item.workoutId === form.dataset.workoutId
+  );
+  if (!day) {
+    status.textContent = "This workout is no longer in the current plan. Reload the page.";
+    return;
+  }
+  day.name = form.elements.workoutName.value.trim();
+  day.description = form.elements.description.value.trim();
+  day.warmup = form.elements.warmup.value.trim();
+  day.cooldown = form.elements.cooldown.value.trim();
+  const exerciseBlocks = [...form.querySelectorAll("[data-exercise-edit]")];
+  if (exerciseBlocks.length !== day.exercises.length) {
+    status.textContent = "This workout changed in another tab. Reload before saving.";
+    return;
+  }
+  for (const [index, block] of exerciseBlocks.entries()) {
+    const exercise = day.exercises[index];
+    exercise.name = block.querySelector("[data-exercise-name]").value.trim();
+    exercise.sets = Number(block.querySelector("[data-exercise-sets]").value);
+    exercise.targetValue = Number(block.querySelector("[data-exercise-target]").value);
+  }
+
+  submit.disabled = true;
+  status.textContent = "Saving a new current version…";
+  try {
+    const response = await fetch(
+      `/api/client/${encodeURIComponent(clientPage.token)}/program${clientPage.preview ? "?preview=1" : ""}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          program,
+          expectedRevision: clientPage.data?.program?.revision
+        })
+      }
+    );
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      if (response.status === 409 || result.code === "STALE_REVISION") {
+        status.textContent = "This program changed in another tab. Reload the latest version before continuing.";
+        form.querySelectorAll("input, textarea, button[type='submit']").forEach(control => {
+          control.disabled = true;
+        });
+        const reload = document.createElement("button");
+        reload.type = "button";
+        reload.className = "button button-secondary";
+        reload.dataset.reloadClientPlan = "true";
+        reload.textContent = "Reload latest program";
+        form.querySelector(".session-log-actions")?.append(reload);
+        return;
+      }
+      throw new Error(result.error || "The workout could not be updated.");
+    }
+    const version = result.meta?.version;
+    clientPage.notice = result.meta?.unchanged
+      ? "No changes were needed."
+      : `Workout saved as current version ${version}.`;
+    await loadClientPlan();
+  } catch (error) {
+    status.textContent = error.message || "The workout could not be updated.";
+    submit.disabled = false;
+  }
+}
+
 document.getElementById("assignmentList").addEventListener("click", event => {
+  const reload = event.target.closest("[data-reload-client-plan]");
+  if (reload) {
+    loadClientPlan();
+    return;
+  }
+  const closeProgramEdit = event.target.closest("[data-close-program-edit]");
+  if (closeProgramEdit) {
+    const details = closeProgramEdit.closest("details");
+    if (details) details.open = false;
+    return;
+  }
   const open = event.target.closest("[data-open-log]");
   if (open) {
     const form = document.querySelector(`[data-assignment-form="${CSS.escape(open.dataset.openLog)}"]`);
@@ -295,6 +427,11 @@ document.getElementById("assignmentList").addEventListener("click", event => {
 });
 
 document.getElementById("assignmentList").addEventListener("submit", event => {
+  if (event.target.matches("[data-program-edit]")) {
+    event.preventDefault();
+    saveProgramEditForm(event.target);
+    return;
+  }
   if (!event.target.matches("[data-assignment-form]")) return;
   event.preventDefault();
   saveSessionForm(event.target);
@@ -323,20 +460,44 @@ async function loadClientPlan() {
       : `${personName}'s training plan`;
     document.title = `${planTitle} — HälsoPulsen`;
     document.getElementById("pageHeading").textContent = planTitle;
+    const editErrorBanner = document.getElementById("programEditErrorBanner");
+    const saveBanner = document.getElementById("programSaveBanner");
+    if (editErrorBanner) editErrorBanner.hidden = true;
+    if (saveBanner) {
+      saveBanner.hidden = !clientPage.notice;
+      document.getElementById("programSaveText").textContent = clientPage.notice || "";
+      clientPage.notice = "";
+    }
+    if (!directProgram) {
+      try {
+        const editResponse = await fetch(`/api/client/${encodeURIComponent(clientPage.token)}/program`);
+        const editResult = await editResponse.json().catch(() => ({}));
+        if (!editResponse.ok || !editResult.ok) {
+          throw new Error(editResult.error || "The current program could not be loaded.");
+        }
+        clientPage.data.editableProgram = editResult.program;
+        clientPage.data.program.revision = editResult.meta?.revision;
+        clientPage.data.program.version = editResult.meta?.version;
+      } catch (error) {
+        clientPage.data.editableProgram = null;
+        if (editErrorBanner) editErrorBanner.hidden = false;
+        document.getElementById("programEditErrorText").textContent = error.message;
+      }
+    }
     document.getElementById("pageEyebrow").textContent = clientPage.preview
       ? "OWNER PREVIEW · READ ONLY"
       : directProgram
         ? "PUBLISHED PROGRAM · READ ONLY"
-        : "PRIVATE TRAINING PLAN · YOUR LOG";
+        : "YOUR SHARED TRAINING PLAN";
     document.getElementById("pageCopy").textContent = clientPage.preview
-      ? "This is the client's current training view. Performance logging is disabled in preview; nothing here will be saved."
+      ? "This is the client's current training view. Program edits and performance logging are disabled in preview; nothing here will be saved."
       : directProgram
         ? `The latest published version${versionText} is shown below. This generic program link is read-only and cannot save client performance.`
-        : "Record the sets, reps, loads, time, or distance you completed. Previous results are references; only values you save are recorded for today.";
+        : "Review your current workouts, adjust exercise names or targets, and record the work you complete. Your edits become a new version without changing past training records.";
     document.getElementById("clientFooterNote").textContent = directProgram
       ? "This generic program link is read-only."
       : clientPage.preview
-        ? "Preview only — performance logging is disabled."
+        ? "Preview only — plan edits and performance logging are disabled."
         : "Performance history is scoped to this client.";
     renderAssignments(result.data.assignments || [], directProgram);
     renderPerformanceHistory(result.data.performanceHistory || []);
