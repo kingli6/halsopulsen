@@ -17,8 +17,6 @@ const planState = {
   databaseProgramClientId: null,
   databaseSaving: false,
   clients: [],
-  cloneSourceProgramId: null,
-  cloneSourceVersionId: null,
   editingCurrentPlanId: null,
   editorMode: new URLSearchParams(window.location.search).get("view") === "editor"
 };
@@ -711,89 +709,6 @@ function renderLibrary() {
   `).join("");
 }
 
-function ensureLegacyCloneForm() {
-  if (!userWorkspace || document.getElementById("legacyCloneProgramForm")) return;
-  const list = document.getElementById("databaseProgramList");
-  if (!list) return;
-  list.insertAdjacentHTML("beforebegin", `
-    <form class="client-create-row" id="legacyCloneProgramForm" hidden>
-      <div>
-        <p class="section-kicker">CLIENT PROGRAM COPY</p>
-        <h3>Create a client program</h3>
-      </div>
-      <label class="sr-only" for="legacyCloneClientNameInput">Client name</label>
-      <input id="legacyCloneClientNameInput" type="text" required placeholder="Client name" autocomplete="off" />
-      <label class="sr-only" for="legacyCloneProgramNameInput">Client program name</label>
-      <input id="legacyCloneProgramNameInput" type="text" required placeholder="Client program name" autocomplete="off" />
-      <button class="button button-secondary" id="legacyCloneProgramSubmit" type="submit">Create client program</button>
-      <button class="button button-secondary" id="legacyCloneProgramCancel" type="button">Cancel</button>
-    </form>
-  `);
-  document.getElementById("legacyCloneProgramForm").addEventListener("submit", submitLegacyClone);
-  document.getElementById("legacyCloneProgramCancel").addEventListener("click", cancelLegacyClone);
-}
-
-function beginLegacyClone(programId, versionId) {
-  const program = planState.databasePrograms.find(item => item.id === programId);
-  if (!program || !versionId) {
-    showPlanToast("The selected library version is unavailable.");
-    return;
-  }
-  planState.cloneSourceProgramId = programId;
-  planState.cloneSourceVersionId = versionId;
-  const form = document.getElementById("legacyCloneProgramForm");
-  const clientInput = document.getElementById("legacyCloneClientNameInput");
-  const nameInput = document.getElementById("legacyCloneProgramNameInput");
-  const status = document.getElementById("cloneProgramStatus");
-  if (form) form.hidden = false;
-  if (clientInput) {
-    clientInput.value = "";
-    clientInput.focus();
-  }
-  if (nameInput) nameInput.value = `${program.name} — Client copy`;
-  if (status) status.textContent = `Copying version ${program.version} from ${program.name}.`;
-}
-
-function cancelLegacyClone() {
-  planState.cloneSourceProgramId = null;
-  planState.cloneSourceVersionId = null;
-  const form = document.getElementById("legacyCloneProgramForm");
-  const status = document.getElementById("cloneProgramStatus");
-  if (form) form.hidden = true;
-  if (status) status.textContent = "";
-  if (status) status.classList.remove("is-error");
-}
-
-async function submitLegacyClone(event) {
-  event.preventDefault();
-  const clientName = document.getElementById("legacyCloneClientNameInput")?.value.trim() || "";
-  const programName = document.getElementById("legacyCloneProgramNameInput")?.value.trim() || "";
-  const status = document.getElementById("cloneProgramStatus");
-  const button = document.getElementById("legacyCloneProgramSubmit");
-  const existingClient = planState.clients.find(client =>
-    client.active && client.displayName.trim().toLocaleLowerCase() === clientName.toLocaleLowerCase()
-  );
-  if (!planState.cloneSourceProgramId || !planState.cloneSourceVersionId) return;
-  if (!existingClient) {
-    if (status) {
-      status.textContent = "No existing active client matches that name. Client records are not created from this form.";
-      status.classList.add("is-error");
-    }
-    return;
-  }
-  if (!programName) {
-    document.getElementById("legacyCloneProgramNameInput")?.focus();
-    return;
-  }
-  await createClientDatabaseProgram(
-    planState.cloneSourceProgramId,
-    planState.cloneSourceVersionId,
-    existingClient.id,
-    button,
-    programName
-  );
-}
-
 function renderDatabaseProgramLibrary() {
   const section = document.getElementById("databaseProgramLibrary");
   const container = document.getElementById("databaseProgramList");
@@ -801,7 +716,6 @@ function renderDatabaseProgramLibrary() {
   if (!section || !container || !databaseWorkspace) return;
 
   section.hidden = false;
-  if (userWorkspace) ensureLegacyCloneForm();
   const programs = planState.databasePrograms;
   renderLibrarySummary();
   const publishedVersionCount = programs.reduce(
@@ -822,13 +736,6 @@ function renderDatabaseProgramLibrary() {
     return;
   }
   container.innerHTML = programs.map(program => {
-    const legacyClient = userWorkspace && program.kind === "client"
-      ? planState.clients.find(item =>
-        item.id === program.clientId
-        || item.programs.some(clientProgram => clientProgram.id === program.id)
-      )
-      : null;
-    const legacyClientProgram = legacyClient?.programs.find(item => item.id === program.id);
     const programId = escapePlanHtml(program.id);
     const historyPanelId = `program-history-${programId}`;
     const activeClients = planState.clients.filter(client => client.active);
@@ -853,6 +760,9 @@ function renderDatabaseProgramLibrary() {
     if (adminDatabaseWorkspace && program.kind === "library") {
       linkActions = program.hasActivePrivateLink
         ? `
+          <a class="button button-primary button-small"
+            href="/api/workoutplanner/programs/${programId}/link?open=1"
+            target="_blank" rel="noopener">Open private link</a>
           <button class="button button-secondary button-small" type="button"
             data-copy-program-link="${programId}">Copy current link</button>
           <button class="button button-secondary button-small" type="button"
@@ -868,6 +778,9 @@ function renderDatabaseProgramLibrary() {
     } else if (adminDatabaseWorkspace && program.kind === "client" && program.clientId) {
       linkActions = program.hasActivePrivateLink
         ? `
+          <a class="button button-primary button-small"
+            href="/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/programs/${programId}/link?open=1"
+            target="_blank" rel="noopener">Open private link</a>
           <button class="button button-secondary button-small" type="button"
             data-copy-client-link="${escapePlanHtml(program.clientId)}"
             data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
@@ -882,29 +795,12 @@ function renderDatabaseProgramLibrary() {
             data-create-client-link="${escapePlanHtml(program.clientId)}"
             data-program-id="${escapePlanHtml(program.id)}">Create private link</button>`
           : `<span class="client-create-status">Publish a version to create a private link.</span>`
-    } else if (legacyClient && legacyClientProgram) {
-      linkActions = legacyClientProgram.hasActivePrivateLink
-        ? `
-          <button class="button button-secondary button-small" type="button"
-            data-copy-client-link="${escapePlanHtml(legacyClient.id)}"
-            data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
-          <button class="button button-secondary button-small" type="button"
-            data-rotate-client-link="${escapePlanHtml(legacyClient.id)}"
-            data-program-id="${escapePlanHtml(program.id)}">Rotate link</button>
-          <button class="button button-danger button-small" type="button"
-            data-revoke-client-link="${escapePlanHtml(legacyClient.id)}"
-            data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
-        : program.versionStatus === "published"
-          ? `<button class="button button-secondary button-small" type="button"
-            data-create-client-link="${escapePlanHtml(legacyClient.id)}"
-            data-program-id="${escapePlanHtml(program.id)}">Create private link</button>`
-          : `<span class="client-create-status">Publish a version to create a private link.</span>`;
     }
     return `
     <article class="library-item">
       <div class="library-item-main">
         <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="${program.versionStatus === "published" ? "current-tag" : "draft-status is-draft"}">${program.kind === "client" ? "Client copy" : "Library"} · ${escapePlanHtml(program.versionStatus || "draft")}</span></div>
-        <span>${(adminDatabaseWorkspace ? program.personName : legacyClient?.displayName) ? `For ${escapePlanHtml(adminDatabaseWorkspace ? program.personName : legacyClient.displayName)} · ` : ""}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
+        <span>${program.personName ? `For ${escapePlanHtml(program.personName)} · ` : ""}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
         ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
         ${adminDatabaseWorkspace ? `
           <div class="program-action-panel program-history-panel" id="${historyPanelId}" data-program-history-panel="${programId}" hidden>
@@ -913,11 +809,6 @@ function renderDatabaseProgramLibrary() {
       </div>
       <div class="library-actions">
         <button class="button button-primary button-small" type="button" data-open-database-program="${escapePlanHtml(program.id)}">Open program</button>
-        ${program.kind === "library" && userWorkspace
-          ? `<button class="button button-secondary button-small" type="button"
-                  data-clone-database-program="${programId}"
-                  data-clone-version-id="${escapePlanHtml(program.currentVersionId || "")}">Create client program</button>`
-          : ""}
         ${clientCopyAction}
         ${adminDatabaseWorkspace
           ? `<button class="button button-secondary button-small" type="button"
@@ -1037,7 +928,6 @@ async function createClientDatabaseProgram(programId, versionId, clientId, butto
     planState.selectedWeekIndex = 0;
     planState.editorMode = true;
     planState.editingCurrentPlanId = null;
-    if (userWorkspace) cancelLegacyClone();
     window.history.pushState({}, "", `${plannerPath}?view=editor`);
     TrackerData.save(planState.data);
     await loadDatabaseLibrary();
@@ -1052,7 +942,7 @@ async function createClientDatabaseProgram(programId, versionId, clientId, butto
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = userWorkspace ? "Create client program" : "Open client copy";
+      button.textContent = "Create client copy";
     }
   }
 }
@@ -2047,16 +1937,9 @@ function bindPlanEvents() {
   if (databaseProgramList) {
     databaseProgramList.addEventListener("click", event => {
       const open = event.target.closest("[data-open-database-program]");
-      const legacyClone = event.target.closest("[data-clone-database-program]");
       const clientCopy = event.target.closest("[data-create-client-copy]");
       const history = event.target.closest("[data-toggle-program-history]");
       if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
-      if (legacyClone && userWorkspace) {
-        beginLegacyClone(
-          legacyClone.dataset.cloneDatabaseProgram,
-          legacyClone.dataset.cloneVersionId
-        );
-      }
       if (clientCopy && adminDatabaseWorkspace) {
         const clientId = clientCopy.closest(".library-item")
           ?.querySelector("[data-client-copy-select]")?.value;
