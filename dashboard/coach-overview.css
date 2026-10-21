@@ -12,9 +12,13 @@
 .coach-client-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--ink); text-align: left; transition: border-color .16s ease, background .16s ease; }
 .coach-client-item:hover { border-color: var(--green-2); background: #f8fdf9; }
 .coach-client-item.is-selected { border-color: var(--green); background: var(--green-3); }
+.coach-client-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
 .coach-client-name { font-size: 13px; font-weight: 700; }
+.coach-client-state { flex-shrink: 0; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; }
+.coach-client-state.is-active { background: #e4f4ec; color: var(--green); }
+.coach-client-state.is-inactive { background: #f0f1f0; color: var(--muted); }
 .coach-client-meta { color: var(--muted); font-size: 10px; line-height: 1.4; }
-.coach-client-programs { color: var(--green); font-size: 10px; font-weight: 600; line-height: 1.4; }
+.coach-client-programs { color: var(--green); font-size: 10px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 .coach-detail-panel { min-width: 0; }
 .coach-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 20px 22px; margin-bottom: 16px; }
 .coach-detail-header h2 { margin-bottom: 4px; font-size: 25px; }
@@ -44,6 +48,7 @@
 .coach-status { flex-shrink: 0; }
 .coach-status.status-completed { background: #e4f4ec; color: var(--green); }
 .coach-status.status-skipped { background: #f0f1f0; color: var(--muted); }
+.coach-status.status-missed { background: #fff1e7; color: #8d4f21; }
 .coach-loading { color: var(--muted); font-size: 12px; }
 @media (max-width: 820px) {
   .coach-overview-layout { grid-template-columns: 1fr; }

@@ -78,13 +78,13 @@ async function listCoachClients(db, coachProfileId) {
               and ws.status in ('completed', 'skipped')
            union all
            select a.scheduled_date as activity_date,
-                  'skipped'::text as status,
+                   a.status,
                   coalesce(nullif(btrim(w.name), ''), 'Workout') as activity_name,
                   a.id as sort_id
              from public.assignments a
              join public.workouts w on w.id = a.workout_id
             where a.client_id = c.id
-              and a.status = 'skipped'
+               and a.status in ('skipped', 'missed')
               and not exists (
                 select 1
                   from public.workout_sessions ws
@@ -233,7 +233,7 @@ async function getClientOverview(db, coachProfileId, clientId) {
          null::uuid as session_id,
          a.id as assignment_id,
          a.scheduled_date as activity_date,
-         'skipped'::text as status,
+          a.status,
          ''::text as note,
          null::integer as difficulty,
          null::integer as energy,
@@ -248,7 +248,7 @@ async function getClientOverview(db, coachProfileId, clientId) {
        join public.program_versions pv on pv.id = pw.program_version_id
        join public.programs p on p.id = pv.program_id
       where a.client_id = $1
-        and a.status = 'skipped'
+         and a.status in ('skipped', 'missed')
         and p.client_id = a.client_id
         and not exists (
           select 1
