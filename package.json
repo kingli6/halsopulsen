@@ -18,6 +18,7 @@
     "test:admin-login-security": "node scripts/test-admin-login-security.js",
     "test:workoutplanner-client-link": "node scripts/test-workoutplanner-client-link.js",
     "test:workoutplanner-program-library": "node scripts/test-workoutplanner-program-library.js",
+    "test:workoutplanner-test-safety": "node scripts/test-workoutplanner-test-safety.js",
     "test:workoutplanner-migration": "node scripts/test-workoutplanner-stage1-migration.js",
     "test:workoutplanner-session-logging": "node scripts/test-workoutplanner-session-logging.js",
     "test:workoutplanner-session-integration": "NODE_ENV=test node scripts/test-workoutplanner-session-integration.js",

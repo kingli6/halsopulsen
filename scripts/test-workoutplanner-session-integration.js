@@ -1,3 +1,7 @@
+process.env.NODE_ENV = "test";
+const { assertWorkoutPlannerTestTargetIsDistinct } = require("./workoutplanner-test-safety");
+assertWorkoutPlannerTestTargetIsDistinct();
+
 const assert = require("assert");
 const crypto = require("crypto");
 const { Pool } = require("pg");
