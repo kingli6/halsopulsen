@@ -781,6 +781,8 @@ async function run() {
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);
   assert.match(planner, /Open private link/);
+  assert.match(planner, /Preview as client/);
+  assert.match(planner, /open=1&amp;preview=1/);
   assert.match(planner, /target="_blank" rel="noopener"/);
   assert.match(planner, /data-rotate-client-link/);
   assert.match(planner, /data-create-program-link/);
@@ -814,6 +816,8 @@ async function run() {
   assert.match(publicPage, /Boolean\(result\.data\.directProgram\)/);
   assert.match(publicPage, /Published training plan/);
   assert.match(publicPage, /directProgram && item\.version_number/);
+  assert.match(publicPage, /OWNER PREVIEW · READ ONLY/);
+  assert.match(publicPage, /!clientPage\.preview && item\.id/);
   assert.match(
     fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.html"), "utf8"),
     /href="https:\/\/halsopulsen\.se\/"/

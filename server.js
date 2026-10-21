@@ -450,7 +450,10 @@ app.get('/api/workoutplanner/clients/:clientId/programs/:programId/link', requir
     if (req.query.open === '1') {
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Referrer-Policy', 'no-referrer');
-      return res.redirect(302, clientPath);
+      const previewPath = req.query.preview === '1'
+        ? `${clientPath}?preview=1`
+        : clientPath;
+      return res.redirect(302, previewPath);
     }
     return res.json({
       ok: true,
@@ -625,6 +628,9 @@ app.get('/api/client/:token', async (req, res) => {
 });
 
 app.post('/api/client/:token/sessions', async (req, res) => {
+  if (req.query.preview === '1') {
+    return res.status(403).json({ ok: false, error: 'Preview mode is read-only.' });
+  }
   if (!isWorkoutPlannerConfigured()) {
     return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
   }

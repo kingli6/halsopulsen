@@ -70,8 +70,36 @@ function testPrivateLinksOpenInNewTabs() {
   );
 }
 
+function testClientLinkPreviewIsReadOnly() {
+  const server = readProjectFile("server.js");
+  const planner = readProjectFile("dashboard/plan.js");
+  const clientUi = readProjectFile("dashboard/client.js");
+  const clientPage = readProjectFile("dashboard/client.html");
+  const clientLinkRoute = server.slice(
+    server.indexOf("app.get('/api/workoutplanner/clients/:clientId/programs/:programId/link'"),
+    server.indexOf("app.post('/api/workoutplanner/clients/:clientId/programs/:programId/link'")
+  );
+  const sessionRoute = server.slice(
+    server.indexOf("app.post('/api/client/:token/sessions'"),
+    server.indexOf("app.get('/api/admin/session'")
+  );
+
+  assert.match(clientLinkRoute, /req\.query\.preview === '1'[\s\S]*?\?preview=1/);
+  assert.match(
+    planner,
+    /program\.kind === "client"[\s\S]*?Preview as client[\s\S]*?open=1&amp;preview=1/
+  );
+  assert.match(clientUi, /preview: new URLSearchParams\(window\.location\.search\)\.get\("preview"\) === "1"/);
+  assert.match(clientUi, /!clientPage\.preview && item\.id/);
+  assert.match(clientUi, /if \(clientPage\.preview\)[\s\S]*?Preview mode is read-only\./);
+  assert.match(clientUi, /OWNER PREVIEW · READ ONLY/);
+  assert.match(sessionRoute, /req\.query\.preview === '1'[\s\S]*?status\(403\)/);
+  assert.match(clientPage, /id="previewBanner" hidden role="status"/);
+}
+
 testPlannerEntryUsesCoachRoute();
 testCreateAndOpenUseOwnerApi();
 testAccountBasedCloneUiIsRemoved();
 testPrivateLinksOpenInNewTabs();
+testClientLinkPreviewIsReadOnly();
 console.log("WorkoutPlanner UI/API regression checks passed.");

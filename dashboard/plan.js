@@ -781,6 +781,9 @@ function renderDatabaseProgramLibrary() {
           <a class="button button-primary button-small"
             href="/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/programs/${programId}/link?open=1"
             target="_blank" rel="noopener">Open private link</a>
+          <a class="button button-secondary button-small"
+            href="/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/programs/${programId}/link?open=1&amp;preview=1"
+            target="_blank" rel="noopener">Preview as client</a>
           <button class="button button-secondary button-small" type="button"
             data-copy-client-link="${escapePlanHtml(program.clientId)}"
             data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
