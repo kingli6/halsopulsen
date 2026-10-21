@@ -231,10 +231,19 @@ async function run() {
     );
     assert.strictEqual(stillDraft.rows[0].status, "draft");
 
+    await pool.query(
+      "update public.programs set status = 'draft' where id = $1",
+      [fixture.programId]
+    );
     const secondPublish = await publishProgram(pool, fixture.coachId, fixture.programId);
     assert.strictEqual(secondPublish.version, 2);
     assert.strictEqual(secondPublish.versionStatus, "published");
     assert.strictEqual(secondPublish.publishedAssignmentCount, 2);
+    const secondParent = await pool.query(
+      "select status from public.programs where id = $1",
+      [fixture.programId]
+    );
+    assert.strictEqual(secondParent.rows[0].status, "active");
 
     const versionStatuses = await pool.query(
       `select version_number, status

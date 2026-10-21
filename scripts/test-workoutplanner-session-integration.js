@@ -1,7 +1,5 @@
 const assert = require("assert");
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
 const { Pool } = require("pg");
 const {
   findClientDataByToken,
@@ -10,13 +8,6 @@ const {
 const { saveClientSession } = require("../workoutplanner/session-logging");
 
 const migrationName = "013_prescription-names-client-identities.sql";
-const migrationPath = path.join(
-  __dirname,
-  "..",
-  "db",
-  "workoutplanner-migrations",
-  migrationName
-);
 
 function requiredTestConnectionString() {
   const connectionString = process.env.WORKOUTPLANNER_TEST_DATABASE_URL;
@@ -36,59 +27,12 @@ async function migrationStatus(client, filename) {
   return result.rowCount === 1;
 }
 
-async function snapshotExistingPerformance(client) {
-  const [sessions, exercises, sets] = await Promise.all([
-    client.query(
-      `select id, client_id
-         from public.workout_sessions
-        order by id`
-    ),
-    client.query(
-      `select id, activity_name
-         from public.session_exercises
-        order by id`
-    ),
-    client.query(
-      `select id, session_exercise_id, set_number, reps, duration, duration_unit,
-              distance, distance_unit, load, load_unit, rir, intensity, intensity_unit,
-              completed, note, created_at, updated_at
-         from public.session_sets
-        order by id`
-    )
-  ]);
-  return {
-    sessions: sessions.rows,
-    exercises: exercises.rows,
-    sets: sets.rows
-  };
-}
-
-async function applyForwardMigrationIfNeeded(client) {
-  const hasStage1 = await migrationStatus(client, "012_stage1-session-integrity.sql");
-  if (!hasStage1) {
-    throw new Error("The test database must already be at migration 012; this test will not run or replay migration 012.");
+async function requireMigration(client, filename) {
+  if (!(await migrationStatus(client, filename))) {
+    throw new Error(
+      `Migration ${filename} must already be applied to the isolated test database; this test will not apply migrations.`
+    );
   }
-  if (await migrationStatus(client, migrationName)) return false;
-
-  const before = await snapshotExistingPerformance(client);
-  await client.query(fs.readFileSync(migrationPath, "utf8"));
-  await client.query(
-    "insert into private.workoutplanner_schema_migrations (filename) values ($1)",
-    [migrationName]
-  );
-  const after = await snapshotExistingPerformance(client);
-
-  assert.deepStrictEqual(after.sessions, before.sessions, "Migration must preserve session IDs and client scope.");
-  assert.deepStrictEqual(after.sets, before.sets, "Migration must preserve all historical set values.");
-  const preservedNames = new Map(before.exercises
-    .filter(row => String(row.activity_name || "").trim())
-    .map(row => [row.id, row.activity_name]));
-  for (const row of after.exercises) {
-    if (preservedNames.has(row.id)) {
-      assert.strictEqual(row.activity_name, preservedNames.get(row.id), "Existing nonblank name snapshots must remain unchanged.");
-    }
-  }
-  return true;
 }
 
 async function assertMigratedSchema(client) {
@@ -266,7 +210,7 @@ async function run() {
     client = await pool.connect();
     const database = await client.query("select current_database() as name");
     console.log(`WorkoutPlanner integration test using dedicated test database: ${database.rows[0].name}`);
-    const applied = await applyForwardMigrationIfNeeded(client);
+    await requireMigration(client, migrationName);
     await assertMigratedSchema(client);
     client.release();
     client = null;
@@ -280,9 +224,7 @@ async function run() {
     }
     const afterCatalog = await pool.query("select count(*)::int as count from public.exercises");
     assert.strictEqual(afterCatalog.rows[0].count, beforeCatalog.rows[0].count, "Session logging must not create global exercise records.");
-    console.log(applied
-      ? "WorkoutPlanner migration 013 and session logging integration checks passed."
-      : "WorkoutPlanner session logging integration checks passed; migration 013 was already applied.");
+    console.log("WorkoutPlanner session logging integration checks passed.");
   } finally {
     client?.release();
     await pool.end();

@@ -554,8 +554,14 @@ async function listPrograms(db, coachProfileId) {
          select count(*)::int
            from public.program_versions counted_version
           where counted_version.program_id = p.id
-            and counted_version.status in ('published', 'archived')
+             and counted_version.status = 'published'
        ) as published_version_count,
+        (
+          select count(*)::int
+            from public.program_versions counted_version
+           where counted_version.program_id = p.id
+             and counted_version.status = 'archived'
+        ) as archived_version_count,
        count(pw.id)::int as week_count
      from public.programs p
       left join public.program_versions current_version
@@ -607,6 +613,7 @@ async function listPrograms(db, coachProfileId) {
     hasCurrentVersion: Boolean(row.has_current_version),
     hasPublishedVersion: Boolean(row.has_published_version),
     publishedVersionCount: Number(row.published_version_count) || 0,
+    archivedVersionCount: Number(row.archived_version_count) || 0,
     durationWeeks: Number(row.week_count) || 0
   }));
 }

@@ -131,7 +131,7 @@ async function testCoachScopedClientListAndMultiplePrograms() {
   assert.match(listQuery.sql, /cc\.coach_profile_id\s*=\s*\$1/i);
   assert.match(listQuery.sql, /current_version\.id\s*=\s*p\.current_version_id/i);
   assert.match(listQuery.sql, /current_version\.status\s*=\s*'published'/i);
-  assert.match(listQuery.sql, /when p\.status in \('draft',\s*'active'\)[\s\S]*then 'active'/i);
+  assert.match(listQuery.sql, /when p\.status <> 'archived'[\s\S]*current_version\.status = 'published'[\s\S]*then 'active'/i);
   assert.match(listQuery.sql, /a\.status\s+in\s*\('skipped',\s*'missed'\)/i);
 }
 
@@ -176,7 +176,7 @@ async function testOwnerRejectionAndCurrentVersionPointer() {
 
   const programQuery = db.calls[1].sql;
   assert.match(programQuery, /current_version\.id\s*=\s*p\.current_version_id/i);
-  assert.match(programQuery, /p\.status in \('draft',\s*'active'\)/i);
+  assert.match(programQuery, /p\.status <> 'archived'/i);
   assert.match(programQuery, /current_version\.status\s*=\s*'published'/i);
   assert.doesNotMatch(programQuery, /order\s+by\s+[^;]*version_number\s+desc/i);
 }

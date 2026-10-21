@@ -42,7 +42,7 @@ async function listCoachClients(db, coachProfileId) {
            'id', p.id,
            'name', p.name,
            'status', case
-             when p.status in ('draft', 'active')
+              when p.status <> 'archived'
                and current_version.status = 'published'
              then 'active'
              else p.status
@@ -164,7 +164,7 @@ async function getClientOverview(db, coachProfileId, clientId) {
     where p.client_id = $1
       and p.coach_profile_id = $2
       and p.kind = 'client'
-      and p.status in ('draft', 'active')
+       and p.status <> 'archived'
       and current_version.status = 'published'
     order by p.updated_at desc, p.name, pw.week_number, w.day_of_week`,
     [clientId, coachProfileId]
