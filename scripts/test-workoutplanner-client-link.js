@@ -757,7 +757,11 @@ async function run() {
   assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
   assert.doesNotMatch(adminPage, /cloneProgramClientNameInput|cloneProgramNameInput|id="cloneProgramForm"/);
   const planner = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
-  assert.doesNotMatch(planner, /Use for client|data-use-for-client|data-client-for-program|data-create-client-copy/);
+  assert.match(planner, /data-create-client-copy/);
+  assert.match(planner, /data-client-copy-select/);
+  assert.match(planner, /program\.currentVersionId \|\| ""/);
+  assert.match(planner, /adminDatabaseWorkspace \? program\.kind === "library"/);
+  assert.match(planner, /loadDatabaseLibrary\(\), loadClients\(\)/);
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);
   assert.match(planner, /data-rotate-client-link/);
@@ -775,6 +779,7 @@ async function run() {
   assert.match(publishImplementation, /and p\.client_id is not null/);
    assert.match(publishImplementation, /current_version_id = \$1/);
    assert.match(publishImplementation, /published_start_date = start_date/);
+  assert.match(publishImplementation, /status = case when kind = 'client' then 'active' else status end/);
    assert.match(publishImplementation, /revision = revision \+ 1/);
   assert.doesNotMatch(publishImplementation, /client_access_links/i);
   const cloneImplementation = programLibrary.slice(

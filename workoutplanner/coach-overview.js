@@ -41,7 +41,12 @@ async function listCoachClients(db, coachProfileId) {
          jsonb_build_object(
            'id', p.id,
            'name', p.name,
-           'status', p.status,
+           'status', case
+             when p.status in ('draft', 'active')
+               and current_version.status = 'published'
+             then 'active'
+             else p.status
+           end,
            'kind', p.kind,
            'currentVersionId', p.current_version_id,
            'currentVersionNumber', current_version.version_number,
@@ -159,7 +164,8 @@ async function getClientOverview(db, coachProfileId, clientId) {
     where p.client_id = $1
       and p.coach_profile_id = $2
       and p.kind = 'client'
-      and p.status = 'active'
+      and p.status in ('draft', 'active')
+      and current_version.status = 'published'
     order by p.updated_at desc, p.name, pw.week_number, w.day_of_week`,
     [clientId, coachProfileId]
   );

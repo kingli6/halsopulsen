@@ -550,6 +550,12 @@ async function listPrograms(db, coachProfileId) {
           where published_version.program_id = p.id
             and published_version.status in ('published', 'archived')
        ) as has_published_version,
+       (
+         select count(*)::int
+           from public.program_versions counted_version
+          where counted_version.program_id = p.id
+            and counted_version.status in ('published', 'archived')
+       ) as published_version_count,
        count(pw.id)::int as week_count
      from public.programs p
       left join public.program_versions current_version
@@ -600,6 +606,7 @@ async function listPrograms(db, coachProfileId) {
     hasActivePrivateLink: Boolean(row.has_active_private_link),
     hasCurrentVersion: Boolean(row.has_current_version),
     hasPublishedVersion: Boolean(row.has_published_version),
+    publishedVersionCount: Number(row.published_version_count) || 0,
     durationWeeks: Number(row.week_count) || 0
   }));
 }
@@ -1088,6 +1095,7 @@ async function publishProgram(db, coachProfileId, programId) {
       `update public.programs
           set current_version_id = $1,
               published_start_date = start_date,
+              status = case when kind = 'client' then 'active' else status end,
               revision = revision + 1,
               updated_at = now()
         where id = $2
