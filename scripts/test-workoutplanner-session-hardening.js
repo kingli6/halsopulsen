@@ -153,11 +153,6 @@ async function run() {
     assert.strictEqual(coachResult.rowCount, 1, "The test database needs an existing coach profile.");
     const coachId = coachResult.rows[0].id;
     const otherCoachId = crypto.randomUUID();
-    await db.query(
-      `insert into public.profiles (id, role, display_name, clerk_user_id)
-       values ($1, 'coach', 'Other Coach Overview Test', null)`,
-      [otherCoachId]
-    );
 
     const clientProfileId = crypto.randomUUID();
     const clientProfile = await db.query(
@@ -204,6 +199,10 @@ async function run() {
     );
     const clientProgramId = cloned.id;
     await publishProgram(db, coachId, clientProgramId);
+    await db.query(
+      "update public.programs set status = 'active' where id = $1",
+      [clientProgramId]
+    );
 
     const token = crypto.randomBytes(32).toString("base64url");
     const linkId = crypto.randomUUID();
@@ -293,6 +292,17 @@ async function run() {
     const draftOverviewSquat = draftOverview.recentSessions
       .flatMap(session => session.exercises)
       .find(exercise => exercise.name === "Goblet squat");
+    assert.ok(
+      draftOverviewSquat,
+      `Coach overview should show Goblet squat history; received ${JSON.stringify(
+        draftOverview.recentSessions.map(session => ({
+          status: session.status,
+          workoutName: session.workoutName,
+          program: session.program,
+          exerciseNames: session.exercises.map(exercise => exercise.name)
+        }))
+      )}`
+    );
     assert.strictEqual(draftOverviewSquat.prescription.reps, 10);
     assert.strictEqual(draftOverviewSquat.actualSets[0].reps, 10);
 
@@ -402,6 +412,10 @@ async function run() {
       "Second active overview program"
     );
     await publishProgram(db, coachId, secondClientProgram.id);
+    await db.query(
+      "update public.programs set status = 'active' where id = $1",
+      [secondClientProgram.id]
+    );
     const coachClients = await listCoachClients(db, coachId);
     const listedClient = coachClients.find(client => client.id === clientId);
     assert.ok(listedClient);
