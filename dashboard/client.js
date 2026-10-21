@@ -1,4 +1,8 @@
-const clientPage = { token: "", data: null };
+const clientPage = {
+  token: "",
+  data: null,
+  preview: new URLSearchParams(window.location.search).get("preview") === "1"
+};
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -115,7 +119,7 @@ function renderPerformanceExercise(exercise) {
 }
 
 function renderAssignment(item, directProgram) {
-  const canLog = !directProgram && item.id;
+  const canLog = !directProgram && !clientPage.preview && item.id;
   const details = (item.exercises || []).map(exercise => `<li>
       <strong>${escapeHtml(exercise.name)}</strong>
       <span class="client-exercise-meta">${escapeHtml(exerciseSummary(exercise))}</span>
@@ -233,6 +237,10 @@ async function saveSessionForm(form) {
   const assignment = findAssignment(assignmentId);
   const status = form.querySelector("[data-session-status]");
   const submit = form.querySelector('[type="submit"]');
+  if (clientPage.preview) {
+    if (status) status.textContent = "Preview mode is read-only.";
+    return;
+  }
   if (!assignment || !clientPage.data?.program?.id) return;
 
   const exercises = readSessionForm(form);
@@ -244,7 +252,8 @@ async function saveSessionForm(form) {
   submit.disabled = true;
   status.textContent = "Saving performance…";
   try {
-    const response = await fetch(`/api/client/${encodeURIComponent(clientPage.token)}/sessions`, {
+    const sessionEndpoint = `/api/client/${encodeURIComponent(clientPage.token)}/sessions${clientPage.preview ? "?preview=1" : ""}`;
+    const response = await fetch(sessionEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -294,6 +303,8 @@ document.getElementById("assignmentList").addEventListener("submit", event => {
 async function loadClientPlan() {
   const match = window.location.pathname.match(/^\/(?:p|client)\/([^/]+)\/?$/);
   clientPage.token = match?.[1] || "";
+  const previewBanner = document.getElementById("previewBanner");
+  if (previewBanner) previewBanner.hidden = !clientPage.preview;
   try {
     const response = await fetch(`/api/client/${encodeURIComponent(clientPage.token)}`);
     const result = await response.json().catch(() => ({}));
@@ -312,15 +323,21 @@ async function loadClientPlan() {
       : `${personName}'s training plan`;
     document.title = `${planTitle} — HälsoPulsen`;
     document.getElementById("pageHeading").textContent = planTitle;
-    document.getElementById("pageEyebrow").textContent = directProgram
-      ? "PUBLISHED PROGRAM · READ ONLY"
-      : "PRIVATE TRAINING PLAN · YOUR LOG";
-    document.getElementById("pageCopy").textContent = directProgram
-      ? `The latest published version${versionText} is shown below. This generic program link is read-only and cannot save client performance.`
-      : "Record the sets, reps, loads, time, or distance you completed. Previous results are references; only values you save are recorded for today.";
+    document.getElementById("pageEyebrow").textContent = clientPage.preview
+      ? "OWNER PREVIEW · READ ONLY"
+      : directProgram
+        ? "PUBLISHED PROGRAM · READ ONLY"
+        : "PRIVATE TRAINING PLAN · YOUR LOG";
+    document.getElementById("pageCopy").textContent = clientPage.preview
+      ? "This is the client's current training view. Performance logging is disabled in preview; nothing here will be saved."
+      : directProgram
+        ? `The latest published version${versionText} is shown below. This generic program link is read-only and cannot save client performance.`
+        : "Record the sets, reps, loads, time, or distance you completed. Previous results are references; only values you save are recorded for today.";
     document.getElementById("clientFooterNote").textContent = directProgram
       ? "This generic program link is read-only."
-      : "Performance history is scoped to this client.";
+      : clientPage.preview
+        ? "Preview only — performance logging is disabled."
+        : "Performance history is scoped to this client.";
     renderAssignments(result.data.assignments || [], directProgram);
     renderPerformanceHistory(result.data.performanceHistory || []);
   } catch (error) {
