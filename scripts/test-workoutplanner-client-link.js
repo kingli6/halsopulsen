@@ -348,10 +348,15 @@ async function run() {
   );
   const editExerciseWrite = editDatabase.queries.find(query =>
     /insert into public\.workout_exercises/i.test(query.sql)
-    && query.values[1] === "44444444-4444-4444-8444-444444444444"
+    && query.values[1] === "Squat"
   );
-  assert.ok(editExerciseWrite, "The edited strength exercise must be written.");
+  assert.ok(editExerciseWrite, "The edited strength exercise name must be written directly to its prescription.");
   assert.strictEqual(editExerciseWrite.values[4], 9, "The edited prescribed reps must be persisted.");
+  assert.doesNotMatch(
+    editDatabase.queries.map(query => query.sql).join("\n"),
+    /insert into public\.exercises/i,
+    "Saving a workout must not create a global exercise catalog row."
+  );
   assert.ok(editDatabase.queries.some(query =>
     /update public\.program_versions/i.test(query.sql)
     && /status = 'published'/i.test(query.sql)
@@ -744,10 +749,10 @@ async function run() {
   assert.match(server, /app\.get\(\['\/p\/:token'/);
   assert.match(server, /res\.setHeader\('Cache-Control', 'no-store'\)/);
   assert.match(server, /res\.setHeader\('Referrer-Policy', 'no-referrer'\)/);
-  assert.doesNotMatch(
-    fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.js"), "utf8"),
-    /api\/plans\/share|method:\s*["'](?:PUT|POST|DELETE)|sessionList|renderSessions/
-  );
+  const clientUi = fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.js"), "utf8");
+  assert.match(clientUi, /\/api\/client\/\$\{encodeURIComponent\(clientPage\.token\)\}\/sessions/);
+  assert.match(clientUi, /method:\s*["']POST["']/);
+  assert.doesNotMatch(clientUi, /api\/plans\/share|method:\s*["'](?:PUT|DELETE)|sessionList|renderSessions/);
   const adminPage = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan", "index.html"), "utf8");
   assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
   assert.doesNotMatch(adminPage, /cloneProgramClientNameInput|cloneProgramNameInput|id="cloneProgramForm"/);

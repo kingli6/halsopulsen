@@ -16,6 +16,10 @@ const {
   publicProfile
 } = require('./workoutplanner/identity');
 const {
+  getClientOverview,
+  listCoachClients
+} = require('./workoutplanner/coach-overview');
+const {
   findClientDataByToken,
   getClientAccessLink,
   getProgramAccessLink,
@@ -25,6 +29,7 @@ const {
   regenerateProgramAccessLink,
   revokeProgramAccessLink
 } = require('./workoutplanner/client-access');
+const { saveClientSession } = require('./workoutplanner/session-logging');
 const {
   cloneLibraryProgramVersion,
   listProgramVersions,
@@ -239,52 +244,42 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
 
 app.get('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, res) => {
   try {
-    const result = await getWorkoutPlannerPool().query(
-      `SELECT c.id AS client_id, c.display_name, c.active,
-              p.id AS program_id, p.name AS program_name, p.status AS program_status,
-              (l.id IS NOT NULL) AS has_active_private_link
-         FROM public.clients c
-         JOIN public.coach_clients cc ON cc.client_id = c.id
-         LEFT JOIN public.programs p
-           ON p.client_id = c.id
-          AND p.coach_profile_id = cc.coach_profile_id
-          AND p.kind = 'client'
-         LEFT JOIN public.client_access_links l
-           ON l.client_id = c.id
-          AND l.program_id = p.id
-          AND l.revoked_at IS NULL
-        WHERE cc.coach_profile_id = $1
-        ORDER BY c.display_name ASC, c.created_at ASC, p.updated_at DESC NULLS LAST`,
-      [req.workoutPlannerProfile.id]
-    );
-    const clients = new Map();
-    for (const row of result.rows) {
-      if (!clients.has(row.client_id)) {
-        clients.set(row.client_id, {
-          id: row.client_id,
-          displayName: row.display_name,
-          active: Boolean(row.active),
-          programs: []
-        });
-      }
-      if (row.program_id) {
-        clients.get(row.client_id).programs.push({
-          id: row.program_id,
-          name: row.program_name,
-          status: row.program_status,
-          hasActivePrivateLink: Boolean(row.has_active_private_link)
-        });
-      }
-    }
     return res.json({
       ok: true,
-      clients: [...clients.values()]
+      clients: await listCoachClients(
+        getWorkoutPlannerPool(),
+        req.workoutPlannerProfile.id
+      )
     });
   } catch (error) {
     console.error('Could not list WorkoutPlanner clients:', error.message);
     return res.status(503).json({ ok: false, error: 'The clients could not be loaded.' });
   }
 });
+
+app.get(
+  '/api/workoutplanner/clients/:clientId/overview',
+  requireWorkoutPlannerOwner,
+  async (req, res) => {
+    try {
+      const overview = await getClientOverview(
+        getWorkoutPlannerPool(),
+        req.workoutPlannerProfile.id,
+        req.params.clientId
+      );
+      if (!overview) {
+        return res.status(404).json({ ok: false, error: 'Client not found.' });
+      }
+      return res.json({ ok: true, overview });
+    } catch (error) {
+      console.error('Could not load WorkoutPlanner client overview:', error.message);
+      return res.status(503).json({
+        ok: false,
+        error: 'The client overview could not be loaded.'
+      });
+    }
+  }
+);
 
 app.get('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
@@ -619,6 +614,26 @@ app.get('/api/client/:token', async (req, res) => {
   }
 });
 
+app.post('/api/client/:token/sessions', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const session = await saveClientSession(
+      getWorkoutPlannerPool(),
+      req.params.token,
+      req.body
+    );
+    return res.status(201).json({ ok: true, session });
+  } catch (error) {
+    console.error('Could not save WorkoutPlanner client performance:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The workout performance could not be saved.'
+    });
+  }
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ ok: true, authenticated: Boolean(readAdminSession(req)) });
 });
@@ -677,6 +692,12 @@ app.get(['/plans', '/plans/'], (req, res) => res.sendFile(path.join(__dirname, '
 app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
+});
+app.get(['/admin/clients', '/admin/clients/'], (req, res) => {
+  if (!readAdminSession(req)) {
+    return res.redirect(`/admin?next=${encodeURIComponent('/admin/clients/')}`);
+  }
+  res.sendFile(path.join(__dirname, 'dashboard', 'coach-overview.html'));
 });
 function serveBookingAdminPage(req, res) {
   if (!readAdminSession(req)) {
@@ -1056,8 +1077,8 @@ function publicTemplate(template) {
 
 function validateTemplatePayload(body) {
   const type = String(body?.type || '');
-  const allowedTypes = new Set(['activity', 'workout', 'week']);
-  if (!allowedTypes.has(type)) return 'Choose an activity, day workout, or week template.';
+  const allowedTypes = new Set(['workout', 'week']);
+  if (!allowedTypes.has(type)) return 'Choose a complete workout or week template.';
   if (!body?.data || typeof body.data !== 'object' || Array.isArray(body.data)) {
     return 'A template snapshot is required.';
   }
@@ -1065,7 +1086,6 @@ function validateTemplatePayload(body) {
     return 'Template names must be 100 characters or fewer.';
   }
   if (JSON.stringify(body.data).length > 120000) return 'That template is too large.';
-  if (type === 'activity' && !String(body.data.name || '').trim()) return 'An activity needs a name.';
   if (type === 'workout' && (!String(body.data.name || '').trim() || !Array.isArray(body.data.exercises) || !body.data.exercises.length)) {
     return 'A workout needs a name and at least one activity.';
   }
@@ -1083,6 +1103,7 @@ function validateTemplatePayload(body) {
 
 app.get('/api/templates', requireAdmin, (req, res) => {
   const templates = readTemplates()
+    .filter(template => template.type === 'workout' || template.type === 'week')
     .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
   res.json({ ok: true, templates: templates.map(publicTemplate) });
 });
@@ -1101,7 +1122,7 @@ app.post('/api/templates', requireAdmin, (req, res) => {
     updatedAt: now
   };
   const templates = readTemplates();
-  if (templates.length >= MAX_TEMPLATES) {
+  if (templates.filter(item => item.type === 'workout' || item.type === 'week').length >= MAX_TEMPLATES) {
     return res.status(429).json({ ok: false, error: 'The reusable library has reached its limit. Delete an old template before adding another.' });
   }
   templates.push(template);

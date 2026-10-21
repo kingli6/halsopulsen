@@ -376,9 +376,10 @@ async function findClientDataByToken(db, token) {
               json_build_object(
                 'id', we.id,
                 'sortOrder', we.sort_order,
-                'name', e.name,
-                'description', e.description,
-                'category', e.category,
+                'name', we.exercise_name,
+                'description', coalesce(we.planner_metadata->>'description', ''),
+                'category', coalesce(we.planner_metadata->>'activityType', e.category),
+                'format', coalesce(we.planner_metadata->>'format', 'continuous'),
                 'sets', we.sets,
                 'reps', we.reps,
                 'duration', we.duration,
@@ -468,9 +469,10 @@ async function findClientDataByToken(db, token) {
             json_build_object(
               'id', we.id,
               'sortOrder', we.sort_order,
-              'name', e.name,
-              'description', e.description,
-              'category', e.category,
+              'name', we.exercise_name,
+              'description', coalesce(we.planner_metadata->>'description', ''),
+              'category', coalesce(we.planner_metadata->>'activityType', e.category),
+              'format', coalesce(we.planner_metadata->>'format', 'continuous'),
               'sets', we.sets,
               'reps', we.reps,
               'duration', we.duration,
@@ -511,13 +513,154 @@ async function findClientDataByToken(db, token) {
     [client.client_id, client.program_id]
   );
 
+  const assignments = assignmentResult.rows;
+  const exerciseNames = [...new Set(assignments.flatMap(assignment =>
+    (assignment.exercises || []).map(exercise => normalizeExerciseKey(exercise.name)).filter(Boolean)
+  ))];
+  let performanceHistory = [];
+  if (exerciseNames.length) {
+    const previousResult = await db.query(
+      `with ranked_performance as (
+         select ce.normalized_name,
+                se.id as session_exercise_id,
+                ws.performed_on,
+                ws.created_at,
+                se.sort_order,
+                row_number() over (
+                  partition by ce.normalized_name
+                  order by ws.performed_on desc, ws.created_at desc, se.sort_order asc
+                ) as performance_rank
+           from public.client_exercises ce
+           join public.session_exercises se on se.client_exercise_id = ce.id
+           join public.workout_sessions ws on ws.id = se.session_id
+          where ce.client_id = $1
+            and ws.client_id = $1
+            and ws.status = 'completed'
+            and ce.normalized_name = any($2::text[])
+       )
+       select rp.normalized_name,
+              to_char(rp.performed_on, 'YYYY-MM-DD') as performed_on,
+              coalesce((
+                select json_agg(
+                         json_build_object(
+                           'setNumber', ss.set_number,
+                           'reps', ss.reps,
+                           'duration', ss.duration,
+                           'durationUnit', ss.duration_unit,
+                           'distance', ss.distance,
+                           'distanceUnit', ss.distance_unit,
+                           'load', ss.load,
+                           'loadUnit', ss.load_unit
+                         )
+                         order by ss.set_number
+                       )
+                  from public.session_sets ss
+                 where ss.session_exercise_id = rp.session_exercise_id
+              ), '[]'::json) as sets
+         from ranked_performance rp
+        where rp.performance_rank = 1`,
+      [client.client_id, exerciseNames]
+    );
+    const previousByName = new Map(previousResult.rows.map(row => [
+      row.normalized_name,
+      { performedOn: row.performed_on, sets: row.sets || [] }
+    ]));
+    for (const assignment of assignments) {
+      assignment.exercises = (assignment.exercises || []).map(exercise => ({
+        ...exercise,
+        previousPerformance: previousByName.get(normalizeExerciseKey(exercise.name)) || null
+      }));
+    }
+
+    const historyResult = await db.query(
+      `select ws.id as session_id,
+              to_char(ws.performed_on, 'YYYY-MM-DD') as performed_on,
+              coalesce(w.name, 'Training session') as workout_name,
+              se.client_exercise_id,
+              se.activity_name,
+              se.sort_order,
+              (
+                select json_build_object(
+                  'version', pv.version_number,
+                  'activityType', coalesce(prescribed.planner_metadata->>'activityType', 'strength'),
+                  'format', coalesce(prescribed.planner_metadata->>'format', 'sets'),
+                  'sets', prescribed.sets,
+                  'reps', prescribed.reps,
+                  'duration', prescribed.duration,
+                  'durationUnit', prescribed.duration_unit,
+                  'distance', prescribed.distance,
+                  'distanceUnit', prescribed.distance_unit,
+                  'load', prescribed.load,
+                  'loadUnit', prescribed.load_unit,
+                  'rounds', prescribed.rounds,
+                  'workSeconds', prescribed.work_seconds,
+                  'recoverySeconds', prescribed.recovery_seconds,
+                  'intensity', prescribed.intensity,
+                  'intensityUnit', prescribed.intensity_unit
+                )
+                  from public.workout_exercises prescribed
+                  join public.workouts prescribed_workout
+                    on prescribed_workout.id = prescribed.workout_id
+                  join public.program_weeks prescribed_week
+                    on prescribed_week.id = prescribed_workout.program_week_id
+                  join public.program_versions pv
+                    on pv.id = prescribed_week.program_version_id
+                 where prescribed.id = se.workout_exercise_id
+              ) as prescription,
+              coalesce(
+                json_agg(
+                  json_build_object(
+                    'setNumber', ss.set_number,
+                    'reps', ss.reps,
+                    'duration', ss.duration,
+                    'durationUnit', ss.duration_unit,
+                    'distance', ss.distance,
+                    'distanceUnit', ss.distance_unit,
+                    'load', ss.load,
+                    'loadUnit', ss.load_unit
+                  ) order by ss.set_number
+                ) filter (where ss.id is not null),
+                '[]'::json
+              ) as sets
+         from public.workout_sessions ws
+         join public.session_exercises se on se.session_id = ws.id
+         join public.client_exercises ce
+           on ce.id = se.client_exercise_id
+          and ce.client_id = ws.client_id
+         left join public.assignments a on a.id = ws.assignment_id
+         left join public.workouts w on w.id = a.workout_id
+         left join public.session_sets ss on ss.session_exercise_id = se.id
+        where ws.client_id = $1
+          and ws.status = 'completed'
+        group by ws.id, ws.performed_on, ws.created_at, w.name,
+                 se.id, se.client_exercise_id, se.activity_name, se.sort_order
+        order by ws.performed_on desc, ws.created_at desc, se.sort_order
+        limit 100`,
+      [client.client_id]
+    );
+    performanceHistory = historyResult.rows.map(row => ({
+      sessionId: row.session_id,
+      performedOn: row.performed_on,
+      workoutName: row.workout_name,
+      clientExerciseId: row.client_exercise_id,
+      exerciseName: row.activity_name,
+      prescription: row.prescription,
+      sets: row.sets || []
+    }));
+  }
+
   return {
     client: { displayName: client.display_name },
     personName: client.display_name,
     directProgram: false,
     program: { id: client.program_id, name: client.program_name },
-    assignments: assignmentResult.rows
+    assignments,
+    performanceHistory
   };
+}
+
+function normalizeExerciseKey(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
 async function hasClientAccessToken(db, token) {

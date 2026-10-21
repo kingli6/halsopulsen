@@ -11,6 +11,16 @@ const migrationsDirectory = path.join(
 const migrationTable = "private.workoutplanner_schema_migrations";
 
 function getWorkoutPlannerConnectionString() {
+  if (process.env.NODE_ENV === "test") {
+    const testConnectionString = process.env.WORKOUTPLANNER_TEST_DATABASE_URL;
+    if (!testConnectionString) {
+      throw new Error(
+        "WORKOUTPLANNER_TEST_DATABASE_URL is required in test mode; refusing to use a shared or default database."
+      );
+    }
+    return testConnectionString;
+  }
+
   const connectionString =
     process.env.WORKOUTPLANNER_POSTGRES_URL ||
     process.env.WORKOUTPLANNER_DATABASE_URL;

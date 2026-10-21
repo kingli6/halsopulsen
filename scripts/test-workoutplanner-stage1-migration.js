@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const migrationName = "012_stage1-session-integrity.sql";
+const nextMigrationName = "013_prescription-names-client-identities.sql";
 const migrationPath = path.join(
   __dirname,
   "..",
@@ -23,7 +24,9 @@ function run() {
     .readdirSync(migrationDirectory)
     .filter(file => /^\d+_[a-z0-9-]+\.sql$/i.test(file))
     .sort();
-  assert.strictEqual(migrations[migrations.length - 1], migrationName);
+  assert.ok(migrations.includes(migrationName), "Migration 012 must remain in the history.");
+  assert.strictEqual(migrations[migrations.indexOf(migrationName) + 1], nextMigrationName);
+  assert.strictEqual(migrations[migrations.length - 1], nextMigrationName);
 
   const sql = fs.readFileSync(migrationPath, "utf8");
   const normalized = sql.replace(/\s+/g, " ").toLowerCase();
@@ -139,6 +142,35 @@ function run() {
     /require\(["'](?:pg|\.{1,2}\/workoutplanner\/db)["']\)/,
     "Static checks must not connect to a database."
   );
+
+  const nextMigrationPath = path.join(migrationDirectory, nextMigrationName);
+  const nextSql = fs.readFileSync(nextMigrationPath, "utf8");
+  const nextNormalized = nextSql.replace(/\s+/g, " ").toLowerCase();
+  requireMatch(nextSql, /^\s*--[^\n]*\n\s*--[^\n]*\n\s*begin\s*;/i, "Migration 013 must be a new forward migration.");
+  requireMatch(nextSql, /commit\s*;\s*$/i, "Migration 013 must commit transactionally.");
+  requireMatch(
+    nextNormalized,
+    /add column exercise_name text[\s\S]*?set exercise_name = e\.name[\s\S]*?alter column exercise_name set not null[\s\S]*?alter column exercise_id drop not null/,
+    "Prescription names must be backfilled before the legacy catalog reference becomes optional."
+  );
+  requireMatch(
+    nextNormalized,
+    /create table public\.client_exercises[\s\S]*?unique \(client_id, normalized_name\)/,
+    "Performance identities must be unique within a client, not global."
+  );
+  requireMatch(
+    nextNormalized,
+    /add column client_exercise_id uuid[\s\S]*?foreign key \(workout_exercise_id\)[\s\S]*?references public\.workout_exercises \(id\)/,
+    "Session performance must keep an exact prescription reference and a separate client identity."
+  );
+  requireMatch(
+    nextNormalized,
+    /insert into public\.client_exercises \(client_id, name\)[\s\S]*?select distinct ws\.client_id, btrim\(se\.activity_name\)[\s\S]*?update public\.session_exercises se[\s\S]*?set client_exercise_id = ce\.id/,
+    "Existing client performance identities must be backfilled from session name snapshots."
+  );
+  assert.doesNotMatch(nextNormalized, /(?:update|delete)\s+public\.session_sets\b/);
+  assert.doesNotMatch(nextNormalized, /add column activity_source\b/);
+  assert.doesNotMatch(nextNormalized, /delete from public\.(workout_sessions|session_exercises|session_sets|exercises)\b/);
 
   console.log(`WorkoutPlanner Step 1 migration static checks passed (${migrationName}).`);
 }

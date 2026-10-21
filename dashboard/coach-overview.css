@@ -1,0 +1,74 @@
+.coach-overview-page { padding-top: 43px; }
+.coach-overview-page .page-intro { margin-bottom: 20px; }
+.coach-overview-status:empty { display: none; }
+.coach-overview-status { margin: 0 0 15px; color: var(--red); font-size: 12px; }
+.coach-overview-layout { display: grid; grid-template-columns: minmax(250px, .72fr) minmax(0, 1.7fr); align-items: start; gap: 18px; }
+.coach-client-panel { position: sticky; top: 92px; padding: 20px; }
+.coach-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.coach-panel-heading h2 { margin: 0; }
+.coach-panel-heading .draft-status { min-width: 32px; justify-content: center; }
+.coach-panel-status { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+.coach-client-list { display: flex; flex-direction: column; gap: 7px; margin-top: 13px; }
+.coach-client-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--ink); text-align: left; transition: border-color .16s ease, background .16s ease; }
+.coach-client-item:hover { border-color: var(--green-2); background: #f8fdf9; }
+.coach-client-item.is-selected { border-color: var(--green); background: var(--green-3); }
+.coach-client-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.coach-client-name { font-size: 13px; font-weight: 700; }
+.coach-client-state { flex-shrink: 0; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; }
+.coach-client-state.is-active { background: #e4f4ec; color: var(--green); }
+.coach-client-state.is-inactive { background: #f0f1f0; color: var(--muted); }
+.coach-client-meta { color: var(--muted); font-size: 10px; line-height: 1.4; }
+.coach-client-programs { color: var(--green); font-size: 10px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.coach-detail-panel { min-width: 0; }
+.coach-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 20px 22px; margin-bottom: 16px; }
+.coach-detail-header h2 { margin-bottom: 4px; font-size: 25px; }
+.coach-detail-header > div:first-child > p:last-child { margin: 0; color: var(--muted); font-size: 12px; }
+.coach-summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.coach-summary-status { min-height: 14px; margin: 0; color: var(--green); font-size: 10px; text-align: right; }
+.coach-summary-status.is-warning { color: #8d4f21; }
+.coach-summary-fallback { padding: 14px; margin: -7px 0 16px; }
+.coach-summary-fallback label { display: block; margin-bottom: 7px; color: var(--ink); font-size: 11px; font-weight: 600; }
+.coach-summary-fallback textarea { display: block; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+.coach-detail-section { margin-bottom: 18px; }
+.coach-detail-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.coach-detail-section-heading h2 { margin: 0; font-size: 19px; }
+.coach-detail-section-heading p { margin: 0; color: var(--muted); font-size: 11px; }
+.coach-program-list, .coach-session-list { display: flex; flex-direction: column; gap: 10px; }
+.coach-program-card, .coach-session-card { padding: 17px 18px; }
+.coach-program-topline, .coach-session-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.coach-program-topline h3, .coach-session-topline h3 { margin: 0; font-size: 16px; }
+.coach-program-meta, .coach-session-meta { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+.coach-program-actions { flex-shrink: 0; }
+.coach-program-week { padding-top: 12px; margin-top: 12px; border-top: 1px solid #edf2ee; }
+.coach-program-week strong { display: block; margin-bottom: 6px; font-size: 11px; }
+.coach-program-week ul { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.coach-program-week li { padding: 5px 8px; border-radius: 7px; background: var(--soft); color: #4e5c53; font-size: 10px; }
+.coach-session-exercises { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+.coach-performance-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; padding: 10px 0; border-top: 1px solid #edf2ee; }
+.coach-performance-row h4 { margin: 0 0 4px; font-size: 11px; }
+.coach-performance-row p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.coach-performance-label { display: block; margin-bottom: 4px; color: var(--green); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.coach-session-note { padding: 9px 11px; margin: 12px 0 0; border-radius: 8px; background: #f7f9f7; color: #56645a; font-size: 11px; }
+.coach-session-note strong { color: var(--ink); }
+.coach-empty { padding: 20px; border: 1px dashed var(--line); border-radius: 11px; color: var(--muted); font-size: 12px; text-align: center; }
+.coach-status { flex-shrink: 0; }
+.coach-status.status-completed { background: #e4f4ec; color: var(--green); }
+.coach-status.status-skipped { background: #f0f1f0; color: var(--muted); }
+.coach-status.status-missed { background: #fff1e7; color: #8d4f21; }
+.coach-loading { color: var(--muted); font-size: 12px; }
+@media (max-width: 820px) {
+  .coach-overview-layout { grid-template-columns: 1fr; }
+  .coach-client-panel { position: static; }
+  .coach-client-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .coach-overview-page { padding-top: 30px; }
+  .coach-client-list { grid-template-columns: 1fr; }
+  .coach-detail-header, .coach-program-topline, .coach-session-topline { flex-direction: column; }
+  .coach-summary-actions { align-items: stretch; width: 100%; }
+  .coach-summary-actions .button { width: 100%; }
+  .coach-summary-status { text-align: left; }
+  .coach-program-actions { width: 100%; }
+  .coach-program-actions .button { width: 100%; }
+  .coach-performance-row { grid-template-columns: 1fr; gap: 7px; }
+}

@@ -3,6 +3,9 @@ const { Pool } = require("pg");
 let pool;
 
 function getConnectionString() {
+  if (process.env.NODE_ENV === "test") {
+    return process.env.WORKOUTPLANNER_TEST_DATABASE_URL || "";
+  }
   return (
     process.env.WORKOUTPLANNER_POSTGRES_URL ||
     process.env.WORKOUTPLANNER_DATABASE_URL ||
@@ -19,7 +22,9 @@ function getPool() {
     const rawConnectionString = getConnectionString();
     if (!rawConnectionString) {
       throw new Error(
-        "WORKOUTPLANNER_POSTGRES_URL or WORKOUTPLANNER_DATABASE_URL is required for WorkoutPlanner database access."
+        process.env.NODE_ENV === "test"
+          ? "WORKOUTPLANNER_TEST_DATABASE_URL is required in test mode; refusing to use a shared or default database."
+          : "WORKOUTPLANNER_POSTGRES_URL or WORKOUTPLANNER_DATABASE_URL is required for WorkoutPlanner database access."
       );
     }
 
