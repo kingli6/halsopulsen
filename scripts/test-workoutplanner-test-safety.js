@@ -107,6 +107,22 @@ function testDatabaseWritingScriptsRunTheGuardBeforeConnecting() {
   assert.ok(sessionGuard >= 0 && sessionGuard < sessionConnection);
 }
 
+function testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget() {
+  const runtimeDb = fs.readFileSync(
+    path.join(__dirname, "..", "workoutplanner", "db.js"),
+    "utf8"
+  );
+  const migrationRunner = fs.readFileSync(
+    path.join(__dirname, "migrate-workoutplanner.js"),
+    "utf8"
+  );
+
+  assert.match(runtimeDb, /process\.env\.WORKOUTPLANNER_DATABASE_URL/);
+  assert.doesNotMatch(runtimeDb, /process\.env\.WORKOUTPLANNER_POSTGRES_URL/);
+  assert.match(migrationRunner, /process\.env\.WORKOUTPLANNER_DATABASE_URL/);
+  assert.doesNotMatch(migrationRunner, /process\.env\.WORKOUTPLANNER_POSTGRES_URL/);
+}
+
 function run() {
   testMatchingTargetsAreBlockedWithoutLeakingConnectionDetails();
   testDistinctTargetsAreAllowed();
@@ -114,6 +130,7 @@ function run() {
   testMissingTargetsRequireExternalVerification();
   testUnparseableIdentifiersRequireExternalVerification();
   testDatabaseWritingScriptsRunTheGuardBeforeConnecting();
+  testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget();
   console.log("WorkoutPlanner test-target safety checks passed.");
 }
 

@@ -351,6 +351,11 @@ async function run() {
     && query.values[1] === "Squat"
   );
   assert.ok(editExerciseWrite, "The edited strength exercise name must be written directly to its prescription.");
+  assert.match(
+    editExerciseWrite.sql,
+    /\(\s*workout_id,\s*exercise_name,/i,
+    "Program saves must persist the canonical prescription name column."
+  );
   assert.strictEqual(editExerciseWrite.values[4], 9, "The edited prescribed reps must be persisted.");
   assert.doesNotMatch(
     editDatabase.queries.map(query => query.sql).join("\n"),
@@ -534,13 +539,19 @@ async function run() {
       }
       return {
         rowCount: 1,
-        rows: [{ id: "assignment-a", workout_name: "Strength", exercises: [] }]
+        rows: [{
+          id: "assignment-a",
+          workout_name: "Strength",
+          exercises: [{ id: "prescribed-a", name: "Goblet squat" }]
+        }]
       };
     }
   }, generated.token);
   assert.deepStrictEqual(data.client, { displayName: "Ada" });
   assert.deepStrictEqual(data.program, { id: "program-a", name: "Strength" });
   assert.strictEqual(data.assignments[0].id, "assignment-a");
+  assert.strictEqual(data.assignments[0].exercises[0].name, "Goblet squat");
+  assert.match(queries[1].sql, /'name',\s*we\.exercise_name/i);
   assert.deepStrictEqual(queries[1].values, ["client-a", "program-a"]);
 
   const directLinkId = "direct-link-a";
@@ -624,7 +635,7 @@ async function run() {
           day_of_week: 1,
           week_number: 1,
           workout_name: "Published workout",
-          exercises: []
+          exercises: [{ id: "direct-exercise-a", name: "Goblet squat" }]
         }]
       };
     }
@@ -634,6 +645,8 @@ async function run() {
   assert.strictEqual(directData.program.name, "Published program");
   assert.strictEqual(directData.program.version, 4);
   assert.strictEqual(directData.assignments[0].program_name, "Published program");
+  assert.strictEqual(directData.assignments[0].exercises[0].name, "Goblet squat");
+  assert.match(directQueries[1].sql, /'name',\s*we\.exercise_name/i);
   assert.match(directQueries[1].sql, /COALESCE\(p\.published_start_date, p\.start_date\)/i);
   assert.match(directQueries[1].sql, /candidate\.id = p\.current_version_id/i);
   assert.match(directQueries[1].sql, /candidate\.status = 'published'/i);

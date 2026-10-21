@@ -21,13 +21,11 @@ function getWorkoutPlannerConnectionString() {
     return testConnectionString;
   }
 
-  const connectionString =
-    process.env.WORKOUTPLANNER_POSTGRES_URL ||
-    process.env.WORKOUTPLANNER_DATABASE_URL;
+  const connectionString = process.env.WORKOUTPLANNER_DATABASE_URL;
 
   if (!connectionString) {
     throw new Error(
-      "WORKOUTPLANNER_POSTGRES_URL or WORKOUTPLANNER_DATABASE_URL is required; refusing to fall back to a booking or development database."
+      "WORKOUTPLANNER_DATABASE_URL is required; refusing to fall back to a booking or development database."
     );
   }
 

@@ -301,6 +301,7 @@ async function testHistorySeparationAndSkippedDeduplication() {
   assert.match(activityQuery, /a\.status\s+in\s*\('skipped',\s*'missed'\)/i);
   assert.match(activityQuery, /not\s+exists\s*\([\s\S]*?ws\.assignment_id\s*=\s*a\.id/i);
   assert.match(activityQuery, /source_version\.id\s*=\s*source_week\.program_version_id/i);
+  assert.match(activityQuery, /we\.exercise_name as prescription_name/i);
 
   const dashboard = fs.readFileSync(
     path.join(__dirname, "..", "dashboard", "coach-overview.js"),
