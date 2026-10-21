@@ -3,7 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const {
   listProgramVersions,
-  listPrograms
+  listPrograms,
+  loadProgram
 } = require("../workoutplanner/program-library");
 
 const coachId = "11111111-1111-4111-8111-111111111111";
@@ -81,6 +82,76 @@ async function testVersionHistorySeparatesStatuses() {
   assert.match(db.calls[0].sql, /pv\.status in \('published',\s*'archived'\)/i);
 }
 
+async function testSavedDraftLoadsPrescriptionName() {
+  const db = createDb(() => ({
+    rows: [{
+      program_id: programId,
+      client_id: null,
+      program_name: "Draft strength plan",
+      program_description: "",
+      person_name: "",
+      program_status: "draft",
+      program_kind: "library",
+      source_program_id: null,
+      source_version_id: null,
+      current_version_id: null,
+      program_revision: 0,
+      program_updated_at: "2026-10-20T12:00:00.000Z",
+      start_date: null,
+      version_id: "33333333-3333-4333-8333-333333333333",
+      version_number: 1,
+      version_status: "draft",
+      week_id: "week-a",
+      week_number: 1,
+      week_name: "Foundation",
+      phase: "Foundation",
+      progression_notes: "",
+      success_metric: "",
+      workout_id: "55555555-5555-4555-8555-555555555555",
+      day_of_week: 2,
+      workout_name: "Lower body",
+      workout_description: "",
+      session_type: "Strength",
+      warmup: "",
+      cooldown: "",
+      is_rest: false,
+      workout_exercise_id: "66666666-6666-4666-8666-666666666666",
+      sort_order: 1,
+      exercise_id: null,
+      sets: 3,
+      reps: 8,
+      duration: null,
+      duration_unit: null,
+      distance: null,
+      distance_unit: null,
+      load: null,
+      load_unit: "kg",
+      rir: null,
+      tempo: null,
+      rest_seconds: 60,
+      intensity: null,
+      intensity_unit: null,
+      work_seconds: null,
+      recovery_seconds: null,
+      rounds: null,
+      notes: "",
+      resource_url: null,
+      planner_metadata: { activityType: "strength", format: "sets", targetUnit: "reps" },
+      exercise_name: "Goblet squat",
+      legacy_exercise_name: null,
+      category: "strength",
+      current_version_number: null
+    }],
+    rowCount: 1
+  }));
+
+  const loaded = await loadProgram(db, coachId, programId);
+  assert.strictEqual(loaded.versionStatus, "draft");
+  assert.strictEqual(loaded.program.days[2].exercises[0].name, "Goblet squat");
+  assert.match(db.calls[0].sql, /we\.exercise_name/i);
+  assert.match(db.calls[0].sql, /e\.name as legacy_exercise_name/i);
+}
+
 function testProgramPublishAndDashboardContracts() {
   const programLibrary = fs.readFileSync(
     path.join(__dirname, "..", "workoutplanner", "program-library.js"),
@@ -128,6 +199,7 @@ function testProgramPublishAndDashboardContracts() {
 async function run() {
   await testDatabaseBackedVersionCounts();
   await testVersionHistorySeparatesStatuses();
+  await testSavedDraftLoadsPrescriptionName();
   testProgramPublishAndDashboardContracts();
   console.log("WorkoutPlanner program-library checks passed.");
 }

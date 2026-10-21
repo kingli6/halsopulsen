@@ -4,6 +4,7 @@ const path = require("path");
 
 const migrationName = "012_stage1-session-integrity.sql";
 const nextMigrationName = "013_prescription-names-client-identities.sql";
+const repairMigrationName = "014_repair-prescription-name-column.sql";
 const migrationPath = path.join(
   __dirname,
   "..",
@@ -26,7 +27,8 @@ function run() {
     .sort();
   assert.ok(migrations.includes(migrationName), "Migration 012 must remain in the history.");
   assert.strictEqual(migrations[migrations.indexOf(migrationName) + 1], nextMigrationName);
-  assert.strictEqual(migrations[migrations.length - 1], nextMigrationName);
+  assert.strictEqual(migrations[migrations.indexOf(nextMigrationName) + 1], repairMigrationName);
+  assert.strictEqual(migrations[migrations.length - 1], repairMigrationName);
 
   const sql = fs.readFileSync(migrationPath, "utf8");
   const normalized = sql.replace(/\s+/g, " ").toLowerCase();
@@ -172,7 +174,38 @@ function run() {
   assert.doesNotMatch(nextNormalized, /add column activity_source\b/);
   assert.doesNotMatch(nextNormalized, /delete from public\.(workout_sessions|session_exercises|session_sets|exercises)\b/);
 
-  console.log(`WorkoutPlanner Step 1 migration static checks passed (${migrationName}).`);
+  const repairPath = path.join(migrationDirectory, repairMigrationName);
+  const repairSql = fs.readFileSync(repairPath, "utf8");
+  const repairNormalized = repairSql.replace(/\s+/g, " ").toLowerCase();
+  requireMatch(repairSql, /^\s*--[^\n]*\n\s*--[^\n]*\n\s*begin\s*;/i, "Repair migration must start transactionally.");
+  requireMatch(repairSql, /commit\s*;\s*$/i, "Repair migration must commit transactionally.");
+  requireMatch(
+    repairNormalized,
+    /add column if not exists exercise_name text/,
+    "Repair migration must not create a duplicate prescription-name column."
+  );
+  requireMatch(
+    repairNormalized,
+    /set exercise_name = e\.name[\s\S]*?where e\.id = we\.exercise_id[\s\S]*?we\.exercise_name is null[\s\S]*?length\(btrim\(we\.exercise_name\)\) = 0/,
+    "Only missing or blank names may be backfilled from their linked catalog exercise."
+  );
+  requireMatch(
+    repairNormalized,
+    /exercise_name is null[\s\S]*?raise exception[\s\S]*?alter column exercise_name set not null/,
+    "Unresolvable missing names must fail rather than be invented."
+  );
+  requireMatch(
+    repairNormalized,
+    /alter column exercise_id drop not null/,
+    "Custom prescribed names must not require a global catalog exercise."
+  );
+  assert.doesNotMatch(
+    repairNormalized,
+    /drop column|delete from public\.workout_exercises|set exercise_name = null/,
+    "Repair migration must not discard prescription data."
+  );
+
+  console.log(`WorkoutPlanner migration static checks passed (${migrationName}, ${nextMigrationName}, ${repairMigrationName}).`);
 }
 
 run();
