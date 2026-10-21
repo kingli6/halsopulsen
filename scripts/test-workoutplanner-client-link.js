@@ -836,7 +836,8 @@ async function run() {
           program_id: "program-a",
           coach_profile_id: "coach-a",
           revision: 8,
-          current_version_id: "version-current"
+          current_version_id: "version-current",
+          kind: "client"
         }]
       };
     }
@@ -845,6 +846,8 @@ async function run() {
     clientId: "client-a",
     programId: "program-a",
     coachProfileId: "coach-a",
+    directProgram: false,
+    programKind: "client",
     revision: 8,
     currentVersionId: "version-current"
   });
@@ -897,14 +900,12 @@ async function run() {
   assert.doesNotMatch(adminPage, /clientCreateForm|clientCreateSection|id="clientList"/);
   assert.doesNotMatch(adminPage, /cloneProgramClientNameInput|cloneProgramNameInput|id="cloneProgramForm"/);
   const planner = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
-  assert.match(planner, /data-create-client-copy/);
-  assert.match(planner, /data-client-copy-select/);
+  assert.doesNotMatch(
+    planner,
+    /createClientDatabaseProgram|data-create-client-copy|data-client-copy-select|data-source-version-id/
+  );
   assert.doesNotMatch(planner, /data-clone-database-program|beginLegacyClone|legacyCloneProgramForm/);
-  assert.match(planner, /\/api\/workoutplanner\/programs\/\$\{encodeURIComponent\(programId\)\}\/clone/);
-  assert.match(planner, /fresh\.publishedProgram = null/);
-  assert.match(planner, /data-source-version-id="\$\{escapePlanHtml\(program\.currentVersionId\)\}"/);
   assert.match(planner, /adminDatabaseWorkspace && program\.kind === "library"/);
-  assert.match(planner, /loadDatabaseLibrary\(\), loadClients\(\)/);
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);
   assert.match(planner, /Open private link/);
@@ -941,7 +942,7 @@ async function run() {
   assert.match(server, /\/api\/workoutplanner\/programs\/:programId\/versions/);
   const publicPage = fs.readFileSync(path.join(__dirname, "..", "dashboard", "client.js"), "utf8");
   assert.match(publicPage, /Boolean\(result\.data\.directProgram\)/);
-  assert.match(publicPage, /Published training plan/);
+  assert.match(publicPage, /Shared training program/);
   assert.match(publicPage, /directProgram && item\.version_number/);
   assert.match(publicPage, /OWNER PREVIEW · READ ONLY/);
   assert.match(publicPage, /!clientPage\.preview && item\.id/);

@@ -97,6 +97,14 @@ function testDatabaseWritingScriptsRunTheGuardBeforeConnecting() {
     path.join(__dirname, "test-workoutplanner-session-integration.js"),
     "utf8"
   );
+  const hardeningScript = fs.readFileSync(
+    path.join(__dirname, "test-workoutplanner-session-hardening.js"),
+    "utf8"
+  );
+  const pass3Script = fs.readFileSync(
+    path.join(__dirname, "test-workoutplanner-pass3.js"),
+    "utf8"
+  );
 
   const publishGuard = publishScript.indexOf("assertWorkoutPlannerTestTargetIsDistinct()");
   const publishConnection = publishScript.indexOf("createRollbackTestDatabase()");
@@ -105,6 +113,14 @@ function testDatabaseWritingScriptsRunTheGuardBeforeConnecting() {
   const sessionGuard = sessionScript.indexOf("assertWorkoutPlannerTestTargetIsDistinct()");
   const sessionConnection = sessionScript.indexOf("new Pool(");
   assert.ok(sessionGuard >= 0 && sessionGuard < sessionConnection);
+
+  const hardeningGuard = hardeningScript.indexOf("assertWorkoutPlannerTestTargetIsDistinct()");
+  const hardeningConnection = hardeningScript.indexOf("createRollbackTestDatabase()");
+  assert.ok(hardeningGuard >= 0 && hardeningGuard < hardeningConnection);
+
+  const pass3Guard = pass3Script.indexOf("assertWorkoutPlannerTestTargetIsDistinct()");
+  const pass3Connection = pass3Script.indexOf("createRollbackTestDatabase()");
+  assert.ok(pass3Guard >= 0 && pass3Guard < pass3Connection);
 }
 
 function testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget() {

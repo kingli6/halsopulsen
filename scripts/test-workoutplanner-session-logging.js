@@ -8,6 +8,7 @@ const {
 
 const CLIENT_ID = "11111111-1111-4111-8111-111111111111";
 const PROGRAM_ID = "22222222-2222-4222-8222-222222222222";
+const PROGRAM_VERSION_ID = "99999999-9999-4999-8999-999999999999";
 const ASSIGNMENT_ID = "33333333-3333-4333-8333-333333333333";
 const WORKOUT_ID = "44444444-4444-4444-8444-444444444444";
 const WORKOUT_EXERCISE_ID = "55555555-5555-4555-8555-555555555555";
@@ -15,7 +16,12 @@ const IDENTITY_ID = "66666666-6666-4666-8666-666666666666";
 const SESSION_ID = "77777777-7777-4777-8777-777777777777";
 const SESSION_EXERCISE_ID = "88888888-8888-4888-8888-888888888888";
 
-function createFakePool({ scopeAvailable = true, assignmentAvailable = true } = {}) {
+function createFakePool({
+  scopeAvailable = true,
+  assignmentAvailable = true,
+  directProgram = false,
+  workoutAvailable = true
+} = {}) {
   const calls = [];
   const client = {
     async query(sql, values = []) {
@@ -26,7 +32,19 @@ function createFakePool({ scopeAvailable = true, assignmentAvailable = true } = 
       }
       if (normalized.includes("from public.client_access_links l")) {
         return scopeAvailable
-          ? { rowCount: 1, rows: [{ client_id: CLIENT_ID, program_id: PROGRAM_ID }] }
+          ? {
+            rowCount: 1,
+            rows: [{
+              client_id: directProgram ? null : CLIENT_ID,
+              program_id: PROGRAM_ID,
+              kind: directProgram ? "library" : "client"
+            }]
+          }
+          : { rowCount: 0, rows: [] };
+      }
+      if (normalized.includes("from public.workouts w")) {
+        return workoutAvailable
+          ? { rowCount: 1, rows: [{ id: WORKOUT_ID }] }
           : { rowCount: 0, rows: [] };
       }
       if (normalized.includes("from public.assignments a")) {
@@ -136,7 +154,12 @@ async function run() {
       sets: [{ reps: "8", load: "42.5", loadUnit: "kg" }]
     }]
   });
-  assert.deepStrictEqual(saved, { id: SESSION_ID, clientId: CLIENT_ID, programId: PROGRAM_ID });
+  assert.deepStrictEqual(saved, {
+    id: SESSION_ID,
+    clientId: CLIENT_ID,
+    programId: PROGRAM_ID,
+    workoutId: WORKOUT_ID
+  });
   assert.ok(pool.calls.some(call =>
     call.sql.startsWith("insert into public.workout_exercises") === false
     && call.sql.startsWith("insert into public.exercises") === false
@@ -172,6 +195,52 @@ async function run() {
       && call.values[5] === 5
       && call.values[6] === "km"
   ), "Continuous conditioning duration and distance must be stored independently with units.");
+
+  const sharedProgramPool = createFakePool({ directProgram: true });
+  const sharedProgramSession = await saveClientSession(
+    sharedProgramPool,
+    "shared-program-token",
+    {
+      programId: PROGRAM_ID,
+      workoutId: WORKOUT_ID,
+      programVersionId: PROGRAM_VERSION_ID,
+      performedOn: "2026-10-13",
+      exercises: [{
+        workoutExerciseId: WORKOUT_EXERCISE_ID,
+        sets: [{ reps: "8", load: "42.5", loadUnit: "kg" }]
+      }]
+    }
+  );
+  assert.deepStrictEqual(sharedProgramSession, {
+    id: SESSION_ID,
+    clientId: null,
+    programId: PROGRAM_ID,
+    workoutId: WORKOUT_ID
+  });
+  const sharedWorkoutValidation = sharedProgramPool.calls.find(call =>
+    call.sql.includes("from public.workouts w")
+  );
+  assert.deepStrictEqual(sharedWorkoutValidation.values, [
+    WORKOUT_ID,
+    PROGRAM_VERSION_ID,
+    PROGRAM_ID
+  ]);
+  const sharedSessionInsert = sharedProgramPool.calls.find(call =>
+    call.sql.startsWith("insert into public.workout_sessions")
+  );
+  assert.match(sharedSessionInsert.sql, /\(program_id, performed_on/);
+  assert.doesNotMatch(sharedSessionInsert.sql, /assignment_id|client_id/);
+  assert.ok(!sharedProgramPool.calls.some(call =>
+    call.sql.startsWith("insert into public.client_exercises")
+  ), "Shared program sessions must not create participant-owned exercise identities.");
+  assert.ok(sharedProgramPool.calls.some(call =>
+    call.sql.startsWith("insert into public.session_exercises")
+    && call.values[2] === null
+    && call.values[3] === "Goblet squat"
+  ), "Shared program sessions must keep the prescribed exercise name without a client identity.");
+  assert.ok(!sharedProgramPool.calls.some(call =>
+    call.sql.startsWith("update public.assignments")
+  ), "Shared program sessions must not modify client assignments.");
 
   const genericLinkPool = createFakePool({ scopeAvailable: false });
   await expectStatus(saveClientSession(genericLinkPool, "generic-library-token", {

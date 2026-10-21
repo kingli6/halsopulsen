@@ -905,85 +905,6 @@ function restoreSelectedDatabaseProgramMetadata() {
   persistPlanState();
 }
 
-async function createClientDatabaseProgram(programId, versionId, clientId, button, programName = "") {
-  if (!databaseWorkspace) return;
-  const program = planState.databasePrograms.find(item => item.id === programId);
-  const selectedClient = planState.clients.find(item => item.id === clientId && item.active);
-  const status = document.getElementById("cloneProgramStatus")
-    || document.getElementById("databaseProgramLibraryStatus");
-  if (!program || program.kind !== "library" || !versionId) {
-    if (status) status.textContent = "The selected reusable program version is unavailable.";
-    return;
-  }
-  if (!selectedClient) {
-    if (status) {
-      status.textContent = planState.clients.some(item => item.active)
-        ? "Choose an existing client first."
-        : "No existing active clients are available. Select an existing client before using this program.";
-    }
-    return;
-  }
-  if (status) status.textContent = "";
-  if (status) status.classList.remove("is-error");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Preparing…";
-  }
-  try {
-    const response = await fetch(
-      `/api/workoutplanner/programs/${encodeURIComponent(programId)}/clone`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceVersionId: versionId,
-          clientId,
-          ...(programName ? { name: programName } : {})
-        })
-      }
-    );
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok) {
-      throw new Error(result.error || "Could not create the client program.");
-    }
-    const fresh = TrackerData.defaultData();
-    fresh.person = { name: selectedClient.displayName };
-    fresh.goal = "Build a consistent training habit";
-    fresh.draftGoal = fresh.goal;
-    fresh.publishedGoal = fresh.goal;
-    fresh.draftProgram = TrackerData.normalizeProgram(result.program);
-    fresh.publishedProgram = null;
-    fresh.databaseProgramId = result.meta?.id;
-    fresh.databaseProgramKind = result.meta?.kind || "client";
-    fresh.databaseProgramClientId = result.meta?.clientId || clientId;
-    planState.data = fresh;
-    planState.databaseProgramId = result.meta?.id || null;
-    planState.databaseProgramKind = fresh.databaseProgramKind;
-    planState.databaseProgramClientId = fresh.databaseProgramClientId;
-    planState.databaseProgramVersion = Number(result.meta?.version || fresh.draftProgram.version) || 1;
-    planState.databaseProgramVersionStatus = result.meta?.versionStatus || "draft";
-    planState.selectedWeekIndex = 0;
-    planState.editorMode = true;
-    planState.editingCurrentPlanId = null;
-    window.history.pushState({}, "", `${plannerPath}?view=editor`);
-    persistPlanState();
-    await loadDatabaseLibrary();
-    await loadClients();
-    renderAllPlan();
-    showPlanToast(`Client copy prepared for ${selectedClient.displayName}.`);
-  } catch (error) {
-    if (status) {
-      status.textContent = error.message || "Could not create the client program.";
-      status.classList.add("is-error");
-    }
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = "Create client copy";
-    }
-  }
-}
-
 async function toggleProgramVersionHistory(programId, button) {
   const panel = document.querySelector(`[data-program-history-panel="${CSS.escape(programId)}"]`);
   const list = panel?.querySelector(".program-version-list");
@@ -2103,19 +2024,8 @@ function bindPlanEvents() {
   if (databaseProgramList) {
     databaseProgramList.addEventListener("click", event => {
       const open = event.target.closest("[data-open-database-program]");
-      const clientCopy = event.target.closest("[data-create-client-copy]");
       const history = event.target.closest("[data-toggle-program-history]");
       if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
-      if (clientCopy && adminDatabaseWorkspace) {
-        const clientId = clientCopy.closest(".library-item")
-          ?.querySelector("[data-client-copy-select]")?.value;
-        createClientDatabaseProgram(
-          clientCopy.dataset.createClientCopy,
-          clientCopy.dataset.sourceVersionId,
-          clientId,
-          clientCopy
-        );
-      }
       if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
     });
   }

@@ -1,6 +1,8 @@
 if (!process.env.WORKOUTPLANNER_TEST_DATABASE_URL) {
   throw new Error("Set WORKOUTPLANNER_TEST_DATABASE_URL to a dedicated non-production database; refusing the default WorkoutPlanner URL.");
 }
+const { assertWorkoutPlannerTestTargetIsDistinct } = require("./workoutplanner-test-safety");
+assertWorkoutPlannerTestTargetIsDistinct();
 process.env.NODE_ENV = "test";
 
 const assert = require("assert");
