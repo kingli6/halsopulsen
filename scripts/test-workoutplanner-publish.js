@@ -122,7 +122,7 @@ async function run() {
     const programResult = await pool.query(
       `insert into public.programs
         (coach_profile_id, client_id, kind, name, description, status, start_date)
-       values ($1, $2, 'client', 'Pass 1 publish program', '', 'active', '2026-01-05')
+       values ($1, $2, 'client', 'Pass 1 publish program', '', 'draft', '2026-01-05')
        returning id`,
       [fixture.coachId, fixture.clientId]
     );
@@ -172,6 +172,11 @@ async function run() {
     assert.strictEqual(firstPublish.version, 1);
     assert.strictEqual(firstPublish.versionStatus, "published");
     assert.strictEqual(firstPublish.publishedAssignmentCount, 1);
+    const firstParent = await pool.query(
+      "select status from public.programs where id = $1",
+      [fixture.programId]
+    );
+    assert.strictEqual(firstParent.rows[0].status, "active");
 
     const firstVersion = await pool.query(
       `select status, published_at from public.program_versions where id = $1`,
