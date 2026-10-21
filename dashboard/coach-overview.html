@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Review current client programs and recent training sessions." />
+  <title>Client overview — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/dashboard/portal.css" />
+  <link rel="stylesheet" href="/dashboard/coach-overview.css" />
+  <script src="/dashboard/coach-overview.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">H</span>
+        <span>Hälso<span class="brand-accent">Pulsen</span></span>
+      </a>
+      <nav class="topnav" aria-label="Main navigation">
+        <a class="topnav-link" href="/admin/plans/">Plan programs</a>
+        <a class="topnav-link active" href="/admin/clients/" aria-current="page">Clients</a>
+        <a class="topnav-link" href="/admin/booking/">Booking admin</a>
+        <a class="topnav-link" href="https://halsopulsen.se/">Main site</a>
+        <button class="topnav-link topnav-button" id="adminLogoutBtn" type="button">Sign out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell page coach-overview-page">
+    <section class="page-intro">
+      <div>
+        <p class="eyebrow">COACH WORKSPACE</p>
+        <h1>Client overview</h1>
+        <p class="intro-copy">See what each client is currently following and what they have recorded recently.</p>
+      </div>
+      <div class="intro-actions">
+        <span class="local-owner-badge">Owner workspace · signed in</span>
+        <a class="button button-secondary" href="/admin/plans/">Plan programs</a>
+      </div>
+    </section>
+
+    <p class="coach-overview-status" id="overviewStatus" role="status" aria-live="polite"></p>
+
+    <div class="coach-overview-layout">
+      <aside class="coach-client-panel card" aria-labelledby="clientsHeading">
+        <div class="coach-panel-heading">
+          <div>
+            <p class="section-kicker">CLIENTS</p>
+            <h2 id="clientsHeading">Your clients</h2>
+          </div>
+          <span class="draft-status is-current" id="clientCount">0</span>
+        </div>
+        <p class="coach-panel-status" id="clientListStatus" role="status" aria-live="polite">Loading clients…</p>
+        <div class="coach-client-list" id="clientList"></div>
+      </aside>
+
+      <section class="coach-detail-panel" id="clientDetail" aria-live="polite" aria-label="Client details">
+        <div class="empty-panel card">
+          Select a client to see their active programs and recent sessions.
+        </div>
+      </section>
+    </div>
+
+    <footer class="dashboard-footer">
+      <span>HälsoPulsen owner workspace</span>
+      <span>Program prescriptions and recorded performance are shown separately.</span>
+    </footer>
+  </main>
+</body>
+</html>

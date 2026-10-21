@@ -16,6 +16,10 @@ const {
   publicProfile
 } = require('./workoutplanner/identity');
 const {
+  getClientOverview,
+  listCoachClients
+} = require('./workoutplanner/coach-overview');
+const {
   findClientDataByToken,
   getClientAccessLink,
   getProgramAccessLink,
@@ -240,52 +244,42 @@ app.get('/api/workoutplanner/profile', requireWorkoutPlannerProfile, (req, res) 
 
 app.get('/api/workoutplanner/clients', requireWorkoutPlannerOwner, async (req, res) => {
   try {
-    const result = await getWorkoutPlannerPool().query(
-      `SELECT c.id AS client_id, c.display_name, c.active,
-              p.id AS program_id, p.name AS program_name, p.status AS program_status,
-              (l.id IS NOT NULL) AS has_active_private_link
-         FROM public.clients c
-         JOIN public.coach_clients cc ON cc.client_id = c.id
-         LEFT JOIN public.programs p
-           ON p.client_id = c.id
-          AND p.coach_profile_id = cc.coach_profile_id
-          AND p.kind = 'client'
-         LEFT JOIN public.client_access_links l
-           ON l.client_id = c.id
-          AND l.program_id = p.id
-          AND l.revoked_at IS NULL
-        WHERE cc.coach_profile_id = $1
-        ORDER BY c.display_name ASC, c.created_at ASC, p.updated_at DESC NULLS LAST`,
-      [req.workoutPlannerProfile.id]
-    );
-    const clients = new Map();
-    for (const row of result.rows) {
-      if (!clients.has(row.client_id)) {
-        clients.set(row.client_id, {
-          id: row.client_id,
-          displayName: row.display_name,
-          active: Boolean(row.active),
-          programs: []
-        });
-      }
-      if (row.program_id) {
-        clients.get(row.client_id).programs.push({
-          id: row.program_id,
-          name: row.program_name,
-          status: row.program_status,
-          hasActivePrivateLink: Boolean(row.has_active_private_link)
-        });
-      }
-    }
     return res.json({
       ok: true,
-      clients: [...clients.values()]
+      clients: await listCoachClients(
+        getWorkoutPlannerPool(),
+        req.workoutPlannerProfile.id
+      )
     });
   } catch (error) {
     console.error('Could not list WorkoutPlanner clients:', error.message);
     return res.status(503).json({ ok: false, error: 'The clients could not be loaded.' });
   }
 });
+
+app.get(
+  '/api/workoutplanner/clients/:clientId/overview',
+  requireWorkoutPlannerOwner,
+  async (req, res) => {
+    try {
+      const overview = await getClientOverview(
+        getWorkoutPlannerPool(),
+        req.workoutPlannerProfile.id,
+        req.params.clientId
+      );
+      if (!overview) {
+        return res.status(404).json({ ok: false, error: 'Client not found.' });
+      }
+      return res.json({ ok: true, overview });
+    } catch (error) {
+      console.error('Could not load WorkoutPlanner client overview:', error.message);
+      return res.status(503).json({
+        ok: false,
+        error: 'The client overview could not be loaded.'
+      });
+    }
+  }
+);
 
 app.get('/api/workoutplanner/programs', requireWorkoutPlannerOwner, async (req, res) => {
   try {
@@ -698,6 +692,12 @@ app.get(['/plans', '/plans/'], (req, res) => res.sendFile(path.join(__dirname, '
 app.get(['/admin/plans', '/admin/plans/'], (req, res) => {
   if (!readAdminSession(req)) return res.redirect(`/admin?next=${encodeURIComponent(adminRedirectPath(req))}`);
   res.sendFile(path.join(__dirname, 'dashboard', 'plan', 'index.html'));
+});
+app.get(['/admin/clients', '/admin/clients/'], (req, res) => {
+  if (!readAdminSession(req)) {
+    return res.redirect(`/admin?next=${encodeURIComponent('/admin/clients/')}`);
+  }
+  res.sendFile(path.join(__dirname, 'dashboard', 'coach-overview.html'));
 });
 function serveBookingAdminPage(req, res) {
   if (!readAdminSession(req)) {

@@ -58,6 +58,8 @@ function setPlanText(id, value) {
 
 function applyAdminWorkspaceCopy() {
   if (!adminDatabaseWorkspace) return;
+  const overviewLink = document.getElementById("coachOverviewNavLink");
+  if (overviewLink) overviewLink.hidden = false;
   const intro = document.querySelector(".intro-copy");
   if (intro) {
     intro.textContent = "Create a program for a named person, publish it directly, and share a private link. Drafts stay private until you publish.";
