@@ -759,8 +759,12 @@ async function run() {
   const planner = fs.readFileSync(path.join(__dirname, "..", "dashboard", "plan.js"), "utf8");
   assert.match(planner, /data-create-client-copy/);
   assert.match(planner, /data-client-copy-select/);
+  assert.match(planner, /data-clone-database-program/);
+  assert.match(planner, /beginLegacyClone\(/);
+  assert.match(planner, /\/api\/workoutplanner\/programs\/\$\{encodeURIComponent\(programId\)\}\/clone/);
+  assert.match(planner, /fresh\.publishedProgram = null/);
   assert.match(planner, /program\.currentVersionId \|\| ""/);
-  assert.match(planner, /adminDatabaseWorkspace \? program\.kind === "library"/);
+  assert.match(planner, /adminDatabaseWorkspace && program\.kind === "library"/);
   assert.match(planner, /loadDatabaseLibrary\(\), loadClients\(\)/);
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);

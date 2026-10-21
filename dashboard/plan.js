@@ -176,7 +176,7 @@ function formatPublishedDate(value) {
 function renderLibrarySummary() {
   const summary = document.getElementById("librarySummary");
   if (!summary) return;
-  const publishedVersionCount = adminDatabaseWorkspace
+  const publishedVersionCount = databaseWorkspace
     ? planState.databasePrograms.reduce(
       (total, program) => total + (Number(program.publishedVersionCount) || 0),
       0
@@ -808,8 +808,12 @@ function renderDatabaseProgramLibrary() {
     (total, program) => total + (Number(program.publishedVersionCount) || 0),
     0
   );
+  const archivedVersionCount = programs.reduce(
+    (total, program) => total + (Number(program.archivedVersionCount) || 0),
+    0
+  );
   if (summary) {
-    summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"} · ${publishedVersionCount} published ${publishedVersionCount === 1 ? "version" : "versions"}`;
+    summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"} · ${publishedVersionCount} published ${publishedVersionCount === 1 ? "version" : "versions"} · ${archivedVersionCount} archived ${archivedVersionCount === 1 ? "version" : "versions"}`;
   }
   if (!programs.length) {
     container.innerHTML = `<div class="empty-panel">${adminDatabaseWorkspace
