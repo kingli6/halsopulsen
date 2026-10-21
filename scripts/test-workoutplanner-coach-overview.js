@@ -83,9 +83,9 @@ async function testCoachScopedClientListAndMultiplePrograms() {
       display_name: "Client A",
       active: true,
       programs: [
-        { id: programId, name: "Strength block", status: "active", currentVersionNumber: 1 },
-        { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Mobility", status: "active", currentVersionNumber: 2 },
-        { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name: "Old plan", status: "archived", currentVersionNumber: 1 }
+        { id: programId, name: "Strength block", status: "active", currentVersionNumber: 1, hasActivePrivateLink: true },
+        { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Mobility", status: "active", currentVersionNumber: 2, hasActivePrivateLink: false },
+        { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name: "Old plan", status: "archived", currentVersionNumber: 1, hasActivePrivateLink: false }
       ],
       last_activity_date: "2026-10-20",
       last_activity_status: "completed",
@@ -113,6 +113,8 @@ async function testCoachScopedClientListAndMultiplePrograms() {
     [programId, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"],
     "Every active program should be returned, with no implicit primary selection."
   );
+  assert.strictEqual(clients[0].activePrograms[0].hasActivePrivateLink, true);
+  assert.strictEqual(clients[0].activePrograms[1].hasActivePrivateLink, false);
   assert.deepStrictEqual(clients[0].recentActivity, {
     date: "2026-10-20",
     status: "completed",
@@ -124,6 +126,7 @@ async function testCoachScopedClientListAndMultiplePrograms() {
   assert.match(listQuery.sql, /join public\.coach_clients cc/i);
   assert.match(listQuery.sql, /cc\.coach_profile_id\s*=\s*\$1/i);
   assert.match(listQuery.sql, /current_version\.id\s*=\s*p\.current_version_id/i);
+  assert.match(listQuery.sql, /a\.status\s+in\s*\('skipped',\s*'missed'\)/i);
 }
 
 async function testOwnerRejectionAndCurrentVersionPointer() {
@@ -197,6 +200,33 @@ async function testHistorySeparationAndSkippedDeduplication() {
     actual_reps: null,
     actual_load: null
   });
+  const completedWithoutFeedback = makeActivityRow({
+    event_key: "session:dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    session_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    activity_date: "2026-10-18",
+    note: "",
+    difficulty: null,
+    energy: null
+  });
+  const missed = makeActivityRow({
+    event_key: "assignment:eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    session_id: null,
+    assignment_id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    activity_date: "2026-10-17",
+    status: "missed",
+    note: "",
+    difficulty: null,
+    energy: null,
+    workout_name: "Missed workout",
+    prescribed_exercise_id: null,
+    prescription_name: null,
+    session_exercise_id: null,
+    actual_activity_name: null,
+    session_set_id: null,
+    actual_set_number: null,
+    actual_reps: null,
+    actual_load: null
+  });
 
   const db = createDb((call, callNumber) => {
     if (callNumber === 1) {
@@ -206,11 +236,18 @@ async function testHistorySeparationAndSkippedDeduplication() {
       };
     }
     if (callNumber === 2) return { rows: [], rowCount: 0 };
-    return { rows: [completedFirstSet, completedSecondSet, skipped], rowCount: 3 };
+    return {
+      rows: [completedFirstSet, completedSecondSet, skipped, completedWithoutFeedback, missed],
+      rowCount: 5
+    };
   });
   const overview = await getClientOverview(db, coachId, clientId);
-  assert.strictEqual(overview.recentSessions.length, 2, "One completed session and one skipped assignment should be represented once each.");
-  const [completed, skippedSession] = overview.recentSessions;
+  assert.strictEqual(overview.recentSessions.length, 4, "Completed, skipped, and missed activity should each appear once.");
+  const completed = overview.recentSessions.find(session => session.sessionId === sessionId);
+  const skippedSession = overview.recentSessions.find(session => session.assignmentId === skippedAssignmentId);
+  const noFeedbackSession = overview.recentSessions.find(session => session.sessionId === completedWithoutFeedback.session_id);
+  const missedSession = overview.recentSessions.find(session => session.assignmentId === missed.assignment_id);
+  assert.ok(completed && skippedSession && noFeedbackSession && missedSession);
   assert.strictEqual(completed.status, "completed");
   assert.strictEqual(completed.program.versionId, currentVersionId);
   assert.strictEqual(completed.program.versionNumber, 1);
@@ -240,10 +277,20 @@ async function testHistorySeparationAndSkippedDeduplication() {
   assert.strictEqual(completed.energy, 4);
   assert.strictEqual(skippedSession.status, "skipped");
   assert.strictEqual(skippedSession.assignmentId, skippedAssignmentId);
+  assert.strictEqual(skippedSession.note, "");
+  assert.strictEqual(skippedSession.difficulty, null);
+  assert.strictEqual(skippedSession.energy, null);
+  assert.strictEqual(noFeedbackSession.note, "");
+  assert.strictEqual(noFeedbackSession.difficulty, null);
+  assert.strictEqual(noFeedbackSession.energy, null);
+  assert.strictEqual(missedSession.status, "missed");
+  assert.strictEqual(missedSession.note, "");
+  assert.strictEqual(missedSession.difficulty, null);
+  assert.strictEqual(missedSession.energy, null);
 
   const activityQuery = db.calls[2].sql;
   assert.match(activityQuery, /union\s+all/i);
-  assert.match(activityQuery, /a\.status\s*=\s*'skipped'/i);
+  assert.match(activityQuery, /a\.status\s+in\s*\('skipped',\s*'missed'\)/i);
   assert.match(activityQuery, /not\s+exists\s*\([\s\S]*?ws\.assignment_id\s*=\s*a\.id/i);
   assert.match(activityQuery, /source_version\.id\s*=\s*source_week\.program_version_id/i);
 
@@ -253,6 +300,44 @@ async function testHistorySeparationAndSkippedDeduplication() {
   );
   assert.match(dashboard, /coach-performance-label">Prescription/);
   assert.match(dashboard, /coach-performance-label">Actual result/);
+  assert.match(dashboard, /missed: "Missed"/);
+  assert.match(dashboard, /Private link active/);
+  assert.match(dashboard, /No active private link/);
+  assert.match(dashboard, /client\.active \? "Active" : "Inactive"/);
+  assert.match(dashboard, /if \(session\.note\)/);
+  assert.match(dashboard, /session\.difficulty != null/);
+  assert.match(dashboard, /session\.energy != null/);
+}
+
+async function testClientWithoutProgramOrHistory() {
+  const db = createDb((call, callNumber) => {
+    if (callNumber === 1) {
+      return {
+        rows: [{ id: clientId, display_name: "Client A", active: true }],
+        rowCount: 1
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  });
+  const overview = await getClientOverview(db, coachId, clientId);
+  assert.deepStrictEqual(overview.activePrograms, []);
+  assert.deepStrictEqual(overview.recentSessions, []);
+  assert.ok(db.calls.every(call => /^\s*(select|with)\b/i.test(call.sql)));
+}
+
+async function testIncompleteSessionRepresentation() {
+  const integrityMigration = fs.readFileSync(
+    path.join(__dirname, "..", "db", "workoutplanner-migrations", "012_stage1-session-integrity.sql"),
+    "utf8"
+  );
+  assert.match(
+    integrityMigration,
+    /add constraint workout_sessions_status_check[\s\S]*?check \(status in \('completed', 'skipped'\)\)/i
+  );
+  assert.match(
+    fs.readFileSync(path.join(__dirname, "..", "workoutplanner", "coach-overview.js"), "utf8"),
+    /a\.status in \('skipped', 'missed'\)/i
+  );
 }
 
 async function testProtectedOverviewRoute() {
@@ -268,6 +353,8 @@ async function run() {
   await testCoachScopedClientListAndMultiplePrograms();
   await testOwnerRejectionAndCurrentVersionPointer();
   await testHistorySeparationAndSkippedDeduplication();
+  await testClientWithoutProgramOrHistory();
+  await testIncompleteSessionRepresentation();
   await testProtectedOverviewRoute();
   console.log("WorkoutPlanner Coach Overview checks passed.");
 }

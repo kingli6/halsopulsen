@@ -174,6 +174,27 @@ async function run() {
        values ($1, $2)`,
       [coachId, clientId]
     );
+    const emptyHistoryProfileId = crypto.randomUUID();
+    await db.query(
+      `insert into public.profiles (id, role, display_name, clerk_user_id)
+       values ($1, 'client', 'No History Overview Test Client', null)`,
+      [emptyHistoryProfileId]
+    );
+    const emptyHistoryClientResult = await db.query(
+      `insert into public.clients (profile_id, display_name)
+       values ($1, 'No History Overview Test Client')
+       returning id`,
+      [emptyHistoryProfileId]
+    );
+    const emptyHistoryClientId = emptyHistoryClientResult.rows[0].id;
+    await db.query(
+      `insert into public.coach_clients (coach_profile_id, client_id)
+       values ($1, $2)`,
+      [coachId, emptyHistoryClientId]
+    );
+    const emptyHistoryOverview = await getClientOverview(db, coachId, emptyHistoryClientId);
+    assert.deepStrictEqual(emptyHistoryOverview.activePrograms, []);
+    assert.deepStrictEqual(emptyHistoryOverview.recentSessions, []);
 
     const versionOneInput = createProgramInput(today, { reps: 10, load: 20 });
     const savedLibrary = await saveProgram(db, coachId, versionOneInput);
@@ -419,10 +440,23 @@ async function run() {
     const coachClients = await listCoachClients(db, coachId);
     const listedClient = coachClients.find(client => client.id === clientId);
     assert.ok(listedClient);
+    assert.strictEqual(listedClient.active, true);
     assert.strictEqual(
       listedClient.activePrograms.length,
       2,
       "The coach client list must return every active program for this client."
+    );
+    assert.ok(
+      listedClient.activePrograms.some(
+        program => program.id === clientProgramId && program.hasActivePrivateLink
+      ),
+      "The client list should expose the existing active private link."
+    );
+    assert.ok(
+      listedClient.activePrograms.some(
+        program => program.id === secondClientProgram.id && !program.hasActivePrivateLink
+      ),
+      "The client list should distinguish a program with no active private link."
     );
     assert.deepStrictEqual(await listCoachClients(db, otherCoachId), []);
     assert.strictEqual(
@@ -454,6 +488,28 @@ async function run() {
       "A skipped assignment with a skipped session must appear once, not once per representation."
     );
     assert.strictEqual(skippedSessions[0].status, "skipped");
+    assert.strictEqual(skippedSessions[0].note, "");
+    assert.strictEqual(skippedSessions[0].difficulty, null);
+    assert.strictEqual(skippedSessions[0].energy, null);
+
+    const missedAssignment = await db.query(
+      `insert into public.assignments
+         (client_id, workout_id, recommended_date, scheduled_date, status)
+       values ($1, $2, current_date - 400, current_date - 400, 'missed')
+       returning id`,
+      [clientId, conditioning.workout_id]
+    );
+    const missedAssignmentId = missedAssignment.rows[0].id;
+    const missedOverview = await getClientOverview(db, coachId, clientId);
+    const missedSessions = missedOverview.recentSessions
+      .filter(session => session.assignmentId === missedAssignmentId);
+    assert.strictEqual(
+      missedSessions.length,
+      1,
+      "An incomplete planned workout marked missed should appear once without a session row."
+    );
+    assert.strictEqual(missedSessions[0].status, "missed");
+    assert.strictEqual(missedSessions[0].sessionId, null);
 
     console.log(`WorkoutPlanner session hardening checks passed on ${database.rows[0].name}.`);
   } finally {

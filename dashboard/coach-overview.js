@@ -31,16 +31,27 @@ function formatNumber(value) {
 function formatStatus(status) {
   const labels = {
     completed: "Completed",
-    skipped: "Skipped"
+    skipped: "Skipped",
+    missed: "Missed"
   };
   return labels[status] || (status ? status[0].toUpperCase() + status.slice(1) : "Unknown");
 }
 
 function clientProgramSummary(client) {
-  const programs = client.activePrograms || [];
-  return programs.length
-    ? programs.map(program => `${program.name}${program.currentVersionNumber ? ` · v${program.currentVersionNumber}` : ""}`).join(", ")
-    : "No active program";
+  const programs = Array.isArray(client.programs)
+    ? client.programs
+    : (client.activePrograms || []);
+  if (!programs.length) return "No programs";
+  return programs.map(program => {
+    const version = program.currentVersionNumber
+      ? ` · v${program.currentVersionNumber}`
+      : "";
+    const status = formatStatus(program.status);
+    const link = program.hasActivePrivateLink
+      ? "Private link active"
+      : "No active private link";
+    return `${program.name || "Program"}${version} · ${status} · ${link}`;
+  }).join(" / ");
 }
 
 function renderClientList() {
@@ -65,9 +76,13 @@ function renderClientList() {
         class="coach-client-item${client.id === overviewState.selectedClientId ? " is-selected" : ""}"
         type="button"
         data-client-id="${escapeOverviewHtml(client.id)}"
+        aria-label="Open overview for ${escapeOverviewHtml(client.displayName)}"
         aria-pressed="${client.id === overviewState.selectedClientId ? "true" : "false"}"
       >
-        <span class="coach-client-name">${escapeOverviewHtml(client.displayName)}</span>
+        <span class="coach-client-heading">
+          <span class="coach-client-name">${escapeOverviewHtml(client.displayName)}</span>
+          <span class="coach-client-state ${client.active ? "is-active" : "is-inactive"}">${client.active ? "Active" : "Inactive"}</span>
+        </span>
         <span class="coach-client-programs">${escapeOverviewHtml(clientProgramSummary(client))}</span>
         <span class="coach-client-meta">${escapeOverviewHtml(activity)}</span>
       </button>
@@ -186,7 +201,7 @@ function renderExercises(exercises) {
 
 function renderSessions(sessions) {
   if (!sessions.length) {
-    return `<p class="coach-empty">No completed or skipped sessions have been recorded.</p>`;
+    return `<p class="coach-empty">No recent sessions or missed workouts have been recorded.</p>`;
   }
 
   return `
@@ -244,7 +259,7 @@ function renderClientOverview(overview) {
 
     <section class="coach-detail-section" aria-labelledby="recentSessionsHeading">
       <div class="coach-detail-section-heading">
-        <h2 id="recentSessionsHeading">Recent sessions</h2>
+        <h2 id="recentSessionsHeading">Recent sessions and missed workouts</h2>
         <p>Newest first</p>
       </div>
       ${renderSessions(overview.recentSessions)}
