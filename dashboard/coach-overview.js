@@ -1,7 +1,9 @@
 const overviewState = {
   clients: [],
   selectedClientId: null,
-  requestNumber: 0
+  requestNumber: 0,
+  currentOverview: null,
+  copyingSummary: false
 };
 
 function escapeOverviewHtml(value) {
@@ -238,6 +240,7 @@ function renderSessions(sessions) {
 }
 
 function renderClientOverview(overview) {
+  overviewState.currentOverview = overview;
   const client = overview.client;
   const detail = document.getElementById("clientDetail");
   detail.innerHTML = `
@@ -247,7 +250,17 @@ function renderClientOverview(overview) {
         <h2>${escapeOverviewHtml(client.displayName)}</h2>
         <p>${client.active ? "Active client" : "Inactive client"}</p>
       </div>
+      <div class="coach-summary-actions">
+        <button class="button button-secondary button-small" type="button" data-copy-client-summary>
+          Copy Client Summary
+        </button>
+        <p class="coach-summary-status" id="clientSummaryStatus" role="status" aria-live="polite"></p>
+      </div>
     </header>
+    <div class="coach-summary-fallback card" id="clientSummaryFallback" hidden>
+      <label for="clientSummaryText">Clipboard is unavailable. Select and copy the summary text below.</label>
+      <textarea id="clientSummaryText" rows="10" readonly spellcheck="false" aria-label="Client summary text"></textarea>
+    </div>
 
     <section class="coach-detail-section" aria-labelledby="activeProgramsHeading">
       <div class="coach-detail-section-heading">
@@ -265,6 +278,66 @@ function renderClientOverview(overview) {
       ${renderSessions(overview.recentSessions)}
     </section>
   `;
+}
+
+async function copyClientSummary(button) {
+  if (overviewState.copyingSummary || !overviewState.currentOverview) return;
+  const summaryApi = window.WorkoutPlannerClientSummary;
+  if (!summaryApi) return;
+
+  const summary = summaryApi.buildClientSummary(overviewState.currentOverview);
+  const status = document.getElementById("clientSummaryStatus");
+  const fallback = document.getElementById("clientSummaryFallback");
+  const textArea = document.getElementById("clientSummaryText");
+  if (!summary) {
+    if (status) status.textContent = "There is no summary information available to copy.";
+    return;
+  }
+
+  overviewState.copyingSummary = true;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  const buttonLabel = button.textContent.trim();
+  button.textContent = "Copying…";
+  if (status) {
+    status.textContent = "";
+    status.classList.remove("is-warning");
+  }
+  if (fallback) fallback.hidden = true;
+
+  try {
+    let copied = false;
+    try {
+      const clipboard = typeof navigator !== "undefined" ? navigator.clipboard : null;
+      copied = await summaryApi.tryCopyToClipboard(summary, clipboard);
+    } catch {
+      copied = false;
+    }
+    if (!button.isConnected) return;
+
+    if (copied) {
+      if (status) status.textContent = "Client summary copied to clipboard.";
+      return;
+    }
+
+    if (textArea) {
+      textArea.value = summary;
+      if (fallback) fallback.hidden = false;
+      textArea.focus();
+      textArea.select();
+    }
+    if (status) {
+      status.textContent = "Clipboard unavailable. Select the summary text below and copy it manually.";
+      status.classList.add("is-warning");
+    }
+  } finally {
+    overviewState.copyingSummary = false;
+    if (button.isConnected) {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = buttonLabel;
+    }
+  }
 }
 
 async function selectClient(clientId, { updateUrl = true, replaceUrl = false } = {}) {
@@ -328,6 +401,11 @@ async function loadClients() {
 document.getElementById("clientList").addEventListener("click", event => {
   const button = event.target.closest("[data-client-id]");
   if (button) selectClient(button.dataset.clientId);
+});
+
+document.getElementById("clientDetail").addEventListener("click", event => {
+  const button = event.target.closest("[data-copy-client-summary]");
+  if (button) copyClientSummary(button);
 });
 
 window.addEventListener("popstate", () => {

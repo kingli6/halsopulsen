@@ -5,6 +5,10 @@ const {
   getClientOverview,
   listCoachClients
 } = require("../workoutplanner/coach-overview");
+const {
+  buildClientSummary,
+  tryCopyToClipboard
+} = require("../dashboard/client-summary");
 
 const coachId = "coach-a";
 const clientId = "11111111-1111-4111-8111-111111111111";
@@ -340,6 +344,132 @@ async function testIncompleteSessionRepresentation() {
   );
 }
 
+async function testClientSummaryFormattingAndClipboard() {
+  const summary = buildClientSummary({
+    client: { displayName: "Alex Example", active: true },
+    activePrograms: [
+      {
+        name: "Strength plan",
+        currentVersionId: currentVersionId,
+        currentVersionNumber: 1,
+        startDate: "2026-10-01"
+      },
+      {
+        name: "Cardio plan",
+        currentVersionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        currentVersionNumber: 2
+      }
+    ],
+    draftProgram: { name: "Do not include this draft", versionNumber: 9 },
+    recentSessions: [
+      {
+        performedOn: "2026-10-20",
+        workoutName: "Full body",
+        status: "completed",
+        program: { name: "Strength plan", versionNumber: 1 },
+        note: "Felt steady",
+        difficulty: 6,
+        energy: 4,
+        exercises: [{
+          name: "Goblet squat",
+          prescription: { sets: 3, reps: 10, load: 20, loadUnit: "kg" },
+          actualSets: [
+            { setNumber: 1, reps: 12, load: 20, loadUnit: "kg" },
+            { setNumber: 2, reps: 10, load: 22, loadUnit: "kg" }
+          ]
+        }]
+      },
+      {
+        performedOn: "2026-10-19",
+        workoutName: "Upper body",
+        status: "skipped",
+        program: null,
+        note: "",
+        difficulty: null,
+        energy: null,
+        exercises: []
+      },
+      {
+        performedOn: "2026-10-18",
+        workoutName: "Cardio",
+        status: "missed",
+        program: null,
+        note: "",
+        difficulty: null,
+        energy: null,
+        exercises: []
+      }
+    ]
+  });
+
+  assert.match(summary, /^Client: Alex Example/m);
+  assert.match(summary, /Client status: Active/);
+  assert.match(summary, /Strength plan — Version 1 \(current published\)/);
+  assert.match(summary, /Cardio plan — Version 2 \(current published\)/);
+  assert.doesNotMatch(summary, /Do not include this draft/);
+  assert.match(summary, /2026-10-20 — Full body — Completed/);
+  assert.match(summary, /2026-10-19 — Upper body — Skipped/);
+  assert.match(summary, /2026-10-18 — Cardio — Missed/);
+  assert.match(summary, /Prescribed: 3 × 10 reps · @ 20 kg/);
+  assert.match(summary, /Actual: Set 1: 12 reps · @ 20 kg; Set 2: 10 reps · @ 22 kg/);
+  assert.ok(summary.indexOf("Prescribed:") < summary.indexOf("Actual:"));
+  assert.match(summary, /Feedback: Note: Felt steady · Difficulty 6\/10 · Energy 4\/5/);
+
+  const emptySummary = buildClientSummary({
+    client: { displayName: "Quiet Client" },
+    activePrograms: [],
+    recentSessions: []
+  });
+  assert.strictEqual(emptySummary, "Client: Quiet Client");
+
+  const noFeedbackSummary = buildClientSummary({
+    client: { displayName: "Quiet Client" },
+    activePrograms: [],
+    recentSessions: [{
+      performedOn: "2026-10-18",
+      workoutName: "Easy ride",
+      status: "completed",
+      exercises: []
+    }]
+  });
+  assert.doesNotMatch(noFeedbackSummary, /Feedback:|No feedback|No actual|No prescription/);
+
+  const clipboardWrites = [];
+  assert.strictEqual(
+    await tryCopyToClipboard(summary, {
+      async writeText(text) {
+        clipboardWrites.push(text);
+      }
+    }),
+    true
+  );
+  assert.deepStrictEqual(clipboardWrites, [summary]);
+  assert.strictEqual(
+    await tryCopyToClipboard(summary, {
+      async writeText() {
+        throw new Error("Clipboard permission denied");
+      }
+    }),
+    false
+  );
+  assert.strictEqual(await tryCopyToClipboard(summary, null), false);
+
+  const dashboard = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "coach-overview.js"),
+    "utf8"
+  );
+  assert.match(dashboard, /Copy Client Summary/);
+  assert.match(dashboard, /Client summary copied to clipboard/);
+  assert.match(dashboard, /Clipboard unavailable\. Select the summary text below and copy it manually/);
+  assert.match(dashboard, /textArea\.select\(\)/);
+  assert.match(dashboard, /overviewState\.copyingSummary/);
+  const html = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "coach-overview.html"),
+    "utf8"
+  );
+  assert.match(html, /\/dashboard\/client-summary\.js/);
+}
+
 async function testProtectedOverviewRoute() {
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(
@@ -355,6 +485,7 @@ async function run() {
   await testHistorySeparationAndSkippedDeduplication();
   await testClientWithoutProgramOrHistory();
   await testIncompleteSessionRepresentation();
+  await testClientSummaryFormattingAndClipboard();
   await testProtectedOverviewRoute();
   console.log("WorkoutPlanner Coach Overview checks passed.");
 }

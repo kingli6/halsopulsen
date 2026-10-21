@@ -22,7 +22,13 @@
 .coach-detail-panel { min-width: 0; }
 .coach-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 20px 22px; margin-bottom: 16px; }
 .coach-detail-header h2 { margin-bottom: 4px; font-size: 25px; }
-.coach-detail-header p:last-child { margin: 0; color: var(--muted); font-size: 12px; }
+.coach-detail-header > div:first-child > p:last-child { margin: 0; color: var(--muted); font-size: 12px; }
+.coach-summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.coach-summary-status { min-height: 14px; margin: 0; color: var(--green); font-size: 10px; text-align: right; }
+.coach-summary-status.is-warning { color: #8d4f21; }
+.coach-summary-fallback { padding: 14px; margin: -7px 0 16px; }
+.coach-summary-fallback label { display: block; margin-bottom: 7px; color: var(--ink); font-size: 11px; font-weight: 600; }
+.coach-summary-fallback textarea { display: block; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
 .coach-detail-section { margin-bottom: 18px; }
 .coach-detail-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
 .coach-detail-section-heading h2 { margin: 0; font-size: 19px; }
@@ -59,6 +65,9 @@
   .coach-overview-page { padding-top: 30px; }
   .coach-client-list { grid-template-columns: 1fr; }
   .coach-detail-header, .coach-program-topline, .coach-session-topline { flex-direction: column; }
+  .coach-summary-actions { align-items: stretch; width: 100%; }
+  .coach-summary-actions .button { width: 100%; }
+  .coach-summary-status { text-align: left; }
   .coach-program-actions { width: 100%; }
   .coach-program-actions .button { width: 100%; }
   .coach-performance-row { grid-template-columns: 1fr; gap: 7px; }

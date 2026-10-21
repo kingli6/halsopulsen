@@ -415,14 +415,27 @@ async function run() {
     }, { previousDuration: 30, previousDistance: 5, previousDistanceUnit: "km" });
 
     const historicalOverview = await getClientOverview(db, coachId, clientId);
-    const historicalSquatSession = historicalOverview.recentSessions
-      .find(session => session.status === "completed")
-      .exercises.find(exercise => exercise.name === "Goblet squat");
+    const historicalSquatWorkout = historicalOverview.recentSessions.find(
+      session => session.status === "completed"
+        && session.exercises.some(exercise => exercise.name === "Goblet squat")
+    );
+    assert.ok(
+      historicalSquatWorkout,
+      `Historical overview should include Goblet squat: ${JSON.stringify(
+        historicalOverview.recentSessions.map(session => ({
+          status: session.status,
+          workoutName: session.workoutName,
+          program: session.program,
+          exerciseNames: session.exercises.map(exercise => exercise.name)
+        }))
+      )}`
+    );
+    const historicalSquatSession = historicalSquatWorkout.exercises
+      .find(exercise => exercise.name === "Goblet squat");
     assert.strictEqual(historicalSquatSession.prescription.reps, 10);
     assert.strictEqual(historicalSquatSession.prescription.load, 20);
     assert.strictEqual(historicalSquatSession.actualSets[0].reps, 10);
-    assert.strictEqual(historicalOverview.recentSessions
-      .find(session => session.status === "completed").program.versionNumber, 1);
+    assert.strictEqual(historicalSquatWorkout.program.versionNumber, 1);
 
     const secondClientProgram = await cloneLibraryProgramVersion(
       db,
@@ -518,6 +531,6 @@ async function run() {
 }
 
 run().catch(error => {
-  console.error(`WorkoutPlanner session hardening test failed: ${error.message}`);
+  console.error(`WorkoutPlanner session hardening test failed: ${error.stack || error.message}`);
   process.exitCode = 1;
 });
