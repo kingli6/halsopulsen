@@ -161,11 +161,6 @@ function testProgramOverviewReplacesClientOverview() {
 function testLiveEditingAndUnpublishedPublishingControls() {
   const planner = readProjectFile("dashboard/plan.js");
   const planPage = readProjectFile("dashboard/plan/index.html");
-  const bindingStart = planner.indexOf("function bindPlanEvents()");
-  const bindingImplementation = planner.slice(
-    bindingStart,
-    planner.indexOf("\napplyAdminWorkspaceCopy();", bindingStart)
-  );
   const saveImplementation = planner.slice(
     planner.indexOf("async function saveDatabaseProgram"),
     planner.indexOf("async function publishDatabaseProgram")
@@ -181,10 +176,32 @@ function testLiveEditingAndUnpublishedPublishingControls() {
   assert.match(planPage, /id="databasePublishedProgramList"/);
   assert.match(planPage, /id="databaseSavedProgramList"/);
   assert.match(planner, /programs\.filter\(program => Boolean\(program\.hasCurrentVersion\)\)/);
-  assert.match(bindingImplementation, /databasePublishedProgramList/);
-  assert.match(bindingImplementation, /databaseSavedProgramList/);
-  assert.doesNotMatch(bindingImplementation, /getElementById\("databaseProgramList"\)/);
-  assert.match(bindingImplementation, /getElementById\("createPlanBtn"\)\.addEventListener/);
+}
+
+function testDatabaseProgramHandlersUseContainingLibraryRoot() {
+  const planner = readProjectFile("dashboard/plan.js");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+  const libraryStart = planPage.indexOf('id="databaseProgramLibrary"');
+  const libraryEnd = planPage.indexOf('<p class="library-access-note"', libraryStart);
+  const libraryMarkup = planPage.slice(libraryStart, libraryEnd);
+  const bindStart = planner.indexOf("function bindPlanEvents() {");
+  const bindEnd = planner.indexOf("\n}\n\nif (!sharedProgramWorkspace)", bindStart);
+  const bindings = planner.slice(bindStart, bindEnd);
+
+  assert.ok(libraryStart >= 0 && libraryEnd > libraryStart);
+  assert.match(libraryMarkup, /id="databasePublishedProgramList"/);
+  assert.match(libraryMarkup, /id="databaseSavedProgramList"/);
+  assert.match(
+    bindings,
+    /if \(databaseWorkspace\) \{\s*document\.getElementById\("databaseProgramLibrary"\)\.addEventListener\("click"/
+  );
+  assert.match(
+    bindings,
+    /const databaseProgramLibrary = document\.getElementById\("databaseProgramLibrary"\);\s*if \(databaseProgramLibrary\) \{\s*databaseProgramLibrary\.addEventListener\("click"/
+  );
+  assert.doesNotMatch(bindings, /getElementById\("databaseProgramList"\)/);
+  assert.match(bindings, /openDatabaseProgram\(open\.dataset\.openDatabaseProgram\)/);
+  assert.match(bindings, /toggleProgramVersionHistory\(history\.dataset\.toggleProgramHistory, history\)/);
 }
 
 function testPrivateProgramPagesAreNoindexAndPrintable() {
@@ -229,6 +246,7 @@ testPrivateClientCanEditTheCurrentProgram();
 testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging();
 testProgramOverviewReplacesClientOverview();
 testLiveEditingAndUnpublishedPublishingControls();
+testDatabaseProgramHandlersUseContainingLibraryRoot();
 testPrivateProgramPagesAreNoindexAndPrintable();
 testProgressIndicationsUseComparableCompletedSessions();
 console.log("WorkoutPlanner UI/API regression checks passed.");

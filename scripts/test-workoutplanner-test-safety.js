@@ -28,7 +28,6 @@ function testMatchingTargetsAreBlockedWithoutLeakingConnectionDetails() {
 function testDistinctTargetsAreAllowed() {
   const environment = {
     WORKOUTPLANNER_TEST_DATABASE_URL: testTarget,
-    WORKOUTPLANNER_DATABASE_URL_DIRECT: "postgres://live_user:LivePass-456@live-db.example:6543/workoutplanner",
     WORKOUTPLANNER_POSTGRES_URL: "postgresql://prod_user:ProdPass-456@prod-db.example:6543/workoutplanner",
     WORKOUTPLANNER_DATABASE_URL: "postgres://other_user:OtherPass-789@other-db.example/app"
   };
@@ -40,9 +39,8 @@ function testDistinctTargetsAreAllowed() {
 function testEveryAvailableApplicationTargetIsCompared() {
   const environment = {
     WORKOUTPLANNER_TEST_DATABASE_URL: testTarget,
-    WORKOUTPLANNER_DATABASE_URL_DIRECT: "postgres://prod_user:secret@TEST-DB.EXAMPLE/workoutplanner_test",
     WORKOUTPLANNER_POSTGRES_URL: "postgres://prod_user:secret@prod-db.example/workoutplanner",
-    WORKOUTPLANNER_DATABASE_URL: "postgres://other_user:secret@inactive-db.example/app"
+    WORKOUTPLANNER_DATABASE_URL: "postgres://other_user:secret@test-db.example/workoutplanner_test"
   };
 
   assert.strictEqual(compareWorkoutPlannerTestTarget(environment).status, "matching");

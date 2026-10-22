@@ -2038,11 +2038,7 @@ function bindPlanEvents() {
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
   if (databaseWorkspace) {
-    const databaseProgramLists = [
-      document.getElementById("databasePublishedProgramList"),
-      document.getElementById("databaseSavedProgramList")
-    ].filter(Boolean);
-    const handleDatabaseProgramListClick = event => {
+    document.getElementById("databaseProgramLibrary").addEventListener("click", event => {
       const createProgram = event.target.closest("[data-create-program-link]");
       const copyProgram = event.target.closest("[data-copy-program-link]");
       const rotateProgram = event.target.closest("[data-rotate-program-link]");
@@ -2051,8 +2047,6 @@ function bindPlanEvents() {
       const copy = event.target.closest("[data-copy-client-link]");
       const rotate = event.target.closest("[data-rotate-client-link]");
       const revoke = event.target.closest("[data-revoke-client-link]");
-      const open = event.target.closest("[data-open-database-program]");
-      const history = event.target.closest("[data-toggle-program-history]");
       if (createProgram) createProgramLink(createProgram.dataset.createProgramLink);
       if (copyProgram) copyProgramLink(copyProgram.dataset.copyProgramLink);
       if (rotateProgram) createProgramLink(rotateProgram.dataset.rotateProgramLink, { rotate: true });
@@ -2061,10 +2055,7 @@ function bindPlanEvents() {
       if (copy) copyClientLink(copy.dataset.copyClientLink, copy.dataset.programId);
       if (rotate) createClientLink(rotate.dataset.rotateClientLink, rotate.dataset.programId, { rotate: true });
       if (revoke) revokeClientLink(revoke.dataset.revokeClientLink, revoke.dataset.programId);
-      if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
-      if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
-    };
-    databaseProgramLists.forEach(list => list.addEventListener("click", handleDatabaseProgramListClick));
+    });
   }
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
@@ -2099,6 +2090,15 @@ function bindPlanEvents() {
     if (copy) copyPlanLink(copy.dataset.copyPlan);
     if (remove) deletePublishedPlan(remove.dataset.deletePlan);
   });
+  const databaseProgramLibrary = document.getElementById("databaseProgramLibrary");
+  if (databaseProgramLibrary) {
+    databaseProgramLibrary.addEventListener("click", event => {
+      const open = event.target.closest("[data-open-database-program]");
+      const history = event.target.closest("[data-toggle-program-history]");
+      if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
+      if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
+    });
+  }
   document.getElementById("createPlanBtn").addEventListener("click", event => {
     event.preventDefault();
     startNewDraft();
