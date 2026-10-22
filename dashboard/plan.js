@@ -2038,7 +2038,7 @@ function bindPlanEvents() {
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
   if (databaseWorkspace) {
-    document.getElementById("databaseProgramList").addEventListener("click", event => {
+    document.getElementById("databaseProgramLibrary").addEventListener("click", event => {
       const createProgram = event.target.closest("[data-create-program-link]");
       const copyProgram = event.target.closest("[data-copy-program-link]");
       const rotateProgram = event.target.closest("[data-rotate-program-link]");
@@ -2090,9 +2090,9 @@ function bindPlanEvents() {
     if (copy) copyPlanLink(copy.dataset.copyPlan);
     if (remove) deletePublishedPlan(remove.dataset.deletePlan);
   });
-  const databaseProgramList = document.getElementById("databaseProgramList");
-  if (databaseProgramList) {
-    databaseProgramList.addEventListener("click", event => {
+  const databaseProgramLibrary = document.getElementById("databaseProgramLibrary");
+  if (databaseProgramLibrary) {
+    databaseProgramLibrary.addEventListener("click", event => {
       const open = event.target.closest("[data-open-database-program]");
       const history = event.target.closest("[data-toggle-program-history]");
       if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);

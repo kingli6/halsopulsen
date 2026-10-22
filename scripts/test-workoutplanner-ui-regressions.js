@@ -178,6 +178,32 @@ function testLiveEditingAndUnpublishedPublishingControls() {
   assert.match(planner, /programs\.filter\(program => Boolean\(program\.hasCurrentVersion\)\)/);
 }
 
+function testDatabaseProgramHandlersUseContainingLibraryRoot() {
+  const planner = readProjectFile("dashboard/plan.js");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+  const libraryStart = planPage.indexOf('id="databaseProgramLibrary"');
+  const libraryEnd = planPage.indexOf('<p class="library-access-note"', libraryStart);
+  const libraryMarkup = planPage.slice(libraryStart, libraryEnd);
+  const bindStart = planner.indexOf("function bindPlanEvents() {");
+  const bindEnd = planner.indexOf("\n}\n\nif (!sharedProgramWorkspace)", bindStart);
+  const bindings = planner.slice(bindStart, bindEnd);
+
+  assert.ok(libraryStart >= 0 && libraryEnd > libraryStart);
+  assert.match(libraryMarkup, /id="databasePublishedProgramList"/);
+  assert.match(libraryMarkup, /id="databaseSavedProgramList"/);
+  assert.match(
+    bindings,
+    /if \(databaseWorkspace\) \{\s*document\.getElementById\("databaseProgramLibrary"\)\.addEventListener\("click"/
+  );
+  assert.match(
+    bindings,
+    /const databaseProgramLibrary = document\.getElementById\("databaseProgramLibrary"\);\s*if \(databaseProgramLibrary\) \{\s*databaseProgramLibrary\.addEventListener\("click"/
+  );
+  assert.doesNotMatch(bindings, /getElementById\("databaseProgramList"\)/);
+  assert.match(bindings, /openDatabaseProgram\(open\.dataset\.openDatabaseProgram\)/);
+  assert.match(bindings, /toggleProgramVersionHistory\(history\.dataset\.toggleProgramHistory, history\)/);
+}
+
 function testPrivateProgramPagesAreNoindexAndPrintable() {
   const planPage = readProjectFile("dashboard/plan/index.html");
   const clientPage = readProjectFile("dashboard/client.html");
@@ -220,6 +246,7 @@ testPrivateClientCanEditTheCurrentProgram();
 testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging();
 testProgramOverviewReplacesClientOverview();
 testLiveEditingAndUnpublishedPublishingControls();
+testDatabaseProgramHandlersUseContainingLibraryRoot();
 testPrivateProgramPagesAreNoindexAndPrintable();
 testProgressIndicationsUseComparableCompletedSessions();
 console.log("WorkoutPlanner UI/API regression checks passed.");
