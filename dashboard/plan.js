@@ -174,6 +174,51 @@ function activitySummary(activity) {
   return `${TrackerData.targetLabel(activity)}${intensity}${heartRate}`;
 }
 
+function renderPrintableProgram() {
+  const target = document.getElementById("printProgramContent");
+  if (!target || !planState.editorMode) return;
+
+  const program = TrackerData.normalizeProgram(planState.data.draftProgram);
+  const weeks = Array.isArray(program.weeks) && program.weeks.length
+    ? program.weeks
+    : [{ weekNumber: 1, name: program.phase || "Week 1", phase: program.phase, days: program.days || [] }];
+  target.innerHTML = `
+    <article class="print-program-sheet">
+      <header class="print-program-heading">
+        <p class="section-kicker">WORKOUT PROGRAM</p>
+        <h1>${escapePlanHtml(program.name || "Training program")}</h1>
+        ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
+        <p class="print-program-meta">${program.startDate ? `Starts ${escapePlanHtml(formatPublishedDate(program.startDate))}` : ""}
+          ${weeks.length ? ` · ${weeks.length} ${weeks.length === 1 ? "week" : "weeks"}` : ""}</p>
+      </header>
+      ${weeks.map((week, weekIndex) => `
+        <section class="print-program-week">
+          <h2>Week ${escapePlanHtml(week.weekNumber || weekIndex + 1)} · ${escapePlanHtml(week.name || week.phase || "Training week")}</h2>
+          ${week.phase ? `<p class="print-program-phase">${escapePlanHtml(week.phase)}</p>` : ""}
+          ${week.progressionNotes ? `<p><strong>Progression:</strong> ${escapePlanHtml(week.progressionNotes)}</p>` : ""}
+          ${week.successMetric ? `<p><strong>Success metric:</strong> ${escapePlanHtml(week.successMetric)}</p>` : ""}
+          <div class="print-program-days">
+            ${(week.days || []).slice().sort((a, b) => Number(a.weekday) - Number(b.weekday)).map(day => {
+              const dayName = TrackerData.DAY_NAMES[Number(day.weekday)] || `Day ${Number(day.weekday) + 1}`;
+              const active = Boolean(day.enabled && day.exercises?.length);
+              return `<section class="print-program-day">
+                <h3>${escapePlanHtml(dayName)}${day.name ? ` · ${escapePlanHtml(day.name)}` : ""}</h3>
+                ${active && day.description ? `<p>${escapePlanHtml(day.description)}</p>` : ""}
+                ${active && day.warmup ? `<p><strong>Warm-up:</strong> ${escapePlanHtml(day.warmup)}</p>` : ""}
+                ${active ? `<ol>${day.exercises.map(activity => `<li>
+                  <strong>${escapePlanHtml(activity.name || "Activity")}</strong>
+                  <span>${escapePlanHtml(activitySummary(activity))}</span>
+                  ${activity.notes ? `<p><strong>Notes:</strong> ${escapePlanHtml(activity.notes)}</p>` : ""}
+                </li>`).join("")}</ol>` : `<p class="print-program-rest">Rest / open day</p>`}
+                ${active && day.cooldown ? `<p><strong>Cooldown:</strong> ${escapePlanHtml(day.cooldown)}</p>` : ""}
+              </section>`;
+            }).join("")}
+          </div>
+        </section>
+      `).join("")}
+    </article>`;
+}
+
 function workoutSummary(workout) {
   return workout.exercises.map(activity => `${activity.name} · ${activitySummary(activity)}`).join(" · ");
 }
@@ -253,15 +298,12 @@ function renderPlanOverview() {
   const immediateLibrarySave = adminDatabaseWorkspace
     && Boolean(planState.databaseProgramId)
     && planState.databaseProgramKind === "library"
-    && databaseStatus === "published"
     && Boolean(planState.databaseProgramCurrentVersionId);
   setPlanText("databaseSaveDetail", planState.databaseProgramId
     ? immediateLibrarySave
       ? databaseStatus === "published"
         ? `Current version ${planState.databaseProgramCurrentVersion || databaseVersion} · Revision ${planState.databaseProgramRevision || 0}`
-        : `Draft version ${databaseVersion} saved · ${planState.databaseProgramCurrentVersion
-          ? `Shared version ${planState.databaseProgramCurrentVersion} is unchanged`
-          : "No shared version is current yet"}`
+        : `Draft version ${databaseVersion} · Live version ${planState.databaseProgramCurrentVersion || "—"}`
       : `Saved to database · Version ${databaseVersion} · ${databaseStatus}`
     : "Not saved to the database library");
   setPlanText("publishHeading", adminDatabaseWorkspace
@@ -273,7 +315,7 @@ function renderPlanOverview() {
     : changed ? "Publish when this program is ready" : "Your published program is current");
   setPlanText("publishDescription", adminDatabaseWorkspace
     ? immediateLibrarySave
-      ? "Complete saves become current automatically. Incomplete saves stay private and do not change what the active link shows."
+      ? "Complete schedules become current automatically. Incomplete workout changes stay out of the live schedule."
       : "Publishing makes this version available through the private program page. Draft changes stay hidden until then; saved versions remain in history."
     : isDatabaseClientProgram
     ? "Save edits as a draft, then publish them to the same private client link. Draft changes stay hidden until publishing."
@@ -302,7 +344,7 @@ function renderPlanOverview() {
   }
   setPlanText("detailsModalContext", adminDatabaseWorkspace
     ? immediateLibrarySave
-      ? "Person is a descriptive label, not a client account. Complete saves update the shared program; incomplete saves stay private."
+      ? "Person is a descriptive label, not a client account. Complete schedules update the shared program; incomplete workout changes remain drafts."
       : "Person is a descriptive label, not a client account. Draft changes remain private until you publish."
     : planState.editingCurrentPlanId
     ? "These changes update the current plan. Existing participant records stay intact; future planned assignments follow the updated program."
@@ -758,9 +800,10 @@ function renderLibrary() {
 
 function renderDatabaseProgramLibrary() {
   const section = document.getElementById("databaseProgramLibrary");
-  const container = document.getElementById("databaseProgramList");
+  const publishedContainer = document.getElementById("databasePublishedProgramList");
+  const savedContainer = document.getElementById("databaseSavedProgramList");
   const summary = document.getElementById("databaseProgramLibrarySummary");
-  if (!section || !container || !databaseWorkspace) return;
+  if (!section || !publishedContainer || !savedContainer || !databaseWorkspace) return;
 
   section.hidden = false;
   const programs = planState.databasePrograms;
@@ -776,13 +819,20 @@ function renderDatabaseProgramLibrary() {
   if (summary) {
     summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"} · ${publishedVersionCount} published ${publishedVersionCount === 1 ? "version" : "versions"} · ${archivedVersionCount} archived ${archivedVersionCount === 1 ? "version" : "versions"}`;
   }
+  const publishedPrograms = programs.filter(program => Boolean(program.hasCurrentVersion));
+  const savedPrograms = programs.filter(program => !program.hasCurrentVersion);
+  const publishedCount = document.getElementById("publishedDatabaseProgramCount");
+  const savedCount = document.getElementById("savedDatabaseProgramCount");
+  if (publishedCount) publishedCount.textContent = String(publishedPrograms.length);
+  if (savedCount) savedCount.textContent = String(savedPrograms.length);
   if (!programs.length) {
-    container.innerHTML = `<div class="empty-panel">${adminDatabaseWorkspace
-      ? "Save a complete program to create a private link."
-      : "Save a draft to build your program library."}</div>`;
+    publishedContainer.innerHTML = `<div class="empty-panel">No published programs yet.</div>`;
+    savedContainer.innerHTML = `<div class="empty-panel">${adminDatabaseWorkspace
+      ? "Save a draft to build your program library."
+      : "No unpublished programs are saved yet."}</div>`;
     return;
   }
-  container.innerHTML = programs.map(program => {
+  const renderProgramCard = program => {
     const programId = escapePlanHtml(program.id);
     const historyPanelId = `program-history-${programId}`;
     const clientCopyAction = "";
@@ -855,7 +905,14 @@ function renderDatabaseProgramLibrary() {
       </div>
     </article>
   `;
-  }).join("");
+  };
+
+  publishedContainer.innerHTML = publishedPrograms.length
+    ? publishedPrograms.map(renderProgramCard).join("")
+    : `<div class="empty-panel">No published programs yet.</div>`;
+  savedContainer.innerHTML = savedPrograms.length
+    ? savedPrograms.map(renderProgramCard).join("")
+    : `<div class="empty-panel">No unpublished programs are saved yet.</div>`;
 }
 
 async function loadDatabaseLibrary() {
@@ -1109,7 +1166,7 @@ async function saveDatabaseProgram({ silent = false } = {}) {
   }
   const makeCurrentWhenValid = adminDatabaseWorkspace
     && planState.databaseProgramKind === "library"
-    && planState.databaseProgramVersionStatus === "published";
+    && Boolean(planState.databaseProgramCurrentVersionId);
   planState.databaseSaving = true;
   if (button) {
     button.disabled = true;
@@ -1159,7 +1216,7 @@ async function saveDatabaseProgram({ silent = false } = {}) {
       if (makeCurrentWhenValid) {
         showPlanToast(result.meta?.isCurrent
           ? `Version ${result.meta.version} is current. The private link shows the updated program.`
-          : "Draft saved. The shared version is unchanged until the program is complete.");
+          : "Draft saved. The live workout schedule is unchanged until the program is complete.");
       } else {
         showPlanToast("Program saved to the database library.");
       }
@@ -1187,7 +1244,8 @@ async function publishDatabaseProgram() {
   if (planState.publishing) return;
   if (
     adminDatabaseWorkspace
-    && (!planState.databaseProgramId || planState.databaseProgramKind === "library")
+    && planState.databaseProgramKind === "library"
+    && planState.databaseProgramCurrentVersionId
   ) {
     await saveDatabaseProgram();
     return;
@@ -1213,9 +1271,17 @@ async function publishDatabaseProgram() {
 
     planState.databaseProgramVersion = Number(result.meta?.version || planState.databaseProgramVersion || 1);
     planState.databaseProgramVersionStatus = result.meta?.versionStatus || "published";
+    planState.databaseProgramRevision = Number(result.meta?.revision) || planState.databaseProgramRevision || 0;
+    planState.databaseProgramCurrentVersionId =
+      result.meta?.currentVersionId || result.meta?.versionId || planState.databaseProgramCurrentVersionId || null;
+    planState.databaseProgramCurrentVersion =
+      Number(result.meta?.currentVersion || result.meta?.version) || planState.databaseProgramCurrentVersion || null;
     planState.data.databaseProgramId = planState.databaseProgramId;
     planState.data.databaseProgramKind = planState.databaseProgramKind;
     planState.data.databaseProgramClientId = result.meta?.clientId || planState.databaseProgramClientId || null;
+    planState.data.databaseProgramRevision = planState.databaseProgramRevision;
+    planState.data.databaseProgramCurrentVersionId = planState.databaseProgramCurrentVersionId;
+    planState.data.databaseProgramCurrentVersion = planState.databaseProgramCurrentVersion;
     planState.databaseProgramClientId = planState.data.databaseProgramClientId;
     planState.data.draftProgram = TrackerData.normalizeProgram(result.program);
     persistPlanState();
@@ -1241,6 +1307,8 @@ async function publishDatabaseProgram() {
 }
 
 function renderAllPlan() {
+  const printButton = document.getElementById("printProgramBtn");
+  if (printButton) printButton.hidden = !planState.editorMode;
   if (adminDatabaseWorkspace) {
     document.querySelector(".library-toolbar")?.setAttribute("hidden", "");
     document.querySelector(".library-access-note")?.setAttribute("hidden", "");
@@ -1267,6 +1335,7 @@ function renderAllPlan() {
     renderPlanOverview();
     renderBuilder();
     renderPublishedPreview();
+    renderPrintableProgram();
   }
   renderTemplateLibrary();
   renderLibrary();
@@ -1957,6 +2026,7 @@ function bindPlanEvents() {
     window.location.assign("/admin");
   });
   document.getElementById("editDetailsBtn").addEventListener("click", openDetailsModal);
+  document.getElementById("printProgramBtn")?.addEventListener("click", () => window.print());
   document.getElementById("detailsForm").addEventListener("submit", saveDetails);
   document.getElementById("closeDetailsModal").addEventListener("click", closeDetailsModal);
   document.getElementById("cancelDetailsBtn").addEventListener("click", closeDetailsModal);

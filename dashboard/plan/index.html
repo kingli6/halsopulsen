@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
   <meta name="description" content="The owner workspace for creating and publishing a personal training program." />
   <title>Plan program — HälsoPulsen</title>
   <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
@@ -11,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/dashboard/portal.css" />
   <link rel="stylesheet" href="/dashboard/client.css" />
+  <link rel="stylesheet" href="/dashboard/plan-print.css" />
 </head>
 <body>
   <header class="topbar">
@@ -37,10 +39,13 @@
         <p class="intro-copy" id="pageCopy">Create and manage training programs, then share them through private links.</p>
       </div>
       <div class="intro-actions">
+        <button class="button button-secondary" id="printProgramBtn" type="button" hidden>Print program</button>
           <span class="local-owner-badge" id="ownerBadge">Admin workspace · signed in</span>
         <a class="button button-primary" id="editorBackLink" href="/admin/plans/" hidden>Back to library</a>
       </div>
     </section>
+
+    <section class="print-program" id="printProgramContent" aria-label="Printable program"></section>
 
     <section class="owner-notice" id="ownerNotice">
       <span class="notice-icon">i</span>
@@ -70,7 +75,20 @@
          <p class="client-create-status" id="databaseProgramLibraryStatus" role="status" aria-live="polite"></p>
           <p class="client-create-status" id="cloneProgramStatus" role="status" aria-live="polite"></p>
           <p class="client-create-status" id="clientLinkStatus" role="status" aria-live="polite"></p>
-         <div class="plan-library" id="databaseProgramList"></div>
+          <section class="database-program-group" aria-labelledby="publishedDatabaseProgramsHeading">
+            <div class="database-program-group-heading">
+              <h3 id="publishedDatabaseProgramsHeading">Published / active programs</h3>
+              <span class="draft-status is-current" id="publishedDatabaseProgramCount">0</span>
+            </div>
+            <div class="plan-library" id="databasePublishedProgramList"></div>
+          </section>
+          <section class="database-program-group" aria-labelledby="savedDatabaseProgramsHeading">
+            <div class="database-program-group-heading">
+              <h3 id="savedDatabaseProgramsHeading">Saved / unpublished programs</h3>
+              <span class="draft-status" id="savedDatabaseProgramCount">0</span>
+            </div>
+            <div class="plan-library" id="databaseSavedProgramList"></div>
+          </section>
        </section>
        <p class="library-access-note">Clients do not need an account. Each private link is a bearer secret: share it only with the intended person, and revoke it if it is exposed.</p>
       <div class="plan-library" id="planLibrary"></div>
@@ -267,6 +285,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/dashboard/data.js"></script>
+  <script src="/dashboard/progress-insights.js"></script>
   <script src="/dashboard/plan.js"></script>
   <script src="/dashboard/client.js" defer></script>
 </body>

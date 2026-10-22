@@ -2,6 +2,7 @@ const programOverviewState = {
   programs: [],
   selectedProgramId: null,
   detail: null,
+  activitySummaries: {},
   requestNumber: 0
 };
 
@@ -56,9 +57,27 @@ function renderProgramList() {
       type="button" data-program-id="${escapeProgramHtml(program.id)}"
       aria-pressed="${program.id === programOverviewState.selectedProgramId ? "true" : "false"}">
       <strong>${escapeProgramHtml(program.name || "Untitled program")}</strong>
-      <span>Version ${escapeProgramHtml(program.currentVersion || "—")} · ${program.hasActivePrivateLink ? "Private link active" : "No private link"}</span>
+      <span>Version ${escapeProgramHtml(program.currentVersion || "—")} · ${program.hasActivePrivateLink ? "Private link active" : "No private link"} · ${programOverviewState.activitySummaries[program.id]
+        ? programOverviewState.activitySummaries[program.id].lastActivity
+          ? `Last activity ${escapeProgramHtml(programDate(programOverviewState.activitySummaries[program.id].lastActivity))}`
+          : "No activity yet"
+        : "Activity not loaded"}</span>
     </button>
   `).join("");
+}
+
+async function loadProgramActivitySummary(programId) {
+  try {
+    const response = await fetch(`/api/workoutplanner/programs/${encodeURIComponent(programId)}/overview`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "Activity could not be loaded.");
+    const sessions = result.overview?.recentSessions || [];
+    programOverviewState.activitySummaries[programId] = {
+      lastActivity: sessions.find(session => session.status === "completed")?.performedOn || null
+    };
+  } catch {
+    programOverviewState.activitySummaries[programId] = null;
+  }
 }
 
 function formatPrescriptionSummary(prescription = {}) {
@@ -85,6 +104,7 @@ function renderRecentSessions(sessions = []) {
   if (!sessions.length) {
     return `<p class="program-empty">No workouts have been recorded for this program yet.</p>`;
   }
+  const improvements = window.WorkoutProgress?.findStrengthLoadImprovements(sessions) || [];
   return `<div class="program-session-list">${sessions.map(session => {
     const source = session.program?.versionNumber
       ? `Version ${escapeProgramHtml(session.program.versionNumber)}`
@@ -103,6 +123,15 @@ function renderRecentSessions(sessions = []) {
         </div>
         <span class="draft-status is-current">${escapeProgramHtml(session.status || "completed")}</span>
       </div>
+      ${improvements
+        .filter(improvement =>
+          improvement.toSessionId === String(session.id)
+          && (session.exercises || []).some(exercise =>
+            String(exercise.name || "").toLocaleLowerCase() === improvement.exerciseName.toLocaleLowerCase()
+          )
+        )
+        .map(improvement => `<p class="progress-improvement" role="note">${escapeProgramHtml(improvement.exerciseName)} load improved: ${escapeProgramHtml(improvement.fromLoad)} → ${escapeProgramHtml(improvement.toLoad)} ${escapeProgramHtml(improvement.unit)} · same ${escapeProgramHtml(improvement.setCount)} sets at ${escapeProgramHtml(improvement.repsLabel)} reps</p>`)
+        .join("")}
       ${exercises ? `<ol class="program-exercise-list">${exercises}</ol>` : ""}
       ${session.note ? `<p class="program-progress-note"><strong>Note:</strong> ${escapeProgramHtml(session.note)}</p>` : ""}
     </article>`;
@@ -139,7 +168,10 @@ function renderProgramDetail() {
         <p class="program-link-status" id="programLinkStatus" role="status" aria-live="polite">${escapeProgramHtml(linkStatus)}</p>
         <div class="program-link-actions">
           ${program.hasActivePrivateLink
-            ? `<button class="button button-secondary button-small" type="button" data-link-action="copy">Copy private link</button>
+            ? `<a class="button button-primary button-small"
+                 href="${escapeProgramHtml(programLinkEndpoint(program))}?open=1"
+                 target="_blank" rel="noopener">Open private program</a>
+               <button class="button button-secondary button-small" type="button" data-link-action="copy">Copy private link</button>
                <button class="text-button" type="button" data-link-action="replace">Replace link</button>
                <button class="text-button danger-button" type="button" data-link-action="revoke">Revoke link</button>`
             : `<button class="button button-primary button-small" type="button" data-link-action="create">Create private link</button>`
@@ -166,6 +198,11 @@ async function selectProgram(programId) {
     if (!response.ok || !result.ok) throw new Error(result.error || "Program progress could not be loaded.");
     if (requestNumber !== programOverviewState.requestNumber) return;
     programOverviewState.detail = result.overview;
+    const recentSessions = result.overview?.recentSessions || [];
+    programOverviewState.activitySummaries[programId] = {
+      lastActivity: recentSessions.find(session => session.status === "completed")?.performedOn || null
+    };
+    renderProgramList();
     renderProgramDetail();
   } catch (error) {
     if (requestNumber !== programOverviewState.requestNumber) return;
@@ -181,9 +218,16 @@ async function loadPrograms() {
     if (!response.ok || !result.ok) throw new Error(result.error || "Published programs could not be loaded.");
     programOverviewState.programs = Array.isArray(result.programs) ? result.programs : [];
     const firstPublished = programOverviewState.programs.find(isPublishedProgram);
+    programOverviewState.activitySummaries = {};
     programOverviewState.selectedProgramId = firstPublished?.id || null;
     renderProgramList();
-    if (firstPublished) await selectProgram(firstPublished.id);
+    if (firstPublished) {
+      await selectProgram(firstPublished.id);
+      const remaining = programOverviewState.programs
+        .filter(program => isPublishedProgram(program) && program.id !== firstPublished.id);
+      await Promise.all(remaining.map(program => loadProgramActivitySummary(program.id)));
+      renderProgramList();
+    }
   } catch (error) {
     status.textContent = error.message || "Published programs could not be loaded.";
     status.classList.add("is-error");
