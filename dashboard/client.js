@@ -180,11 +180,26 @@ function renderPerformanceHistory(history = []) {
     target.innerHTML = `<p class="client-empty">Saved performance will appear here after your first workout log.</p>`;
     return;
   }
+  const improvements = window.WorkoutProgress?.findStrengthLoadImprovements(
+    history.map(item => ({
+      id: item.sessionId,
+      status: "completed",
+      performedOn: item.performedOn,
+      exercises: [{ name: item.exerciseName, actualSets: item.sets || [] }]
+    }))
+  ) || [];
   target.innerHTML = history.map(item => `<article class="history-performance-card">
     <div class="history-performance-heading">
       <div><p class="section-kicker">${escapeHtml(formatDate(item.performedOn))}</p><h3>${escapeHtml(item.exerciseName)}</h3></div>
       <span class="client-meta">${escapeHtml(item.workoutName)}</span>
     </div>
+    ${improvements
+      .filter(improvement =>
+        improvement.exerciseName.toLocaleLowerCase() === String(item.exerciseName || "").toLocaleLowerCase()
+        && improvement.toSessionId === String(item.sessionId)
+      )
+      .map(improvement => `<p class="progress-improvement" role="note">Improved load: ${escapeHtml(improvement.fromLoad)} → ${escapeHtml(improvement.toLoad)} ${escapeHtml(improvement.unit)} · same ${escapeHtml(improvement.setCount)} sets at ${escapeHtml(improvement.repsLabel)} reps</p>`)
+      .join("")}
     <p class="client-exercise-meta"><strong>Prescription at the time${item.prescription?.version ? ` · Version ${escapeHtml(item.prescription.version)}` : ""}:</strong> ${escapeHtml(formatPrescription(item.prescription))}</p>
     <p class="client-exercise-meta"><strong>Completed:</strong></p>
     <ol>${(item.sets || []).map((set, index) => `<li>Set ${index + 1}: ${escapeHtml(formatPerformanceSet(set))}</li>`).join("")}</ol>

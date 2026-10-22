@@ -1,0 +1,136 @@
+.database-program-group {
+  margin-top: 22px;
+}
+
+.database-program-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0 12px;
+}
+
+.database-program-group-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.print-program {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body,
+  body * {
+    visibility: hidden !important;
+  }
+
+  #printProgramContent,
+  #printProgramContent * {
+    visibility: visible !important;
+  }
+
+  #printProgramContent {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #1d2a22 !important;
+    background: #fff !important;
+    font: 10pt/1.45 Arial, sans-serif !important;
+  }
+
+  .print-program-sheet {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .print-program-heading {
+    border-bottom: 2px solid #2b6942;
+    margin-bottom: 18pt;
+    padding-bottom: 10pt;
+  }
+
+  .print-program-heading h1 {
+    margin: 0 0 6pt;
+    font-size: 23pt;
+    line-height: 1.15;
+  }
+
+  .print-program-heading p {
+    margin: 4pt 0;
+  }
+
+  .print-program-meta,
+  .print-program-phase {
+    color: #54645a !important;
+  }
+
+  .print-program-week {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-program-week:first-of-type {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
+  .print-program-week h2 {
+    margin: 0 0 5pt;
+    font-size: 17pt;
+  }
+
+  .print-program-week > p {
+    margin: 4pt 0;
+  }
+
+  .print-program-days {
+    display: block !important;
+  }
+
+  .print-program-day {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 12pt 0;
+    padding: 0 0 9pt;
+    border-bottom: 1px solid #d5ded7;
+  }
+
+  .print-program-day h3 {
+    margin: 0 0 5pt;
+    font-size: 12pt;
+  }
+
+  .print-program-day p {
+    margin: 4pt 0;
+  }
+
+  .print-program-day ol {
+    margin: 5pt 0 0;
+    padding-left: 20pt;
+  }
+
+  .print-program-day li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 5pt 0;
+  }
+
+  .print-program-day li strong,
+  .print-program-day li span {
+    display: block;
+  }
+
+  .print-program-rest {
+    color: #59665d !important;
+    font-style: italic;
+  }
+}

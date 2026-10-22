@@ -135,7 +135,7 @@ function testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging() {
 
   assert.match(server, /req\.query\.preview === '1' \? 'client\.html' : path\.join\('plan', 'index\.html'\)/);
   assert.match(planner, /sharedProgramWorkspace/);
-  assert.match(planner, /complete saves become current automatically/i);
+  assert.match(planner, /complete schedules become current automatically/i);
   assert.match(planner, /databaseStatus === "published"/);
   assert.match(planner, /Saved\. The live program and this private link are updated\./);
   assert.match(planPage, /id="sharedSessionSection"/);
@@ -158,6 +158,59 @@ function testProgramOverviewReplacesClientOverview() {
   assert.match(overviewUi, /Recorded workouts/);
 }
 
+function testLiveEditingAndUnpublishedPublishingControls() {
+  const planner = readProjectFile("dashboard/plan.js");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+  const saveImplementation = planner.slice(
+    planner.indexOf("async function saveDatabaseProgram"),
+    planner.indexOf("async function publishDatabaseProgram")
+  );
+  const publishImplementation = planner.slice(
+    planner.indexOf("async function publishDatabaseProgram"),
+    planner.indexOf("async function publishPlan")
+  );
+
+  assert.match(saveImplementation, /const makeCurrentWhenValid = adminDatabaseWorkspace[\s\S]*?Boolean\(planState\.databaseProgramCurrentVersionId\)/);
+  assert.match(publishImplementation, /planState\.databaseProgramKind === "library"[\s\S]*?planState\.databaseProgramCurrentVersionId/);
+  assert.match(publishImplementation, /\/api\/workoutplanner\/programs\/\$\{encodeURIComponent\(planState\.databaseProgramId\)\}\/publish/);
+  assert.match(planPage, /id="databasePublishedProgramList"/);
+  assert.match(planPage, /id="databaseSavedProgramList"/);
+  assert.match(planner, /programs\.filter\(program => Boolean\(program\.hasCurrentVersion\)\)/);
+}
+
+function testPrivateProgramPagesAreNoindexAndPrintable() {
+  const planPage = readProjectFile("dashboard/plan/index.html");
+  const clientPage = readProjectFile("dashboard/client.html");
+  const planner = readProjectFile("dashboard/plan.js");
+  const printCss = readProjectFile("dashboard/plan-print.css");
+
+  assert.match(planPage, /<meta name="robots" content="noindex, nofollow"/);
+  assert.match(clientPage, /<meta name="robots" content="noindex, nofollow"/);
+  assert.match(planPage, /id="printProgramBtn"[^>]*>Print program/);
+  assert.match(planPage, /id="printProgramContent"/);
+  assert.match(planner, /function renderPrintableProgram\(\)[\s\S]*?program\.weeks/);
+  assert.match(planner, /printProgramBtn[\s\S]*?window\.print\(\)/);
+  assert.match(printCss, /@media print/);
+  assert.match(printCss, /break-inside: avoid/);
+}
+
+function testProgressIndicationsUseComparableCompletedSessions() {
+  const programOverview = readProjectFile("dashboard/program-overview.js");
+  const clientUi = readProjectFile("dashboard/client.js");
+  const helper = readProjectFile("dashboard/progress-insights.js");
+  const overviewPage = readProjectFile("dashboard/coach-overview.html");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+
+  assert.match(programOverview, /loadProgramActivitySummary/);
+  assert.match(programOverview, /Last activity/);
+  assert.match(programOverview, /WorkoutProgress\?\.findStrengthLoadImprovements/);
+  assert.match(clientUi, /WorkoutProgress\?\.findStrengthLoadImprovements/);
+  assert.match(helper, /session\?\.status && session\.status !== "completed"/);
+  assert.match(helper, /setCount\}.*repsKey.*unit/);
+  assert.match(overviewPage, /progress-insights\.js/);
+  assert.match(planPage, /progress-insights\.js/);
+}
+
 testPlannerEntryUsesCoachRoute();
 testCreateAndOpenUseOwnerApi();
 testAccountBasedCloneUiIsRemoved();
@@ -166,4 +219,7 @@ testClientLinkPreviewIsReadOnly();
 testPrivateClientCanEditTheCurrentProgram();
 testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging();
 testProgramOverviewReplacesClientOverview();
+testLiveEditingAndUnpublishedPublishingControls();
+testPrivateProgramPagesAreNoindexAndPrintable();
+testProgressIndicationsUseComparableCompletedSessions();
 console.log("WorkoutPlanner UI/API regression checks passed.");

@@ -1,3 +1,13 @@
+.progress-improvement {
+  margin: 9px 0;
+  padding: 9px 12px;
+  border: 1px solid #b8dfc4;
+  border-radius: 9px;
+  color: #245638;
+  background: #f2faf4;
+  font-size: 13px;
+  font-weight: 700;
+}
 .program-overview-layout {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
