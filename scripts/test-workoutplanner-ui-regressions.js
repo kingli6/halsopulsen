@@ -161,6 +161,11 @@ function testProgramOverviewReplacesClientOverview() {
 function testLiveEditingAndUnpublishedPublishingControls() {
   const planner = readProjectFile("dashboard/plan.js");
   const planPage = readProjectFile("dashboard/plan/index.html");
+  const bindingStart = planner.indexOf("function bindPlanEvents()");
+  const bindingImplementation = planner.slice(
+    bindingStart,
+    planner.indexOf("\napplyAdminWorkspaceCopy();", bindingStart)
+  );
   const saveImplementation = planner.slice(
     planner.indexOf("async function saveDatabaseProgram"),
     planner.indexOf("async function publishDatabaseProgram")
@@ -176,6 +181,10 @@ function testLiveEditingAndUnpublishedPublishingControls() {
   assert.match(planPage, /id="databasePublishedProgramList"/);
   assert.match(planPage, /id="databaseSavedProgramList"/);
   assert.match(planner, /programs\.filter\(program => Boolean\(program\.hasCurrentVersion\)\)/);
+  assert.match(bindingImplementation, /databasePublishedProgramList/);
+  assert.match(bindingImplementation, /databaseSavedProgramList/);
+  assert.doesNotMatch(bindingImplementation, /getElementById\("databaseProgramList"\)/);
+  assert.match(bindingImplementation, /getElementById\("createPlanBtn"\)\.addEventListener/);
 }
 
 function testPrivateProgramPagesAreNoindexAndPrintable() {
