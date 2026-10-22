@@ -125,7 +125,7 @@ function testDatabaseWritingScriptsRunTheGuardBeforeConnecting() {
   assert.ok(pass3Guard >= 0 && pass3Guard < pass3Connection);
 }
 
-function testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget() {
+function testRuntimeTargetSelectionDoesNotChangeMigrationTarget() {
   const runtimeDb = fs.readFileSync(
     path.join(__dirname, "..", "workoutplanner", "db.js"),
     "utf8"
@@ -135,11 +135,15 @@ function testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget() {
     "utf8"
   );
 
+  assert.match(runtimeDb, /process\.env\.WORKOUTPLANNER_DATABASE_TARGET\s*===\s*["']direct["']/);
+  assert.match(runtimeDb, /process\.env\.WORKOUTPLANNER_DATABASE_URL_DIRECT/);
+  assert.match(runtimeDb, /process\.env\.WORKOUTPLANNER_TEST_DATABASE_URL/);
   assert.match(runtimeDb, /process\.env\.WORKOUTPLANNER_DATABASE_URL/);
-  assert.doesNotMatch(runtimeDb, /process\.env\.WORKOUTPLANNER_DATABASE_URL_DIRECT/);
   assert.doesNotMatch(runtimeDb, /process\.env\.WORKOUTPLANNER_POSTGRES_URL/);
+
   assert.match(migrationRunner, /process\.env\.WORKOUTPLANNER_DATABASE_URL/);
   assert.doesNotMatch(migrationRunner, /process\.env\.WORKOUTPLANNER_DATABASE_URL_DIRECT/);
+  assert.doesNotMatch(migrationRunner, /process\.env\.WORKOUTPLANNER_DATABASE_TARGET/);
   assert.doesNotMatch(migrationRunner, /process\.env\.WORKOUTPLANNER_POSTGRES_URL/);
 }
 
@@ -180,7 +184,7 @@ function run() {
   testMissingTargetsRequireExternalVerification();
   testUnparseableIdentifiersRequireExternalVerification();
   testDatabaseWritingScriptsRunTheGuardBeforeConnecting();
-  testRuntimeAndMigrationRunnerUseTheCanonicalDatabaseTarget();
+  testRuntimeTargetSelectionDoesNotChangeMigrationTarget();
   testMigrationStatusDiagnosticIsReadOnlyAndUsesOnlyCanonicalUrl();
   console.log("WorkoutPlanner test-target safety checks passed.");
 }
