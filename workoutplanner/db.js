@@ -6,6 +6,9 @@ function getConnectionString() {
   if (process.env.NODE_ENV === "test") {
     return process.env.WORKOUTPLANNER_TEST_DATABASE_URL || "";
   }
+  if (process.env.WORKOUTPLANNER_DATABASE_TARGET === "direct") {
+    return process.env.WORKOUTPLANNER_DATABASE_URL_DIRECT || "";
+  }
   return process.env.WORKOUTPLANNER_DATABASE_URL || "";
 }
 
@@ -20,7 +23,9 @@ function getPool() {
       throw new Error(
         process.env.NODE_ENV === "test"
           ? "WORKOUTPLANNER_TEST_DATABASE_URL is required in test mode; refusing to use a shared or default database."
-          : "WORKOUTPLANNER_DATABASE_URL is required for WorkoutPlanner database access."
+          : process.env.WORKOUTPLANNER_DATABASE_TARGET === "direct"
+            ? "WORKOUTPLANNER_DATABASE_URL_DIRECT is required when WORKOUTPLANNER_DATABASE_TARGET=direct."
+            : "WORKOUTPLANNER_DATABASE_URL is required for WorkoutPlanner database access."
       );
     }
 
