@@ -64,7 +64,7 @@ function renderProgramStatusBadges(program) {
       ${legacy ? "Client-assigned · legacy" : "Published · live"}
     </span>
     ${hasUnpublishedProgramDraft(program)
-      ? `<span class="program-overview-state-tag is-draft">Draft v${latestVersion} · not published</span>`
+      ? `<span class="program-overview-state-tag is-draft">Saved update v${latestVersion} · not published</span>`
       : ""}`;
 }
 
@@ -202,26 +202,27 @@ function renderProgramDetail() {
     detail.innerHTML = `<div class="empty-panel card">Select a published program to review its private link and recent sessions.</div>`;
     return;
   }
+  const listProgram = programOverviewState.programs.find(item => item.id === program.id) || program;
   const legacy = program.kind === "client";
   const linkStatus = program.hasActivePrivateLink
-    ? "A private link is active. It opens this program and its session history."
-    : "No active private link. Create one to share this program.";
+    ? "A private link is active. It opens the current published version and its session history."
+    : "No active private link. Create one to share the current published version.";
   detail.innerHTML = `
     <div class="program-detail-stack">
       <header class="program-overview-heading card">
         <div>
           <p class="section-kicker">${legacy ? "EXISTING LINKED PROGRAM" : "PUBLISHED PROGRAM"}</p>
           <h2>${escapeProgramHtml(program.name)}</h2>
+          <div class="program-overview-state-tags">${renderProgramStatusBadges(listProgram)}</div>
           <p class="program-overview-meta">Current version ${escapeProgramHtml(program.currentVersionNumber || "—")}
             ${program.startDate ? ` · Starts ${escapeProgramHtml(programDate(program.startDate))}` : ""}
             ${legacy ? " · Older linked program" : ""}
           </p>
         </div>
-        <a class="button button-secondary button-small" href="/admin/plans/">Open program library</a>
       </header>
       <section class="program-link-card card" aria-labelledby="privateLinkHeading">
         <div class="section-kicker">PRIVATE LINK</div>
-        <h2 id="privateLinkHeading">Share this program</h2>
+        <h2 id="privateLinkHeading">Share current published version</h2>
         <p class="program-link-status" id="programLinkStatus" role="status" aria-live="polite">${escapeProgramHtml(linkStatus)}</p>
         <div class="program-link-actions">
           ${program.hasActivePrivateLink
@@ -353,6 +354,9 @@ document.getElementById("programList").addEventListener("click", event => {
   const item = event.target.closest("[data-program-id]");
   if (item) selectProgram(item.dataset.programId);
 });
+
+document.getElementById("programSearch").addEventListener("input", renderProgramList);
+document.getElementById("programStatusFilter").addEventListener("change", renderProgramList);
 
 document.getElementById("programDetail").addEventListener("click", event => {
   const button = event.target.closest("[data-link-action]");

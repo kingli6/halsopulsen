@@ -156,6 +156,16 @@ function testProgramOverviewReplacesClientOverview() {
   assert.match(server, /\/api\/workoutplanner\/programs\/:programId\/overview/);
   assert.match(overviewUi, /Copy private link/);
   assert.match(overviewUi, /Recorded workouts/);
+  assert.match(overviewPage, /id="programSearch"/);
+  assert.match(overviewPage, /value="legacy">Client-assigned · legacy/);
+  assert.match(overviewUi, /Published · live/);
+  assert.match(overviewUi, /Saved update v\$\{latestVersion\} · not published/);
+  assert.match(overviewUi, /opens the current published version/);
+  assert.match(overviewUi, /share the current published version/);
+  assert.match(overviewUi, /programSearch"\)\.addEventListener\("input", renderProgramList\)/);
+  assert.doesNotMatch(overviewUi, /program-overview-heading[\s\S]*?Open program library/);
+  assert.doesNotMatch(overviewPage, /OWNER WORKSPACE|Plan with intent\. Keep every version\./);
+  assert.match(overviewPage, /class="topnav-link" href="\/admin\/plans\/">Program library/);
 }
 
 function testLiveEditingAndUnpublishedPublishingControls() {

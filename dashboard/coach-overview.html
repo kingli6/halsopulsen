@@ -34,9 +34,6 @@
   <main class="shell page coach-overview-page">
     <section class="page-intro">
       <div><h1>Program overview</h1></div>
-      <div class="intro-actions">
-        <a class="button button-secondary" href="/admin/plans/">Open program library</a>
-      </div>
     </section>
 
     <p class="coach-overview-status" id="overviewStatus" role="status" aria-live="polite"></p>
@@ -44,7 +41,7 @@
     <div class="program-overview-layout">
       <aside class="program-list-panel card" aria-labelledby="programsHeading">
         <div class="program-panel-heading">
-          <div><p class="section-kicker">PUBLISHED</p><h2 id="programsHeading">Published programs</h2></div>
+          <div><p class="section-kicker">CURRENT PROGRAMS</p><h2 id="programsHeading">Programs</h2></div>
           <span class="draft-status is-current" id="programCount">0</span>
         </div>
         <div class="program-list-controls">
@@ -55,7 +52,7 @@
           <label>
             <span>Show</span>
             <select id="programStatusFilter">
-              <option value="all">All published and legacy</option>
+              <option value="all">All programs</option>
               <option value="published">Published</option>
               <option value="legacy">Client-assigned · legacy</option>
             </select>
