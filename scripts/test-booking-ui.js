@@ -69,6 +69,14 @@ async function flush() {
 }
 
 async function main() {
+  const homepage = fs.readFileSync("index.html", "utf8");
+  assert(!homepage.includes('class="progress-section"'), "The practice progress section should not render on the public homepage.");
+  assert(!homepage.includes("Min praktikresa"), "The practice progress heading should be absent.");
+  assert(!homepage.includes("Här kan du följa hur långt jag har kommit med mina praktiska utbildningsmoment."), "The practice progress introduction should be absent.");
+  assert(!/prog-(?:massage|nutrition|pt)-clients/.test(homepage), "Public client progress counters should be absent.");
+  assert(homepage.includes('id="contact"'), "The contact and booking section should remain on the homepage.");
+  assert(homepage.includes('href="https://booking.halsopulsen.se/booking/"'), "The homepage booking link should remain unchanged.");
+
   const document = createFakeDocument();
   const calls = [];
   let lastSlot = null;
@@ -333,7 +341,7 @@ async function main() {
    assert(adminJs.includes("allowPersonalMessage: true"));
    assert(adminJs.includes("personalMessage"));
    assert(!adminJs.includes("Återaktivera och bekräfta"));
-  console.log("Booking UI checks passed: rebooking reset, duplicate protection, and alternative-time feedback.");
+  console.log("Booking UI checks passed: homepage progress removal, booking flow, rebooking reset, duplicate protection, and alternative-time feedback.");
 }
 
 main().catch(error => {
