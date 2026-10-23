@@ -57,40 +57,45 @@
         <div>
           <p class="section-kicker">WORKOUT PROGRAMS</p>
           <h2 id="libraryHeading">Program library</h2>
-          <p>Build reusable plans or manage an ongoing client program. Publishing an update keeps its private link.</p>
+          <p>See what is live, keep drafts private, and manage each program’s private link.</p>
         </div>
          <a class="button button-primary" href="/admin/plans/?view=editor" id="createPlanBtn">+ Create new plan</a>
       </div>
       <div class="library-toolbar">
         <div class="library-summary" id="librarySummary" aria-live="polite"></div>
       </div>
-       <section class="library-view card" id="databaseProgramLibrary" aria-labelledby="databaseProgramLibraryHeading" hidden>
-          <div class="library-view-header">
-            <div>
-              <p id="databaseProgramLibraryHeading" class="section-kicker">SAVED PROGRAMS</p>
-              <p>Open saved programs, manage private links, and review version history.</p>
-            </div>
-           <span class="draft-status is-current" id="databaseProgramLibrarySummary">0 programs</span>
+       <section class="database-program-library" id="databaseProgramLibrary" aria-labelledby="libraryHeading" hidden>
+         <div class="database-program-summary" id="databaseProgramLibrarySummary" aria-label="Program counts" aria-live="polite">
+           <span><strong data-program-count="live">0</strong> Live</span>
+           <span><strong data-program-count="drafts">0</strong> Drafts</span>
+           <span><strong data-program-count="legacy">0</strong> Client-assigned legacy</span>
          </div>
          <p class="client-create-status" id="databaseProgramLibraryStatus" role="status" aria-live="polite"></p>
-          <p class="client-create-status" id="cloneProgramStatus" role="status" aria-live="polite"></p>
-          <p class="client-create-status" id="clientLinkStatus" role="status" aria-live="polite"></p>
-          <section class="database-program-group" aria-labelledby="publishedDatabaseProgramsHeading">
-            <div class="database-program-group-heading">
-              <h3 id="publishedDatabaseProgramsHeading">Published / active programs</h3>
-              <span class="draft-status is-current" id="publishedDatabaseProgramCount">0</span>
-            </div>
-            <div class="plan-library" id="databasePublishedProgramList"></div>
-          </section>
-          <section class="database-program-group" aria-labelledby="savedDatabaseProgramsHeading">
-            <div class="database-program-group-heading">
-              <h3 id="savedDatabaseProgramsHeading">Saved / unpublished programs</h3>
-              <span class="draft-status" id="savedDatabaseProgramCount">0</span>
-            </div>
-            <div class="plan-library" id="databaseSavedProgramList"></div>
-          </section>
+         <p class="client-create-status" id="cloneProgramStatus" role="status" aria-live="polite"></p>
+         <p class="client-create-status" id="clientLinkStatus" role="status" aria-live="polite"></p>
+         <section class="database-program-group" aria-labelledby="publishedDatabaseProgramsHeading">
+           <div class="database-program-group-heading">
+             <h3 id="publishedDatabaseProgramsHeading">Live programs</h3>
+             <span class="draft-status is-current" id="publishedDatabaseProgramCount">0</span>
+           </div>
+           <div class="plan-library" id="databasePublishedProgramList"></div>
+         </section>
+         <section class="database-program-group" aria-labelledby="savedDatabaseProgramsHeading">
+           <div class="database-program-group-heading">
+             <h3 id="savedDatabaseProgramsHeading">Drafts — not live</h3>
+             <span class="draft-status" id="savedDatabaseProgramCount">0</span>
+           </div>
+           <div class="plan-library" id="databaseSavedProgramList"></div>
+         </section>
+         <section class="database-program-group" aria-labelledby="legacyDatabaseProgramsHeading">
+           <div class="database-program-group-heading">
+             <h3 id="legacyDatabaseProgramsHeading">Client-assigned legacy programs</h3>
+             <span class="draft-status" id="legacyDatabaseProgramCount">0</span>
+           </div>
+           <div class="plan-library" id="databaseLegacyProgramList"></div>
+         </section>
+         <p class="library-access-note">Clients do not need an account. Each private link is a bearer secret: share it only with the intended person, and revoke it if it is exposed.</p>
        </section>
-       <p class="library-access-note">Clients do not need an account. Each private link is a bearer secret: share it only with the intended person, and revoke it if it is exposed.</p>
       <div class="plan-library" id="planLibrary"></div>
     </section>
 
