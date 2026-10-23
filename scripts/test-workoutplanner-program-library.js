@@ -176,8 +176,9 @@ function testProgramPublishAndDashboardContracts() {
     planner.indexOf("async function loadDatabaseLibrary")
   );
   assert.match(libraryRenderer, /planState\.databasePrograms/);
-  assert.match(libraryRenderer, /program\.publishedVersionCount/);
-  assert.match(libraryRenderer, /program\.archivedVersionCount/);
+  assert.match(libraryRenderer, /const countTargets = \{\s*live: publishedPrograms\.length,\s*drafts: savedPrograms\.length,\s*legacy: legacyPrograms\.length/s);
+  assert.match(libraryRenderer, /program\.kind === "library" && Boolean\(program\.hasCurrentVersion\)/);
+  assert.match(libraryRenderer, /program\.kind === "client"/);
   assert.doesNotMatch(libraryRenderer, /planState\.library/);
 
   const librarySummary = planner.slice(
