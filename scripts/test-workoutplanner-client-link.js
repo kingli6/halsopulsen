@@ -908,7 +908,7 @@ async function run() {
   assert.match(planner, /adminDatabaseWorkspace && program\.kind === "library"/);
   assert.match(planner, /data-copy-client-link/);
   assert.match(planner, /Current private link copied\. It has not been changed\./);
-  assert.match(planner, /Open link/);
+  assert.match(planner, /Open private link/);
   assert.match(planner, /Preview as client/);
   assert.match(planner, /open=1&amp;preview=1/);
   assert.match(planner, /target="_blank" rel="noopener"/);

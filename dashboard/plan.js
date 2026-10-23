@@ -72,11 +72,15 @@ function applyAdminWorkspaceCopy() {
   }
   const intro = document.querySelector(".intro-copy");
   if (intro) {
-    intro.textContent = "See what is live, keep drafts private, and manage each program’s private link.";
+    intro.textContent = "Save program drafts, publish when ready, and manage the one private link for each program.";
   }
-  const libraryDescription = document.querySelector("#libraryHeading")?.parentElement?.querySelector("p:not(.section-kicker)");
+  const libraryDescription = document.querySelector("#libraryHeading")?.parentElement?.querySelector("p");
   if (libraryDescription) {
-    libraryDescription.textContent = "Live programs use the current published version. Drafts are not shared; complete updates keep the same private link.";
+    libraryDescription.textContent = "Keep saved programs and unpublished drafts here. Published programs stay available through their existing private link.";
+  }
+  const programDescription = document.querySelector("#databaseProgramLibraryHeading")?.parentElement?.querySelector("p");
+  if (programDescription) {
+    programDescription.textContent = "Open a saved program, manage its private link, or review its version history.";
   }
 }
 
@@ -798,170 +802,106 @@ function renderDatabaseProgramLibrary() {
   const section = document.getElementById("databaseProgramLibrary");
   const publishedContainer = document.getElementById("databasePublishedProgramList");
   const savedContainer = document.getElementById("databaseSavedProgramList");
-  const legacyContainer = document.getElementById("databaseLegacyProgramList");
   const summary = document.getElementById("databaseProgramLibrarySummary");
-  if (!section || !publishedContainer || !savedContainer || !legacyContainer || !databaseWorkspace) return;
+  if (!section || !publishedContainer || !savedContainer || !databaseWorkspace) return;
 
   section.hidden = false;
   const programs = planState.databasePrograms;
   renderLibrarySummary();
-  const publishedPrograms = programs.filter(program => program.kind === "library" && Boolean(program.hasCurrentVersion));
-  const savedPrograms = programs.filter(program => program.kind === "library" && !program.hasCurrentVersion);
-  const legacyPrograms = programs.filter(program => program.kind === "client");
-  const countTargets = {
-    live: publishedPrograms.length,
-    drafts: savedPrograms.length,
-    legacy: legacyPrograms.length
-  };
+  const publishedVersionCount = programs.reduce(
+    (total, program) => total + (Number(program.publishedVersionCount) || 0),
+    0
+  );
+  const archivedVersionCount = programs.reduce(
+    (total, program) => total + (Number(program.archivedVersionCount) || 0),
+    0
+  );
   if (summary) {
-    Object.entries(countTargets).forEach(([key, count]) => {
-      const target = summary.querySelector(`[data-program-count="${key}"]`);
-      if (target) target.textContent = String(count);
-    });
+    summary.textContent = `${programs.length} ${programs.length === 1 ? "program" : "programs"} · ${publishedVersionCount} published ${publishedVersionCount === 1 ? "version" : "versions"} · ${archivedVersionCount} archived ${archivedVersionCount === 1 ? "version" : "versions"}`;
   }
+  const publishedPrograms = programs.filter(program => Boolean(program.hasCurrentVersion));
+  const savedPrograms = programs.filter(program => !program.hasCurrentVersion);
   const publishedCount = document.getElementById("publishedDatabaseProgramCount");
   const savedCount = document.getElementById("savedDatabaseProgramCount");
-  const legacyCount = document.getElementById("legacyDatabaseProgramCount");
   if (publishedCount) publishedCount.textContent = String(publishedPrograms.length);
   if (savedCount) savedCount.textContent = String(savedPrograms.length);
-  if (legacyCount) legacyCount.textContent = String(legacyPrograms.length);
+  if (!programs.length) {
+    publishedContainer.innerHTML = `<div class="empty-panel">No published programs yet.</div>`;
+    savedContainer.innerHTML = `<div class="empty-panel">${adminDatabaseWorkspace
+      ? "Save a draft to build your program library."
+      : "No unpublished programs are saved yet."}</div>`;
+    return;
+  }
   const renderProgramCard = program => {
     const programId = escapePlanHtml(program.id);
     const historyPanelId = `program-history-${programId}`;
-    const isLegacy = program.kind === "client";
-    const hasCurrentVersion = Boolean(program.hasCurrentVersion);
-    const latestVersion = Number(program.version) || 1;
-    const currentVersion = Number(program.currentVersion) || latestVersion;
-    const hasPendingDraft = hasCurrentVersion
-      && program.versionStatus === "draft"
-      && latestVersion > currentVersion;
-    const lifecycleLabel = hasCurrentVersion
-      ? "Published · live"
-      : program.versionStatus === "archived"
-        ? "Archived · not live"
-        : program.versionStatus === "published"
-          ? "Published · not live"
-          : "Draft · not live";
-    const lifecycleClass = hasCurrentVersion
-      ? "is-current"
-      : program.versionStatus === "archived"
-        ? "is-archived"
-        : program.versionStatus === "published"
-          ? "is-not-live"
-          : "is-draft";
-    const versionText = hasCurrentVersion
-      ? `Live v${currentVersion}${hasPendingDraft ? ` · draft v${latestVersion} saved` : ""}`
-      : `${program.versionStatus === "archived"
-        ? "Archived"
-        : program.versionStatus === "published"
-          ? "Published"
-          : "Draft"} v${latestVersion}`;
-    const openLabel = isLegacy
-      ? "Open program"
-      : hasPendingDraft
-        ? "Continue draft"
-        : hasCurrentVersion
-          ? "Edit live program"
-          : "Open draft";
-    const privateLinkStatus = program.hasActivePrivateLink
-      ? hasCurrentVersion
-        ? "Private link · Active"
-        : "Active link · no current version"
-      : "Private link · No link";
-    const privateLinkStatusClass = program.hasActivePrivateLink
-      ? hasCurrentVersion ? "is-active" : "is-warning"
-      : "is-none";
+    const clientCopyAction = "";
     let linkActions = "";
     if (adminDatabaseWorkspace && program.kind === "library") {
       linkActions = program.hasActivePrivateLink
         ? `
-          <a class="button button-secondary button-small"
+          <a class="button button-primary button-small"
             href="/api/workoutplanner/programs/${programId}/link?open=1"
-            target="_blank" rel="noopener">Open link</a>
+            target="_blank" rel="noopener">Open private link</a>
           <button class="button button-secondary button-small" type="button"
-            data-copy-program-link="${programId}">Copy link</button>
-          <details class="database-program-overflow">
-            <summary class="button button-secondary button-small">More</summary>
-            <div class="database-program-overflow-menu">
-              <button class="button button-secondary button-small" type="button"
-                data-rotate-program-link="${programId}">Rotate link</button>
-              <button class="button button-danger button-small" type="button"
-                data-revoke-program-link="${programId}">Revoke link</button>
-            </div>
-          </details>`
+            data-copy-program-link="${programId}">Copy current link</button>
+          <button class="button button-secondary button-small" type="button"
+            data-rotate-program-link="${programId}">Rotate link</button>
+          <button class="button button-danger button-small" type="button"
+            data-revoke-program-link="${programId}">Revoke</button>`
         : program.hasCurrentVersion && (program.publishedStartDate || program.startDate)
           ? `<button class="button button-secondary button-small" type="button"
               data-create-program-link="${programId}">Create private link</button>`
           : program.hasCurrentVersion
-            ? `<span class="client-create-status">Add a start date before creating a private link.</span>`
-            : `<span class="client-create-status">Publish a complete version before creating a private link.</span>`;
+            ? `<span class="client-create-status">Save a complete program with a start date before creating a private link.</span>`
+            : `<span class="client-create-status">Save a complete program to create a private link.</span>`;
     } else if (adminDatabaseWorkspace && program.kind === "client" && program.clientId) {
       const legacyLinkActions = program.hasActivePrivateLink
         ? `
-          <a class="button button-secondary button-small"
+          <a class="button button-primary button-small"
             href="/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/programs/${programId}/link?open=1"
-            target="_blank" rel="noopener">Open link</a>
+            target="_blank" rel="noopener">Open private link</a>
           <a class="button button-secondary button-small"
             href="/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/programs/${programId}/link?open=1&amp;preview=1"
             target="_blank" rel="noopener">Preview as client</a>
           <button class="button button-secondary button-small" type="button"
             data-copy-client-link="${escapePlanHtml(program.clientId)}"
-            data-program-id="${escapePlanHtml(program.id)}">Copy link</button>
-          <details class="database-program-overflow">
-            <summary class="button button-secondary button-small">More</summary>
-            <div class="database-program-overflow-menu">
-              <button class="button button-secondary button-small" type="button"
-                data-rotate-client-link="${escapePlanHtml(program.clientId)}"
-                data-program-id="${escapePlanHtml(program.id)}">Rotate link</button>
-              <button class="button button-danger button-small" type="button"
-                data-revoke-client-link="${escapePlanHtml(program.clientId)}"
-                data-program-id="${escapePlanHtml(program.id)}">Revoke link</button>
-            </div>
-          </details>`
+            data-program-id="${escapePlanHtml(program.id)}">Copy current link</button>
+          <button class="button button-secondary button-small" type="button"
+            data-rotate-client-link="${escapePlanHtml(program.clientId)}"
+            data-program-id="${escapePlanHtml(program.id)}">Rotate link</button>
+          <button class="button button-danger button-small" type="button"
+            data-revoke-client-link="${escapePlanHtml(program.clientId)}"
+            data-program-id="${escapePlanHtml(program.id)}">Revoke</button>`
         : program.hasPublishedVersion
           ? `<button class="button button-secondary button-small" type="button"
             data-create-client-link="${escapePlanHtml(program.clientId)}"
             data-program-id="${escapePlanHtml(program.id)}">Create private link</button>`
           : `<span class="client-create-status">Publish a version to create a private link.</span>`
-      linkActions = legacyLinkActions;
+      linkActions = `<details class="legacy-link-actions">
+        <summary>Existing private link controls</summary>
+        <div class="library-actions">${legacyLinkActions}</div>
+      </details>`;
     }
-    const linkStatusNote = !program.hasActivePrivateLink && !hasCurrentVersion && !isLegacy
-      ? `<span class="private-link-note">Drafts are not shared.</span>`
-      : hasPendingDraft
-        ? `<span class="private-link-note">Saved draft changes are not live yet.</span>`
-        : "";
     return `
-    <article class="library-item database-program-item${isLegacy ? " is-legacy" : ""}">
+    <article class="library-item">
       <div class="library-item-main">
-        <div class="library-item-title">
-          <strong>${escapePlanHtml(program.name)}</strong>
-          <div class="database-program-state-tags">
-            <span class="database-program-state-tag ${lifecycleClass}">${lifecycleLabel}</span>
-            ${hasPendingDraft ? `<span class="database-program-state-tag is-draft">Draft v${latestVersion} · not live</span>` : ""}
-            ${isLegacy ? `<span class="database-program-state-tag is-legacy">Client-assigned · legacy</span>` : ""}
-          </div>
-        </div>
-        <span class="database-program-meta">${isLegacy && program.personName ? `For ${escapePlanHtml(program.personName)} · ` : ""}${versionText} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
+        <div class="library-item-title"><strong>${escapePlanHtml(program.name)}</strong><span class="${program.versionStatus === "published" ? "current-tag" : "draft-status is-draft"}">${program.kind === "client" ? "Legacy linked program" : "Program"} · ${escapePlanHtml(program.versionStatus || "draft")}</span></div>
+        <span>${program.kind === "client" ? "Existing program link · " : ""}Version ${program.version} · ${program.durationWeeks || 0} ${program.durationWeeks === 1 ? "week" : "weeks"} · Updated ${formatPublishedDate(program.updatedAt)}</span>
         ${program.description ? `<p>${escapePlanHtml(program.description)}</p>` : ""}
         ${adminDatabaseWorkspace ? `
           <div class="program-action-panel program-history-panel" id="${historyPanelId}" data-program-history-panel="${programId}" hidden>
             <div class="program-version-list"></div>
           </div>` : ""}
       </div>
-      <div class="database-program-actions">
-        <div class="database-program-primary-actions">
-          <button class="button button-primary button-small" type="button" data-open-database-program="${escapePlanHtml(program.id)}">${openLabel}</button>
-          ${adminDatabaseWorkspace
-            ? `<button class="button button-secondary button-small" type="button"
-                data-toggle-program-history="${programId}" aria-expanded="false" aria-controls="${historyPanelId}">Version history</button>`
-            : ""}
-        </div>
-        ${adminDatabaseWorkspace ? `
-          <div class="database-program-link-controls">
-            <span class="database-program-link-status ${privateLinkStatusClass}">${privateLinkStatus}</span>
-            ${linkStatusNote}
-            <div class="database-program-link-actions">${linkActions}</div>
-          </div>` : ""}
+      <div class="library-actions">
+        <button class="button button-primary button-small" type="button" data-open-database-program="${escapePlanHtml(program.id)}">Open program</button>
+        ${clientCopyAction}
+        ${adminDatabaseWorkspace
+          ? `<button class="button button-secondary button-small" type="button"
+              data-toggle-program-history="${programId}" aria-expanded="false" aria-controls="${historyPanelId}">Version history</button>`
+          : ""}
+        ${linkActions}
       </div>
     </article>
   `;
@@ -969,13 +909,10 @@ function renderDatabaseProgramLibrary() {
 
   publishedContainer.innerHTML = publishedPrograms.length
     ? publishedPrograms.map(renderProgramCard).join("")
-    : `<div class="empty-panel">No live programs yet. Publish a complete program to make one current.</div>`;
+    : `<div class="empty-panel">No published programs yet.</div>`;
   savedContainer.innerHTML = savedPrograms.length
     ? savedPrograms.map(renderProgramCard).join("")
-    : `<div class="empty-panel">No draft-only programs. New drafts stay private until they are published.</div>`;
-  legacyContainer.innerHTML = legacyPrograms.length
-    ? legacyPrograms.map(renderProgramCard).join("")
-    : `<div class="empty-panel">No client-assigned legacy programs.</div>`;
+    : `<div class="empty-panel">No unpublished programs are saved yet.</div>`;
 }
 
 async function loadDatabaseLibrary() {
@@ -1374,6 +1311,7 @@ function renderAllPlan() {
   if (printButton) printButton.hidden = !planState.editorMode;
   if (adminDatabaseWorkspace) {
     document.querySelector(".library-toolbar")?.setAttribute("hidden", "");
+    document.querySelector(".library-access-note")?.setAttribute("hidden", "");
     document.getElementById("planLibrary")?.setAttribute("hidden", "");
   }
   if (sharedProgramWorkspace) {
@@ -2100,7 +2038,11 @@ function bindPlanEvents() {
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
   if (databaseWorkspace) {
-    document.getElementById("databaseProgramLibrary").addEventListener("click", event => {
+    const databaseProgramLists = [
+      document.getElementById("databasePublishedProgramList"),
+      document.getElementById("databaseSavedProgramList")
+    ].filter(Boolean);
+    const handleDatabaseProgramListClick = event => {
       const createProgram = event.target.closest("[data-create-program-link]");
       const copyProgram = event.target.closest("[data-copy-program-link]");
       const rotateProgram = event.target.closest("[data-rotate-program-link]");
@@ -2109,6 +2051,8 @@ function bindPlanEvents() {
       const copy = event.target.closest("[data-copy-client-link]");
       const rotate = event.target.closest("[data-rotate-client-link]");
       const revoke = event.target.closest("[data-revoke-client-link]");
+      const open = event.target.closest("[data-open-database-program]");
+      const history = event.target.closest("[data-toggle-program-history]");
       if (createProgram) createProgramLink(createProgram.dataset.createProgramLink);
       if (copyProgram) copyProgramLink(copyProgram.dataset.copyProgramLink);
       if (rotateProgram) createProgramLink(rotateProgram.dataset.rotateProgramLink, { rotate: true });
@@ -2117,7 +2061,10 @@ function bindPlanEvents() {
       if (copy) copyClientLink(copy.dataset.copyClientLink, copy.dataset.programId);
       if (rotate) createClientLink(rotate.dataset.rotateClientLink, rotate.dataset.programId, { rotate: true });
       if (revoke) revokeClientLink(revoke.dataset.revokeClientLink, revoke.dataset.programId);
-    });
+      if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
+      if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
+    };
+    databaseProgramLists.forEach(list => list.addEventListener("click", handleDatabaseProgramListClick));
   }
   document.getElementById("weekTabs").addEventListener("click", event => {
     const tab = event.target.closest("[data-week-index]");
@@ -2152,15 +2099,6 @@ function bindPlanEvents() {
     if (copy) copyPlanLink(copy.dataset.copyPlan);
     if (remove) deletePublishedPlan(remove.dataset.deletePlan);
   });
-  const databaseProgramLibrary = document.getElementById("databaseProgramLibrary");
-  if (databaseProgramLibrary) {
-    databaseProgramLibrary.addEventListener("click", event => {
-      const open = event.target.closest("[data-open-database-program]");
-      const history = event.target.closest("[data-toggle-program-history]");
-      if (open) openDatabaseProgram(open.dataset.openDatabaseProgram);
-      if (history) toggleProgramVersionHistory(history.dataset.toggleProgramHistory, history);
-    });
-  }
   document.getElementById("createPlanBtn").addEventListener("click", event => {
     event.preventDefault();
     startNewDraft();
