@@ -6,6 +6,11 @@
     blocks: [],
     settings: { minimumNoticeHours: 0 },
     appointments: [],
+    historyAppointments: [],
+    historyPage: 1,
+    historyHasNextPage: false,
+    historyLoaded: false,
+    appointmentView: "upcoming",
     calendar: null,
     editingAppointment: null
   };
@@ -144,6 +149,7 @@
     state.blocks = blocks.blockedTimes;
     state.settings = settings.settings;
     renderServices();
+    renderHistoryServices();
     renderRules();
     renderOverrides();
     renderBlocks();
@@ -159,6 +165,68 @@
     state.appointments = data.appointments;
     $("appointment-count").textContent = `${state.appointments.length} bokningar`;
     renderAppointments();
+  }
+
+  function renderHistoryServices() {
+    const selected = $("history-service").value;
+    $("history-service").innerHTML = `<option value="">Alla tjänster</option>${state.services.map(service => `
+      <option value="${esc(service.id)}">${esc(service.name)}${service.active ? "" : " · Inaktiv"}</option>
+    `).join("")}`;
+    $("history-service").value = state.services.some(service => String(service.id) === selected)
+      ? selected
+      : "";
+  }
+
+  async function loadHistoryAppointments(page = state.historyPage) {
+    const params = new URLSearchParams();
+    const search = $("history-search").value.trim();
+    if (search) params.set("search", search);
+    if ($("history-service").value) params.set("serviceId", $("history-service").value);
+    if ($("history-status").value) params.set("status", $("history-status").value);
+    if ($("history-from").value) params.set("from", $("history-from").value);
+    if ($("history-to").value) params.set("to", $("history-to").value);
+    params.set("page", String(page));
+    const data = await api(`/appointments/history?${params}`);
+    state.historyAppointments = data.appointments;
+    state.historyPage = data.pagination.page;
+    state.historyHasNextPage = data.pagination.hasNextPage;
+    state.historyLoaded = true;
+    $("history-count").textContent = `${state.historyAppointments.length} bokningar visas`;
+    $("history-page-label").textContent = `Sida ${state.historyPage}`;
+    $("history-previous").disabled = state.historyPage <= 1;
+    $("history-next").disabled = !state.historyHasNextPage;
+    renderHistoryAppointments();
+  }
+
+  function refreshAppointmentViews() {
+    return loadAppointments().then(async () => {
+      state.historyLoaded = false;
+      if (state.appointmentView === "history") {
+        await loadHistoryAppointments(state.historyPage);
+      }
+    });
+  }
+
+  function findAppointmentById(id) {
+    return [...state.appointments, ...state.historyAppointments]
+      .find(item => String(item.id) === String(id));
+  }
+
+  function setAppointmentView(view) {
+    state.appointmentView = view === "history" ? "history" : "upcoming";
+    const historyIsActive = state.appointmentView === "history";
+    const upcomingButton = $("appointment-view-upcoming-button");
+    const historyButton = $("appointment-view-history-button");
+    upcomingButton.classList.toggle("is-active", !historyIsActive);
+    upcomingButton.setAttribute("aria-selected", String(!historyIsActive));
+    historyButton.classList.toggle("is-active", historyIsActive);
+    historyButton.setAttribute("aria-selected", String(historyIsActive));
+    $("appointment-count").hidden = historyIsActive;
+    $("appointment-view-upcoming").hidden = historyIsActive;
+    $("appointment-view-history").hidden = !historyIsActive;
+    if (historyIsActive && !state.historyLoaded) {
+      loadHistoryAppointments(1).catch(error => message(error.message, true));
+    }
   }
 
   async function loadCalendar() {
@@ -267,6 +335,19 @@
     `).join("") : '<tr><td colspan="5" class="empty-resource">Inga bokningar matchar filtret.</td></tr>';
   }
 
+  function renderHistoryAppointments() {
+    $("history-appointments-list").innerHTML = state.historyAppointments.length ? state.historyAppointments.map(item => `
+      <tr class="${state.editingAppointment && String(state.editingAppointment.id) === String(item.id) ? "is-selected" : ""}"
+        aria-selected="${state.editingAppointment && String(state.editingAppointment.id) === String(item.id) ? "true" : "false"}">
+        <td>${appointmentTime(item)}</td>
+        <td>${esc(item.clientName)}<small>${esc(item.email)}</small></td>
+        <td>${esc(item.serviceName)}<small>${item.effectiveBreakMinutes} min paus</small></td>
+        <td>${statusPill(item.status)}</td>
+        <td><div class="row-actions"><button class="text-button" data-edit-appointment="${item.id}" type="button">Öppna</button></div></td>
+      </tr>
+    `).join("") : '<tr><td colspan="5" class="empty-resource">Inga tidigare bokningar matchar filtret.</td></tr>';
+  }
+
   function renderCalendar() {
     const calendar = state.calendar;
     if (!calendar) return;
@@ -361,6 +442,7 @@
     state.editingAppointment = item;
     $("appointment-editor").hidden = false;
     renderAppointments();
+    renderHistoryAppointments();
     $("appointment-id").value = item.id;
     $("edit-appointment-date").value = isReopening
       ? currentDate
@@ -454,13 +536,14 @@
             status: $("edit-appointment-status").value
           })
         });
-        await loadAppointments();
+        await refreshAppointmentViews();
         await loadCalendar();
         toast("Bokningen sparades.");
         appointmentFeedback("");
         state.editingAppointment = null;
         $("appointment-editor").hidden = true;
         renderAppointments();
+        renderHistoryAppointments();
       }
     } catch (error) {
       if (form.id === "appointment-form") {
@@ -558,6 +641,20 @@
       event.preventDefault();
       loadAppointments().catch(error => message(error.message, true));
     });
+    $("history-filters").addEventListener("submit", event => {
+      event.preventDefault();
+      loadHistoryAppointments(1).catch(error => message(error.message, true));
+    });
+    $("history-previous").addEventListener("click", () => {
+      if (state.historyPage > 1) {
+        loadHistoryAppointments(state.historyPage - 1).catch(error => message(error.message, true));
+      }
+    });
+    $("history-next").addEventListener("click", () => {
+      if (state.historyHasNextPage) {
+        loadHistoryAppointments(state.historyPage + 1).catch(error => message(error.message, true));
+      }
+    });
     $("calendar-filters").addEventListener("submit", event => {
       event.preventDefault();
       loadCalendar().catch(error => message(error.message, true));
@@ -599,12 +696,13 @@
     document.addEventListener("click", event => {
       const target = event.target.closest("button");
       if (!target) return;
+      if (target.dataset.appointmentView) setAppointmentView(target.dataset.appointmentView);
       if (target.dataset.editService) editService(target.dataset.editService);
       if (target.dataset.editRule) editRule(target.dataset.editRule);
       if (target.dataset.editOverride) editOverride(target.dataset.editOverride);
       if (target.dataset.editBlock) editBlock(target.dataset.editBlock);
       if (target.dataset.editAppointment) {
-        const item = state.appointments.find(value => value.id === target.dataset.editAppointment);
+        const item = findAppointmentById(target.dataset.editAppointment);
         if (item) openAppointment(item);
       }
       if (target.dataset.quickStatus && state.editingAppointment) {
@@ -679,10 +777,10 @@
       method: "PATCH",
       body: JSON.stringify(quickStatusPayload)
     }).then(async () => {
-      await loadAppointments();
+      await refreshAppointmentViews();
       await loadCalendar();
       state.editingAppointment.status = status;
-      openAppointment(state.appointments.find(item => item.id === state.editingAppointment.id) || state.editingAppointment);
+      openAppointment(findAppointmentById(state.editingAppointment.id) || state.editingAppointment);
       toast("Bokningens status uppdaterades.");
     }).catch(error => message(error.message, true));
   }
@@ -704,9 +802,9 @@
             personalMessage
           })
         });
-        await loadAppointments();
+        await refreshAppointmentViews();
         await loadCalendar();
-        const updated = state.appointments.find(item => item.id === state.editingAppointment.id);
+        const updated = findAppointmentById(state.editingAppointment.id);
         if (updated) openAppointment(updated);
         message("Ny tid föreslagen. Kunden behöver acceptera tiden.");
         toast("Ny tid föreslagen. Kunden behöver acceptera tiden.");
@@ -726,7 +824,7 @@
       await api(`/appointments/${id}`, { method: "DELETE" });
       state.editingAppointment = null;
       $("appointment-editor").hidden = true;
-      await loadAppointments();
+      await refreshAppointmentViews();
       await loadCalendar();
       toast("Bokningen togs bort.");
     } catch (error) {

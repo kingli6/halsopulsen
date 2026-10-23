@@ -13,6 +13,7 @@ class FakeElement {
     this.disabled = false;
     this.style = {};
     this.listeners = {};
+    this.attributes = {};
     this.classList = {
       values: new Set(),
       add: (...values) => values.forEach(value => this.classList.values.add(value)),
@@ -42,7 +43,9 @@ class FakeElement {
     return Promise.all((this.listeners[type] || []).map(listener => listener(dispatched)));
   }
 
-  setAttribute() {}
+  setAttribute(name, value) {
+    this.attributes[name] = value;
+  }
   scrollIntoView() {}
 }
 
@@ -117,15 +120,47 @@ async function main() {
     }
   ];
   const calls = [];
+  const historyCalls = [];
   const response = data => ({ ok: true, json: async () => data });
   const fetch = async (path, options = {}) => {
     calls.push({ path, options });
+    if (path.includes("/appointments/history?")) {
+      const requestUrl = new URL(path, "http://test.invalid");
+      historyCalls.push(requestUrl);
+      const page = Number(requestUrl.searchParams.get("page"));
+      return response({
+        appointments: [{
+          id: "history-1",
+          date: "2022-03-15",
+          start: "10:00",
+          end: "11:00",
+          status: "completed",
+          clientName: "Ada Lovelace",
+          email: "ada@example.test",
+          phone: "+46000000000",
+          serviceName: "Massage",
+          effectiveBreakMinutes: 10,
+          notes: "Historical note"
+        }],
+        pagination: { page, pageSize: 50, hasNextPage: page === 1 }
+      });
+    }
     if (path.includes("/appointments?")) return response({ appointments });
     if (path.endsWith("/appointments/3") && options.method === "DELETE") {
       return response({ ok: true, appointment: { id: "3" } });
     }
     if (path.includes("/calendar?")) return response({ from: "2026-08-30", to: "2026-09-13", appointments: [], blockedTimes: [] });
-    if (path.endsWith("/services")) return response({ services: [] });
+    if (path.endsWith("/services")) return response({
+      services: [{
+        id: "7",
+        name: "Massage",
+        active: true,
+        durationMinutes: 60,
+        defaultBreakMinutes: 10,
+        displayOrder: 1,
+        description: ""
+      }]
+    });
     if (path.endsWith("/hours")) return response({ rules: [] });
     if (path.endsWith("/overrides")) return response({ overrides: [] });
     if (path.endsWith("/blocks")) return response({ blockedTimes: [] });
@@ -152,6 +187,12 @@ async function main() {
   vm.runInNewContext(fs.readFileSync("dashboard/admin/booking.js", "utf8"), context);
   await flush();
   const get = id => document.getElementById(id);
+  const initialUpcomingCalls = calls.filter(call => call.path.includes("/appointments?"));
+  assert.strictEqual(initialUpcomingCalls.length, 1, "The existing upcoming view must remain the initial booking request.");
+  const upcomingParams = new URL(initialUpcomingCalls[0].path, "http://test.invalid").searchParams;
+  assert(upcomingParams.get("from"), "The upcoming view must keep its existing date-range default.");
+  assert(upcomingParams.get("to"), "The upcoming view must keep its existing date-range default.");
+  assert.strictEqual(historyCalls.length, 0, "History must load only when its view is opened.");
   const clickAppointment = id => document.dispatch("click", {
     target: { closest: () => ({ dataset: { editAppointment: id } }) }
   });
@@ -209,7 +250,63 @@ async function main() {
   assert.strictEqual(get("appointment-editor").hidden, true);
   assert(!get("appointments-list").innerHTML.includes('class="is-selected"'));
 
-  console.log("Booking admin UI checks passed: selection highlight, pending time prefill, and edit preservation.");
+  await document.dispatch("click", {
+    target: { closest: () => ({ dataset: { appointmentView: "history" } }) }
+  });
+  await flush();
+  assert.strictEqual(get("appointment-view-history").hidden, false);
+  assert.strictEqual(get("appointment-view-upcoming").hidden, true);
+  assert.strictEqual(get("appointment-view-history-button").attributes["aria-selected"], "true");
+  assert.strictEqual(historyCalls.length, 1, "Opening history must request its own paginated endpoint.");
+  assert(get("history-appointments-list").innerHTML.includes("ada@example.test"));
+  assert.strictEqual(get("history-next").disabled, false);
+
+  get("history-search").value = "Ada";
+  get("history-service").value = "7";
+  get("history-status").value = "completed";
+  get("history-from").value = "2022-03-01";
+  get("history-to").value = "2022-03-31";
+  await get("history-filters").dispatch("submit");
+  await flush();
+  const filteredHistoryUrl = historyCalls.at(-1);
+  assert.strictEqual(filteredHistoryUrl.searchParams.get("search"), "Ada");
+  assert.strictEqual(filteredHistoryUrl.searchParams.get("serviceId"), "7");
+  assert.strictEqual(filteredHistoryUrl.searchParams.get("status"), "completed");
+  assert.strictEqual(filteredHistoryUrl.searchParams.get("from"), "2022-03-01");
+  assert.strictEqual(filteredHistoryUrl.searchParams.get("to"), "2022-03-31");
+  assert.strictEqual(filteredHistoryUrl.searchParams.get("page"), "1");
+
+  await get("history-next").dispatch("click");
+  await flush();
+  assert.strictEqual(historyCalls.at(-1).searchParams.get("page"), "2");
+  assert.strictEqual(get("history-page-label").textContent, "Sida 2");
+  assert.strictEqual(get("history-next").disabled, true);
+  assert.strictEqual(get("history-previous").disabled, false);
+  await get("history-previous").dispatch("click");
+  await flush();
+  assert.strictEqual(historyCalls.at(-1).searchParams.get("page"), "1");
+
+  await clickAppointment("history-1");
+  assert.strictEqual(get("appointment-editor").hidden, false);
+  assert(get("appointment-detail").innerHTML.includes("ada@example.test"));
+  assert(get("appointment-detail").innerHTML.includes("+46000000000"));
+
+  const adminHtml = fs.readFileSync("dashboard/admin/booking.html", "utf8");
+  assert(adminHtml.includes('data-appointment-view="history"'));
+  [
+    "appointment-view-upcoming",
+    "appointment-view-history",
+    "history-search",
+    "history-service",
+    "history-status",
+    "history-from",
+    "history-to",
+    "history-appointments-list",
+    "history-previous",
+    "history-next"
+  ].forEach(id => assert(adminHtml.includes(`id="${id}"`), `History UI is missing ${id}.`));
+
+  console.log("Booking admin UI checks passed: upcoming defaults, history search/filters/pagination, and shared appointment details.");
 }
 
 main().catch(error => {

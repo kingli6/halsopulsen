@@ -14,6 +14,7 @@ const {
   getBookingSettings,
   getAppointment,
   listAppointments,
+  listAppointmentHistory,
   listBlockedTimes,
   listOverrides,
   listRules,
@@ -169,6 +170,10 @@ router.delete("/blocks/:id", asyncRoute(async (req, res) => {
 
 router.get("/appointments", asyncRoute(async (req, res) => {
   res.json({ ok: true, appointments: await listAppointments(getPool(), req.query) });
+}));
+
+router.get("/appointments/history", asyncRoute(async (req, res) => {
+  res.json({ ok: true, ...await listAppointmentHistory(getPool(), req.query) });
 }));
 
 router.get("/appointments/:id", asyncRoute(async (req, res) => {

@@ -12,6 +12,7 @@ const {
 
 const MINUTES_MS = 60 * 1000;
 const CALENDAR_LOCK_KEY = "halsopulsen-booking-calendar";
+const APPOINTMENT_HISTORY_PAGE_SIZE = 50;
 const VALID_STATUSES = new Set(["pending", "confirmed", "cancelled", "completed"]);
 const LIST_STATUSES = new Set([...VALID_STATUSES, "alternative_suggested"]);
 
@@ -679,6 +680,92 @@ async function listAppointments(client, query = {}, config = getBookingConfig())
   return result.rows.map(row => publicAppointment(row, config.timezone));
 }
 
+async function listAppointmentHistory(client, query = {}, config = getBookingConfig()) {
+  const page = integerValue(query.page, "Page", {
+    min: 1,
+    max: Number.MAX_SAFE_INTEGER,
+    fallback: 1
+  });
+  const offset = (page - 1) * APPOINTMENT_HISTORY_PAGE_SIZE;
+  if (!Number.isSafeInteger(offset)) {
+    throw new BookingError("Page is outside the supported range.", 400, "invalid_page");
+  }
+
+  const conditions = [];
+  const params = [];
+  const addParam = value => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  const appointmentStart = `CASE
+    WHEN a.status = 'alternative_suggested' THEN a.alternative_starts_at
+    WHEN a.starts_at IS NOT NULL THEN a.starts_at
+    ELSE a.original_starts_at
+  END`;
+
+  conditions.push(`(${appointmentStart}) IS NOT NULL`);
+  conditions.push(`(${appointmentStart}) < CURRENT_TIMESTAMP`);
+
+  const search = optionalText(query.search, "Search", 120);
+  if (search) {
+    const parameter = addParam(search.toLowerCase());
+    conditions.push(`(
+      POSITION(${parameter} IN LOWER(COALESCE(a.client_name, ''))) > 0
+      OR POSITION(${parameter} IN LOWER(COALESCE(a.client_email, ''))) > 0
+    )`);
+  }
+
+  const serviceIdValue = query.serviceId ?? query.service;
+  if (serviceIdValue !== undefined && serviceIdValue !== "") {
+    const serviceIdText = String(serviceIdValue);
+    const serviceId = Number(serviceIdText);
+    if (!/^\d+$/.test(serviceIdText) || !Number.isSafeInteger(serviceId) || serviceId < 1) {
+      throw new BookingError("Service ID is invalid.", 400, "invalid_service");
+    }
+    conditions.push(`a.service_id = ${addParam(serviceId)}`);
+  }
+
+  if (query.status) {
+    const status = String(query.status);
+    if (!LIST_STATUSES.has(status)) {
+      throw new BookingError("Appointment status is invalid.", 400, "invalid_status");
+    }
+    conditions.push(`a.status = ${addParam(status)}`);
+  }
+
+  const from = dateValue(query.from, "From date", { required: false });
+  const to = dateValue(query.to, "To date", { required: false });
+  if (from && to && from > to) {
+    throw new BookingError("From date must be on or before To date.", 400, "invalid_date_range");
+  }
+  if (from) {
+    conditions.push(`(${appointmentStart}) >= ${addParam(localDateTimeToDate(from, "00:00", config.timezone))}`);
+  }
+  if (to) {
+    const end = localDateTimeToDate(addDays(to, 1), "00:00", config.timezone);
+    conditions.push(`(${appointmentStart}) < ${addParam(end)}`);
+  }
+
+  const result = await client.query(`
+    ${APPOINTMENT_SELECT}
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY (${appointmentStart}) DESC, a.created_at DESC, a.id DESC
+    LIMIT ${addParam(APPOINTMENT_HISTORY_PAGE_SIZE + 1)}
+    OFFSET ${addParam(offset)}
+  `, params);
+  const hasNextPage = result.rows.length > APPOINTMENT_HISTORY_PAGE_SIZE;
+  return {
+    appointments: result.rows
+      .slice(0, APPOINTMENT_HISTORY_PAGE_SIZE)
+      .map(row => publicAppointment(row, config.timezone)),
+    pagination: {
+      page,
+      pageSize: APPOINTMENT_HISTORY_PAGE_SIZE,
+      hasNextPage
+    }
+  };
+}
+
 async function getAppointment(client, id, config = getBookingConfig()) {
   const result = await client.query(`
     ${APPOINTMENT_SELECT}
@@ -908,6 +995,7 @@ module.exports = {
   ensureAppointmentRangeIsFree,
   getAppointment,
   listAppointments,
+  listAppointmentHistory,
   listBlockedTimes,
   listOverrides,
   listRules,

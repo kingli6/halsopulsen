@@ -52,33 +52,80 @@
         <div class="section-heading-row">
           <div>
             <p class="section-kicker">BOKNINGAR</p>
-            <h2>Kommande och historik</h2>
+            <h2>Bokningar</h2>
           </div>
           <span class="range-label" id="appointment-count">Laddar…</span>
         </div>
-        <form class="filter-bar" id="appointment-filters">
-          <label class="form-label">Status
-            <select id="appointment-status">
-              <option value="">Alla</option>
-              <option value="pending">Väntar</option>
-              <option value="alternative_suggested">Förslag skickat</option>
-              <option value="confirmed">Bekräftad</option>
-              <option value="cancelled">Avbokad</option>
-              <option value="completed">Genomförd</option>
-            </select>
-          </label>
-          <label class="form-label">Från <input id="appointment-from" type="date"></label>
-          <label class="form-label">Till <input id="appointment-to" type="date"></label>
-          <button class="button button-secondary button-small" type="submit">Filtrera</button>
-        </form>
+        <div class="appointment-view-tabs" role="tablist" aria-label="Bokningsvy">
+          <button class="appointment-view-tab is-active" id="appointment-view-upcoming-button" data-appointment-view="upcoming" role="tab" aria-controls="appointment-view-upcoming" aria-selected="true" type="button">Kommande bokningar</button>
+          <button class="appointment-view-tab" id="appointment-view-history-button" data-appointment-view="history" role="tab" aria-controls="appointment-view-history" aria-selected="false" type="button">Bokningshistorik</button>
+        </div>
         <div class="appointment-layout">
-          <div class="card data-card">
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead><tr><th>Tid</th><th>Kund</th><th>Tjänst</th><th>Status</th><th></th></tr></thead>
-                <tbody id="appointments-list"></tbody>
-              </table>
-            </div>
+          <div class="appointment-list-column">
+            <section class="appointment-view" id="appointment-view-upcoming" role="tabpanel" aria-labelledby="appointment-view-upcoming-button">
+              <form class="filter-bar" id="appointment-filters">
+                <label class="form-label">Status
+                  <select id="appointment-status">
+                    <option value="">Alla</option>
+                    <option value="pending">Väntar</option>
+                    <option value="alternative_suggested">Förslag skickat</option>
+                    <option value="confirmed">Bekräftad</option>
+                    <option value="cancelled">Avbokad</option>
+                    <option value="completed">Genomförd</option>
+                  </select>
+                </label>
+                <label class="form-label">Från <input id="appointment-from" type="date"></label>
+                <label class="form-label">Till <input id="appointment-to" type="date"></label>
+                <button class="button button-secondary button-small" type="submit">Filtrera</button>
+              </form>
+              <div class="card data-card">
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead><tr><th>Tid</th><th>Kund</th><th>Tjänst</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="appointments-list"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+            <section class="appointment-view" id="appointment-view-history" role="tabpanel" aria-labelledby="appointment-view-history-button" hidden>
+              <form class="filter-bar" id="history-filters">
+                <label class="form-label">Sök klient
+                  <input id="history-search" type="search" maxlength="120" autocomplete="off" placeholder="Namn eller e-post">
+                </label>
+                <label class="form-label">Tjänst
+                  <select id="history-service"><option value="">Alla tjänster</option></select>
+                </label>
+                <label class="form-label">Status
+                  <select id="history-status">
+                    <option value="">Alla</option>
+                    <option value="pending">Väntar</option>
+                    <option value="alternative_suggested">Förslag skickat</option>
+                    <option value="confirmed">Bekräftad</option>
+                    <option value="cancelled">Avbokad</option>
+                    <option value="completed">Genomförd</option>
+                  </select>
+                </label>
+                <label class="form-label">Från <input id="history-from" type="date"></label>
+                <label class="form-label">Till <input id="history-to" type="date"></label>
+                <button class="button button-secondary button-small" type="submit">Sök i historiken</button>
+              </form>
+              <div class="section-heading-row history-summary">
+                <span class="range-label" id="history-count" aria-live="polite">Öppna historiken för att visa tidigare bokningar.</span>
+              </div>
+              <div class="card data-card">
+                <div class="table-wrap">
+                  <table class="data-table">
+                    <thead><tr><th>Tid</th><th>Kund</th><th>Tjänst</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="history-appointments-list"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="history-pagination" aria-label="Sidor i bokningshistoriken">
+                <button class="button button-secondary button-small" id="history-previous" type="button" disabled>Föregående</button>
+                <span id="history-page-label" aria-live="polite">Sida 1</span>
+                <button class="button button-secondary button-small" id="history-next" type="button" disabled>Nästa</button>
+              </div>
+            </section>
           </div>
           <aside class="card editor-card" id="appointment-editor" hidden>
             <div class="section-heading-row compact">

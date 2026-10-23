@@ -3,9 +3,13 @@
 .booking-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 21px; }
 .booking-tab { padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--muted); font-size: 12px; font-weight: 700; }
 .booking-tab:hover, .booking-tab.is-active { border-color: var(--green-2); background: var(--green-3); color: var(--green); }
+.appointment-view-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 13px; }
+.appointment-view-tab { padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--muted); font-size: 11px; font-weight: 700; }
+.appointment-view-tab:hover, .appointment-view-tab.is-active { border-color: var(--green-2); background: var(--green-3); color: var(--green); }
 .booking-notice { padding: 12px 14px; margin-bottom: 16px; border: 1px solid #efc49f; border-radius: 10px; background: var(--orange-soft); color: #765e4e; font-size: 12px; }
 .booking-notice[hidden] { display: none; }
 .booking-panel { margin-bottom: 40px; }
+.appointment-list-column { min-width: 0; }
 .filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 11px; padding: 14px 16px; margin-bottom: 15px; border: 1px solid var(--line); border-radius: 13px; background: #fbfdfb; }
 .filter-bar .form-label { min-width: 135px; }
 .filter-bar .button { margin-bottom: 0; }
@@ -37,6 +41,8 @@
 .data-table small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
 .data-table .unscheduled-label { color: #906a19; }
 .data-table .row-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.history-summary { margin-bottom: 10px; }
+.history-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; }
 .status-pill.status-pending { background: #fff2d9; color: #906a19; }
 .status-pill.status-alternative_suggested { background: #f0eafe; color: #6c4e9e; }
 .status-pill.status-confirmed { background: var(--green-3); color: var(--green); }
