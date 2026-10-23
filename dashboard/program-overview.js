@@ -34,36 +34,93 @@ function isPublishedProgram(program) {
   );
 }
 
+function getFilteredProgramOverviewPrograms() {
+  const search = String(document.getElementById("programSearch")?.value || "")
+    .trim()
+    .toLocaleLowerCase();
+  const statusFilter = document.getElementById("programStatusFilter")?.value || "all";
+  return programOverviewState.programs
+    .filter(isPublishedProgram)
+    .filter(program => statusFilter === "legacy"
+      ? program.kind === "client"
+      : statusFilter === "published"
+        ? program.kind !== "client"
+        : true)
+    .filter(program => !search || `${program.name || ""} ${program.personName || ""}`
+      .toLocaleLowerCase()
+      .includes(search));
+}
+
+function hasUnpublishedProgramDraft(program) {
+  return program.versionStatus === "draft"
+    && (Number(program.version) || 0) > (Number(program.currentVersion) || 0);
+}
+
+function renderProgramStatusBadges(program) {
+  const legacy = program.kind === "client";
+  const latestVersion = Number(program.version) || 1;
+  return `
+    <span class="program-overview-state-tag ${legacy ? "is-legacy" : "is-published"}">
+      ${legacy ? "Client-assigned · legacy" : "Published · live"}
+    </span>
+    ${hasUnpublishedProgramDraft(program)
+      ? `<span class="program-overview-state-tag is-draft">Draft v${latestVersion} · not published</span>`
+      : ""}`;
+}
+
 function renderProgramList() {
   const published = programOverviewState.programs.filter(isPublishedProgram);
+  const visible = getFilteredProgramOverviewPrograms();
   const list = document.getElementById("programList");
   const status = document.getElementById("programListStatus");
   document.getElementById("programCount").textContent = String(published.length);
 
   if (!published.length) {
-    status.textContent = "No published programs yet. Save and publish one from the program library.";
+    status.textContent = "No live programs yet. Draft-only programs stay in the program library.";
     list.innerHTML = "";
     document.getElementById("programDetail").innerHTML = `
       <div class="empty-panel card">
-        <p>No published programs are available in the overview.</p>
+        <p>No published or client-assigned programs are available in the overview.</p>
         <a class="button button-secondary" href="/admin/plans/">Open program library</a>
       </div>`;
     return;
   }
 
-  status.textContent = "";
-  list.innerHTML = published.map(program => `
-    <button class="program-list-item${program.id === programOverviewState.selectedProgramId ? " is-selected" : ""}"
-      type="button" data-program-id="${escapeProgramHtml(program.id)}"
-      aria-pressed="${program.id === programOverviewState.selectedProgramId ? "true" : "false"}">
-      <strong>${escapeProgramHtml(program.name || "Untitled program")}</strong>
-      <span>Version ${escapeProgramHtml(program.currentVersion || "—")} · ${program.hasActivePrivateLink ? "Private link active" : "No private link"} · ${programOverviewState.activitySummaries[program.id]
-        ? programOverviewState.activitySummaries[program.id].lastActivity
-          ? `Last activity ${escapeProgramHtml(programDate(programOverviewState.activitySummaries[program.id].lastActivity))}`
-          : "No activity yet"
-        : "Activity not loaded"}</span>
-    </button>
-  `).join("");
+  if (!visible.length) {
+    status.textContent = "No programs match your search and status filter.";
+    list.innerHTML = `<p class="program-list-empty">Try another name or status.</p>`;
+    return;
+  }
+
+  status.textContent = visible.length === published.length
+    ? ""
+    : `Showing ${visible.length} of ${published.length} current programs.`;
+  list.innerHTML = visible.map(program => {
+    const name = program.name || "Untitled program";
+    const activity = programOverviewState.activitySummaries[program.id];
+    const activityLabel = activity
+      ? activity.lastActivity
+        ? `Last activity ${escapeProgramHtml(programDate(activity.lastActivity))}`
+        : "No activity yet"
+      : "Activity not loaded";
+    return `
+      <button class="program-list-item${program.id === programOverviewState.selectedProgramId ? " is-selected" : ""}"
+        type="button" data-program-id="${escapeProgramHtml(program.id)}"
+        aria-label="Select ${escapeProgramHtml(name)}"
+        aria-pressed="${program.id === programOverviewState.selectedProgramId ? "true" : "false"}">
+        <span class="program-list-item-heading">
+          <strong>${escapeProgramHtml(name)}</strong>
+          <span class="program-overview-state-tags">${renderProgramStatusBadges(program)}</span>
+        </span>
+        <span class="program-list-item-meta">
+          <span>Live v${escapeProgramHtml(program.currentVersion || "—")}</span>
+          <span class="program-list-link-status ${program.hasActivePrivateLink ? "is-active" : "is-none"}">
+            ${program.hasActivePrivateLink ? "Private link active" : "No private link"}
+          </span>
+          <span>${activityLabel}</span>
+        </span>
+      </button>`;
+  }).join("");
 }
 
 async function loadProgramActivitySummary(programId) {
