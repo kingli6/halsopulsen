@@ -746,6 +746,7 @@ async function listAppointmentHistory(client, query = {}, config = getBookingCon
     conditions.push(`(${appointmentStart}) < ${addParam(end)}`);
   }
 
+  // Offset pages are deterministic for an unchanged result set; concurrent inserts or edits can shift later offsets.
   const result = await client.query(`
     ${APPOINTMENT_SELECT}
     WHERE ${conditions.join(" AND ")}

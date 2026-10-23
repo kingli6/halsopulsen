@@ -10,14 +10,15 @@ const config = { timezone: "Europe/Stockholm" };
 const queries = [];
 
 function appointmentRow(id) {
+  const startsAt = new Date(Date.UTC(2022, 2, 15, 10, 0) - (id - 1) * 60 * 1000);
   return {
     id,
     service_id: 3,
-    client_name: "Ada Lovelace",
-    client_email: "ada@example.test",
-    client_phone: "+46000000000",
-    starts_at: new Date("2022-03-15T09:00:00.000Z"),
-    ends_at: new Date("2022-03-15T10:00:00.000Z"),
+    client_name: `Client ${id}`,
+    client_email: `client-${id}@example.test`,
+    client_phone: `+460000000${String(id).padStart(2, "0")}`,
+    starts_at: startsAt,
+    ends_at: new Date(startsAt.getTime() + 60 * 60 * 1000),
     original_starts_at: null,
     original_ends_at: null,
     alternative_starts_at: null,
@@ -25,8 +26,8 @@ function appointmentRow(id) {
     break_minutes_override: null,
     status: "completed",
     notes: "Test note",
-    created_at: new Date("2022-02-01T10:00:00.000Z"),
-    updated_at: new Date("2022-03-15T10:00:00.000Z"),
+    created_at: new Date(Date.UTC(2022, 1, 1, 10, 0) - id * 1000),
+    updated_at: new Date(startsAt.getTime() + 60 * 60 * 1000),
     cancelled_at: null,
     service_name: "Massage",
     duration_minutes: 60,
@@ -34,11 +35,19 @@ function appointmentRow(id) {
   };
 }
 
+function makeHistoryRows(count) {
+  return Array.from({ length: count }, (_, index) => appointmentRow(index + 1));
+}
+
+let historyRows = makeHistoryRows(501);
+
 const client = {
   async query(text, params) {
     queries.push({ text, params });
     if (text.includes("CURRENT_TIMESTAMP")) {
-      return { rows: Array.from({ length: 51 }, (_, index) => appointmentRow(index + 1)) };
+      const limit = params.at(-2);
+      const offset = params.at(-1);
+      return { rows: historyRows.slice(offset, offset + limit) };
     }
     return { rows: [] };
   }
@@ -50,7 +59,7 @@ async function expectBookingError(promise, code) {
 
 async function main() {
   const pageThree = await listAppointmentHistory(client, {
-    search: " Ada@Example.Test ",
+    search: " CLIENT-101@Example.Test ",
     serviceId: "3",
     status: "completed",
     from: "2022-03-01",
@@ -59,7 +68,7 @@ async function main() {
   }, config);
 
   assert.strictEqual(pageThree.appointments.length, 50, "History requests must return at most one page.");
-  assert.strictEqual(pageThree.appointments[0].email, "ada@example.test");
+  assert.strictEqual(pageThree.appointments[0].email, "client-101@example.test");
   assert.deepStrictEqual(pageThree.pagination, {
     page: 3,
     pageSize: 50,
@@ -72,23 +81,52 @@ async function main() {
   assert(historyQuery.text.includes("a.service_id = $2"));
   assert(historyQuery.text.includes("a.status = $3"));
   assert(/LIMIT \$6\s+OFFSET \$7/.test(historyQuery.text));
-  assert.deepStrictEqual(historyQuery.params.slice(0, 3), ["ada@example.test", 3, "completed"]);
+  assert(historyQuery.text.includes("a.created_at DESC, a.id DESC"), "Ordering must have a unique tie-breaker.");
+  assert.deepStrictEqual(historyQuery.params.slice(0, 3), ["client-101@example.test", 3, "completed"]);
   assert.strictEqual(historyQuery.params[5], 51);
   assert.strictEqual(historyQuery.params[6], 100, "Page three must request rows after the first two pages.");
 
-  await listAppointmentHistory(client, { page: "11" }, config);
-  assert.strictEqual(queries[1].params[0], 51);
-  assert.strictEqual(queries[1].params[1], 500, "History pagination must reach records beyond the old 500-row limit.");
+  historyRows = makeHistoryRows(100);
+  const unchangedPageOne = await listAppointmentHistory(client, {}, config);
+  const unchangedPageTwo = await listAppointmentHistory(client, { page: "2" }, config);
+  const firstHundredIds = [...unchangedPageOne.appointments, ...unchangedPageTwo.appointments]
+    .map(item => item.id);
+  assert.strictEqual(new Set(firstHundredIds).size, 100, "Consecutive pages must not overlap.");
+  assert.deepStrictEqual(
+    firstHundredIds,
+    historyRows.slice(0, 100).map(row => String(row.id)),
+    "Consecutive pages must not skip any records in an unchanged result set."
+  );
 
-  const pageOne = await listAppointmentHistory(client, {}, config);
-  assert.strictEqual(pageOne.appointments.length, 50);
-  assert.deepStrictEqual(pageOne.pagination, {
-    page: 1,
-    pageSize: 50,
-    hasNextPage: true
-  });
-  assert.strictEqual(queries[2].params[0], 51);
-  assert.strictEqual(queries[2].params[1], 0);
+  historyRows = makeHistoryRows(50);
+  const exactlyFifty = await listAppointmentHistory(client, {}, config);
+  assert.strictEqual(exactlyFifty.appointments.length, 50);
+  assert.strictEqual(exactlyFifty.pagination.hasNextPage, false, "Exactly one full page must not show a next page.");
+
+  historyRows = makeHistoryRows(51);
+  const fiftyOneFirst = await listAppointmentHistory(client, {}, config);
+  const fiftyOneSecond = await listAppointmentHistory(client, { page: "2" }, config);
+  assert.strictEqual(fiftyOneFirst.appointments.length, 50);
+  assert.strictEqual(fiftyOneFirst.pagination.hasNextPage, true);
+  assert.strictEqual(fiftyOneSecond.appointments.length, 1);
+  assert.strictEqual(fiftyOneSecond.pagination.hasNextPage, false);
+  assert.deepStrictEqual(
+    [...fiftyOneFirst.appointments, ...fiftyOneSecond.appointments].map(item => item.id),
+    historyRows.map(row => String(row.id)),
+    "A 51-record result must split into one full page and one final record without overlap or skips."
+  );
+
+  historyRows = makeHistoryRows(501);
+  await listAppointmentHistory(client, { page: "11" }, config);
+  assert.strictEqual(queries.at(-1).params.at(-2), 51);
+  assert.strictEqual(queries.at(-1).params.at(-1), 500, "Page eleven must reach records beyond the old 500-row limit.");
+  const pageEleven = await listAppointmentHistory(client, { page: "11" }, config);
+  assert.deepStrictEqual(
+    pageEleven.appointments.map(item => item.id),
+    ["501"],
+    "Page eleven must return the distinct 501st matching record."
+  );
+  assert.strictEqual(pageEleven.pagination.hasNextPage, false);
 
   const callsBeforeInvalidQueries = queries.length;
   await expectBookingError(listAppointmentHistory(client, { search: "a".repeat(121) }, config), "invalid_input");
@@ -116,7 +154,7 @@ async function main() {
     "Booking history must remain behind the existing admin authentication."
   );
 
-  console.log("Booking history service checks passed: search, filters, bounded pagination, validation, and unchanged upcoming query.");
+  console.log("Booking history service checks passed: filters, page boundaries, no-overlap traversal, page eleven, and unchanged upcoming query.");
 }
 
 main().catch(error => {

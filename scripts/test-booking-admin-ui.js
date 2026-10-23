@@ -130,13 +130,13 @@ async function main() {
       const page = Number(requestUrl.searchParams.get("page"));
       return response({
         appointments: [{
-          id: "history-1",
+          id: `history-${page}`,
           date: "2022-03-15",
           start: "10:00",
           end: "11:00",
           status: "completed",
-          clientName: "Ada Lovelace",
-          email: "ada@example.test",
+          clientName: `Ada Lovelace ${page}`,
+          email: `ada-${page}@example.test`,
           phone: "+46000000000",
           serviceName: "Massage",
           effectiveBreakMinutes: 10,
@@ -258,8 +258,16 @@ async function main() {
   assert.strictEqual(get("appointment-view-upcoming").hidden, true);
   assert.strictEqual(get("appointment-view-history-button").attributes["aria-selected"], "true");
   assert.strictEqual(historyCalls.length, 1, "Opening history must request its own paginated endpoint.");
-  assert(get("history-appointments-list").innerHTML.includes("ada@example.test"));
+  assert(get("history-appointments-list").innerHTML.includes("ada-1@example.test"));
   assert.strictEqual(get("history-next").disabled, false);
+
+  await get("history-next").dispatch("click");
+  await flush();
+  assert.strictEqual(historyCalls.at(-1).searchParams.get("page"), "2");
+  assert(get("history-appointments-list").innerHTML.includes('data-edit-appointment="history-2"'));
+  assert.strictEqual(get("history-page-label").textContent, "Sida 2");
+  assert.strictEqual(get("history-next").disabled, true);
+  assert.strictEqual(get("history-previous").disabled, false);
 
   get("history-search").value = "Ada";
   get("history-service").value = "7";
@@ -275,10 +283,12 @@ async function main() {
   assert.strictEqual(filteredHistoryUrl.searchParams.get("from"), "2022-03-01");
   assert.strictEqual(filteredHistoryUrl.searchParams.get("to"), "2022-03-31");
   assert.strictEqual(filteredHistoryUrl.searchParams.get("page"), "1");
+  assert(get("history-appointments-list").innerHTML.includes('data-edit-appointment="history-1"'));
 
   await get("history-next").dispatch("click");
   await flush();
   assert.strictEqual(historyCalls.at(-1).searchParams.get("page"), "2");
+  assert(get("history-appointments-list").innerHTML.includes('data-edit-appointment="history-2"'));
   assert.strictEqual(get("history-page-label").textContent, "Sida 2");
   assert.strictEqual(get("history-next").disabled, true);
   assert.strictEqual(get("history-previous").disabled, false);
@@ -288,7 +298,7 @@ async function main() {
 
   await clickAppointment("history-1");
   assert.strictEqual(get("appointment-editor").hidden, false);
-  assert(get("appointment-detail").innerHTML.includes("ada@example.test"));
+  assert(get("appointment-detail").innerHTML.includes("ada-1@example.test"));
   assert(get("appointment-detail").innerHTML.includes("+46000000000"));
 
   const adminHtml = fs.readFileSync("dashboard/admin/booking.html", "utf8");
