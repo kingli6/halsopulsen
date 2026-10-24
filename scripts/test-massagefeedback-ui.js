@@ -1,4 +1,5 @@
 const assert = require("assert");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const model = require("../traningsverktyg/massagefeedback/session-model");
@@ -65,6 +66,22 @@ function testPublicSessionIntegration() {
   assert.match(page, /href="\/workout\.html">← Tillbaka till Träningsverktyg/);
   assert.doesNotMatch(page, /Ingen riktig telefonanslutning|Simulerad session/);
   assert.match(page, /session-api\.js/);
+  assert.strictEqual(
+    (page.match(/\/massagefeedback\/massagefeedback\.js/g) || []).length,
+    1,
+    "The page must load exactly one Massagefeedback application script."
+  );
+  const scriptReference = page.match(
+    /<script src="\/traningsverktyg\/massagefeedback\/massagefeedback\.js\?v=sha256-([a-f0-9]{64})" defer><\/script>/
+  );
+  assert.ok(scriptReference, "Massagefeedback must load its content-versioned script URL.");
+  assert.strictEqual(
+    scriptReference[1],
+    crypto.createHash("sha256").update(ui).digest("hex"),
+    "The script URL fingerprint must match the current JavaScript contents."
+  );
+  assert.doesNotMatch(page, /qr-code\.js|sessionQrCode/);
+  assert.doesNotMatch(ui, /qr-code\.js|MassageFeedbackQr|sessionQrCode|createSvg/);
   assert.match(page, /id="joinApprovalPanel"/);
   assert.match(page, /id="sessionCodeOutput"/);
   assert.match(page, /id="copySessionCodeButton"/);
