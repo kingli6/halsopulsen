@@ -42,3 +42,31 @@ mtime_ms = 1792875253104
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:e097fceb-8595-4450-9753-28ce83db1182/cf22f4a6-8148-4371-8424-2d82abae0ddd/20db9863-001d-4a9e-a8f8-7ed3d63ca2a6"
 storage_version_token = "1792875270084449"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "QIVJLA_EswpYiZFMC7BTE"
+uri = "file://screenshots/workoutplanner-recipient-log-form-mobile-390.jpg"
+type = "image"
+title = "Workout log form — mobile (390 px)"
+description = "First scheduled workout opened in the recipient mock preview, including previous performance and set inputs."
+logical_id = "055ae1bc-186c-4b7e-baf5-e5192366fba8"
+content_hash = "sha256:e09a4958df5292a2f3f693b8edcb7c029b9ed992a806e373a62bedef9883c708"
+size = 49201
+mtime_ms = 1792876515156
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:e097fceb-8595-4450-9753-28ce83db1182/055ae1bc-186c-4b7e-baf5-e5192366fba8/cf7e83e0-cb32-4305-a4bf-7ed4115e6a1b"
+storage_version_token = "1792876565623391"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "sgEmsAsUzoBzBO-Wu06bD"
+uri = "file://screenshots/workoutplanner-recipient-log-form-desktop-1365.jpg"
+type = "image"
+title = "Workout log form — desktop (1365 px)"
+description = "First scheduled workout opened in the recipient mock preview at desktop width."
+logical_id = "aa6fd02f-d556-4d89-b739-1c81572d25ea"
+content_hash = "sha256:0c6108f95e3deb32116ab080aa6bad0e93d4689619ed664f17e245413ce5d23d"
+size = 64912
+mtime_ms = 1792876515724
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:e097fceb-8595-4450-9753-28ce83db1182/aa6fd02f-d556-4d89-b739-1c81572d25ea/e00c241f-1996-4a98-b6ad-75822bb2c8aa"
+storage_version_token = "1792876566206607"
+content_type = "image/jpeg"
