@@ -2,6 +2,7 @@ const assert = require("assert");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 const model = require("../traningsverktyg/massagefeedback/session-model");
 const sessionApi = require("../traningsverktyg/massagefeedback/session-api");
 
@@ -63,6 +64,68 @@ function testFeedbackColorContrast() {
       `Feedback color ${accent} must remain readable on ${tint}.`
     );
   });
+}
+
+function testConnectionStatusRendering() {
+  const ui = read("traningsverktyg/massagefeedback/massagefeedback.js");
+  const statusFunction = ui.match(/^  function refreshConnectionStatus\(\) \{[\s\S]*?^  \}/m)?.[0];
+  assert.ok(statusFunction, "The connection-status renderer must remain available.");
+
+  const createRenderer = vm.runInNewContext(
+    `(function(state, participantPresent, DEVICE_FOR_ROLE, document) {
+      ${statusFunction}
+      return refreshConnectionStatus;
+    })`
+  );
+  const statuses = new Map(["A", "B"].map(deviceId => [
+    deviceId,
+    { textContent: "", dataset: {} }
+  ]));
+  const document = {
+    querySelector(selector) {
+      const deviceId = selector.match(/data-session-connection-status="([AB])"/)?.[1];
+      return deviceId ? statuses.get(deviceId) : null;
+    }
+  };
+  const state = {
+    session: { status: "waiting" },
+    role: "host",
+    participantConnections: { A: false, B: false },
+    streamConnected: false,
+    streamEverConnected: false
+  };
+  const renderer = createRenderer(
+    state,
+    deviceId => deviceId === "A",
+    { host: "A", guest: "B" },
+    document
+  );
+
+  renderer();
+  assert.deepStrictEqual(
+    { label: statuses.get("A").textContent, state: statuses.get("A").dataset.state },
+    { label: "Ansluter", state: "connecting" }
+  );
+  assert.deepStrictEqual(
+    { label: statuses.get("B").textContent, state: statuses.get("B").dataset.state },
+    { label: "Väntar", state: "waiting" }
+  );
+
+  state.participantConnections.A = true;
+  state.streamConnected = true;
+  state.streamEverConnected = true;
+  renderer();
+  assert.deepStrictEqual(
+    { label: statuses.get("A").textContent, state: statuses.get("A").dataset.state },
+    { label: "Ansluten", state: "connected" }
+  );
+
+  state.streamConnected = false;
+  renderer();
+  assert.deepStrictEqual(
+    { label: statuses.get("A").textContent, state: statuses.get("A").dataset.state },
+    { label: "Återansluter", state: "reconnecting" }
+  );
 }
 
 function testStartJoinInvalidAndFullSession() {
@@ -263,6 +326,7 @@ async function testSessionApiCredentialHeadersAndSseParsing() {
 testScaleHasTenOrderedPositions();
 testVisibleChoiceLabelsKeepOriginalValues();
 testFeedbackColorContrast();
+testConnectionStatusRendering();
 testStartJoinInvalidAndFullSession();
 testSharedValueAndExclusiveDragControl();
 testOrientationDoesNotChangeSelectedPosition();

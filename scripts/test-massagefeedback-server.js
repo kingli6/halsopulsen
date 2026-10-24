@@ -303,6 +303,60 @@ async function testBrowserApiClientAgainstServer() {
   }
 }
 
+async function testGuestLeaveAndSessionEndRoutesRemainDistinct() {
+  const server = await startServer();
+  const client = api(server.baseUrl);
+  try {
+    const host = await createHost(client);
+    const guest = await createApprovedGuest(client, host);
+    const leave = await client.post(
+      `/sessions/${host.code}/leave`,
+      {},
+      guest.capability
+    );
+
+    assert.strictEqual(leave.response.status, 200);
+    assert.strictEqual(leave.payload.ended, false);
+    assert.strictEqual(leave.payload.state.status, "waiting");
+    assert.deepStrictEqual(
+      leave.payload.state.participants.map(participant => participant.role),
+      ["host"],
+      "Guest leave should preserve the host's session."
+    );
+
+    const hostAfterLeave = await client.get(`/sessions/${host.code}`, host.capability);
+    assert.strictEqual(hostAfterLeave.response.status, 200);
+    assert.strictEqual(hostAfterLeave.payload.state.status, "waiting");
+    assert.deepStrictEqual(
+      hostAfterLeave.payload.state.participants.map(participant => participant.role),
+      ["host"]
+    );
+    const formerGuestAfterLeave = await client.get(
+      `/sessions/${host.code}`,
+      guest.capability
+    );
+    assert.strictEqual(formerGuestAfterLeave.response.status, 401);
+
+    const replacementGuest = await createApprovedGuest(client, host);
+    const end = await client.post(
+      `/sessions/${host.code}/end`,
+      {},
+      host.capability
+    );
+    assert.strictEqual(end.response.status, 200);
+    assert.deepStrictEqual(end.payload, { ok: true, status: "ended" });
+    const hostAfterEnd = await client.get(`/sessions/${host.code}`, host.capability);
+    const guestAfterEnd = await client.get(
+      `/sessions/${host.code}`,
+      replacementGuest.capability
+    );
+    assert.strictEqual(hostAfterEnd.response.status, 401);
+    assert.strictEqual(guestAfterEnd.response.status, 401);
+  } finally {
+    await server.close();
+  }
+}
+
 async function testApprovalAuthorizationAndSynchronizedSlider() {
   const server = await startServer();
   const client = api(server.baseUrl);
@@ -955,6 +1009,7 @@ function testLifecycleLeasesAndCleanup() {
 async function run() {
   await testMassageFeedbackCorsPolicy();
   await testBrowserApiClientAgainstServer();
+  await testGuestLeaveAndSessionEndRoutesRemainDistinct();
   await testApprovalAuthorizationAndSynchronizedSlider();
   await testJoinRejectionAndConcurrentCapacity();
   await testValidationRateLimitsAndExistingRouteIsolation();
