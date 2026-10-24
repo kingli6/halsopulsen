@@ -3,7 +3,6 @@ const fs = require("fs");
 const path = require("path");
 const model = require("../traningsverktyg/massagefeedback/session-model");
 const sessionApi = require("../traningsverktyg/massagefeedback/session-api");
-const qrCode = require("../traningsverktyg/massagefeedback/qr-code");
 
 const root = path.join(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
@@ -67,7 +66,9 @@ function testPublicSessionIntegration() {
   assert.doesNotMatch(page, /Ingen riktig telefonanslutning|Simulerad session/);
   assert.match(page, /session-api\.js/);
   assert.match(page, /id="joinApprovalPanel"/);
-  assert.match(page, /id="sessionQrCode"/);
+  assert.match(page, /id="sessionCodeOutput"/);
+  assert.match(page, /id="copySessionCodeButton"/);
+  assert.match(page, /id="joinSessionForm"/);
   for (const method of ["createSession", "requestJoin", "decideJoin", "openEvents", "claimControl", "setPosition"]) {
     assert.match(ui, new RegExp(`api\\.${method}\\s*\\(`));
   }
@@ -163,23 +164,12 @@ async function testSessionApiCredentialHeadersAndSseParsing() {
   );
 }
 
-function testLocalQrCodeOutput() {
-  const matrix = qrCode.createMatrix("ABC234");
-  assert.strictEqual(matrix.length, 21);
-  assert.ok(matrix.every(row => row.length === 21));
-  const svg = qrCode.createSvg("ABC234");
-  assert.match(svg, /<svg[^>]+viewBox="0 0 29 29"/);
-  assert.match(svg, /aria-label="QR-kod för sessionskod ABC234"/);
-  assert.throws(() => qrCode.createMatrix("ABC!234"), /QR alphanumeric/);
-}
-
 testScaleHasTenOrderedPositions();
 testStartJoinInvalidAndFullSession();
 testSharedValueAndExclusiveDragControl();
 testOrientationDoesNotChangeSelectedPosition();
 testLeavingAndEndingSession();
 testPublicSessionIntegration();
-testLocalQrCodeOutput();
 
 (async () => {
   await testSessionApiCredentialHeadersAndSseParsing();

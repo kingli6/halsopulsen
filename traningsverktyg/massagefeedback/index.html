@@ -15,7 +15,6 @@
   <link rel="stylesheet" href="/traningsverktyg/massagefeedback/massagefeedback.css" />
   <script src="/traningsverktyg/massagefeedback/session-model.js" defer></script>
   <script src="/traningsverktyg/massagefeedback/session-api.js" defer></script>
-  <script src="/traningsverktyg/massagefeedback/qr-code.js" defer></script>
   <script src="/traningsverktyg/massagefeedback/massagefeedback.js" defer></script>
 </head>
 <body class="massage-page">
@@ -64,12 +63,8 @@
         <div class="session-code-details">
           <div>
             <span class="session-code-label">Sessionskod · telefon 2 skriver in koden</span>
-          <strong class="session-code" id="sessionCodeOutput"></strong>
+            <strong class="session-code" id="sessionCodeOutput"></strong>
           </div>
-          <div class="session-qr-wrap">
-            <div class="session-qr" id="sessionQrCode"></div>
-            <span>QR-koden visar endast sessionskoden.</span>
-        </div>
         </div>
         <button class="text-button" id="copySessionCodeButton" type="button">Kopiera kod</button>
       </div>

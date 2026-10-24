@@ -16,8 +16,7 @@ either value locally.
 The page keeps capabilities and the temporary join ticket only in JavaScript
 memory. It sends them in authorization or join-ticket headers, never in a URL,
 browser storage, or the visible interface. Refreshing the page clears those
-credentials; the participant must start or join again. The QR image is
-generated locally and contains only the public session code.
+credentials; the participant must start or join again.
 
 ## Authentication and joining
 

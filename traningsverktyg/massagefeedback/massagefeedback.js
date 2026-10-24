@@ -3,7 +3,6 @@
 
   const model = window.MassageFeedbackModel;
   const api = window.MassageFeedbackApi.createSessionApi();
-  const qr = window.MassageFeedbackQr;
   const DEVICE_FOR_ROLE = Object.freeze({ host: "A", guest: "B" });
   const ROLE_FOR_DEVICE = Object.freeze({ A: "host", B: "guest" });
   const state = {
@@ -35,7 +34,6 @@
   const startButton = document.getElementById("startSessionButton");
   const sessionCodePanel = document.getElementById("sessionCodePanel");
   const sessionCodeOutput = document.getElementById("sessionCodeOutput");
-  const sessionQrCode = document.getElementById("sessionQrCode");
   const joinForm = document.getElementById("joinSessionForm");
   const joinCodeInput = document.getElementById("sessionCodeInput");
   const joinApprovalPanel = document.getElementById("joinApprovalPanel");
@@ -225,8 +223,6 @@
     const showHostCode = Boolean(session && state.role === "host" && status !== "ended");
     sessionCodePanel.hidden = !showHostCode;
     sessionCodeOutput.textContent = showHostCode ? session.code : "";
-    if (showHostCode && qr) sessionQrCode.innerHTML = qr.createSvg(session.code);
-    else sessionQrCode.replaceChildren();
 
     joinApprovalPanel.hidden = !(
       state.role === "host"
@@ -488,7 +484,7 @@
     try {
       const result = await api.createSession();
       activateSession("host", result.code, result.capability, result.state);
-      setFeedbackMessage("Sessionen startade. Dela koden eller QR-koden med telefon 2.");
+      setFeedbackMessage("Sessionen startade. Dela koden med telefon 2.");
     } catch (error) {
       setFeedbackMessage(error.message || "Sessionen kunde inte startas. Försök igen.", "error");
     } finally {
