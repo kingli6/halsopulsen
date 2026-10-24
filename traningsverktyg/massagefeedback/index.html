@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <script>try { document.documentElement.lang = localStorage.getItem("lang") || "sv"; } catch (error) {}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Ett enkelt, lokalt prototypverktyg för att dela massagefeedback mellan två simulerade telefoner." />
+  <meta name="robots" content="noindex, follow" />
+  <title>Massagefeedback — HälsoPulsen Träningsverktyg</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+  <link rel="stylesheet" href="/style.css?v=9" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/traningsverktyg/massagefeedback/massagefeedback.css" />
+  <script src="/traningsverktyg/massagefeedback/session-model.js" defer></script>
+  <script src="/traningsverktyg/massagefeedback/massagefeedback.js" defer></script>
+</head>
+<body class="massage-page">
+  <a class="skip-link" href="#main">Hoppa till innehållet</a>
+  <header class="massage-header">
+    <a class="nav-logo" href="/" aria-label="HälsoPulsen startsida">HälsoPulsen</a>
+    <a class="massage-back-link" href="/workout.html">← Tillbaka till Träningsverktyg</a>
+  </header>
+
+  <main id="main" class="massage-main">
+    <header class="massage-intro">
+      <p class="massage-eyebrow">TRÄNINGSVERKTYG · PROTOTYP</p>
+      <h1>Massagefeedback</h1>
+      <p>En gemensam skala som går snabbt att använda under en massage.</p>
+    </header>
+
+    <section class="prototype-notice" aria-label="Om prototypen">
+      <strong>Simulerad session</strong>
+      <span>Telefonerna visas här på samma skärm. Ingen riktig telefonanslutning eller synkronisering sker.</span>
+    </section>
+
+    <section class="session-setup widget-card" aria-labelledby="sessionHeading">
+      <div class="session-setup-heading">
+        <div>
+          <p class="widget-title">SESSION</p>
+          <h2 id="sessionHeading">Anslut två telefoner</h2>
+        </div>
+        <span class="session-state-badge" id="sessionStateBadge">Ingen session</span>
+      </div>
+      <p class="session-status" id="sessionStatus" role="status" aria-live="polite">
+        Starta en simulerad session eller försök gå med med en kod.
+      </p>
+
+      <div class="session-actions">
+        <button class="massage-button massage-button-primary" id="startSessionButton" type="button">Starta session</button>
+        <form class="join-form" id="joinSessionForm">
+          <label for="sessionCodeInput">Sessionskod</label>
+          <div class="join-form-controls">
+            <input id="sessionCodeInput" name="sessionCode" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Skriv koden" />
+            <button class="massage-button massage-button-secondary" type="submit">Gå med i session</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="session-code-panel" id="sessionCodePanel" hidden>
+        <div>
+          <span class="session-code-label">Simulerad sessionskod</span>
+          <strong class="session-code" id="sessionCodeOutput"></strong>
+        </div>
+        <button class="text-button" id="copySessionCodeButton" type="button">Kopiera kod</button>
+      </div>
+      <p class="session-feedback" id="sessionFeedback" role="status" aria-live="polite"></p>
+
+      <div class="third-device-test" id="thirdDeviceTest" hidden>
+        <div>
+          <strong>Testa en tredje telefon</strong>
+          <p>När två telefoner är anslutna ska nästa försök avvisas.</p>
+        </div>
+        <button class="massage-button massage-button-secondary" id="thirdDeviceButton" type="button">Försök gå med</button>
+      </div>
+    </section>
+
+    <section class="devices-section" aria-labelledby="devicesHeading">
+      <div class="devices-heading">
+        <div>
+          <p class="massage-eyebrow">LOKAL SIMULERING</p>
+          <h2 id="devicesHeading">Två telefonvyer</h2>
+        </div>
+        <p>Båda vyerna har samma reglage och visar samma val.</p>
+      </div>
+      <div class="device-grid" id="deviceGrid"></div>
+    </section>
+
+    <footer class="massage-footer">
+      <a href="/workout.html">Tillbaka till Träningsverktyg</a>
+      <span>Inga konton, klientuppgifter eller massagehistorik sparas.</span>
+    </footer>
+  </main>
+</body>
+</html>

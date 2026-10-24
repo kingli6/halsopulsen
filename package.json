@@ -28,6 +28,7 @@
     "test:workoutplanner-session-integration": "NODE_ENV=test node scripts/test-workoutplanner-session-integration.js",
     "test:workoutplanner-session-hardening": "NODE_ENV=test node scripts/test-workoutplanner-session-hardening.js",
     "test:workoutplanner-coach-overview": "node scripts/test-workoutplanner-coach-overview.js",
+    "test:massagefeedback": "node scripts/test-massagefeedback-ui.js",
     "test:workoutplanner-publish": "NODE_ENV=test node scripts/test-workoutplanner-publish.js",
     "test:workoutplanner-pass3": "NODE_ENV=test node scripts/test-workoutplanner-pass3.js",
     "db:status:workoutplanner": "node scripts/status-workoutplanner-migrations.js",
