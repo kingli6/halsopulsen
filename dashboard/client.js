@@ -3,6 +3,7 @@ const clientPage = {
   data: null,
   preview: new URLSearchParams(window.location.search).get("preview") === "1"
 };
+const mockRecipientPreview = window.WORKOUTPLANNER_MOCK_PREVIEW_PAGE === "recipient";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -461,8 +462,8 @@ document.getElementById("assignmentList")?.addEventListener("submit", event => {
 
 async function loadClientPlan() {
   const match = window.location.pathname.match(/^\/(?:p|client)\/([^/]+)\/?$/);
-  if (!match) return;
-  clientPage.token = match?.[1] || "";
+  if (!match && !mockRecipientPreview) return;
+  clientPage.token = match?.[1] || (mockRecipientPreview ? "mock-recipient" : "");
   const sharedEditor = document.body.classList.contains("shared-program-workspace");
   const previewBanner = document.getElementById("previewBanner");
   if (previewBanner) previewBanner.hidden = !clientPage.preview;

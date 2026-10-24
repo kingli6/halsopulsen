@@ -81,6 +81,14 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '512kb', strict: true }));
 
+if (
+  process.env.WORKOUTPLANNER_MOCK_PREVIEWS === '1'
+  && process.env.NODE_ENV !== 'production'
+) {
+  const { registerWorkoutPlannerMockPreviewRoutes } = require('./workoutplanner/mock-preview-server');
+  registerWorkoutPlannerMockPreviewRoutes(app);
+}
+
 const MAX_PROGRAM_WEEKS = 52;
 const MAX_DAY_ACTIVITIES = 30;
 const MAX_ASSIGNMENTS = 1000;

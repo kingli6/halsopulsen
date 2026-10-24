@@ -1,8 +1,9 @@
 const sharedProgramWorkspace = /^\/(?:p|client)\/[^/]+\/?$/.test(window.location.pathname);
 const sharedProgramPreview = sharedProgramWorkspace
   && new URLSearchParams(window.location.search).get("preview") === "1";
+const mockPreviewWorkspace = window.WORKOUTPLANNER_MOCK_PREVIEW_PAGE === "coach";
 const planState = {
-  data: sharedProgramWorkspace ? TrackerData.defaultData() : TrackerData.load(),
+  data: sharedProgramWorkspace || mockPreviewWorkspace ? TrackerData.defaultData() : TrackerData.load(),
   library: [],
   templates: [],
   sharedData: null,
@@ -24,10 +25,12 @@ const planState = {
   editingCurrentPlanId: null,
   editorMode: sharedProgramWorkspace || new URLSearchParams(window.location.search).get("view") === "editor"
 };
-const adminDatabaseWorkspace = window.location.pathname.startsWith("/admin/plans");
+const adminDatabaseWorkspace = window.location.pathname.startsWith("/admin/plans") || mockPreviewWorkspace;
 const userWorkspace = window.location.pathname.startsWith("/plans");
 const databaseWorkspace = adminDatabaseWorkspace || userWorkspace;
-const plannerPath = userWorkspace ? "/plans/" : "/admin/plans/";
+const plannerPath = mockPreviewWorkspace
+  ? "/__dev/workoutplanner/coach/"
+  : userWorkspace ? "/plans/" : "/admin/plans/";
 planState.databaseProgramId = planState.data.databaseProgramId || null;
 planState.databaseProgramKind = planState.data.databaseProgramKind || null;
 planState.databaseProgramClientId = planState.data.databaseProgramClientId || null;
@@ -59,7 +62,7 @@ function setPlanText(id, value) {
 }
 
 function persistPlanState() {
-  if (!sharedProgramWorkspace) TrackerData.save(planState.data);
+  if (!sharedProgramWorkspace && !mockPreviewWorkspace) TrackerData.save(planState.data);
 }
 
 function applyAdminWorkspaceCopy() {
@@ -67,9 +70,13 @@ function applyAdminWorkspaceCopy() {
   const overviewLink = document.getElementById("coachOverviewNavLink");
   if (overviewLink) {
     overviewLink.hidden = false;
-    overviewLink.href = "/admin/programs/";
+    overviewLink.href = mockPreviewWorkspace
+      ? "/__dev/workoutplanner/overview/"
+      : "/admin/programs/";
     overviewLink.textContent = "Program overview";
   }
+  const editorBackLink = document.getElementById("editorBackLink");
+  if (editorBackLink) editorBackLink.href = plannerPath;
   const intro = document.querySelector(".intro-copy");
   if (intro) {
     intro.textContent = "Save program drafts, publish when ready, and manage the one private link for each program.";
@@ -1811,7 +1818,7 @@ async function loadLibrary() {
 }
 
 async function loadTemplates() {
-  if (databaseWorkspace) return;
+  if (databaseWorkspace && !mockPreviewWorkspace) return;
   try {
     const response = await fetch("/api/templates");
     const result = await response.json();
@@ -2122,7 +2129,7 @@ function bindPlanEvents() {
   });
 }
 
-if (!sharedProgramWorkspace) {
+if (!sharedProgramWorkspace && !mockPreviewWorkspace) {
   TrackerData.ensureAssignments(planState.data);
   TrackerData.save(planState.data);
 }

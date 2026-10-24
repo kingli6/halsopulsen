@@ -1,0 +1,55 @@
+const fs = require("fs");
+const path = require("path");
+
+const ROOT = path.join(__dirname, "..");
+const PREVIEW_PAGES = {
+  coach: {
+    route: "/coach",
+    file: path.join(ROOT, "dashboard", "plan", "index.html"),
+    marker: '<script src="/dashboard/data.js"></script>'
+  },
+  overview: {
+    route: "/overview",
+    file: path.join(ROOT, "dashboard", "coach-overview.html"),
+    marker: '<script src="/dashboard/progress-insights.js" defer></script>'
+  },
+  recipient: {
+    route: "/recipient",
+    file: path.join(ROOT, "dashboard", "client.html"),
+    marker: '<script src="/dashboard/progress-insights.js"></script>'
+  }
+};
+
+function injectMockPreview(html, page) {
+  const pageConfig = `<script>window.WORKOUTPLANNER_MOCK_PREVIEW_PAGE=${JSON.stringify(page)};</script>
+    <script src="/workoutplanner/mock-preview-harness.js"></script>
+    <script src="/dashboard/workoutplanner-mock-preview.js"></script>`;
+  const marker = PREVIEW_PAGES[page].marker;
+  if (!html.includes(marker)) {
+    throw new Error(`Could not find the ${page} page script insertion point.`);
+  }
+  return html.replace(marker, `${pageConfig}\n    ${marker}`);
+}
+
+function sendMockPreviewPage(res, page) {
+  try {
+    const html = fs.readFileSync(PREVIEW_PAGES[page].file, "utf8");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.type("html").send(injectMockPreview(html, page));
+  } catch (error) {
+    console.error(`Could not render WorkoutPlanner ${page} mock preview:`, error.message);
+    res.status(500).send("The local WorkoutPlanner mock preview could not be loaded.");
+  }
+}
+
+function registerWorkoutPlannerMockPreviewRoutes(app) {
+  for (const [page, config] of Object.entries(PREVIEW_PAGES)) {
+    app.get(`/__dev/workoutplanner${config.route}`, (req, res) => sendMockPreviewPage(res, page));
+  }
+}
+
+module.exports = {
+  injectMockPreview,
+  registerWorkoutPlannerMockPreviewRoutes
+};
