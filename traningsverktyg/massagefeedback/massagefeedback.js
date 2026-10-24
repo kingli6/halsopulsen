@@ -5,6 +5,19 @@
   const api = window.MassageFeedbackApi.createSessionApi();
   const DEVICE_FOR_ROLE = Object.freeze({ host: "A", guest: "B" });
   const ROLE_FOR_DEVICE = Object.freeze({ A: "host", B: "guest" });
+  const HIDDEN_CHOICE_INDICES = new Set([3, 9]);
+  const FEEDBACK_COLORS = Object.freeze([
+    Object.freeze({ accent: "#1f6b45", tint: "#e8f4ec" }),
+    Object.freeze({ accent: "#357845", tint: "#eaf3e8" }),
+    Object.freeze({ accent: "#507c3b", tint: "#f5faee" }),
+    Object.freeze({ accent: "#687835", tint: "#fafbed" }),
+    Object.freeze({ accent: "#7a722d", tint: "#faf8e9" }),
+    Object.freeze({ accent: "#856528", tint: "#fbf5e8" }),
+    Object.freeze({ accent: "#8a5426", tint: "#fff2e8" }),
+    Object.freeze({ accent: "#8c4429", tint: "#fcebe4" }),
+    Object.freeze({ accent: "#84392e", tint: "#fae8e6" }),
+    Object.freeze({ accent: "#7b2e32", tint: "#f8e6e7" })
+  ]);
   const state = {
     session: null,
     role: null,
@@ -49,9 +62,14 @@
   }
 
   function deviceMarkup() {
-    const labels = model.POSITIONS.map((position, index) => `
-      <button class="choice-button" type="button" data-position="${index}" aria-label="${escapeHtml(position)}" aria-pressed="${index === 0 ? "true" : "false"}">${position === "NOT MUCH" ? "NOT<br />MUCH" : escapeHtml(position)}</button>
-    `).join("");
+    const labels = model.POSITIONS.map((position, index) => {
+      if (HIDDEN_CHOICE_INDICES.has(index)) return "";
+      const displayLabel = position === "9" ? "9+" : position;
+      const buttonLabel = displayLabel === "NOT MUCH" ? "NOT<br />MUCH" : escapeHtml(displayLabel);
+      return `
+        <button class="choice-button" type="button" data-position="${index}" aria-label="${escapeHtml(displayLabel)}" aria-pressed="${index === 0 ? "true" : "false"}">${buttonLabel}</button>
+      `;
+    }).join("");
     return `
       <article class="device-card" data-device-card="shared">
         <header class="device-heading">
@@ -168,9 +186,16 @@
     const interactionStatus = deviceGrid.querySelector("[data-device-interaction-status]");
     const value = session?.position ?? 0;
     const label = model.POSITIONS[value];
+    const feedbackColor = FEEDBACK_COLORS[value] || FEEDBACK_COLORS[0];
     const interactive = canControl(deviceId);
 
     card.classList.toggle("is-connected", connectionActive);
+    card.style.setProperty("--feedback-accent", feedbackColor.accent);
+    card.style.setProperty("--feedback-tint", feedbackColor.tint);
+    card.style.setProperty(
+      "--feedback-progress",
+      `${(value / (model.POSITIONS.length - 1)) * 100}%`
+    );
     caption.textContent = state.role
       ? `TELEFON ${deviceId === "A" ? "1" : "2"} · DITT REGLAGE`
       : "GEMENSAM SKALA";

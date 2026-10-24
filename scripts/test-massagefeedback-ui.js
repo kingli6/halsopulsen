@@ -14,6 +14,57 @@ function testScaleHasTenOrderedPositions() {
   ]);
 }
 
+function testVisibleChoiceLabelsKeepOriginalValues() {
+  const hiddenIndices = new Set([3, 9]);
+  const visibleChoices = model.POSITIONS.flatMap((position, index) => {
+    if (hiddenIndices.has(index)) return [];
+    return [{ index, label: index === 8 ? "9+" : position }];
+  });
+
+  assert.deepStrictEqual(visibleChoices, [
+    { index: 0, label: "GREAT" },
+    { index: 1, label: "GOOD" },
+    { index: 2, label: "NOT MUCH" },
+    { index: 4, label: "5" },
+    { index: 5, label: "6" },
+    { index: 6, label: "7" },
+    { index: 7, label: "8" },
+    { index: 8, label: "9+" }
+  ]);
+  assert.strictEqual(model.POSITIONS[3], "4", "Slider value 4 remains in the original scale.");
+  assert.strictEqual(model.POSITIONS[9], "10", "Slider value 10 remains in the original scale.");
+}
+
+function contrastRatio(foreground, background) {
+  function luminance(color) {
+    const channels = [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16) / 255);
+    const linear = channels.map(value =>
+      value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    );
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  }
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+function testFeedbackColorContrast() {
+  const ui = read("traningsverktyg/massagefeedback/massagefeedback.js");
+  const paletteSource = ui.slice(
+    ui.indexOf("const FEEDBACK_COLORS = Object.freeze(["),
+    ui.indexOf("const state = {")
+  );
+  const colors = [...paletteSource.matchAll(
+    /accent: "(#[0-9a-f]{6})", tint: "(#[0-9a-f]{6})"/gi
+  )];
+  assert.strictEqual(colors.length, model.POSITIONS.length);
+  colors.forEach(([, accent, tint]) => {
+    assert.ok(
+      contrastRatio(accent, tint) >= 4.5,
+      `Feedback color ${accent} must remain readable on ${tint}.`
+    );
+  });
+}
+
 function testStartJoinInvalidAndFullSession() {
   const started = model.createSession("A7K2");
   assert.strictEqual(started.status, "waiting");
@@ -62,6 +113,7 @@ function testPublicSessionIntegration() {
   const toolsPage = read("workout.html");
   const page = read("traningsverktyg/massagefeedback/index.html");
   const ui = read("traningsverktyg/massagefeedback/massagefeedback.js");
+  const css = read("traningsverktyg/massagefeedback/massagefeedback.css");
   assert.match(toolsPage, /href="\/traningsverktyg\/massagefeedback\/"/);
   assert.match(page, /href="\/workout\.html">← Tillbaka till Träningsverktyg/);
   assert.doesNotMatch(page, /Ingen riktig telefonanslutning|Simulerad session/);
@@ -104,6 +156,15 @@ function testPublicSessionIntegration() {
   assert.match(ui, /function activeDeviceId\(\)[\s\S]*DEVICE_FOR_ROLE\[state\.role\]/);
   assert.match(ui, /function refreshConnectionStatus\(\)/);
   assert.match(ui, /"connected"|"waiting"|"reconnecting"/);
+  assert.match(ui, /const HIDDEN_CHOICE_INDICES = new Set\(\[3, 9\]\)/);
+  assert.match(ui, /if \(HIDDEN_CHOICE_INDICES\.has\(index\)\) return "";/);
+  assert.match(ui, /const displayLabel = position === "9" \? "9\+" : position;/);
+  assert.match(ui, /data-position="\$\{index\}"/);
+  assert.match(deviceTemplate, /type="range" min="0" max="9" step="1" value="0"/);
+  assert.match(ui, /const label = model\.POSITIONS\[value\]/);
+  assert.match(ui, /card\.style\.setProperty\("--feedback-accent", feedbackColor\.accent\)/);
+  assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.choice-button \{ min-height: 48px; font-size: \.76rem; \}/);
   assert.match(deviceTemplate, /aria-live="polite"/);
   assert.match(deviceTemplate, /data-leave>Lämna på den här telefonen/);
   assert.match(deviceTemplate, /data-end>Avsluta för båda/);
@@ -200,6 +261,8 @@ async function testSessionApiCredentialHeadersAndSseParsing() {
 }
 
 testScaleHasTenOrderedPositions();
+testVisibleChoiceLabelsKeepOriginalValues();
+testFeedbackColorContrast();
 testStartJoinInvalidAndFullSession();
 testSharedValueAndExclusiveDragControl();
 testOrientationDoesNotChangeSelectedPosition();
