@@ -8,6 +8,7 @@ const {
   isHighFrequencyPositionRequest
 } = require("../traningsverktyg/massagefeedback/api-router");
 const { createSessionService } = require("../traningsverktyg/massagefeedback/session-service");
+const { createSessionApi, readEvents } = require("../traningsverktyg/massagefeedback/session-api");
 
 const root = path.join(__dirname, "..");
 
@@ -137,6 +138,79 @@ async function openEvents(client, code, capability) {
   };
 }
 
+async function nextClientEventMatching(iterator, matches) {
+  while (true) {
+    const { value, done } = await iterator.next();
+    if (done) throw new Error("SSE stream closed before the expected client event.");
+    if (matches(value)) return value;
+  }
+}
+
+async function testBrowserApiClientAgainstServer() {
+  const server = await startServer();
+  const hostApi = createSessionApi({ basePath: server.baseUrl });
+  const guestApi = createSessionApi({ basePath: server.baseUrl });
+  const hostAbort = new AbortController();
+  const guestAbort = new AbortController();
+  let hostEvents;
+  let guestEvents;
+  try {
+    const host = await hostApi.createSession();
+    const hostStream = await hostApi.openEvents(host.code, host.capability, hostAbort.signal);
+    hostEvents = readEvents(hostStream)[Symbol.asyncIterator]();
+    const hostInitial = await nextClientEventMatching(hostEvents, event => event.event === "state");
+    assert.strictEqual(hostInitial.data.position, 0);
+
+    const join = await guestApi.requestJoin(host.code);
+    assert.strictEqual(join.status, "pending");
+    const requestEvent = await nextClientEventMatching(hostEvents, event => event.event === "join-request");
+    assert.strictEqual(requestEvent.data.pendingJoin.requestId, join.requestId);
+    await hostApi.decideJoin(host.code, join.requestId, "approve", host.capability);
+    const guestStatus = await guestApi.getJoinStatus(host.code, join.requestId, join.joinTicket);
+    assert.ok(guestStatus.capability);
+
+    const guestStream = await guestApi.openEvents(
+      host.code,
+      guestStatus.capability,
+      guestAbort.signal
+    );
+    guestEvents = readEvents(guestStream)[Symbol.asyncIterator]();
+    const guestInitial = await nextClientEventMatching(guestEvents, event => event.event === "state");
+    assert.strictEqual(guestInitial.data.position, 0);
+
+    const hostSeesGuest = await nextClientEventMatching(
+      hostEvents,
+      event => event.event === "state"
+        && event.data.participants.some(participant => participant.role === "guest" && participant.connected)
+    );
+    assert.ok(hostSeesGuest.data.participants.some(participant => participant.role === "guest" && participant.connected));
+
+    const claim = await hostApi.claimControl(host.code, host.capability);
+    assert.strictEqual(claim.state.activeControl, "host");
+    const guestSeesOwner = await nextClientEventMatching(
+      guestEvents,
+      event => event.event === "state" && event.data.activeControl === "host"
+    );
+    assert.strictEqual(guestSeesOwner.data.activeControl, "host");
+
+    const update = await hostApi.setPosition(host.code, 8, host.capability);
+    assert.strictEqual(update.state.position, 8);
+    const guestSeesPosition = await nextClientEventMatching(
+      guestEvents,
+      event => event.event === "state" && event.data.position === 8
+    );
+    assert.strictEqual(guestSeesPosition.data.position, 8);
+
+    await guestApi.end(host.code, guestStatus.capability);
+    const ended = await nextClientEventMatching(hostEvents, event => event.event === "session-ended");
+    assert.strictEqual(ended.data.status, "ended");
+  } finally {
+    hostAbort.abort();
+    guestAbort.abort();
+    await server.close();
+  }
+}
+
 async function testApprovalAuthorizationAndSynchronizedSlider() {
   const server = await startServer();
   const client = api(server.baseUrl);
@@ -187,6 +261,17 @@ async function testApprovalAuthorizationAndSynchronizedSlider() {
     guestStream = await openEvents(client, host.code, guest.capability);
     const guestInitialEvent = await nextSseEvent(guestStream.reader, guestStream.state);
     assert.strictEqual(guestInitialEvent.data.position, 0);
+    const guestConnectedNotification = await nextSseEventMatching(
+      hostStream.reader,
+      hostStream.state,
+      event => event.event === "state"
+        && event.data.participants.some(participant => participant.role === "guest" && participant.connected)
+    );
+    assert.strictEqual(
+      guestConnectedNotification.data.participants.find(participant => participant.role === "guest").connected,
+      true,
+      "Opening the guest event stream must publish its connected state to the host."
+    );
 
     const simultaneousClaims = await Promise.all([
       client.post(`/sessions/${host.code}/control/claim`, {}, host.capability),
@@ -550,6 +635,13 @@ function testHostDisconnectPolicy() {
     hostResponse.emit("close");
 
     assert.strictEqual(guestAuth.session.participants.guest.connected, true);
+    assert.strictEqual(service.authorize(host.code, host.capability).ok, true);
+    assert.strictEqual(service.heartbeat(hostAuth.session, "host").ok, true);
+    assert.strictEqual(
+      hostAuth.session.participants.host.connected,
+      false,
+      "Ordinary authenticated requests must not restore a disconnected event stream."
+    );
     assert.strictEqual(service.claimControl(guestAuth.session, "guest").reason, "host-disconnected");
     assert.strictEqual(service.setPosition(guestAuth.session, "guest", 4).reason, "host-disconnected");
 
@@ -713,6 +805,10 @@ function testLifecycleLeasesAndCleanup() {
     assert.ok(hostAuth.ok && guestAuth.ok);
     assert.strictEqual(service.heartbeat(hostAuth.session, "host").ok, true);
 
+    const hostResponse = fakeResponse();
+    const guestResponse = fakeResponse();
+    service.openStream(hostAuth.session, "host", hostResponse);
+    service.openStream(guestAuth.session, "guest", guestResponse);
     assert.strictEqual(service.claimControl(hostAuth.session, "host").ok, true);
     assert.strictEqual(service.claimControl(guestAuth.session, "guest").reason, "locked");
     clock += 11;
@@ -724,10 +820,6 @@ function testLifecycleLeasesAndCleanup() {
       assert.strictEqual(guestAuth.session.position, position);
     }
 
-    const hostResponse = fakeResponse();
-    const guestResponse = fakeResponse();
-    service.openStream(hostAuth.session, "host", hostResponse);
-    service.openStream(guestAuth.session, "guest", guestResponse);
     guestResponse.emit("close");
     clock += 50;
     service.sweep();
@@ -766,6 +858,7 @@ function testLifecycleLeasesAndCleanup() {
 }
 
 async function run() {
+  await testBrowserApiClientAgainstServer();
   await testApprovalAuthorizationAndSynchronizedSlider();
   await testJoinRejectionAndConcurrentCapacity();
   await testValidationRateLimitsAndExistingRouteIsolation();

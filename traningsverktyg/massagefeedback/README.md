@@ -5,6 +5,20 @@ session state in the current Express process and uses SSE for authorized live
 updates. No participant names, massage history, or persistent session data are
 stored.
 
+## Browser session flow
+
+The browser page maps the host to phone 1 and the guest to phone 2. The host
+creates a session; the guest requests access with the six-character code; the
+host must approve the request before the guest receives a session capability.
+The browser renders the server's position and drag owner rather than deciding
+either value locally.
+
+The page keeps capabilities and the temporary join ticket only in JavaScript
+memory. It sends them in authorization or join-ticket headers, never in a URL,
+browser storage, or the visible interface. Refreshing the page clears those
+credentials; the participant must start or join again. The QR image is
+generated locally and contains only the public session code.
+
 ## Authentication and joining
 
 - `POST /sessions` creates a six-character code and returns a separate
@@ -19,7 +33,9 @@ stored.
   Capabilities and join tickets are not put in URLs or logged.
 - `/sessions/:code/events` authenticates before returning an event stream.
   Reconnecting with the same capability replaces the previous stream and
-  receives a fresh authoritative state snapshot.
+  receives a fresh authoritative state snapshot. Participant `connected`
+  status reflects an open event stream; ordinary HTTP requests and heartbeats
+  refresh activity but do not reconnect a closed stream.
 
 ## Slider updates and limits
 

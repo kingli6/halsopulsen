@@ -2,6 +2,8 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const model = require("../traningsverktyg/massagefeedback/session-model");
+const sessionApi = require("../traningsverktyg/massagefeedback/session-api");
+const qrCode = require("../traningsverktyg/massagefeedback/qr-code");
 
 const root = path.join(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
@@ -56,16 +58,103 @@ function testLeavingAndEndingSession() {
   assert.strictEqual(model.joinSession(session, "D8Q4", "A").reason, "ended");
 }
 
-function testPublicIntegrationAndLocalOnlyBehavior() {
+function testPublicSessionIntegration() {
   const toolsPage = read("workout.html");
   const page = read("traningsverktyg/massagefeedback/index.html");
   const ui = read("traningsverktyg/massagefeedback/massagefeedback.js");
   assert.match(toolsPage, /href="\/traningsverktyg\/massagefeedback\/"/);
   assert.match(page, /href="\/workout\.html">← Tillbaka till Träningsverktyg/);
-  assert.match(page, /Ingen riktig telefonanslutning eller synkronisering sker/);
-  assert.doesNotMatch(ui, /\bfetch\s*\(/);
-  assert.doesNotMatch(ui, /localStorage/);
+  assert.doesNotMatch(page, /Ingen riktig telefonanslutning|Simulerad session/);
+  assert.match(page, /session-api\.js/);
+  assert.match(page, /id="joinApprovalPanel"/);
+  assert.match(page, /id="sessionQrCode"/);
+  for (const method of ["createSession", "requestJoin", "decideJoin", "openEvents", "claimControl", "setPosition"]) {
+    assert.match(ui, new RegExp(`api\\.${method}\\s*\\(`));
+  }
+  assert.doesNotMatch(ui, /localStorage|sessionStorage/);
   assert.ok(fs.existsSync(path.join(root, "traningsverktyg/massagefeedback/index.html")));
+}
+
+async function testSessionApiCredentialHeadersAndSseParsing() {
+  const hostCapability = "host-capability-never-in-url";
+  const guestCapability = "guest-capability-never-in-url";
+  const joinTicket = "join-ticket-never-in-url";
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith("/sessions")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        code: "ABC234",
+        capability: hostCapability,
+        participant: "host",
+        state: {
+          code: "ABC234",
+          status: "waiting",
+          position: 0,
+          participants: [{ role: "host", connected: false }],
+          activeControl: null,
+          pendingJoin: null
+        }
+      }), { status: 201, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.endsWith("/join-requests")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        requestId: "request-123",
+        joinTicket,
+        status: "pending"
+      }), { status: 202, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.endsWith("/join-requests/status")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        status: "approved",
+        capability: guestCapability
+      }), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.endsWith("/events")) {
+      return new Response(
+        "retry: 2000\r\n\r\nevent: state\r\ndata: {\"position\":7,\"status\":\"connected\"}\r\n\r\n",
+        { headers: { "Content-Type": "text/event-stream; charset=utf-8" } }
+      );
+    }
+    throw new Error(`Unexpected test request: ${url}`);
+  };
+
+  const api = sessionApi.createSessionApi({ fetchImpl });
+  const host = await api.createSession();
+  const join = await api.requestJoin(host.code);
+  const approved = await api.getJoinStatus(host.code, join.requestId, join.joinTicket);
+  const eventStream = await api.openEvents(host.code, hostCapability);
+  const events = [];
+  for await (const event of sessionApi.readEvents(eventStream)) events.push(event);
+
+  assert.strictEqual(host.code, "ABC234");
+  assert.strictEqual(join.joinTicket, joinTicket);
+  assert.strictEqual(approved.capability, guestCapability);
+  assert.deepStrictEqual(events, [{
+    event: "state",
+    data: { position: 7, status: "connected" }
+  }]);
+  assert.ok(calls.every(call =>
+    !call.url.includes(hostCapability)
+    && !call.url.includes(guestCapability)
+    && !call.url.includes(joinTicket)
+  ), "Capabilities and join tickets must never appear in request URLs.");
+  assert.strictEqual(calls[2].options.headers["X-Massage-Join-Ticket"], joinTicket);
+  assert.strictEqual(calls[2].options.body.includes(joinTicket), false);
+  assert.strictEqual(calls[3].options.headers.Authorization, `Bearer ${hostCapability}`);
+}
+
+function testLocalQrCodeOutput() {
+  const matrix = qrCode.createMatrix("ABC234");
+  assert.strictEqual(matrix.length, 21);
+  assert.ok(matrix.every(row => row.length === 21));
+  const svg = qrCode.createSvg("ABC234");
+  assert.match(svg, /<svg[^>]+viewBox="0 0 29 29"/);
+  assert.match(svg, /aria-label="QR-kod för sessionskod ABC234"/);
+  assert.throws(() => qrCode.createMatrix("ABC!234"), /QR alphanumeric/);
 }
 
 testScaleHasTenOrderedPositions();
@@ -73,6 +162,13 @@ testStartJoinInvalidAndFullSession();
 testSharedValueAndExclusiveDragControl();
 testOrientationDoesNotChangeSelectedPosition();
 testLeavingAndEndingSession();
-testPublicIntegrationAndLocalOnlyBehavior();
+testPublicSessionIntegration();
+testLocalQrCodeOutput();
 
-console.log("Massagefeedback UI tests passed.");
+(async () => {
+  await testSessionApiCredentialHeadersAndSseParsing();
+  console.log("Massagefeedback UI tests passed.");
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

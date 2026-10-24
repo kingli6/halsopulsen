@@ -210,11 +210,19 @@
 .massage-button-danger:hover:not(:disabled) { background: #fae9e3; }
 
 .session-code-panel {
+  align-items: center;
   padding: .8rem 1rem;
   margin-top: 1rem;
   border: 1px dashed #9ec4aa;
   border-radius: var(--radius-sm);
   background: #f4fbf6;
+}
+
+.session-code-details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .session-code-label {
@@ -231,6 +239,43 @@
   font-size: 1.5rem;
   letter-spacing: .16em;
 }
+
+.session-qr-wrap {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--color-text-muted);
+  font-size: .72rem;
+  line-height: 1.35;
+}
+
+.session-qr {
+  width: 82px;
+  height: 82px;
+  flex: 0 0 auto;
+  padding: .25rem;
+  border: 1px solid #dfe8e1;
+  border-radius: .4rem;
+  background: #fff;
+}
+
+.session-qr svg { display: block; width: 100%; height: 100%; }
+
+.join-approval {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  margin-top: 1rem;
+  border: 1px solid #e8c77a;
+  border-radius: var(--radius-sm);
+  background: #fff7e4;
+}
+
+.join-approval strong { color: #77510a; font-size: .9rem; }
+.join-approval p { margin: .2rem 0 0; color: var(--color-text-muted); font-size: .8rem; }
+.join-approval-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
 .text-button {
   min-height: 44px;
@@ -256,15 +301,6 @@
 
 .session-feedback.is-error { color: #9d3522; }
 .session-feedback.is-warning { color: #77510a; }
-
-.third-device-test {
-  padding-top: 1rem;
-  margin-top: .75rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.third-device-test strong { font-size: .9rem; }
-.third-device-test p { margin: .15rem 0 0; color: var(--color-text-muted); font-size: .78rem; }
 
 .devices-section { margin-top: 2rem; }
 .devices-heading { align-items: end; margin-bottom: .85rem; }
@@ -505,9 +541,11 @@
   .prototype-notice { flex-direction: column; gap: .1rem; }
   .session-setup-heading { align-items: flex-start; flex-direction: column; gap: .5rem; }
   .join-form-controls { align-items: stretch; flex-direction: column; }
-  .third-device-test { align-items: flex-start; flex-direction: column; }
-  .third-device-test .massage-button { width: 100%; }
   .session-code-panel { align-items: flex-start; }
+  .session-code-details { align-items: flex-start; flex-direction: column; gap: .65rem; }
+  .join-approval { align-items: flex-start; flex-direction: column; }
+  .join-approval-actions { width: 100%; }
+  .join-approval-actions .massage-button { flex: 1; }
   .feedback-layout.is-vertical { grid-template-columns: minmax(72px, .55fr) minmax(120px, 1fr); gap: .25rem; }
   .feedback-layout.is-vertical .massage-range { width: 250px; }
   .device-actions .massage-button { flex: 1 1 8rem; }

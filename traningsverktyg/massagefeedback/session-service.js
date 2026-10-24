@@ -322,10 +322,6 @@ function createSessionService(options = {}) {
     });
     if (!role) return { ok: false, reason: "unauthorized" };
 
-    const participant = participantFor(session, role);
-    const wasDisconnected = !participant.connected || participant.disconnectedAt !== null;
-    participant.connected = true;
-    participant.disconnectedAt = null;
     session.lastActivityAt = now();
     const guestRequest = role === "guest"
       ? [...session.joinRequests.values()].find(request =>
@@ -335,7 +331,6 @@ function createSessionService(options = {}) {
       : null;
     if (guestRequest) guestRequest.guestCapability = null;
     expireLease(session);
-    if (wasDisconnected) broadcast(session);
     return { ok: true, role, session, state: publicState(session, role) };
   }
 
@@ -384,8 +379,6 @@ function createSessionService(options = {}) {
   function heartbeat(session, role) {
     const participant = participantFor(session, role);
     if (!participant) return { ok: false, reason: "unauthorized" };
-    participant.connected = true;
-    participant.disconnectedAt = null;
     session.lastActivityAt = now();
     return { ok: true, state: publicState(session, role) };
   }
@@ -465,7 +458,7 @@ function createSessionService(options = {}) {
       return { ok: false };
     }
     response.flush?.();
-    if (existing) broadcast(session, "state", stream);
+    broadcast(session, "state", stream);
     return { ok: true };
   }
 
