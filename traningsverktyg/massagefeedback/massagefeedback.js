@@ -5,7 +5,6 @@
   const api = window.MassageFeedbackApi.createSessionApi();
   const DEVICE_FOR_ROLE = Object.freeze({ host: "A", guest: "B" });
   const ROLE_FOR_DEVICE = Object.freeze({ A: "host", B: "guest" });
-  const HIDDEN_CHOICE_INDICES = new Set([3, 9]);
   const FEEDBACK_COLORS = Object.freeze([
     Object.freeze({ accent: "#1f6b45", tint: "#e8f4ec" }),
     Object.freeze({ accent: "#357845", tint: "#eaf3e8" }),
@@ -62,12 +61,10 @@
   }
 
   function deviceMarkup() {
-    const labels = model.POSITIONS.map((position, index) => {
-      if (HIDDEN_CHOICE_INDICES.has(index)) return "";
-      const displayLabel = position === "9" ? "9+" : position;
-      const buttonLabel = displayLabel === "NOT MUCH" ? "NOT<br />MUCH" : escapeHtml(displayLabel);
+    const labels = model.CHOICES.map(({ label, value }, index) => {
+      const buttonLabel = label === "NOT MUCH" ? "NOT<br />MUCH" : escapeHtml(label);
       return `
-        <button class="choice-button" type="button" data-position="${index}" aria-label="${escapeHtml(displayLabel)}" aria-pressed="${index === 0 ? "true" : "false"}">${buttonLabel}</button>
+        <button class="choice-button" type="button" data-position="${value}" aria-label="${escapeHtml(label)}" aria-pressed="${index === 0 ? "true" : "false"}">${buttonLabel}</button>
       `;
     }).join("");
     return `
@@ -87,8 +84,8 @@
             <div class="feedback-labels" role="group" aria-label="Välj gemensam massagefeedback">${labels}</div>
             <p class="range-caption">Dra indikatorn eller välj ett värde</p>
             <div class="range-wrap">
-              <input class="massage-range" type="range" min="0" max="9" step="1" value="0"
-                data-feedback-slider aria-label="Gemensam massagefeedback från GREAT till 10" />
+              <input class="massage-range" type="range" min="0" max="${model.CHOICES.length - 1}" step="1" value="0"
+                data-feedback-slider aria-label="Gemensam massagefeedback från GREAT till 9+" />
             </div>
           </div>
           <p class="device-interaction-status" data-device-interaction-status role="status" aria-live="polite"></p>
@@ -185,8 +182,9 @@
     const output = deviceGrid.querySelector("[data-selected-position]");
     const interactionStatus = deviceGrid.querySelector("[data-device-interaction-status]");
     const value = session?.position ?? 0;
-    const label = model.POSITIONS[value];
-    const feedbackColor = FEEDBACK_COLORS[value] || FEEDBACK_COLORS[0];
+    const choice = model.choiceForPosition(value) || model.CHOICES[0];
+    const sliderIndex = model.sliderIndexForPosition(choice.value);
+    const feedbackColor = FEEDBACK_COLORS[choice.value] || FEEDBACK_COLORS[0];
     const interactive = canControl(deviceId);
 
     card.classList.toggle("is-connected", connectionActive);
@@ -194,18 +192,18 @@
     card.style.setProperty("--feedback-tint", feedbackColor.tint);
     card.style.setProperty(
       "--feedback-progress",
-      `${(value / (model.POSITIONS.length - 1)) * 100}%`
+      `${(sliderIndex / (model.CHOICES.length - 1)) * 100}%`
     );
     caption.textContent = state.role
       ? `TELEFON ${deviceId === "A" ? "1" : "2"} · DITT REGLAGE`
       : "GEMENSAM SKALA";
     controls.hidden = !session || session.status === "ended";
-    slider.value = String(value);
+    slider.value = String(sliderIndex);
     slider.disabled = !interactive;
-    slider.setAttribute("aria-valuetext", label);
-    output.textContent = label;
+    slider.setAttribute("aria-valuetext", choice.label);
+    output.textContent = choice.label;
     deviceGrid.querySelectorAll("[data-position]").forEach(button => {
-      const selected = Number(button.dataset.position) === value;
+      const selected = Number(button.dataset.position) === choice.value;
       button.setAttribute("aria-pressed", String(selected));
       button.disabled = !interactive;
     });
@@ -303,9 +301,7 @@
       code: serverState.code || state.session?.code || "",
       status: serverState.status,
       participants,
-      position: Number.isInteger(serverState.position)
-        ? Math.max(0, Math.min(model.POSITIONS.length - 1, serverState.position))
-        : 0,
+      position: model.isValidPosition(serverState.position) ? serverState.position : 0,
       activeDevice
     };
     if (state.gesture?.claimed && activeDevice !== DEVICE_FOR_ROLE[state.role]) {
@@ -764,10 +760,17 @@
     const deviceId = activeDeviceId();
     const gesture = state.gesture || beginGesture(deviceId);
     if (!gesture || gesture.deviceId !== deviceId || gesture.released) {
-      range.value = String(state.session?.position ?? 0);
+      const sliderIndex = model.sliderIndexForPosition(state.session?.position ?? 0);
+      range.value = String(sliderIndex < 0 ? 0 : sliderIndex);
       return;
     }
-    gesture.latestPosition = Number(range.value);
+    const position = model.positionForSliderIndex(Number(range.value));
+    if (position === null) {
+      const sliderIndex = model.sliderIndexForPosition(state.session?.position ?? 0);
+      range.value = String(sliderIndex < 0 ? 0 : sliderIndex);
+      return;
+    }
+    gesture.latestPosition = position;
     if (gesture.claimed) queuePosition(gesture.latestPosition, gesture);
   });
   range.addEventListener("keydown", event => {

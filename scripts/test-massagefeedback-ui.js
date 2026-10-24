@@ -9,31 +9,55 @@ const sessionApi = require("../traningsverktyg/massagefeedback/session-api");
 const root = path.join(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
 
-function testScaleHasTenOrderedPositions() {
-  assert.deepStrictEqual(model.POSITIONS, [
-    "GREAT", "GOOD", "NOT MUCH", "4", "5", "6", "7", "8", "9", "10"
-  ]);
+function testCanonicalChoicesAndSliderMapping() {
+  assert.deepStrictEqual(
+    model.CHOICES.map(({ label, value }) => [label, value]),
+    [
+      ["GREAT", 0],
+      ["GOOD", 1],
+      ["NOT MUCH", 2],
+      ["5", 4],
+      ["6", 5],
+      ["7", 6],
+      ["8", 7],
+      ["9+", 8]
+    ]
+  );
+  model.CHOICES.forEach((choice, index) => {
+    assert.strictEqual(model.sliderIndexForPosition(choice.value), index);
+    assert.strictEqual(model.positionForSliderIndex(index), choice.value);
+    assert.strictEqual(model.choiceForPosition(choice.value), choice);
+    assert.strictEqual(model.isValidPosition(choice.value), true);
+  });
+  for (const invalidValue of [3, 9, 10, -1]) {
+    assert.strictEqual(model.isValidPosition(invalidValue), false);
+    assert.strictEqual(model.choiceForPosition(invalidValue), null);
+    assert.strictEqual(model.sliderIndexForPosition(invalidValue), -1);
+  }
+  assert.strictEqual(model.positionForSliderIndex(-1), null);
+  assert.strictEqual(model.positionForSliderIndex(8), null);
 }
 
-function testVisibleChoiceLabelsKeepOriginalValues() {
-  const hiddenIndices = new Set([3, 9]);
-  const visibleChoices = model.POSITIONS.flatMap((position, index) => {
-    if (hiddenIndices.has(index)) return [];
-    return [{ index, label: index === 8 ? "9+" : position }];
-  });
+function testSliderAndButtonsUseTheSameEightChoices() {
+  const ui = read("traningsverktyg/massagefeedback/massagefeedback.js");
+  const markupFunction = ui.match(/^  function deviceMarkup\(\) \{[\s\S]*?^  \}/m)?.[0];
+  assert.ok(markupFunction, "The shared device markup function must remain available.");
+  const createMarkup = vm.runInNewContext(
+    `(function(model, escapeHtml) { ${markupFunction}; return deviceMarkup; })`
+  );
+  const markup = createMarkup(model, value => String(value))();
+  const buttonValues = [...markup.matchAll(/data-position="(\d+)"/g)]
+    .map(([, value]) => Number(value));
+  const buttonLabels = [...markup.matchAll(/aria-label="(GREAT|GOOD|NOT MUCH|5|6|7|8|9\+)"/g)]
+    .map(([, label]) => label);
+  const slider = markup.match(/<input class="massage-range"[^>]+>/)?.[0];
 
-  assert.deepStrictEqual(visibleChoices, [
-    { index: 0, label: "GREAT" },
-    { index: 1, label: "GOOD" },
-    { index: 2, label: "NOT MUCH" },
-    { index: 4, label: "5" },
-    { index: 5, label: "6" },
-    { index: 6, label: "7" },
-    { index: 7, label: "8" },
-    { index: 8, label: "9+" }
-  ]);
-  assert.strictEqual(model.POSITIONS[3], "4", "Slider value 4 remains in the original scale.");
-  assert.strictEqual(model.POSITIONS[9], "10", "Slider value 10 remains in the original scale.");
+  assert.deepStrictEqual(buttonValues, model.CHOICES.map(choice => choice.value));
+  assert.deepStrictEqual(buttonLabels, model.CHOICES.map(choice => choice.label));
+  assert.match(slider || "", /min="0" max="7" step="1" value="0"/);
+  assert.match(slider || "", /från GREAT till 9\+/);
+  assert.match(ui, /model\.positionForSliderIndex\(Number\(range\.value\)\)/);
+  assert.match(ui, /model\.isValidPosition\(serverState\.position\)/);
 }
 
 function contrastRatio(foreground, background) {
@@ -57,7 +81,7 @@ function testFeedbackColorContrast() {
   const colors = [...paletteSource.matchAll(
     /accent: "(#[0-9a-f]{6})", tint: "(#[0-9a-f]{6})"/gi
   )];
-  assert.strictEqual(colors.length, model.POSITIONS.length);
+  assert.strictEqual(colors.length, 10, "Keep the established ten-step color palette unchanged.");
   colors.forEach(([, accent, tint]) => {
     assert.ok(
       contrastRatio(accent, tint) >= 4.5,
@@ -150,8 +174,11 @@ function testSharedValueAndExclusiveDragControl() {
   assert.strictEqual(session.position, 7);
   session = model.releaseControl(session, "A").session;
   session = model.claimControl(session, "B").session;
-  session = model.setPosition(session, "B", 9).session;
-  assert.strictEqual(session.position, 9);
+  session = model.setPosition(session, "B", 8).session;
+  assert.strictEqual(session.position, 8);
+  for (const invalidValue of [3, 9]) {
+    assert.strictEqual(model.setPosition(session, "B", invalidValue).reason, "invalid-position");
+  }
 }
 
 function testOrientationDoesNotChangeSelectedPosition() {
@@ -219,12 +246,11 @@ function testPublicSessionIntegration() {
   assert.match(ui, /function activeDeviceId\(\)[\s\S]*DEVICE_FOR_ROLE\[state\.role\]/);
   assert.match(ui, /function refreshConnectionStatus\(\)/);
   assert.match(ui, /"connected"|"waiting"|"reconnecting"/);
-  assert.match(ui, /const HIDDEN_CHOICE_INDICES = new Set\(\[3, 9\]\)/);
-  assert.match(ui, /if \(HIDDEN_CHOICE_INDICES\.has\(index\)\) return "";/);
-  assert.match(ui, /const displayLabel = position === "9" \? "9\+" : position;/);
-  assert.match(ui, /data-position="\$\{index\}"/);
-  assert.match(deviceTemplate, /type="range" min="0" max="9" step="1" value="0"/);
-  assert.match(ui, /const label = model\.POSITIONS\[value\]/);
+  assert.match(ui, /const labels = model\.CHOICES\.map/);
+  assert.doesNotMatch(ui, /HIDDEN_CHOICE_INDICES/);
+  assert.match(deviceTemplate, /type="range" min="0" max="\$\{model\.CHOICES\.length - 1\}" step="1" value="0"/);
+  assert.match(ui, /const choice = model\.choiceForPosition\(value\)/);
+  assert.match(ui, /slider\.value = String\(sliderIndex\)/);
   assert.match(ui, /card\.style\.setProperty\("--feedback-accent", feedbackColor\.accent\)/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /\.choice-button \{ min-height: 48px; font-size: \.76rem; \}/);
@@ -323,8 +349,8 @@ async function testSessionApiCredentialHeadersAndSseParsing() {
   );
 }
 
-testScaleHasTenOrderedPositions();
-testVisibleChoiceLabelsKeepOriginalValues();
+testCanonicalChoicesAndSliderMapping();
+testSliderAndButtonsUseTheSameEightChoices();
 testFeedbackColorContrast();
 testConnectionStatusRendering();
 testStartJoinInvalidAndFullSession();

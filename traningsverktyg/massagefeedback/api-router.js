@@ -1,4 +1,5 @@
 const express = require("express");
+const { isValidPosition } = require("./session-model");
 const { createSessionService } = require("./session-service");
 
 const MASSAGEFEEDBACK_ALLOWED_ORIGIN = "https://halsopulsen.se";
@@ -257,8 +258,8 @@ function createMassageFeedbackRouter(options = {}) {
   });
 
   router.post("/sessions/:code/position", limiters.position, (req, res) => {
-    if (!hasOnlyKeys(req.body, ["position"]) || !Number.isInteger(req.body.position)) {
-      return res.status(400).json({ ok: false, error: "Position must be an integer from 0 to 9." });
+    if (!hasOnlyKeys(req.body, ["position"]) || !isValidPosition(req.body.position)) {
+      return res.status(400).json({ ok: false, error: "Position is not a supported feedback choice." });
     }
     const authorized = requireCapability(req, res);
     if (!authorized) return;
@@ -266,7 +267,7 @@ function createMassageFeedbackRouter(options = {}) {
     if (!result.ok) {
       const status = result.reason === "invalid-position" ? 400 : 409;
       const error = result.reason === "invalid-position"
-        ? "Position must be an integer from 0 to 9."
+        ? "Position is not a supported feedback choice."
         : result.reason === "host-disconnected"
           ? "The host is reconnecting. Slider control is paused."
         : result.reason === "locked"

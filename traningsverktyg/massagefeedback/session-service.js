@@ -1,8 +1,7 @@
 const crypto = require("crypto");
+const { CHOICES, isValidPosition } = require("./session-model");
 
-const POSITIONS = Object.freeze([
-  "GREAT", "GOOD", "NOT MUCH", "4", "5", "6", "7", "8", "9", "10"
-]);
+const POSITIONS = Object.freeze(CHOICES.map(choice => choice.value));
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DEFAULTS = Object.freeze({
   codeLength: 6,
@@ -350,7 +349,7 @@ function createSessionService(options = {}) {
 
   function setPosition(session, role, position) {
     expireLease(session);
-    if (!Number.isInteger(position) || position < 0 || position >= POSITIONS.length) {
+    if (!isValidPosition(position)) {
       return { ok: false, reason: "invalid-position" };
     }
     if (role === "guest" && !session.participants.host?.connected) {

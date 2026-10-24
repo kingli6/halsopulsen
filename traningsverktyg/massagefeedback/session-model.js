@@ -1,8 +1,32 @@
 (function exposeMassageFeedbackModel(root) {
-  const POSITIONS = Object.freeze([
-    "GREAT", "GOOD", "NOT MUCH", "4", "5", "6", "7", "8", "9", "10"
+  const CHOICES = Object.freeze([
+    Object.freeze({ label: "GREAT", value: 0 }),
+    Object.freeze({ label: "GOOD", value: 1 }),
+    Object.freeze({ label: "NOT MUCH", value: 2 }),
+    Object.freeze({ label: "5", value: 4 }),
+    Object.freeze({ label: "6", value: 5 }),
+    Object.freeze({ label: "7", value: 6 }),
+    Object.freeze({ label: "8", value: 7 }),
+    Object.freeze({ label: "9+", value: 8 })
   ]);
   const MAX_PARTICIPANTS = 2;
+
+  function choiceForPosition(position) {
+    return CHOICES.find(choice => choice.value === position) || null;
+  }
+
+  function sliderIndexForPosition(position) {
+    return CHOICES.findIndex(choice => choice.value === position);
+  }
+
+  function positionForSliderIndex(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= CHOICES.length) return null;
+    return CHOICES[index].value;
+  }
+
+  function isValidPosition(position) {
+    return Number.isInteger(position) && choiceForPosition(position) !== null;
+  }
 
   function normalizeCode(code) {
     return String(code || "").trim().replace(/\s+/g, "").toUpperCase();
@@ -68,14 +92,13 @@
     if (session.activeDevice && session.activeDevice !== deviceId) {
       return { ok: false, reason: "locked", session };
     }
-    const nextPosition = Math.max(0, Math.min(POSITIONS.length - 1, Math.round(Number(position))));
-    if (!Number.isFinite(nextPosition)) {
+    if (!isValidPosition(position)) {
       return { ok: false, reason: "invalid-position", session };
     }
     return {
       ok: true,
       reason: null,
-      session: { ...session, position: nextPosition }
+      session: { ...session, position }
     };
   }
 
@@ -134,7 +157,11 @@
   }
 
   const api = Object.freeze({
-    POSITIONS,
+    CHOICES,
+    choiceForPosition,
+    sliderIndexForPosition,
+    positionForSliderIndex,
+    isValidPosition,
     MAX_PARTICIPANTS,
     normalizeCode,
     createSession,

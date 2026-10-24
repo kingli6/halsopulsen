@@ -42,10 +42,13 @@ The shared API mutation limiter would throttle ordinary pointer movement, so
 only `POST /sessions/:code/position` is exempted from the existing global API
 and mutation counters. That endpoint has a dedicated limit of 30 requests per
 second per client IP. All position writes still require a capability, an
-active server-side lease, and an integer position from 0 to 9. Creation, code
-attempts, polling, SSE connections, and other actions have separate limits in
-addition to the existing general API limits. A future client should coalesce
-pointer events rather than send more often than the position limit.
+active server-side lease, and one of the supported shared values
+`0, 1, 2, 4, 5, 6, 7, 8`. Values `3` and `9` are rejected. The browser presents
+these as eight discrete slider positions; the final `9+` choice keeps shared
+value `8`. Creation, code attempts, polling, SSE connections, and other actions
+have separate limits in addition to the existing general API limits. A future
+client should coalesce pointer events rather than send more often than the
+position limit.
 
 Heartbeats are limited to 60 requests per minute per client IP. This allows two
 devices on the same network to heartbeat every five seconds (24 combined

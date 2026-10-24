@@ -8,7 +8,10 @@ const {
   createMassageFeedbackRouter,
   isHighFrequencyPositionRequest
 } = require("../traningsverktyg/massagefeedback/api-router");
-const { createSessionService } = require("../traningsverktyg/massagefeedback/session-service");
+const {
+  createSessionService,
+  POSITIONS
+} = require("../traningsverktyg/massagefeedback/session-service");
 const { createSessionApi, readEvents } = require("../traningsverktyg/massagefeedback/session-api");
 
 const root = path.join(__dirname, "..");
@@ -285,13 +288,22 @@ async function testBrowserApiClientAgainstServer() {
     );
     assert.strictEqual(guestSeesOwner.data.activeControl, "host");
 
-    const update = await hostApi.setPosition(host.code, 8, host.capability);
-    assert.strictEqual(update.state.position, 8);
-    const guestSeesPosition = await nextClientEventMatching(
-      guestEvents,
-      event => event.event === "state" && event.data.position === 8
-    );
-    assert.strictEqual(guestSeesPosition.data.position, 8);
+    for (const position of [1, 2, 4, 5, 6, 7, 8]) {
+      const update = await hostApi.setPosition(host.code, position, host.capability);
+      assert.strictEqual(update.state.position, position);
+      const [hostSeesPosition, guestSeesPosition] = await Promise.all([
+        nextClientEventMatching(
+          hostEvents,
+          event => event.event === "state" && event.data.position === position
+        ),
+        nextClientEventMatching(
+          guestEvents,
+          event => event.event === "state" && event.data.position === position
+        )
+      ]);
+      assert.strictEqual(hostSeesPosition.data.position, position);
+      assert.strictEqual(guestSeesPosition.data.position, position);
+    }
 
     await guestApi.end(host.code, guestStatus.capability);
     const ended = await nextClientEventMatching(hostEvents, event => event.event === "session-ended");
@@ -455,6 +467,14 @@ async function testApprovalAuthorizationAndSynchronizedSlider() {
       competitorCapability
     );
     assert.strictEqual(competingPosition.response.status, 409);
+    for (const invalidPosition of [3, 9]) {
+      const rejectedPosition = await client.post(
+        `/sessions/${host.code}/position`,
+        { position: invalidPosition },
+        holderCapability
+      );
+      assert.strictEqual(rejectedPosition.response.status, 400);
+    }
     const outOfRangePosition = await client.post(
       `/sessions/${host.code}/position`,
       { position: 10 },
@@ -494,22 +514,22 @@ async function testApprovalAuthorizationAndSynchronizedSlider() {
     assert.strictEqual(handoff.response.status, 200);
     const handedUpdate = await client.post(
       `/sessions/${host.code}/position`,
-      { position: 9 },
+      { position: 8 },
       competitorCapability
     );
     assert.strictEqual(handedUpdate.response.status, 200);
     const otherDeviceUpdate = await nextSseEventMatching(
       competitorStream.reader,
       competitorReaderState,
-      event => event.data.position === 9
+      event => event.data.position === 8
     );
     const initiatorUpdate = await nextSseEventMatching(
       holderStream.reader,
       holderReaderState,
-      event => event.data.position === 9
+      event => event.data.position === 8
     );
-    assert.strictEqual(otherDeviceUpdate.data.position, 9);
-    assert.strictEqual(initiatorUpdate.data.position, 9);
+    assert.strictEqual(otherDeviceUpdate.data.position, 8);
+    assert.strictEqual(initiatorUpdate.data.position, 8);
 
     await hostStream.close();
     const disconnectedUpdate = await nextSseEventMatching(
@@ -524,7 +544,7 @@ async function testApprovalAuthorizationAndSynchronizedSlider() {
     await new Promise(resolve => setTimeout(resolve, 20));
     reconnectedHostStream = await openEvents(client, host.code, host.capability);
     const reconnectSnapshot = await nextSseEvent(reconnectedHostStream.reader, reconnectedHostStream.state);
-    assert.strictEqual(reconnectSnapshot.data.position, 9);
+    assert.strictEqual(reconnectSnapshot.data.position, 8);
     assert.strictEqual(reconnectSnapshot.data.participants.length, 2);
 
     const ended = await client.post(`/sessions/${host.code}/end`, {}, competitorCapability);
@@ -631,8 +651,8 @@ async function testValidationRateLimitsAndExistingRouteIsolation() {
     assert.strictEqual(claim.response.status, 200);
     const first = await client.post(`/sessions/${host.code}/position`, { position: 1 }, host.capability);
     const second = await client.post(`/sessions/${host.code}/position`, { position: 2 }, host.capability);
-    const third = await client.post(`/sessions/${host.code}/position`, { position: 3 }, host.capability);
-    const fourth = await client.post(`/sessions/${host.code}/position`, { position: 4 }, host.capability);
+    const third = await client.post(`/sessions/${host.code}/position`, { position: 4 }, host.capability);
+    const fourth = await client.post(`/sessions/${host.code}/position`, { position: 5 }, host.capability);
     assert.strictEqual(first.response.status, 200);
     assert.strictEqual(second.response.status, 200);
     assert.strictEqual(third.response.status, 200);
@@ -963,8 +983,14 @@ function testLifecycleLeasesAndCleanup() {
     clock += 11;
     service.sweep();
     assert.strictEqual(service.claimControl(guestAuth.session, "guest").ok, true, "Expired leases must hand off control.");
-    assert.strictEqual(service.setPosition(guestAuth.session, "guest", 10).reason, "invalid-position");
-    for (let position = 0; position < 10; position += 1) {
+    assert.deepStrictEqual(POSITIONS, [0, 1, 2, 4, 5, 6, 7, 8]);
+    for (const invalidPosition of [3, 9, 10, -1]) {
+      assert.strictEqual(
+        service.setPosition(guestAuth.session, "guest", invalidPosition).reason,
+        "invalid-position"
+      );
+    }
+    for (const position of POSITIONS) {
       assert.strictEqual(service.setPosition(guestAuth.session, "guest", position).ok, true);
       assert.strictEqual(guestAuth.session.position, position);
     }
