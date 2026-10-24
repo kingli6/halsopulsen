@@ -45,6 +45,10 @@ const {
 const {
   createGlobalFailedLoginLimiter
 } = require('./admin-login-limiter');
+const {
+  createMassageFeedbackRouter,
+  isHighFrequencyPositionRequest
+} = require('./traningsverktyg/massagefeedback/api-router');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -215,12 +219,16 @@ function adminRedirectPath(req) {
 
 app.use('/api', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
+  if (isHighFrequencyPositionRequest(req)) return next();
   apiRateLimiter(req, res, next);
 });
 app.use('/api', (req, res, next) => {
   if (!['POST', 'PUT', 'DELETE'].includes(req.method)) return next();
+  if (isHighFrequencyPositionRequest(req)) return next();
   mutationRateLimiter(req, res, next);
 });
+const massageFeedbackRouter = createMassageFeedbackRouter();
+app.use('/api/massagefeedback', massageFeedbackRouter);
 app.get('/api/booking/wake', (req, res) => {
   res.json({ ok: true });
 });
