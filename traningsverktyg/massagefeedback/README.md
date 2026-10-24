@@ -32,9 +32,18 @@ attempts, polling, SSE connections, and other actions have separate limits in
 addition to the existing general API limits. A future client should coalesce
 pointer events rather than send more often than the position limit.
 
+Heartbeats are limited to 60 requests per minute per client IP. This allows two
+devices on the same network to heartbeat every five seconds (24 combined
+requests per minute) while retaining a per-IP abuse limit.
+
 The server grants one drag lease at a time. Position writes renew it; release,
 stream disconnect, and lease expiry relinquish it. A lost release therefore
 cannot lock the slider indefinitely.
+
+SSE streams respect Node's write backpressure. While a response is backpressured,
+the server keeps at most one deferred state update and replaces it with the
+latest state as changes arrive. A `drain` resumes delivery; `close` and `error`
+remove the stream and its listeners.
 
 ## Lifecycle and deployment boundary
 
@@ -42,6 +51,18 @@ Heartbeat activity, reconnect grace, idle expiry, maximum session age, pending
 join expiry, stream close handling, and lease expiry are maintained in memory.
 The current defaults are a 30-second reconnect grace, five-minute idle expiry,
 one-hour maximum age, and three-second lease.
+
+If the host loses its event stream, the guest remains connected during the
+30-second reconnect grace, but cannot claim slider control or change the
+position. A host reconnect during that period restores normal control. If the
+host does not reconnect before grace expires, the whole session ends and both
+capabilities become invalid. A guest that stays disconnected beyond the grace
+period is removed while the host session returns to the waiting state.
+
+The process allows up to 500 active sessions by default, including sessions
+with pending join requests. Set `MASSAGEFEEDBACK_MAX_SESSIONS` to a positive
+integer to change the limit. At capacity, creation returns HTTP 503 with a
+`Retry-After` header; ended and expired sessions release their capacity.
 
 This service requires one shared Express process. Its in-memory state is lost
 on restart and is not shared across multiple app instances. Do not scale this

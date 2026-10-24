@@ -430,6 +430,73 @@ async function testValidationRateLimitsAndExistingRouteIsolation() {
   }
 }
 
+async function testHeartbeatSharedIpCadenceAndAbuseLimit() {
+  const server = await startServer();
+  const client = api(server.baseUrl);
+  try {
+    const host = await createHost(client);
+    const guest = await createApprovedGuest(client, host);
+
+    // Two devices each heartbeat once every five seconds: 24 requests per shared IP per minute.
+    for (let cycle = 0; cycle < 12; cycle += 1) {
+      const responses = await Promise.all([
+        client.post(`/sessions/${host.code}/heartbeat`, {}, host.capability),
+        client.post(`/sessions/${host.code}/heartbeat`, {}, guest.capability)
+      ]);
+      assert.deepStrictEqual(
+        responses.map(result => result.response.status),
+        [200, 200],
+        "Both participants sharing one IP must be able to heartbeat every five seconds."
+      );
+    }
+
+    // The per-IP limiter remains active beyond normal two-device traffic.
+    for (let count = 0; count < 36; count += 1) {
+      const heartbeat = await client.post(`/sessions/${host.code}/heartbeat`, {}, host.capability);
+      assert.strictEqual(heartbeat.response.status, 200);
+    }
+    const throttled = await client.post(`/sessions/${host.code}/heartbeat`, {}, host.capability);
+    assert.strictEqual(throttled.response.status, 429, "Excessive heartbeat traffic must remain limited.");
+  } finally {
+    await server.close();
+  }
+}
+
+async function testSessionCapacityConfigurationAndRecovery() {
+  const previousLimit = process.env.MASSAGEFEEDBACK_MAX_SESSIONS;
+  process.env.MASSAGEFEEDBACK_MAX_SESSIONS = "1";
+  let router;
+  try {
+    router = createMassageFeedbackRouter();
+  } finally {
+    if (previousLimit === undefined) delete process.env.MASSAGEFEEDBACK_MAX_SESSIONS;
+    else process.env.MASSAGEFEEDBACK_MAX_SESSIONS = previousLimit;
+  }
+
+  const server = await startServer(router);
+  const client = api(server.baseUrl);
+  try {
+    const host = await createHost(client);
+    const pendingJoin = await client.post("/join-requests", { code: host.code });
+    assert.strictEqual(pendingJoin.response.status, 202);
+
+    const atCapacity = await client.post("/sessions");
+    assert.strictEqual(atCapacity.response.status, 503);
+    assert.deepStrictEqual(atCapacity.payload, {
+      ok: false,
+      error: "The service is temporarily at capacity. Please try again later."
+    });
+    assert.strictEqual(atCapacity.response.headers.get("retry-after"), "60");
+
+    const ended = await client.post(`/sessions/${host.code}/end`, {}, host.capability);
+    assert.strictEqual(ended.response.status, 200);
+    const recovered = await createHost(client);
+    assert.strictEqual(recovered.state.status, "waiting");
+  } finally {
+    await server.close();
+  }
+}
+
 function fakeResponse() {
   const EventEmitter = require("events");
   const response = new EventEmitter();
@@ -437,6 +504,7 @@ function fakeResponse() {
   response.chunks = [];
   response.destroyed = false;
   response.writableEnded = false;
+  response.backpressure = false;
   response.status = status => {
     response.statusCode = status;
     return response;
@@ -446,7 +514,7 @@ function fakeResponse() {
   };
   response.write = chunk => {
     response.chunks.push(chunk);
-    return true;
+    return !response.backpressure;
   };
   response.flushHeaders = () => {};
   response.end = () => {
@@ -454,6 +522,167 @@ function fakeResponse() {
     response.emit("close");
   };
   return response;
+}
+
+function testHostDisconnectPolicy() {
+  let clock = 1_000;
+  const service = createSessionService({
+    now: () => clock,
+    idleTimeoutMs: 2_000,
+    maximumAgeMs: 10_000,
+    reconnectGraceMs: 50,
+    sweepIntervalMs: 60_000,
+    streamHeartbeatMs: 60_000
+  });
+  try {
+    const host = service.create();
+    const join = service.requestJoin(host.code);
+    service.decideJoin(host.code, join.requestId, "approve");
+    const guest = service.getJoinStatus(host.code, join.requestId, join.joinTicket);
+    const hostAuth = service.authorize(host.code, host.capability);
+    const guestAuth = service.authorize(host.code, guest.capability);
+    assert.ok(hostAuth.ok && guestAuth.ok);
+
+    const hostResponse = fakeResponse();
+    const guestResponse = fakeResponse();
+    assert.strictEqual(service.openStream(hostAuth.session, "host", hostResponse).ok, true);
+    assert.strictEqual(service.openStream(guestAuth.session, "guest", guestResponse).ok, true);
+    hostResponse.emit("close");
+
+    assert.strictEqual(guestAuth.session.participants.guest.connected, true);
+    assert.strictEqual(service.claimControl(guestAuth.session, "guest").reason, "host-disconnected");
+    assert.strictEqual(service.setPosition(guestAuth.session, "guest", 4).reason, "host-disconnected");
+
+    clock += 49;
+    const reconnectedHost = service.authorize(host.code, host.capability);
+    assert.ok(reconnectedHost.ok, "The host capability remains valid during the reconnect grace period.");
+    const reconnectedHostResponse = fakeResponse();
+    assert.strictEqual(service.openStream(reconnectedHost.session, "host", reconnectedHostResponse).ok, true);
+    assert.strictEqual(service.claimControl(guestAuth.session, "guest").ok, true);
+    assert.strictEqual(service.setPosition(guestAuth.session, "guest", 4).ok, true);
+    service.end(reconnectedHost.session);
+    assert.strictEqual(guestResponse.writableEnded, true);
+
+    const expiringHost = service.create();
+    const expiringJoin = service.requestJoin(expiringHost.code);
+    service.decideJoin(expiringHost.code, expiringJoin.requestId, "approve");
+    const expiringGuest = service.getJoinStatus(
+      expiringHost.code,
+      expiringJoin.requestId,
+      expiringJoin.joinTicket
+    );
+    const expiringHostAuth = service.authorize(expiringHost.code, expiringHost.capability);
+    const expiringGuestAuth = service.authorize(expiringHost.code, expiringGuest.capability);
+    const disconnectedHostResponse = fakeResponse();
+    const activeGuestResponse = fakeResponse();
+    service.openStream(expiringHostAuth.session, "host", disconnectedHostResponse);
+    service.openStream(expiringGuestAuth.session, "guest", activeGuestResponse);
+    disconnectedHostResponse.emit("close");
+    assert.strictEqual(expiringGuestAuth.session.participants.guest.connected, true);
+
+    clock += 50;
+    service.sweep();
+    assert.strictEqual(service.size, 0, "Host grace expiry must remove the whole session.");
+    assert.strictEqual(service.authorize(expiringHost.code, expiringHost.capability).ok, false);
+    assert.strictEqual(service.authorize(expiringHost.code, expiringGuest.capability).ok, false);
+    assert.strictEqual(activeGuestResponse.writableEnded, true);
+  } finally {
+    service.close();
+  }
+}
+
+function testSessionCapacityExpiryAndStaleSessionCleanup() {
+  let clock = 1_000;
+  const service = createSessionService({
+    now: () => clock,
+    maxSessions: 1,
+    idleTimeoutMs: 50,
+    maximumAgeMs: 1_000,
+    sweepIntervalMs: 60_000,
+    randomInt: () => 0
+  });
+  try {
+    const first = service.create();
+    assert.strictEqual(service.requestJoin(first.code).ok, true);
+    const firstSession = service.authorize(first.code, first.capability).session;
+    assert.deepStrictEqual(service.create(), { ok: false, reason: "capacity" });
+    assert.strictEqual(service.size, 1, "A session with a pending join must count toward capacity.");
+
+    assert.strictEqual(service.end(firstSession), true);
+    const second = service.create();
+    assert.strictEqual(second.ok, true, "Ending a session must release its capacity.");
+    const secondSession = service.authorize(second.code, second.capability).session;
+    assert.strictEqual(service.end(firstSession), false);
+    assert.strictEqual(service.authorize(second.code, second.capability).ok, true);
+    assert.strictEqual(service.size, 1, "Cleaning up an older session must not remove its replacement.");
+
+    clock += 50;
+    service.sweep();
+    assert.strictEqual(service.size, 0, "An expired session must release its capacity.");
+    const third = service.create();
+    assert.strictEqual(third.ok, true, "Creation must recover after expiry cleanup.");
+    assert.strictEqual(third.code, second.code, "The deterministic code should be reusable after expiry.");
+    assert.strictEqual(service.end(secondSession), false);
+    assert.strictEqual(service.authorize(third.code, third.capability).ok, true);
+    assert.strictEqual(service.size, 1, "Stale cleanup must preserve a newer session using the same code.");
+  } finally {
+    service.close();
+  }
+}
+
+function testSseBackpressureAndStreamCleanup() {
+  const service = createSessionService({
+    sweepIntervalMs: 60_000,
+    streamHeartbeatMs: 60_000
+  });
+  try {
+    const host = service.create();
+    const authorized = service.authorize(host.code, host.capability);
+    const response = fakeResponse();
+    service.openStream(authorized.session, "host", response);
+    assert.strictEqual(response.listenerCount("drain"), 1);
+    assert.strictEqual(response.listenerCount("close"), 1);
+    assert.strictEqual(response.listenerCount("error"), 1);
+
+    response.backpressure = true;
+    assert.strictEqual(service.claimControl(authorized.session, "host").ok, true);
+    const writesAtBackpressure = response.chunks.length;
+    for (const position of [1, 2, 7]) {
+      assert.strictEqual(service.setPosition(authorized.session, "host", position).ok, true);
+    }
+    assert.strictEqual(
+      response.chunks.length,
+      writesAtBackpressure,
+      "Further updates must be coalesced instead of written while backpressured."
+    );
+
+    response.backpressure = false;
+    response.emit("drain");
+    assert.strictEqual(response.chunks.length, writesAtBackpressure + 1);
+    const latestEvent = response.chunks.at(-1);
+    assert.match(latestEvent, /^event: state\n/);
+    assert.strictEqual(JSON.parse(latestEvent.match(/^data: (.+)$/m)[1]).position, 7);
+
+    response.emit("close");
+    for (const eventName of ["drain", "close", "error"]) {
+      assert.strictEqual(response.listenerCount(eventName), 0, `The ${eventName} listener must be removed.`);
+    }
+
+    const replacedResponse = fakeResponse();
+    const replacementResponse = fakeResponse();
+    service.openStream(authorized.session, "host", replacedResponse);
+    service.openStream(authorized.session, "host", replacementResponse);
+    for (const eventName of ["drain", "close", "error"]) {
+      assert.strictEqual(replacedResponse.listenerCount(eventName), 0);
+      assert.strictEqual(replacementResponse.listenerCount(eventName), 1);
+    }
+    replacementResponse.emit("error", new Error("simulated stream failure"));
+    for (const eventName of ["drain", "close", "error"]) {
+      assert.strictEqual(replacementResponse.listenerCount(eventName), 0);
+    }
+  } finally {
+    service.close();
+  }
 }
 
 function testLifecycleLeasesAndCleanup() {
@@ -540,6 +769,11 @@ async function run() {
   await testApprovalAuthorizationAndSynchronizedSlider();
   await testJoinRejectionAndConcurrentCapacity();
   await testValidationRateLimitsAndExistingRouteIsolation();
+  await testHeartbeatSharedIpCadenceAndAbuseLimit();
+  await testSessionCapacityConfigurationAndRecovery();
+  testHostDisconnectPolicy();
+  testSessionCapacityExpiryAndStaleSessionCleanup();
+  testSseBackpressureAndStreamCleanup();
   testLifecycleLeasesAndCleanup();
   console.log("Massagefeedback server tests passed.");
 }
