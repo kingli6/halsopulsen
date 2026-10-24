@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="/traningsverktyg/massagefeedback/massagefeedback.css" />
   <script src="/traningsverktyg/massagefeedback/session-model.js" defer></script>
   <script src="/traningsverktyg/massagefeedback/session-api.js" defer></script>
-  <script src="/traningsverktyg/massagefeedback/massagefeedback.js?v=sha256-6dbd219ca4bbe8efed25b4f180d6c4fca902435dd93d41d1166dcc6d0f776e83" defer></script>
+  <script src="/traningsverktyg/massagefeedback/massagefeedback.js?v=sha256-05183b41e1c893e38d3f761c203171f3f01f7276c21cc61175f8ca2f3f8ac3db" defer></script>
 </head>
 <body class="massage-page">
   <a class="skip-link" href="#main">Hoppa till innehållet</a>
@@ -48,7 +48,18 @@
         Starta som telefon 1 eller gå med med en kod som telefon 2.
       </p>
 
-      <div class="session-actions">
+      <div class="session-connections" role="group" aria-label="Telefonernas anslutningsstatus">
+        <div class="session-connection">
+          <span>Telefon 1</span>
+          <span class="session-connection-status" data-session-connection-status="A" data-state="waiting">Väntar</span>
+        </div>
+        <div class="session-connection">
+          <span>Telefon 2</span>
+          <span class="session-connection-status" data-session-connection-status="B" data-state="waiting">Väntar</span>
+        </div>
+      </div>
+
+      <div class="session-actions" id="sessionActions">
         <button class="massage-button massage-button-primary" id="startSessionButton" type="button">Starta som telefon 1</button>
         <form class="join-form" id="joinSessionForm">
           <label for="sessionCodeInput">Sessionskod</label>
@@ -81,13 +92,13 @@
       <p class="session-feedback" id="sessionFeedback" role="status" aria-live="polite"></p>
     </section>
 
-    <section class="devices-section" aria-labelledby="devicesHeading">
+    <section class="devices-section" id="devicesSection" aria-labelledby="devicesHeading" hidden>
       <div class="devices-heading">
         <div>
           <p class="massage-eyebrow">LIVESESSION</p>
-          <h2 id="devicesHeading">Feedback från båda telefonerna</h2>
+          <h2 id="devicesHeading">Gemensam feedback</h2>
         </div>
-        <p>Du kan ändra feedback från din egen telefon. Båda ser samma val.</p>
+        <p>Ändra värdet från din telefon. Båda ser samma val.</p>
       </div>
       <div class="device-grid" id="deviceGrid"></div>
     </section>

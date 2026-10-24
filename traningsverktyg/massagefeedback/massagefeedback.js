@@ -13,6 +13,7 @@
     pendingJoinId: null,
     participantConnections: { A: false, B: false },
     streamConnected: false,
+    streamEverConnected: false,
     streamController: null,
     heartbeatTimer: null,
     joinPollTimer: null,
@@ -47,39 +48,37 @@
     }[character]));
   }
 
-  function deviceMarkup(deviceId) {
-    const phoneNumber = deviceId === "A" ? "1" : "2";
+  function deviceMarkup() {
     const labels = model.POSITIONS.map((position, index) => `
       <button class="choice-button" type="button" data-position="${index}" aria-label="${escapeHtml(position)}" aria-pressed="${index === 0 ? "true" : "false"}">${position === "NOT MUCH" ? "NOT<br />MUCH" : escapeHtml(position)}</button>
     `).join("");
     return `
-      <article class="device-card" data-device-card="${deviceId}">
+      <article class="device-card" data-device-card="shared">
         <header class="device-heading">
           <div>
-            <p data-device-role-caption="${deviceId}">TELEFON ${phoneNumber}</p>
-            <h3>Telefon ${phoneNumber}</h3>
+            <p data-device-role-caption>GEMENSAM SKALA</p>
+            <h3>Gemensam feedback</h3>
           </div>
-          <span class="device-connection" data-device-connection="${deviceId}" data-connected="false">Väntar</span>
         </header>
-        <p class="device-waiting" data-device-waiting="${deviceId}"></p>
-        <div class="device-controls" data-device-controls="${deviceId}">
+        <div class="device-controls" data-device-controls>
           <div class="selected-feedback">
-            <span>Vald feedback</span>
-            <output data-selected-position="${deviceId}" aria-live="polite">GREAT</output>
+            <span>Gemensamt val</span>
+            <output data-selected-position aria-live="polite">GREAT</output>
           </div>
-          <div class="feedback-layout" data-feedback-layout="${deviceId}">
-            <div class="feedback-labels" role="group" aria-label="Välj massagefeedback för telefon ${phoneNumber}">${labels}</div>
+          <div class="feedback-layout" data-feedback-layout>
+            <div class="feedback-labels" role="group" aria-label="Välj gemensam massagefeedback">${labels}</div>
             <p class="range-caption">Dra indikatorn eller välj ett värde</p>
             <div class="range-wrap">
               <input class="massage-range" type="range" min="0" max="9" step="1" value="0"
-                data-feedback-slider="${deviceId}" aria-label="Massagefeedback från GREAT till 10, telefon ${phoneNumber}" />
+                data-feedback-slider aria-label="Gemensam massagefeedback från GREAT till 10" />
             </div>
           </div>
-          <p class="device-message" data-device-message="${deviceId}" role="status" aria-live="polite"></p>
+          <p class="device-interaction-status" data-device-interaction-status role="status" aria-live="polite"></p>
+          <p class="device-message" data-device-message role="status" aria-live="polite"></p>
           <div class="device-actions">
-            <button class="massage-button massage-button-secondary" type="button" data-orientation="${deviceId}" aria-pressed="false">Visa stående läge ↻</button>
-            <button class="massage-button massage-button-secondary" type="button" data-leave="${deviceId}">Lämna session</button>
-            <button class="massage-button massage-button-danger" type="button" data-end="${deviceId}">Avsluta sessionen</button>
+            <button class="massage-button massage-button-secondary" type="button" data-orientation aria-pressed="false">Visa stående läge ↻</button>
+            <button class="massage-button massage-button-secondary" type="button" data-leave>Lämna på den här telefonen</button>
+            <button class="massage-button massage-button-danger" type="button" data-end>Avsluta för båda</button>
           </div>
         </div>
       </article>`;
@@ -92,8 +91,12 @@
   }
 
   function deviceMessage(deviceId, message) {
-    const element = deviceGrid.querySelector(`[data-device-message="${deviceId}"]`);
+    const element = deviceGrid.querySelector("[data-device-message]");
     if (element) element.textContent = message;
+  }
+
+  function activeDeviceId() {
+    return state.role ? DEVICE_FOR_ROLE[state.role] : "A";
   }
 
   function participantPresent(deviceId) {
@@ -114,74 +117,88 @@
     );
   }
 
+  function refreshConnectionStatus() {
+    ["A", "B"].forEach(deviceId => {
+      const status = document.querySelector(`[data-session-connection-status="${deviceId}"]`);
+      if (!status) return;
+
+      const session = state.session;
+      const present = participantPresent(deviceId);
+      const ownDevice = state.role && DEVICE_FOR_ROLE[state.role] === deviceId;
+      const connected = present
+        && state.participantConnections[deviceId]
+        && (!ownDevice || state.streamConnected);
+
+      let label = "Väntar";
+      let statusState = "waiting";
+      if (session?.status === "ended") {
+        label = "Avslutad";
+        statusState = "ended";
+      } else if (connected) {
+        label = "Ansluten";
+        statusState = "connected";
+      } else if (present) {
+        const initialConnect = ownDevice && !state.streamEverConnected;
+        label = initialConnect ? "Ansluter" : "Återansluter";
+        statusState = initialConnect ? "connecting" : "reconnecting";
+      }
+
+      status.textContent = label;
+      status.dataset.state = statusState;
+    });
+  }
+
   function refreshDevices() {
     const session = state.session;
-    ["A", "B"].forEach(deviceId => {
-      const present = participantPresent(deviceId);
-      const connected = present && state.participantConnections[deviceId];
-      const ownDevice = state.role && DEVICE_FOR_ROLE[state.role] === deviceId;
-      const connectionActive = connected && (!ownDevice || state.streamConnected);
-      const card = deviceGrid.querySelector(`[data-device-card="${deviceId}"]`);
-      const status = deviceGrid.querySelector(`[data-device-connection="${deviceId}"]`);
-      const waiting = deviceGrid.querySelector(`[data-device-waiting="${deviceId}"]`);
-      const controls = deviceGrid.querySelector(`[data-device-controls="${deviceId}"]`);
-      const slider = deviceGrid.querySelector(`[data-feedback-slider="${deviceId}"]`);
-      const orientationButton = deviceGrid.querySelector(`[data-orientation="${deviceId}"]`);
-      const leaveButton = deviceGrid.querySelector(`[data-leave="${deviceId}"]`);
-      const endButton = deviceGrid.querySelector(`[data-end="${deviceId}"]`);
-      const layout = deviceGrid.querySelector(`[data-feedback-layout="${deviceId}"]`);
-      const caption = deviceGrid.querySelector(`[data-device-role-caption="${deviceId}"]`);
-      const value = session?.position ?? 0;
-      const label = model.POSITIONS[value];
-      const interactive = canControl(deviceId);
+    const deviceId = activeDeviceId();
+    const present = participantPresent(deviceId);
+    const ownDevice = Boolean(state.role);
+    const connectionActive = present
+      && state.participantConnections[deviceId]
+      && state.streamConnected;
+    const card = deviceGrid.querySelector("[data-device-card]");
+    const controls = deviceGrid.querySelector("[data-device-controls]");
+    const slider = deviceGrid.querySelector("[data-feedback-slider]");
+    const orientationButton = deviceGrid.querySelector("[data-orientation]");
+    const leaveButton = deviceGrid.querySelector("[data-leave]");
+    const endButton = deviceGrid.querySelector("[data-end]");
+    const layout = deviceGrid.querySelector("[data-feedback-layout]");
+    const caption = deviceGrid.querySelector("[data-device-role-caption]");
+    const output = deviceGrid.querySelector("[data-selected-position]");
+    const interactionStatus = deviceGrid.querySelector("[data-device-interaction-status]");
+    const value = session?.position ?? 0;
+    const label = model.POSITIONS[value];
+    const interactive = canControl(deviceId);
 
-      card.classList.toggle("is-connected", connectionActive);
-      status.dataset.connected = String(connectionActive);
-      status.textContent = !present ? "Väntar" : connectionActive ? "Ansluten" : "Återansluter";
-      caption.textContent = ownDevice
-        ? `TELEFON ${deviceId === "A" ? "1" : "2"} · DITT REGLAGE`
-        : `TELEFON ${deviceId === "A" ? "1" : "2"}`;
-      controls.hidden = !session;
-      slider.value = String(value);
-      slider.disabled = !interactive;
-      slider.setAttribute("aria-valuetext", label);
-      deviceGrid.querySelector(`[data-selected-position="${deviceId}"]`).textContent = label;
-      deviceGrid.querySelectorAll(`[data-device-card="${deviceId}"] [data-position]`).forEach(button => {
-        const selected = Number(button.dataset.position) === value;
-        button.setAttribute("aria-pressed", String(selected));
-        button.disabled = !interactive;
-      });
-
-      const orientation = state.views[deviceId].orientation;
-      layout.classList.toggle("is-vertical", orientation === "vertical");
-      orientationButton.setAttribute("aria-pressed", String(orientation === "vertical"));
-      orientationButton.textContent = orientation === "vertical" ? "Visa liggande läge ↻" : "Visa stående läge ↻";
-      orientationButton.disabled = !ownDevice || !present;
-      leaveButton.hidden = state.role !== "guest" || !ownDevice;
-      leaveButton.disabled = !ownDevice || !present;
-      endButton.disabled = !ownDevice || !present;
-
-      if (!session) {
-        waiting.textContent = "Starta en session eller gå med med en kod.";
-      } else if (!present) {
-        waiting.textContent = deviceId === "A"
-          ? "Telefon 1 kan starta sessionen."
-          : "Väntar på att telefon 2 ska gå med.";
-      } else if (ownDevice && !state.streamConnected) {
-        waiting.textContent = "Ansluter till sessionen. Reglaget är tillfälligt pausat.";
-      } else if (!connected) {
-        waiting.textContent = "Telefonen ansluter igen. Feedbacken synkroniseras när den är tillbaka.";
-      } else if (state.role === "guest" && deviceId === "B" && !state.participantConnections.A) {
-        waiting.textContent = "Telefon 1 ansluter igen. Reglaget är tillfälligt pausat.";
-      } else if (!ownDevice) {
-        waiting.textContent = "Det här är den andra telefonens vy.";
-      } else if (session.activeDevice && session.activeDevice !== deviceId) {
-        waiting.textContent = `Telefon ${session.activeDevice === "A" ? "1" : "2"} ändrar feedback.`;
-      } else {
-        waiting.textContent = "";
-      }
-      waiting.hidden = Boolean(interactive);
+    card.classList.toggle("is-connected", connectionActive);
+    caption.textContent = state.role
+      ? `TELEFON ${deviceId === "A" ? "1" : "2"} · DITT REGLAGE`
+      : "GEMENSAM SKALA";
+    controls.hidden = !session || session.status === "ended";
+    slider.value = String(value);
+    slider.disabled = !interactive;
+    slider.setAttribute("aria-valuetext", label);
+    output.textContent = label;
+    deviceGrid.querySelectorAll("[data-position]").forEach(button => {
+      const selected = Number(button.dataset.position) === value;
+      button.setAttribute("aria-pressed", String(selected));
+      button.disabled = !interactive;
     });
+
+    const orientation = state.views[deviceId].orientation;
+    layout.classList.toggle("is-vertical", orientation === "vertical");
+    orientationButton.setAttribute("aria-pressed", String(orientation === "vertical"));
+    orientationButton.textContent = orientation === "vertical" ? "Visa liggande läge ↻" : "Visa stående läge ↻";
+    orientationButton.disabled = !ownDevice || !present;
+    leaveButton.hidden = state.role !== "guest";
+    leaveButton.disabled = !ownDevice || !present;
+    endButton.disabled = !ownDevice || !present;
+    interactionStatus.textContent = session?.status !== "ended"
+      && session?.activeDevice
+      && session.activeDevice !== deviceId
+      ? `Telefon ${session.activeDevice === "A" ? "1" : "2"} ändrar feedback.`
+      : "";
+    interactionStatus.hidden = !interactionStatus.textContent;
   }
 
   function renderSessionStatus() {
@@ -236,6 +253,9 @@
     joinForm.querySelector("button[type=submit]").disabled = state.setupBusy || Boolean(state.role || state.joinRequest);
     approveJoinButton.disabled = state.setupBusy || !state.pendingJoinId;
     rejectJoinButton.disabled = state.setupBusy || !state.pendingJoinId;
+    document.getElementById("sessionActions").hidden = Boolean(state.role || state.joinRequest);
+    document.getElementById("devicesSection").hidden = !session || status === "ended";
+    refreshConnectionStatus();
     refreshDevices();
   }
 
@@ -302,6 +322,7 @@
     state.capability = null;
     state.joinRequest = null;
     state.pendingJoinId = null;
+    state.streamEverConnected = false;
     state.participantConnections = { A: false, B: false };
     state.session = ended && previousSession
       ? { ...previousSession, status: "ended", participants: [], activeDevice: null }
@@ -325,6 +346,7 @@
     state.capability = capability;
     state.joinRequest = null;
     state.pendingJoinId = null;
+    state.streamEverConnected = false;
     state.participantConnections = { A: false, B: false };
     state.session = {
       code,
@@ -385,6 +407,7 @@
         );
         if (!isActiveGeneration(generation)) return;
         state.streamConnected = true;
+        state.streamEverConnected = true;
         retryDelay = 1_000;
         startHeartbeat(generation);
         renderSessionStatus();
@@ -702,34 +725,35 @@
     }
   }
 
-  deviceGrid.innerHTML = deviceMarkup("A") + deviceMarkup("B");
+  deviceGrid.innerHTML = deviceMarkup();
 
-  ["A", "B"].forEach(deviceId => {
-    const range = deviceGrid.querySelector(`[data-feedback-slider="${deviceId}"]`);
-    range.addEventListener("pointerdown", event => {
-      const gesture = beginGesture(deviceId);
-      if (!gesture) return;
-      state.views[deviceId].pointerId = event.pointerId;
-      try { range.setPointerCapture(event.pointerId); } catch {}
-    });
-    range.addEventListener("input", () => {
-      const gesture = state.gesture || beginGesture(deviceId);
-      if (!gesture || gesture.deviceId !== deviceId || gesture.released) {
-        range.value = String(state.session?.position ?? 0);
-        return;
-      }
-      gesture.latestPosition = Number(range.value);
-      if (gesture.claimed) queuePosition(gesture.latestPosition, gesture);
-    });
-    range.addEventListener("keydown", event => {
-      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) return;
-      const gesture = beginGesture(deviceId);
-      if (!gesture) {
-        event.preventDefault();
-        return;
-      }
-      state.views[deviceId].keyboardActive = true;
-    });
+  const range = deviceGrid.querySelector("[data-feedback-slider]");
+  range.addEventListener("pointerdown", event => {
+    const deviceId = activeDeviceId();
+    const gesture = beginGesture(deviceId);
+    if (!gesture) return;
+    state.views[deviceId].pointerId = event.pointerId;
+    try { range.setPointerCapture(event.pointerId); } catch {}
+  });
+  range.addEventListener("input", () => {
+    const deviceId = activeDeviceId();
+    const gesture = state.gesture || beginGesture(deviceId);
+    if (!gesture || gesture.deviceId !== deviceId || gesture.released) {
+      range.value = String(state.session?.position ?? 0);
+      return;
+    }
+    gesture.latestPosition = Number(range.value);
+    if (gesture.claimed) queuePosition(gesture.latestPosition, gesture);
+  });
+  range.addEventListener("keydown", event => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) return;
+    const deviceId = activeDeviceId();
+    const gesture = beginGesture(deviceId);
+    if (!gesture) {
+      event.preventDefault();
+      return;
+    }
+    state.views[deviceId].keyboardActive = true;
   });
 
   document.addEventListener("pointerup", event => {
@@ -784,7 +808,8 @@
   deviceGrid.addEventListener("click", event => {
     const choice = event.target.closest("[data-position]");
     if (choice) {
-      const deviceId = choice.closest("[data-device-card]")?.dataset.deviceCard;
+      const deviceId = activeDeviceId();
+      if (!state.role) return;
       const gesture = beginGesture(deviceId);
       if (!gesture) return;
       gesture.latestPosition = Number(choice.dataset.position);
@@ -798,7 +823,7 @@
 
     const orientationButton = event.target.closest("[data-orientation]");
     if (orientationButton) {
-      const deviceId = orientationButton.dataset.orientation;
+      const deviceId = activeDeviceId();
       if (state.role !== ROLE_FOR_DEVICE[deviceId]) return;
       state.views[deviceId].orientation = model.toggleOrientation(state.views[deviceId].orientation);
       refreshDevices();

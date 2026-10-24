@@ -65,6 +65,10 @@ function testPublicSessionIntegration() {
   assert.match(toolsPage, /href="\/traningsverktyg\/massagefeedback\/"/);
   assert.match(page, /href="\/workout\.html">← Tillbaka till Träningsverktyg/);
   assert.doesNotMatch(page, /Ingen riktig telefonanslutning|Simulerad session/);
+  assert.match(page, /id="sessionActions"/);
+  assert.match(page, /data-session-connection-status="A"/);
+  assert.match(page, /data-session-connection-status="B"/);
+  assert.match(page, /Telefonernas anslutningsstatus/);
   assert.match(page, /session-api\.js/);
   assert.strictEqual(
     (page.match(/\/massagefeedback\/massagefeedback\.js/g) || []).length,
@@ -89,6 +93,20 @@ function testPublicSessionIntegration() {
   for (const method of ["createSession", "requestJoin", "decideJoin", "openEvents", "claimControl", "setPosition"]) {
     assert.match(ui, new RegExp(`api\\.${method}\\s*\\(`));
   }
+  const deviceTemplate = ui.slice(
+    ui.indexOf("function deviceMarkup()"),
+    ui.indexOf("function setFeedbackMessage")
+  );
+  assert.strictEqual((deviceTemplate.match(/class="device-card"/g) || []).length, 1);
+  assert.strictEqual((deviceTemplate.match(/data-feedback-slider/g) || []).length, 1);
+  assert.strictEqual((deviceTemplate.match(/data-selected-position/g) || []).length, 1);
+  assert.match(ui, /deviceGrid\.innerHTML = deviceMarkup\(\);/);
+  assert.match(ui, /function activeDeviceId\(\)[\s\S]*DEVICE_FOR_ROLE\[state\.role\]/);
+  assert.match(ui, /function refreshConnectionStatus\(\)/);
+  assert.match(ui, /"connected"|"waiting"|"reconnecting"/);
+  assert.match(deviceTemplate, /aria-live="polite"/);
+  assert.match(deviceTemplate, /data-leave>Lämna på den här telefonen/);
+  assert.match(deviceTemplate, /data-end>Avsluta för båda/);
   assert.doesNotMatch(ui, /localStorage|sessionStorage/);
   assert.ok(fs.existsSync(path.join(root, "traningsverktyg/massagefeedback/index.html")));
   assert.strictEqual(
