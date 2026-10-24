@@ -1,0 +1,44 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zr6vV-HgwaxP6-CPSPkdW"
+uri = "file://screenshots/workoutplanner-recipient-mobile-390.jpg"
+type = "image"
+title = "Recipient preview — mobile, 390 px"
+description = "Top of the existing recipient mock preview at 390 px wide."
+logical_id = "8c886744-011f-4d84-976b-c7214cc32b86"
+content_hash = "sha256:0d3f3120653597690235fcc078f0fd415dd05eb027045a57df1fe625e19013f4"
+size = 47249
+mtime_ms = 1792875250428
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:e097fceb-8595-4450-9753-28ce83db1182/8c886744-011f-4d84-976b-c7214cc32b86/036463dd-3b4c-4448-86cf-b865426df917"
+storage_version_token = "1792875268952365"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "DzZE1Uq5MbWKlDh98keZI"
+uri = "file://screenshots/workoutplanner-recipient-desktop-1365.jpg"
+type = "image"
+title = "Recipient preview — desktop, 1365 px"
+description = "Existing recipient mock preview at 1365 px wide."
+logical_id = "74b52cab-89c1-42a1-a92f-aec843396ba4"
+content_hash = "sha256:11802800954f2d2b0436bb2b416845761edd6cb9d28c11dd6311e1b46cbe8e1c"
+size = 66185
+mtime_ms = 1792875251748
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:e097fceb-8595-4450-9753-28ce83db1182/74b52cab-89c1-42a1-a92f-aec843396ba4/b6435755-33ea-4c7d-81a0-8c5c47ec64f3"
+storage_version_token = "1792875269562296"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "MP8OISIkksPg1n2lh74MY"
+uri = "file://screenshots/workoutplanner-recipient-full-page-390.jpg"
+type = "image"
+title = "Recipient preview — full page with history"
+description = "Mobile full-page capture showing the schedule and recorded workout history."
+logical_id = "cf22f4a6-8148-4371-8424-2d82abae0ddd"
+content_hash = "sha256:c84a4ad654106215d31440b2cc3593316ee78ab7e83eefb35d6733e08a8b3351"
+size = 148014
+mtime_ms = 1792875253104
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:e097fceb-8595-4450-9753-28ce83db1182/cf22f4a6-8148-4371-8424-2d82abae0ddd/20db9863-001d-4a9e-a8f8-7ed3d63ca2a6"
+storage_version_token = "1792875270084449"
+content_type = "image/jpeg"
