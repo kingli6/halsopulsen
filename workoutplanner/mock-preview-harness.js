@@ -103,7 +103,7 @@
   }
 
   function makeState() {
-    const monday = mondayOf(new Date());
+    const monday = mondayOf(addDays(new Date(), 7));
     const publishedProgram = {
       name: "Strength & Mobility Foundations",
       description: "A steady two-week block focused on repeatable strength sessions and comfortable movement.",

@@ -41,6 +41,53 @@ async function testAllApiRequestsAreIntercepted() {
   assert.strictEqual(nativeRequests.length, 1, "non-API static assets may use the normal server");
 }
 
+function testCoachAndRecipientPagesReceivePreviewData() {
+  const coach = createMockPreviewHarness("coach");
+  const programsResponse = coach.handleRequest({ url: "/api/workoutplanner/programs" });
+  const programs = programsResponse.body.programs;
+  assert.strictEqual(programs.length, 2, "the coach library should include published and draft programs");
+
+  const published = programs.find(program => program.hasCurrentVersion);
+  const draft = programs.find(program => !program.hasCurrentVersion);
+  assert.ok(published && draft, "both program states should be represented");
+
+  const editorResponse = coach.handleRequest({
+    url: `/api/workoutplanner/programs/${published.id}`
+  });
+  assert.strictEqual(editorResponse.status, 200);
+  assert.strictEqual(editorResponse.body.program.weeks.length, 2, "the editor fixture should span multiple weeks");
+  assert.ok(
+    editorResponse.body.program.weeks.some(week => week.days.some(day => day.exercises.length)),
+    "the editor fixture should include prescribed exercises"
+  );
+
+  const overviewResponse = coach.handleRequest({
+    url: `/api/workoutplanner/programs/${published.id}/overview`
+  });
+  assert.ok(overviewResponse.body.overview.recentSessions.length, "the overview should include workout history");
+  assert.strictEqual(draft.hasCurrentVersion, false);
+
+  const recipient = createMockPreviewHarness("recipient");
+  const recipientResponse = recipient.handleRequest({ url: "/api/client/mock-recipient" });
+  const data = recipientResponse.body.data;
+  assert.ok(data.assignments.length, "the recipient page should include scheduled workouts");
+  const today = new Date();
+  const todayString = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0")
+  ].join("-");
+  assert.ok(
+    data.assignments.every(assignment => assignment.scheduled_date > todayString),
+    "planned mock workouts should be scheduled in the future"
+  );
+  assert.ok(
+    data.assignments.some(assignment => assignment.exercises.some(exercise => exercise.previousPerformance)),
+    "the recipient schedule should show previous exercise results"
+  );
+  assert.ok(data.performanceHistory.length, "the recipient page should include example performance history");
+}
+
 async function testMockProgramAndSessionInteractionsStayInMemory() {
   const nativeRequests = [];
   const preview = createMockPreviewHarness("coach");
@@ -126,6 +173,7 @@ function testPagesUseActualHtmlWithMockBootstrap() {
 
 async function run() {
   await testAllApiRequestsAreIntercepted();
+  testCoachAndRecipientPagesReceivePreviewData();
   await testMockProgramAndSessionInteractionsStayInMemory();
   testPagesUseActualHtmlWithMockBootstrap();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
