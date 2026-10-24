@@ -137,7 +137,7 @@ function testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging() {
   assert.match(planner, /sharedProgramWorkspace/);
   assert.match(planner, /complete schedules become current automatically/i);
   assert.match(planner, /databaseStatus === "published"/);
-  assert.match(planner, /Saved\. The live program and this private link are updated\./);
+  assert.match(planner, /Live update saved\. The current program and this private link are updated\./);
   assert.match(planPage, /id="sharedSessionSection"/);
   assert.match(clientUi, /const canLog = !clientPage\.preview && item\.id/);
   assert.match(sessionLogger, /directProgram/);
@@ -197,6 +197,59 @@ function testLiveEditingAndUnpublishedPublishingControls() {
   assert.match(bindingImplementation, /getElementById\("createPlanBtn"\)\.addEventListener/);
 }
 
+function testMobileWorkoutLoggingAndCoachActions() {
+  const clientUi = readProjectFile("dashboard/client.js");
+  const clientCss = readProjectFile("dashboard/client.css");
+  const clientPage = readProjectFile("dashboard/client.html");
+  const planUi = readProjectFile("dashboard/plan.js");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+  const portalCss = readProjectFile("dashboard/portal.css");
+  const assignmentRenderer = clientUi.slice(
+    clientUi.indexOf("function renderAssignment"),
+    clientUi.indexOf("function renderAssignments")
+  );
+  const sessionSave = clientUi.slice(
+    clientUi.indexOf("async function saveSessionForm"),
+    clientUi.indexOf("async function saveProgramEditForm")
+  );
+
+  assert.ok(
+    assignmentRenderer.indexOf("data-open-log") < assignmentRenderer.indexOf('class="client-exercises"'),
+    "the first Log performance action should precede the exercise list"
+  );
+  assert.ok(
+    assignmentRenderer.indexOf('class="session-log-actions"') < assignmentRenderer.indexOf("renderPerformanceExercise"),
+    "the save controls should be available before the exercise entry fields"
+  );
+  assert.match(assignmentRenderer, /aria-controls="session-log-\$\{escapeHtml\(item\.id\)\}"/);
+  assert.match(clientUi, /open\.hidden = true/);
+  assert.match(clientUi, /openButton\.hidden = false/);
+  assert.ok(
+    sessionSave.indexOf("if (!response.ok || !result.ok)") < sessionSave.indexOf("confirmation.hidden = false"),
+    "success feedback must only appear after a successful response"
+  );
+  assert.match(sessionSave, /if \(form\.dataset\.saving === "true"\) return/);
+  assert.match(sessionSave, /status\.classList\.add\("is-error"\)/);
+  assert.match(clientPage, /id="workoutSaveBanner" hidden role="status"/);
+  assert.match(clientCss, /\.session-log-actions\s*\{[\s\S]*?position:\s*sticky/);
+  assert.match(clientCss, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(clientCss, /@media \(max-width: 700px\)[\s\S]*?\.session-log-actions\s*\{[\s\S]*?position:\s*sticky/);
+
+  assert.ok(
+    planPage.indexOf('class="publish-panel card"') < planPage.indexOf('id="weekBuilderHeading"'),
+    "coach save and publish actions should be near the start of the editor"
+  );
+  assert.match(planPage, /id="saveDatabaseProgramBtn"[^>]*>Save draft/);
+  assert.match(planPage, /id="publishBtn"[^>]*>Publish program/);
+  assert.match(planUi, /saveButton\.textContent = "Save live update"/);
+  assert.match(planUi, /immediateLibrarySave\s*\?\s*"Save live update"[\s\S]*?adminDatabaseWorkspace[\s\S]*?"Save draft"/);
+  assert.match(planUi, /Draft saved\. It remains unpublished until you publish it\./);
+  assert.match(planUi, /publishButton\.disabled = planState\.databaseSaving/);
+  assert.match(planUi, /planState\.publishing \|\| planState\.databaseSaving/);
+  assert.match(portalCss, /@media \(max-width: 620px\)[\s\S]*?\.publish-panel\s*\{[\s\S]*?position:\s*sticky/);
+  assert.match(portalCss, /#workoutModal \.modal-actions[\s\S]*?display:\s*grid/);
+}
+
 function testPrivateProgramPagesAreNoindexAndPrintable() {
   const planPage = readProjectFile("dashboard/plan/index.html");
   const clientPage = readProjectFile("dashboard/client.html");
@@ -239,6 +292,7 @@ testPrivateClientCanEditTheCurrentProgram();
 testPublishedProgramsUseOneSharedEditorAndDirectSessionLogging();
 testProgramOverviewReplacesClientOverview();
 testLiveEditingAndUnpublishedPublishingControls();
+testMobileWorkoutLoggingAndCoachActions();
 testPrivateProgramPagesAreNoindexAndPrintable();
 testProgressIndicationsUseComparableCompletedSessions();
 console.log("WorkoutPlanner UI/API regression checks passed.");

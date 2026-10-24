@@ -95,6 +95,21 @@
     </section>
 
     <div id="editorView" data-view="editor" hidden>
+    <section class="publish-panel card" aria-labelledby="publishHeading">
+      <div>
+        <p class="section-kicker">HANDOFF TO LOGGING</p>
+        <h2 id="publishHeading">Publish when this program is ready</h2>
+        <p id="publishDescription">Publishing creates one immutable multi-week schedule and share link. You can keep editing this draft afterwards.</p>
+      </div>
+      <div class="publish-actions">
+        <span class="published-detail" id="databaseSaveDetail">Not saved to the database library</span>
+        <span class="published-detail" id="publishedDetail">No published version yet</span>
+        <a class="share-link-button" id="currentShareLink" href="#" target="_blank" rel="noopener" hidden>Open current share link ↗</a>
+        <button class="button button-secondary" id="saveDatabaseProgramBtn" type="button" hidden>Save draft</button>
+        <button class="button button-primary" id="publishBtn" type="button">Publish program</button>
+      </div>
+    </section>
+
     <section class="plan-details-bar card">
       <div>
         <p class="section-kicker">PLAN DETAILS</p>
@@ -172,21 +187,6 @@
           <div class="template-list" id="weekTemplateList"></div>
           <p class="template-library-hint">Use the saved-week selector above to replace the current week.</p>
         </article>
-      </div>
-    </section>
-
-    <section class="publish-panel card">
-      <div>
-        <p class="section-kicker">HANDOFF TO LOGGING</p>
-        <h2 id="publishHeading">Publish when this program is ready</h2>
-        <p id="publishDescription">Publishing creates one immutable multi-week schedule and share link. You can keep editing this draft afterwards.</p>
-      </div>
-      <div class="publish-actions">
-        <span class="published-detail" id="databaseSaveDetail">Not saved to the database library</span>
-        <span class="published-detail" id="publishedDetail">No published version yet</span>
-        <a class="share-link-button" id="currentShareLink" href="#" target="_blank" rel="noopener" hidden>Open current share link ↗</a>
-        <button class="button button-secondary" id="saveDatabaseProgramBtn" type="button" hidden>Save program</button>
-        <button class="button button-primary" id="publishBtn" type="button">Publish plan</button>
       </div>
     </section>
 

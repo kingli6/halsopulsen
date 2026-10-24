@@ -282,3 +282,131 @@
     gap: .3rem;
   }
 }
+
+.session-log-status.is-error {
+  color: var(--red, #a23e36);
+  font-weight: 700;
+}
+
+#workoutSaveBanner {
+  border-color: #b8dfc4;
+}
+
+@media (max-width: 700px) {
+  .client-card {
+    padding: 1rem;
+  }
+
+  .session-open-button {
+    min-height: 44px;
+    margin: .75rem 0 0;
+  }
+
+  .session-open-button[hidden] {
+    display: none;
+  }
+
+  .session-log-form {
+    gap: .7rem;
+    margin-top: .75rem;
+    padding-top: .75rem;
+  }
+
+  .session-log-form h4 {
+    font-size: 1rem;
+  }
+
+  .session-date-field,
+  .session-note-field,
+  .performance-set label {
+    font-size: .76rem;
+    gap: .25rem;
+  }
+
+  .session-log-form input,
+  .session-log-form select,
+  .session-log-form textarea {
+    padding: .48rem .55rem;
+    font-size: 16px;
+  }
+
+  .session-date-field {
+    max-width: none;
+  }
+
+  .performance-exercise {
+    gap: .55rem;
+    padding: .75rem;
+  }
+
+  .performance-exercise h4 {
+    font-size: .95rem;
+  }
+
+  .previous-performance {
+    padding: .55rem .65rem;
+  }
+
+  .previous-performance li {
+    font-size: .8rem;
+  }
+
+  .performance-sets {
+    gap: .45rem;
+  }
+
+  .performance-set {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .45rem .6rem;
+    padding-top: .45rem;
+    border-top: 1px solid var(--border, #dde4df);
+  }
+
+  .performance-set:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .performance-set > strong {
+    grid-column: 1 / -1;
+    align-self: auto;
+    font-size: .76rem;
+  }
+
+  .performance-set label:has(select) {
+    grid-template-columns: minmax(0, 1fr) 3.5rem;
+  }
+
+  .performance-set label:has(select) select {
+    padding-inline: .2rem;
+  }
+
+  .session-log-actions {
+    position: sticky;
+    top: 6px;
+    z-index: 3;
+    display: grid;
+    gap: .45rem;
+    margin: 0 -.5rem;
+    padding: .55rem .5rem;
+    border-block: 1px solid var(--border, #dde4df);
+    background: var(--surface, #fff);
+    box-shadow: 0 8px 18px rgba(25, 47, 34, .08);
+  }
+
+  .session-log-status {
+    min-height: 0;
+    font-size: .78rem;
+  }
+
+  .session-log-buttons {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+  }
+
+  .session-log-buttons .button[type="submit"] {
+    flex: 1;
+    min-height: 44px;
+  }
+}

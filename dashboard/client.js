@@ -130,16 +130,18 @@ function renderAssignment(item, directProgram) {
       <span class="client-exercise-meta">${escapeHtml(exerciseSummary(exercise))}</span>
       ${exercise.notes ? `<div>${escapeHtml(exercise.notes)}</div>` : ""}
     </li>`).join("") || "<li>No exercises listed.</li>";
-  const form = canLog ? `<form class="session-log-form" data-assignment-form="${escapeHtml(item.id)}" hidden>
+  const form = canLog ? `<form class="session-log-form" id="session-log-${escapeHtml(item.id)}" data-assignment-form="${escapeHtml(item.id)}" hidden>
     <h4>Record what you did</h4>
     <label class="session-date-field">Session date<input name="performedOn" type="date" value="${escapeHtml(String(item.scheduled_date || "").slice(0, 10))}" required /></label>
+    <div class="session-log-actions">
+      <p class="session-log-status" data-session-status role="status" aria-live="polite"></p>
+      <div class="session-log-buttons">
+        <button class="button button-primary" type="submit">Save performance</button>
+        <button class="text-button" type="button" data-close-log>Cancel</button>
+      </div>
+    </div>
     ${(item.exercises || []).map(renderPerformanceExercise).join("")}
     <label class="session-note-field">Session note<textarea name="note" rows="2" maxlength="1000" placeholder="Optional"></textarea></label>
-    <p class="session-log-status" data-session-status role="status" aria-live="polite"></p>
-    <div class="session-log-actions">
-      <button class="button button-primary" type="submit">Save today’s performance</button>
-      <button class="text-button" type="button" data-close-log>Cancel</button>
-    </div>
   </form>` : "";
 
   return `<article class="client-card">
@@ -151,12 +153,12 @@ function renderAssignment(item, directProgram) {
       </div>
       <span class="client-status">${escapeHtml(item.status)}</span>
     </div>
+    ${canLog ? `<button class="button button-secondary session-open-button" type="button" data-open-log="${escapeHtml(item.id)}" aria-controls="session-log-${escapeHtml(item.id)}" aria-expanded="false">Log performance</button>` : ""}
     ${item.workout_description ? `<p>${escapeHtml(item.workout_description)}</p>` : ""}
     ${item.warmup ? `<p><strong>Warm-up:</strong> ${escapeHtml(item.warmup)}</p>` : ""}
     <ol class="client-exercises">${details}</ol>
     ${item.cooldown ? `<p><strong>Cooldown:</strong> ${escapeHtml(item.cooldown)}</p>` : ""}
     ${canEdit ? renderProgramEditForm(item.workout_id) : ""}
-    ${canLog ? `<button class="button button-secondary session-open-button" type="button" data-open-log="${escapeHtml(item.id)}">Log performance</button>` : ""}
     ${form}
   </article>`;
 }
@@ -299,6 +301,7 @@ async function saveSessionForm(form) {
   const assignment = findAssignment(assignmentId);
   const status = form.querySelector("[data-session-status]");
   const submit = form.querySelector('[type="submit"]');
+  if (form.dataset.saving === "true") return;
   if (clientPage.preview) {
     if (status) status.textContent = "Preview mode is read-only.";
     return;
@@ -308,11 +311,16 @@ async function saveSessionForm(form) {
   const exercises = readSessionForm(form);
   if (!exercises.length) {
     status.textContent = "Enter at least one value you actually completed.";
+    status.classList.add("is-error");
     return;
   }
 
+  form.dataset.saving = "true";
   submit.disabled = true;
   status.textContent = "Saving performance…";
+  status.classList.remove("is-error", "is-success");
+  const previousConfirmation = document.getElementById("workoutSaveBanner");
+  if (previousConfirmation) previousConfirmation.hidden = true;
   try {
     const sessionEndpoint = `/api/client/${encodeURIComponent(clientPage.token)}/sessions${clientPage.preview ? "?preview=1" : ""}`;
     const response = await fetch(sessionEndpoint, {
@@ -333,9 +341,13 @@ async function saveSessionForm(form) {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.error || "The performance could not be saved.");
+    const confirmation = document.getElementById("workoutSaveBanner");
+    if (confirmation) confirmation.hidden = false;
     await loadClientPlan();
   } catch (error) {
     status.textContent = error.message || "The performance could not be saved.";
+    status.classList.add("is-error");
+    form.dataset.saving = "false";
     submit.disabled = false;
   }
 }
@@ -433,7 +445,11 @@ document.getElementById("assignmentList")?.addEventListener("click", event => {
   if (open) {
     const form = document.querySelector(`[data-assignment-form="${CSS.escape(open.dataset.openLog)}"]`);
     if (form) {
+      const confirmation = document.getElementById("workoutSaveBanner");
+      if (confirmation) confirmation.hidden = true;
       form.hidden = false;
+      open.hidden = true;
+      open.setAttribute("aria-expanded", "true");
       form.scrollIntoView({ behavior: "smooth", block: "nearest" });
       form.querySelector('input[name="performedOn"]')?.focus();
     }
@@ -442,7 +458,14 @@ document.getElementById("assignmentList")?.addEventListener("click", event => {
   const close = event.target.closest("[data-close-log]");
   if (close) {
     const form = close.closest("form");
-    if (form) form.hidden = true;
+    if (form) {
+      form.hidden = true;
+      const openButton = form.closest(".client-card")?.querySelector("[data-open-log]");
+      if (openButton) {
+        openButton.hidden = false;
+        openButton.setAttribute("aria-expanded", "false");
+      }
+    }
     return;
   }
   const usePrevious = event.target.closest("[data-use-previous]");

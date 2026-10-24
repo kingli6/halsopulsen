@@ -270,7 +270,7 @@ function renderPlanOverview() {
     const saveButton = document.getElementById("saveDatabaseProgramBtn");
     if (saveButton) {
       saveButton.hidden = sharedProgramPreview;
-      saveButton.textContent = "Save changes";
+      saveButton.textContent = "Save live update";
       saveButton.disabled = planState.databaseSaving || sharedProgramPreview;
     }
     const publishButton = document.getElementById("publishBtn");
@@ -333,6 +333,7 @@ function renderPlanOverview() {
     : "The logging page and its share link are already showing this version.");
   const publishButton = document.getElementById("publishBtn");
   if (publishButton && !planState.publishing) {
+    publishButton.disabled = planState.databaseSaving;
     publishButton.hidden = immediateLibrarySave;
     if (!immediateLibrarySave) {
       publishButton.textContent = planState.editingCurrentPlanId
@@ -344,10 +345,12 @@ function renderPlanOverview() {
   const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
   if (saveDatabaseButton && databaseWorkspace) {
     saveDatabaseButton.textContent = immediateLibrarySave
-      ? "Save program"
-      : isDatabaseClientProgram && userWorkspace
-        ? "Save client draft"
-        : adminDatabaseWorkspace ? "Save program draft" : "Save to program library";
+      ? "Save live update"
+      : adminDatabaseWorkspace
+        ? "Save draft"
+        : isDatabaseClientProgram && userWorkspace
+          ? "Save client draft"
+          : "Save to program library";
   }
   setPlanText("detailsModalContext", adminDatabaseWorkspace
     ? immediateLibrarySave
@@ -1120,6 +1123,7 @@ async function loadSharedProgramWorkspace() {
 async function saveDatabaseProgram({ silent = false } = {}) {
   if ((!databaseWorkspace && !sharedProgramWorkspace) || planState.databaseSaving) return;
   const button = document.getElementById("saveDatabaseProgramBtn");
+  const publishButton = document.getElementById("publishBtn");
   const program = TrackerData.normalizeProgram(planState.data.draftProgram);
   if (sharedProgramWorkspace) {
     if (sharedProgramPreview || !planState.databaseProgramId) return;
@@ -1128,6 +1132,7 @@ async function saveDatabaseProgram({ silent = false } = {}) {
       button.disabled = true;
       button.textContent = "Saving…";
     }
+    if (publishButton) publishButton.disabled = true;
     try {
       const response = await fetch(`/api/client/${encodeURIComponent(sharedProgramToken())}/program`, {
         method: "PUT",
@@ -1157,8 +1162,8 @@ async function saveDatabaseProgram({ silent = false } = {}) {
       renderAllPlan();
       window.dispatchEvent(new CustomEvent("workoutplanner:program-saved"));
       showPlanToast(result.meta?.unchanged
-        ? "No changes were needed."
-        : "Saved. The live program and this private link are updated.");
+        ? "No changes were needed. The current private link is unchanged."
+        : "Live update saved. The current program and this private link are updated.");
       return result;
     } catch (error) {
       showPlanToast(error.message || "The shared program could not be saved.");
@@ -1167,8 +1172,9 @@ async function saveDatabaseProgram({ silent = false } = {}) {
       planState.databaseSaving = false;
       if (button) {
         button.disabled = false;
-        button.textContent = "Save changes";
+        button.textContent = "Save live update";
       }
+      if (publishButton) publishButton.disabled = planState.publishing;
     }
   }
   const makeCurrentWhenValid = adminDatabaseWorkspace
@@ -1179,6 +1185,7 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     button.disabled = true;
     button.textContent = "Saving…";
   }
+  if (publishButton) publishButton.disabled = true;
   try {
     const endpoint = planState.databaseProgramId
       ? `/api/workoutplanner/programs/${encodeURIComponent(planState.databaseProgramId)}`
@@ -1221,11 +1228,15 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     renderAllPlan();
     if (!silent) {
       if (makeCurrentWhenValid) {
-        showPlanToast(result.meta?.isCurrent
-          ? `Version ${result.meta.version} is current. The private link shows the updated program.`
+        showPlanToast(result.meta?.unchanged
+          ? "No changes were needed. The current private link is unchanged."
+          : result.meta?.isCurrent
+          ? `Live update saved. Version ${result.meta.version} is current at the existing private link.`
           : "Draft saved. The live workout schedule is unchanged until the program is complete.");
       } else {
-        showPlanToast("Program saved to the database library.");
+        showPlanToast(adminDatabaseWorkspace
+          ? "Draft saved. It remains unpublished until you publish it."
+          : "Program saved to the database library.");
       }
     }
     return result;
@@ -1237,18 +1248,18 @@ async function saveDatabaseProgram({ silent = false } = {}) {
     if (button) {
       button.disabled = false;
       button.textContent = adminDatabaseWorkspace
-        && (!planState.databaseProgramId || planState.databaseProgramKind === "library")
-        ? "Save program"
+        ? makeCurrentWhenValid ? "Save live update" : "Save draft"
         : planState.databaseProgramKind === "client"
           ? "Save client draft"
           : "Save to program library";
     }
+    if (publishButton) publishButton.disabled = planState.publishing;
   }
 }
 
 async function publishDatabaseProgram() {
   if (!databaseWorkspace) return;
-  if (planState.publishing) return;
+  if (planState.publishing || planState.databaseSaving) return;
   if (
     adminDatabaseWorkspace
     && planState.databaseProgramKind === "library"
@@ -2041,7 +2052,7 @@ function bindPlanEvents() {
   const saveDatabaseButton = document.getElementById("saveDatabaseProgramBtn");
   if (saveDatabaseButton) {
     saveDatabaseButton.hidden = !databaseWorkspace && !sharedProgramWorkspace;
-    if (sharedProgramWorkspace) saveDatabaseButton.textContent = "Save changes";
+    if (sharedProgramWorkspace) saveDatabaseButton.textContent = "Save live update";
     saveDatabaseButton.addEventListener("click", saveDatabaseProgram);
   }
   if (databaseWorkspace) {
