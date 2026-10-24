@@ -6,6 +6,7 @@ const POSITIONS = Object.freeze([
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DEFAULTS = Object.freeze({
   codeLength: 6,
+  maxSessions: 500,
   idleTimeoutMs: 5 * 60 * 1000,
   maximumAgeMs: 60 * 60 * 1000,
   reconnectGraceMs: 30 * 1000,
@@ -28,6 +29,9 @@ function matchesHash(value, expectedHash) {
 
 function createSessionService(options = {}) {
   const settings = { ...DEFAULTS, ...options };
+  if (!Number.isSafeInteger(settings.maxSessions) || settings.maxSessions < 1) {
+    throw new TypeError("maxSessions must be a positive safe integer.");
+  }
   const now = options.now || Date.now;
   const randomBytes = options.randomBytes || crypto.randomBytes;
   const randomInt = options.randomInt || crypto.randomInt;
@@ -89,20 +93,28 @@ function createSessionService(options = {}) {
 
   function writeEvent(stream, eventName, data) {
     if (stream.closed || stream.response.destroyed || stream.response.writableEnded) return false;
+    if (stream.backpressured) {
+      stream.pendingEvent = eventName === "session-ended"
+        ? { eventName, data }
+        : { eventName: "state", data: publicState(stream.session, stream.role) };
+      return true;
+    }
     try {
-      stream.response.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+      const writable = stream.response.write(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (writable === false) stream.backpressured = true;
       return true;
     } catch {
       return false;
     }
   }
 
-  function broadcast(session, eventName = "state") {
+  function broadcast(session, eventName = "state", excludeStream = null) {
     for (const [role, stream] of session.streams) {
+      if (stream === excludeStream) continue;
       const payload = eventName === "session-ended"
         ? { status: "ended" }
         : publicState(session, role);
-      if (!writeEvent(stream, eventName, payload)) closeStream(session, role, stream, false);
+      if (!writeEvent(stream, eventName, payload)) closeStream(session, role, stream);
     }
   }
 
@@ -110,6 +122,10 @@ function createSessionService(options = {}) {
     if (!stream || stream.closed) return;
     stream.closed = true;
     clearInterval(stream.heartbeatTimer);
+    stream.pendingEvent = null;
+    stream.response.removeListener?.("drain", stream.onDrain);
+    stream.response.removeListener?.("close", stream.onClose);
+    stream.response.removeListener?.("error", stream.onError);
     if (session.streams.get(role) === stream) {
       session.streams.delete(role);
       const participant = participantFor(session, role);
@@ -117,7 +133,7 @@ function createSessionService(options = {}) {
         participant.connected = false;
         participant.disconnectedAt = now();
       }
-      if (session.lease?.participant === role) session.lease = null;
+      if (role === "host" || session.lease?.participant === role) session.lease = null;
     }
     if (endResponse && !stream.response.writableEnded) {
       try { stream.response.end(); } catch {}
@@ -137,7 +153,7 @@ function createSessionService(options = {}) {
       closeStream(session, role, stream);
     }
     session.joinRequests.clear();
-    sessions.delete(session.code);
+    if (sessions.get(session.code) === session) sessions.delete(session.code);
     return true;
   }
 
@@ -168,6 +184,10 @@ function createSessionService(options = {}) {
   }
 
   function create() {
+    sweep();
+    if (sessions.size >= settings.maxSessions) {
+      return { ok: false, reason: "capacity" };
+    }
     let code = "";
     for (let attempt = 0; attempt < 32; attempt += 1) {
       code = createCode();
@@ -198,7 +218,7 @@ function createSessionService(options = {}) {
       streams: new Map()
     };
     sessions.set(code, session);
-    return { code, capability, state: publicState(session, "host") };
+    return { ok: true, code, capability, state: publicState(session, "host") };
   }
 
   function requestJoin(code) {
@@ -321,6 +341,9 @@ function createSessionService(options = {}) {
 
   function claimControl(session, role) {
     expireLease(session);
+    if (role === "guest" && !session.participants.host?.connected) {
+      return { ok: false, reason: "host-disconnected", state: publicState(session, role) };
+    }
     if (session.lease && session.lease.participant !== role) {
       return { ok: false, reason: "locked", state: publicState(session, role) };
     }
@@ -334,6 +357,9 @@ function createSessionService(options = {}) {
     expireLease(session);
     if (!Number.isInteger(position) || position < 0 || position >= POSITIONS.length) {
       return { ok: false, reason: "invalid-position" };
+    }
+    if (role === "guest" && !session.participants.host?.connected) {
+      return { ok: false, reason: "host-disconnected" };
     }
     if (!session.lease || session.lease.participant !== role) {
       return { ok: false, reason: session.lease ? "locked" : "lease-required" };
@@ -393,31 +419,72 @@ function createSessionService(options = {}) {
     response.setHeader("Cache-Control", "no-cache, no-transform");
     response.setHeader("Connection", "keep-alive");
     response.setHeader("X-Accel-Buffering", "no");
-    response.flushHeaders?.();
-    response.write("retry: 2000\n\n");
 
     const stream = {
+      session,
+      role,
       response,
       closed: false,
+      backpressured: false,
+      pendingEvent: null,
       heartbeatTimer: setInterval(() => {
-        if (!writeEventComment(stream)) closeStream(session, role, stream, false);
+        if (!writeEventComment(stream)) closeStream(session, role, stream);
       }, settings.streamHeartbeatMs)
     };
     stream.heartbeatTimer.unref?.();
+    stream.onDrain = () => {
+      if (stream.closed) return;
+      stream.backpressured = false;
+      const pendingEvent = stream.pendingEvent;
+      stream.pendingEvent = null;
+      if (pendingEvent && !writeEvent(stream, pendingEvent.eventName, pendingEvent.data)) {
+        closeStream(session, role, stream);
+      }
+    };
+    stream.onClose = () => closeStream(session, role, stream, false);
+    stream.onError = () => closeStream(session, role, stream, false);
+    response.on("drain", stream.onDrain);
+    response.on("close", stream.onClose);
+    response.on("error", stream.onError);
     session.streams.set(role, stream);
     const participant = participantFor(session, role);
     participant.connected = true;
     participant.disconnectedAt = null;
-    response.on("close", () => closeStream(session, role, stream, false));
-    writeEvent(stream, "state", publicState(session, role));
+    try {
+      response.flushHeaders?.();
+    } catch {
+      closeStream(session, role, stream);
+      return { ok: false };
+    }
+    if (!writeRaw(stream, "retry: 2000\n\n")) {
+      closeStream(session, role, stream);
+      return { ok: false };
+    }
+    if (!writeEvent(stream, "state", publicState(session, role))) {
+      closeStream(session, role, stream);
+      return { ok: false };
+    }
     response.flush?.();
+    if (existing) broadcast(session, "state", stream);
     return { ok: true };
+  }
+
+  function writeRaw(stream, chunk) {
+    if (stream.closed || stream.response.destroyed || stream.response.writableEnded) return false;
+    if (stream.backpressured) return true;
+    try {
+      if (stream.response.write(chunk) === false) stream.backpressured = true;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function writeEventComment(stream) {
     if (stream.closed || stream.response.destroyed || stream.response.writableEnded) return false;
+    if (stream.backpressured) return true;
     try {
-      stream.response.write(": keep-alive\n\n");
+      if (stream.response.write(": keep-alive\n\n") === false) stream.backpressured = true;
       return true;
     } catch {
       return false;

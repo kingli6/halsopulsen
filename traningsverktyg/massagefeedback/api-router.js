@@ -6,7 +6,7 @@ const DEFAULT_LIMITS = Object.freeze({
   join: { windowMs: 10 * 60 * 1000, max: 12 },
   joinStatus: { windowMs: 60 * 1000, max: 30 },
   action: { windowMs: 60 * 1000, max: 60 },
-  heartbeat: { windowMs: 60 * 1000, max: 12 },
+  heartbeat: { windowMs: 60 * 1000, max: 60 },
   position: { windowMs: 1000, max: 30 },
   events: { windowMs: 60 * 1000, max: 10 }
 });
@@ -64,9 +64,20 @@ function isHighFrequencyPositionRequest(req) {
     && /^\/api\/massagefeedback\/sessions\/[^/]+\/position\/?$/.test(requestPath);
 }
 
+function sessionOptionsFromEnvironment(options) {
+  const sessionOptions = { ...(options.sessionOptions || {}) };
+  if (
+    sessionOptions.maxSessions === undefined
+    && process.env.MASSAGEFEEDBACK_MAX_SESSIONS !== undefined
+  ) {
+    sessionOptions.maxSessions = Number(process.env.MASSAGEFEEDBACK_MAX_SESSIONS);
+  }
+  return sessionOptions;
+}
+
 function createMassageFeedbackRouter(options = {}) {
   const router = express.Router();
-  const service = options.service || createSessionService(options.sessionOptions);
+  const service = options.service || createSessionService(sessionOptionsFromEnvironment(options));
   const limits = { ...DEFAULT_LIMITS, ...(options.rateLimits || {}) };
   const limiters = {
     create: makeRateLimiter(limits.create, options.addressKey || requestAddress),
@@ -94,6 +105,13 @@ function createMassageFeedbackRouter(options = {}) {
       return res.status(400).json({ ok: false, error: "The request body is invalid." });
     }
     const created = service.create();
+    if (!created.ok) {
+      res.setHeader("Retry-After", "60");
+      return res.status(503).json({
+        ok: false,
+        error: "The service is temporarily at capacity. Please try again later."
+      });
+    }
     res.status(201).json({
       ok: true,
       code: created.code,
@@ -183,6 +201,9 @@ function createMassageFeedbackRouter(options = {}) {
     const authorized = requireCapability(req, res);
     if (!authorized) return;
     const result = service.claimControl(authorized.session, authorized.role);
+    if (result.reason === "host-disconnected") {
+      return res.status(409).json({ ok: false, error: "The host is reconnecting. Slider control is paused." });
+    }
     if (!result.ok) return res.status(409).json({ ok: false, error: "The other participant is adjusting feedback." });
     return res.json({ ok: true, state: result.state });
   });
@@ -198,6 +219,8 @@ function createMassageFeedbackRouter(options = {}) {
       const status = result.reason === "invalid-position" ? 400 : 409;
       const error = result.reason === "invalid-position"
         ? "Position must be an integer from 0 to 9."
+        : result.reason === "host-disconnected"
+          ? "The host is reconnecting. Slider control is paused."
         : result.reason === "locked"
           ? "The other participant is adjusting feedback."
           : "Claim slider control before changing the position.";
