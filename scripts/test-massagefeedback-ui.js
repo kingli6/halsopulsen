@@ -73,6 +73,15 @@ function testPublicSessionIntegration() {
   }
   assert.doesNotMatch(ui, /localStorage|sessionStorage/);
   assert.ok(fs.existsSync(path.join(root, "traningsverktyg/massagefeedback/index.html")));
+  assert.strictEqual(
+    sessionApi.getDefaultBasePath({ hostname: "halsopulsen.se" }),
+    "https://booking.halsopulsen.se/api/massagefeedback"
+  );
+  assert.strictEqual(
+    sessionApi.getDefaultBasePath({ hostname: "localhost" }),
+    "/api/massagefeedback",
+    "Local and test environments should keep the same-origin API default."
+  );
 }
 
 async function testSessionApiCredentialHeadersAndSseParsing() {
@@ -122,7 +131,10 @@ async function testSessionApiCredentialHeadersAndSseParsing() {
     throw new Error(`Unexpected test request: ${url}`);
   };
 
-  const api = sessionApi.createSessionApi({ fetchImpl });
+  const api = sessionApi.createSessionApi({
+    fetchImpl,
+    basePath: "https://booking.halsopulsen.se/api/massagefeedback"
+  });
   const host = await api.createSession();
   const join = await api.requestJoin(host.code);
   const approved = await api.getJoinStatus(host.code, join.requestId, join.joinTicket);
@@ -145,6 +157,10 @@ async function testSessionApiCredentialHeadersAndSseParsing() {
   assert.strictEqual(calls[2].options.headers["X-Massage-Join-Ticket"], joinTicket);
   assert.strictEqual(calls[2].options.body.includes(joinTicket), false);
   assert.strictEqual(calls[3].options.headers.Authorization, `Bearer ${hostCapability}`);
+  assert.ok(
+    calls.every(call => call.url.startsWith("https://booking.halsopulsen.se/api/massagefeedback/")),
+    "All JSON and event-stream requests should use the configured API base URL."
+  );
 }
 
 function testLocalQrCodeOutput() {

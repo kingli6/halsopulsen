@@ -1,6 +1,14 @@
 const express = require("express");
 const { createSessionService } = require("./session-service");
 
+const MASSAGEFEEDBACK_ALLOWED_ORIGIN = "https://halsopulsen.se";
+const MASSAGEFEEDBACK_CORS_METHODS = Object.freeze(["GET", "POST", "OPTIONS"]);
+const MASSAGEFEEDBACK_CORS_HEADERS = Object.freeze([
+  "authorization",
+  "content-type",
+  "x-massage-join-ticket"
+]);
+
 const DEFAULT_LIMITS = Object.freeze({
   create: { windowMs: 10 * 60 * 1000, max: 5 },
   join: { windowMs: 10 * 60 * 1000, max: 12 },
@@ -11,6 +19,46 @@ const DEFAULT_LIMITS = Object.freeze({
   events: { windowMs: 60 * 1000, max: 10 }
 });
 const MAX_RATE_BUCKETS = 10_000;
+
+function createMassageFeedbackCorsMiddleware() {
+  return (req, res, next) => {
+    const origin = req.get("origin");
+    const isAllowedOrigin = origin === MASSAGEFEEDBACK_ALLOWED_ORIGIN;
+
+    if (origin) res.vary("Origin");
+    if (isAllowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", MASSAGEFEEDBACK_ALLOWED_ORIGIN);
+      res.setHeader("Access-Control-Expose-Headers", "Retry-After");
+    }
+
+    if (req.method !== "OPTIONS" || !req.get("access-control-request-method")) {
+      return next();
+    }
+
+    res.vary("Access-Control-Request-Method");
+    res.vary("Access-Control-Request-Headers");
+
+    const requestedMethod = req.get("access-control-request-method").toUpperCase();
+    const requestedHeaders = String(req.get("access-control-request-headers") || "")
+      .split(",")
+      .map(header => header.trim().toLowerCase())
+      .filter(Boolean);
+    if (
+      !isAllowedOrigin
+      || !MASSAGEFEEDBACK_CORS_METHODS.includes(requestedMethod)
+      || requestedHeaders.some(header => !MASSAGEFEEDBACK_CORS_HEADERS.includes(header))
+    ) {
+      return res.sendStatus(403);
+    }
+
+    res.setHeader("Access-Control-Allow-Methods", MASSAGEFEEDBACK_CORS_METHODS.join(", "));
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Massage-Join-Ticket"
+    );
+    return res.status(204).end();
+  };
+}
 
 function requestAddress(req) {
   return String(req.ip || req.socket?.remoteAddress || "unknown");
@@ -262,4 +310,8 @@ function createMassageFeedbackRouter(options = {}) {
   return router;
 }
 
-module.exports = { createMassageFeedbackRouter, isHighFrequencyPositionRequest };
+module.exports = {
+  createMassageFeedbackCorsMiddleware,
+  createMassageFeedbackRouter,
+  isHighFrequencyPositionRequest
+};

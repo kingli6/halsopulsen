@@ -4,6 +4,7 @@ const http = require("http");
 const path = require("path");
 const express = require("express");
 const {
+  createMassageFeedbackCorsMiddleware,
   createMassageFeedbackRouter,
   isHighFrequencyPositionRequest
 } = require("../traningsverktyg/massagefeedback/api-router");
@@ -14,6 +15,7 @@ const root = path.join(__dirname, "..");
 
 async function startServer(router = createMassageFeedbackRouter()) {
   const app = express();
+  app.use("/api/massagefeedback", createMassageFeedbackCorsMiddleware());
   app.use(express.json({ limit: "512kb", strict: true }));
   app.get("/api/booking/services", (_req, res) => res.json({ ok: true, services: [] }));
   app.use("/api/massagefeedback", router);
@@ -31,6 +33,96 @@ async function startServer(router = createMassageFeedbackRouter()) {
       await new Promise(resolve => server.close(resolve));
     }
   };
+}
+
+async function testMassageFeedbackCorsPolicy() {
+  const server = await startServer();
+  const origin = "https://halsopulsen.se";
+  try {
+    const preflight = await fetch(`${server.baseUrl}/sessions`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type, authorization, x-massage-join-ticket"
+      }
+    });
+    assert.strictEqual(preflight.status, 204);
+    assert.strictEqual(preflight.headers.get("access-control-allow-origin"), origin);
+    assert.deepStrictEqual(
+      preflight.headers.get("access-control-allow-methods").split(", ").sort(),
+      ["GET", "OPTIONS", "POST"]
+    );
+    for (const header of ["content-type", "authorization", "x-massage-join-ticket"]) {
+      assert.ok(
+        preflight.headers.get("access-control-allow-headers").toLowerCase().includes(header),
+        `Preflight should allow ${header}.`
+      );
+    }
+    assert.strictEqual(preflight.headers.get("access-control-allow-credentials"), null);
+
+    const eventPreflight = await fetch(`${server.baseUrl}/sessions/ABC234/events`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "authorization"
+      }
+    });
+    assert.strictEqual(eventPreflight.status, 204, "The authorized event stream GET should preflight.");
+
+    const rejectedOrigin = await fetch(`${server.baseUrl}/sessions`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://untrusted.example",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type"
+      }
+    });
+    assert.strictEqual(rejectedOrigin.status, 403);
+    assert.strictEqual(rejectedOrigin.headers.get("access-control-allow-origin"), null);
+
+    const rejectedMethod = await fetch(`${server.baseUrl}/sessions`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "DELETE"
+      }
+    });
+    assert.strictEqual(rejectedMethod.status, 403);
+
+    const rejectedHeader = await fetch(`${server.baseUrl}/sessions`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "x-unapproved-header"
+      }
+    });
+    assert.strictEqual(rejectedHeader.status, 403);
+
+    const created = await request(server.baseUrl, "/sessions", {
+      method: "POST",
+      body: {},
+      headers: { Origin: origin }
+    });
+    assert.strictEqual(created.response.status, 201);
+    assert.strictEqual(created.response.headers.get("access-control-allow-origin"), origin);
+    assert.strictEqual(created.response.headers.get("access-control-expose-headers"), "Retry-After");
+
+    const unauthorized = await request(server.baseUrl, `/sessions/${created.payload.code}`, {
+      method: "GET",
+      headers: { Origin: origin }
+    });
+    assert.strictEqual(unauthorized.response.status, 401);
+    assert.strictEqual(
+      unauthorized.response.headers.get("access-control-allow-origin"),
+      origin,
+      "CORS should not bypass session capability authorization."
+    );
+  } finally {
+    await server.close();
+  }
 }
 
 async function request(baseUrl, route, options = {}) {
@@ -508,6 +600,9 @@ async function testValidationRateLimitsAndExistingRouteIsolation() {
     const serverSource = fs.readFileSync(path.join(root, "server.js"), "utf8");
     assert.match(serverSource, /if \(isHighFrequencyPositionRequest\(req\)\) return next\(\);[\s\S]*apiRateLimiter\(req, res, next\);/);
     assert.match(serverSource, /if \(isHighFrequencyPositionRequest\(req\)\) return next\(\);[\s\S]*mutationRateLimiter\(req, res, next\);/);
+    const corsMount = serverSource.indexOf("app.use('/api/massagefeedback', createMassageFeedbackCorsMiddleware());");
+    const clerkMount = serverSource.indexOf("app.use((req, res, next) => {");
+    assert.ok(corsMount >= 0 && corsMount < clerkMount, "Massagefeedback CORS preflights must be handled before Clerk middleware.");
     assert.ok(serverSource.includes("app.use('/api/massagefeedback', massageFeedbackRouter);"));
     assert.ok(serverSource.includes("app.use('/api/booking', bookingRouter);"));
   } finally {
@@ -858,6 +953,7 @@ function testLifecycleLeasesAndCleanup() {
 }
 
 async function run() {
+  await testMassageFeedbackCorsPolicy();
   await testBrowserApiClientAgainstServer();
   await testApprovalAuthorizationAndSynchronizedSlider();
   await testJoinRejectionAndConcurrentCapacity();

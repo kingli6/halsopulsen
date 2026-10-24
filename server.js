@@ -46,6 +46,7 @@ const {
   createGlobalFailedLoginLimiter
 } = require('./admin-login-limiter');
 const {
+  createMassageFeedbackCorsMiddleware,
   createMassageFeedbackRouter,
   isHighFrequencyPositionRequest
 } = require('./traningsverktyg/massagefeedback/api-router');
@@ -67,6 +68,7 @@ if (process.env.NODE_ENV === 'production' && process.env.CLERK_SECRET_KEY) {
     }
   }));
 }
+app.use('/api/massagefeedback', createMassageFeedbackCorsMiddleware());
 const clerk = clerkMiddleware();
 app.use((req, res, next) => {
   if (

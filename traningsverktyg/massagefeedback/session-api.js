@@ -6,6 +6,13 @@
   "use strict";
 
   const DEFAULT_BASE_PATH = "/api/massagefeedback";
+  const PRODUCTION_BASE_PATH = "https://booking.halsopulsen.se/api/massagefeedback";
+
+  function getDefaultBasePath(location = root?.location) {
+    return String(location?.hostname || "").toLowerCase() === "halsopulsen.se"
+      ? PRODUCTION_BASE_PATH
+      : DEFAULT_BASE_PATH;
+  }
 
   class ApiError extends Error {
     constructor(message, status = 0, retryAfter = null) {
@@ -19,7 +26,7 @@
   function createSessionApi(options = {}) {
     const fetcher = options.fetchImpl || root.fetch?.bind(root);
     if (typeof fetcher !== "function") throw new TypeError("A fetch implementation is required.");
-    const basePath = String(options.basePath || DEFAULT_BASE_PATH).replace(/\/+$/, "");
+    const basePath = String(options.basePath || getDefaultBasePath()).replace(/\/+$/, "");
 
     async function request(path, requestOptions = {}) {
       const {
@@ -194,5 +201,5 @@
     }
   }
 
-  return Object.freeze({ ApiError, createSessionApi, readEvents });
+  return Object.freeze({ ApiError, createSessionApi, getDefaultBasePath, readEvents });
 });
