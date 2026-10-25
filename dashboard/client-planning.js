@@ -12,6 +12,8 @@
   const modalBackdrop = document.getElementById("planner-modal-backdrop");
   const modal = document.getElementById("planner-modal");
   const toastBox = document.getElementById("planner-toast");
+  const workspaceNav = document.getElementById("client-workspace-nav");
+  const clientWorkoutWorkspace = window.ClientWorkoutWorkspace;
   const colors = [
     ["#e8f2e9", "#b8d2bd", "#28583b"],
     ["#e9edf2", "#c6d1dc", "#425b70"],
@@ -34,7 +36,9 @@
   const state = {
     client: null, programs: [], screen: "calendar", focus: monthStart(new Date()),
     range: 3, programId: null, program: null, meta: null, placement: null,
-    weekIndex: 0, weekday: 0, saving: false
+    weekIndex: 0, weekday: 0, saving: false,
+    clientWorkspace: "planning",
+    workouts: clientWorkoutWorkspace?.createState()
   };
   let toastTimer;
 
@@ -82,6 +86,25 @@
   function showError(message) {
     alertBox.textContent = message;
     alertBox.hidden = !message;
+  }
+  function renderWorkspaceNav(active) {
+    if (!previewHarness || !workspaceNav) return;
+    state.clientWorkspace = active;
+    workspaceNav.innerHTML = `
+      <button type="button" data-workspace-tab="planning" ${active === "planning" ? 'aria-current="page"' : ""}>Planning</button>
+      <button type="button" data-workspace-tab="workouts" ${active === "workouts" ? 'aria-current="page"' : ""}>Workouts</button>`;
+  }
+  function renderClientWorkouts() {
+    if (!previewHarness || !clientWorkoutWorkspace || !state.workouts) return;
+    renderWorkspaceNav("workouts");
+    app.innerHTML = clientWorkoutWorkspace.render(state.workouts);
+  }
+  function selectWorkspaceTab(tab) {
+    if (!previewHarness) return;
+    document.title = `${state.client?.displayName || "Your"} ${tab === "workouts" ? "Workouts" : "Planning"} — HälsoPulsen`;
+    if (tab === "workouts") return renderClientWorkouts();
+    state.clientWorkspace = "planning";
+    renderCalendar();
   }
   async function request(url, options = {}) {
     let result;
@@ -225,6 +248,7 @@
   }
   function renderCalendar() {
     state.screen = "calendar";
+    renderWorkspaceNav("planning");
     const months = Array.from({ length: state.range }, (_, index) => new Date(Date.UTC(state.focus.getUTCFullYear(), state.focus.getUTCMonth() + index, 1)));
     const scheduled = state.programs.filter(program => program.placement?.plannedStartDate);
     const unscheduled = state.programs.filter(program => !program.placement?.plannedStartDate);
@@ -306,6 +330,7 @@
   }
   function renderProgram() {
     state.screen = "program";
+    renderWorkspaceNav("planning");
     if (!state.program) return renderCalendar();
     const weekCount = state.program.weeks.length;
     state.weekIndex = Math.max(0, Math.min(state.weekIndex, weekCount - 1));
@@ -418,6 +443,7 @@
   }
   function renderWorkout() {
     state.screen = "workout";
+    renderWorkspaceNav("planning");
     const day = currentDay();
     const week = currentWeek();
     if (!day || !week) return renderProgram();
@@ -810,6 +836,16 @@
   }
 
   app.addEventListener("click", event => {
+    const workoutAction = event.target.closest("[data-workout-action]");
+    if (workoutAction && state.clientWorkspace === "workouts" && clientWorkoutWorkspace) {
+      clientWorkoutWorkspace.handleAction(
+        state.workouts,
+        workoutAction.dataset.workoutAction,
+        workoutAction.dataset.workoutId
+      );
+      renderClientWorkouts();
+      return;
+    }
     const rangeButton = event.target.closest("[data-range]");
     if (rangeButton) {
       state.range = Number(rangeButton.dataset.range);
@@ -823,6 +859,44 @@
     }
     const programButton = event.target.closest("[data-open-program]");
     if (programButton) openProgram(programButton.dataset.openProgram);
+  });
+  workspaceNav?.addEventListener("click", event => {
+    const tab = event.target.closest("[data-workspace-tab]");
+    if (tab) selectWorkspaceTab(tab.dataset.workspaceTab);
+  });
+  app.addEventListener("input", event => {
+    if (state.clientWorkspace !== "workouts" || !clientWorkoutWorkspace) return;
+    const workout = clientWorkoutWorkspace.getWorkouts(state.workouts.weekStart)
+      .find(item => item.id === state.workouts.selectedWorkoutId);
+    if (!workout) return;
+    const result = event.target.closest("[data-workout-result]");
+    if (result) {
+      clientWorkoutWorkspace.setResult(
+        state.workouts,
+        workout,
+        result.dataset.exerciseId,
+        Number(result.dataset.setIndex),
+        result.dataset.workoutResult,
+        result.value
+      );
+      return;
+    }
+    const notes = event.target.closest("[data-workout-notes]");
+    if (notes) clientWorkoutWorkspace.setNotes(state.workouts, workout, notes.value);
+  });
+  app.addEventListener("change", event => {
+    if (state.clientWorkspace !== "workouts" || !clientWorkoutWorkspace) return;
+    const checkbox = event.target.closest("[data-workout-complete-set]");
+    const workout = clientWorkoutWorkspace.getWorkouts(state.workouts.weekStart)
+      .find(item => item.id === state.workouts.selectedWorkoutId);
+    if (!checkbox || !workout) return;
+    clientWorkoutWorkspace.setCompleted(
+      state.workouts,
+      workout,
+      checkbox.dataset.exerciseId,
+      Number(checkbox.dataset.setIndex),
+      checkbox.checked
+    );
   });
   app.addEventListener("change", event => {
     const selector = event.target.closest("[data-week-selector]");
@@ -861,9 +935,14 @@
       return;
     }
     try {
+      if (previewHarness) renderWorkspaceNav("planning");
       await refreshProgramList();
-      document.title = `${state.client?.displayName || "Your"} Planning — HälsoPulsen`;
-      renderCalendar();
+      const initialTab = previewHarness && new URLSearchParams(window.location.search).get("tab") === "workouts"
+        ? "workouts"
+        : "planning";
+      document.title = `${state.client?.displayName || "Your"} ${initialTab === "workouts" ? "Workouts" : "Planning"} — HälsoPulsen`;
+      if (initialTab === "workouts") renderClientWorkouts();
+      else renderCalendar();
     } catch (error) {
       showError(error.message || "Your Planning workspace could not be loaded.");
       app.innerHTML = "";

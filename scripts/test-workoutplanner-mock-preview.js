@@ -9,6 +9,7 @@ const {
   injectMockPreview,
   registerWorkoutPlannerMockPreviewRoutes
 } = require("../workoutplanner/mock-preview-server");
+const clientWorkoutWorkspace = require("../dashboard/client-workouts");
 
 function makeResponse(body, status) {
   return {
@@ -306,6 +307,84 @@ function testClientPlanningWeekEditorIsCompactAndResponsive() {
   assert.match(clientPlanningCss, /@media \(max-width: 460px\)[\s\S]*?planner-week-selector select/);
 }
 
+function testClientWorkoutsWorkspaceInteractionsStayInMemory() {
+  const state = clientWorkoutWorkspace.createState(new Date("2026-10-25T12:00:00Z"));
+  const initialWeek = state.weekStart;
+  assert.strictEqual(initialWeek, "2026-10-19");
+
+  const overview = clientWorkoutWorkspace.render(state);
+  assert.match(overview, /Workouts/);
+  assert.match(overview, /Full-body strength A/);
+  assert.match(overview, /Easy cardio \+ mobility/);
+  assert.match(overview, /Recovery mobility/);
+  assert.match(overview, /Completed/);
+  assert.match(overview, /No workout planned/);
+  assert.doesNotMatch(overview, /Goblet squat/, "the week overview should not expand every exercise.");
+
+  clientWorkoutWorkspace.handleAction(state, "next-week");
+  assert.strictEqual(state.weekStart, "2026-10-26");
+  clientWorkoutWorkspace.handleAction(state, "previous-week");
+  assert.strictEqual(state.weekStart, initialWeek);
+
+  clientWorkoutWorkspace.handleAction(state, "open-workout", "strength-b");
+  const details = clientWorkoutWorkspace.render(state);
+  assert.match(details, /Back to week overview/);
+  assert.match(details, /Reverse lunge/);
+  assert.match(details, /3 × 8 reps/);
+  assert.match(details, /75 sec rest/);
+  assert.match(details, /Record workout/);
+
+  clientWorkoutWorkspace.handleAction(state, "record-workout");
+  const sessionForm = clientWorkoutWorkspace.render(state);
+  assert.match(sessionForm, /data-workout-result="reps"/);
+  assert.match(sessionForm, /data-workout-result="weight"/);
+  assert.match(sessionForm, /data-workout-complete-set/);
+  assert.match(sessionForm, /Session notes/);
+  assert.match(sessionForm, /prescribed workout stays as written/i);
+
+  const workout = clientWorkoutWorkspace.getWorkouts(state.weekStart)
+    .find(item => item.id === "strength-b");
+  const prescribedWeight = workout.exercises[0].weight;
+  clientWorkoutWorkspace.setResult(state, workout, "reverse-lunge", 0, "reps", "9");
+  clientWorkoutWorkspace.setResult(state, workout, "reverse-lunge", 0, "weight", "8");
+  clientWorkoutWorkspace.setCompleted(state, workout, "reverse-lunge", 0, true);
+  clientWorkoutWorkspace.setNotes(state, workout, "Felt steady; added one rep.");
+  const updatedSession = clientWorkoutWorkspace.render(state);
+  assert.match(updatedSession, /value="9"/);
+  assert.match(updatedSession, /value="8"/);
+  assert.match(updatedSession, /Felt steady; added one rep\./);
+
+  clientWorkoutWorkspace.handleAction(state, "finish-session");
+  assert.match(clientWorkoutWorkspace.render(state), /Session recorded/);
+  assert.strictEqual(clientWorkoutWorkspace.statusFor(state, workout), "completed");
+  assert.strictEqual(workout.exercises[0].weight, prescribedWeight, "recording results must not rewrite the prescription.");
+
+  clientWorkoutWorkspace.handleAction(state, "back-to-week");
+  assert.match(clientWorkoutWorkspace.render(state), /Strength B/);
+  assert.strictEqual(clientWorkoutWorkspace.statusFor(state, workout), "completed");
+
+  const workspaceSource = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-workouts.js"),
+    "utf8"
+  );
+  const planningUi = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planning.js"),
+    "utf8"
+  );
+  const planningHtml = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planning.html"),
+    "utf8"
+  );
+  const planningCss = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planning.css"),
+    "utf8"
+  );
+  assert.doesNotMatch(workspaceSource, /\bfetch\s*\(|\blocalStorage\b/, "workout mock interactions must stay in memory.");
+  assert.match(planningUi, /if \(!previewHarness \|\| !workspaceNav\) return/);
+  assert.match(planningHtml, /client-workouts\.js/);
+  assert.match(planningCss, /@media \(max-width: 460px\)[\s\S]*?client-workout-set-row/);
+}
+
 function testPagesUseActualHtmlWithMockBootstrap() {
   const previewServer = fs.readFileSync(
     path.join(__dirname, "..", "workoutplanner", "mock-preview-server.js"),
@@ -418,6 +497,7 @@ async function run() {
   await testMockProgramAndSessionInteractionsStayInMemory();
   await testClientPlanningMockApiStaysInMemory();
   testClientPlanningWeekEditorIsCompactAndResponsive();
+  testClientWorkoutsWorkspaceInteractionsStayInMemory();
   testPagesUseActualHtmlWithMockBootstrap();
   testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
