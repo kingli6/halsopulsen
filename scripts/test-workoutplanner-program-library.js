@@ -110,6 +110,7 @@ async function testSavedDraftLoadsPrescriptionName() {
       workout_id: "55555555-5555-4555-8555-555555555555",
       day_of_week: 2,
       workout_name: "Lower body",
+      availability: "independent",
       workout_description: "",
       session_type: "Strength",
       warmup: "",
@@ -148,7 +149,9 @@ async function testSavedDraftLoadsPrescriptionName() {
   const loaded = await loadProgram(db, coachId, programId);
   assert.strictEqual(loaded.versionStatus, "draft");
   assert.strictEqual(loaded.program.days[2].exercises[0].name, "Goblet squat");
+  assert.strictEqual(loaded.program.days[2].availability, "independent");
   assert.match(db.calls[0].sql, /we\.exercise_name/i);
+  assert.match(db.calls[0].sql, /w\.availability/i);
   assert.match(db.calls[0].sql, /e\.name as legacy_exercise_name/i);
 }
 

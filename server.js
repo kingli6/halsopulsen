@@ -1703,7 +1703,12 @@ function workoutForProgramDate(program, date) {
   const day = Array.isArray(week?.days)
     ? week.days.find(item => Number(item.weekday) === weekday)
     : null;
-  return day?.enabled && Array.isArray(day.exercises) && day.exercises.length ? { week, day } : null;
+  return day?.enabled
+    && day.availability !== 'independent'
+    && Array.isArray(day.exercises)
+    && day.exercises.length
+    ? { week, day }
+    : null;
 }
 
 function assignmentsForUpdatedProgram(program, existingAssignments, assignmentPrefix, effectiveDate) {

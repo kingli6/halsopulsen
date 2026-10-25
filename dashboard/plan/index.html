@@ -143,6 +143,17 @@
       <div class="builder-grid" id="builderGrid"></div>
     </section>
 
+    <section class="section-block published-preview-block" id="independentWorkoutsSection" hidden aria-labelledby="independentWorkoutsHeading">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">AVAILABLE ANYTIME</p>
+          <h2 id="independentWorkoutsHeading">Independent workouts</h2>
+          <p>Optional sessions are separate from the weekly schedule.</p>
+        </div>
+      </div>
+      <div class="published-preview" id="independentWorkoutsList"></div>
+    </section>
+
     <section class="section-block" id="sharedSessionSection" hidden>
       <div class="section-heading-row">
         <div>
@@ -259,6 +270,7 @@
         <div class="form-grid">
            <label><span>Workout title</span><input id="workoutNameInput" required maxlength="80" placeholder="e.g. Strength A or Easy cardio" /></label>
            <label><span>Session-wide note <em>(optional)</em></span><input id="workoutDescriptionInput" maxlength="160" placeholder="e.g. Keep two reps in reserve throughout" /></label>
+           <label><span>Available as</span><select id="workoutAvailabilityInput"><option value="program">Program</option><option value="independent">Independent</option><option value="both">Both</option></select></label>
            <label><span>Main focus <em>(for the whole session)</em></span><select id="sessionTypeInput"><option>Strength</option><option>Cardio</option><option>Mobility / recovery</option><option>Guided session</option><option>Mixed</option><option>Other</option></select></label>
           <label><span>Warm-up <em>(optional)</em></span><input id="warmupInput" maxlength="220" placeholder="e.g. 5 min easy walk + 2 ramp-up sets" /></label>
           <label><span>Cool-down <em>(optional)</em></span><input id="cooldownInput" maxlength="220" placeholder="e.g. 5 min easy breathing and mobility" /></label>

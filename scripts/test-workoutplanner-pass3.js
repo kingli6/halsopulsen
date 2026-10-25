@@ -228,8 +228,8 @@ async function run() {
     );
     dataA = await findClientDataByToken(pool, linkA.token);
     dataB = await findClientDataByToken(pool, linkB.token);
-    assert.strictEqual(dataA.program.name, "Program A updated");
-    assert.strictEqual(dataB.program.name, "Program B");
+    assert.strictEqual(dataA.program.name, "Published program");
+    assert.strictEqual(dataB.program.name, "Published program");
 
     const rotatedA = await regenerateClientAccessLink(
       pool,

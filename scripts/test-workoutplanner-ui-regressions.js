@@ -283,6 +283,35 @@ function testProgressIndicationsUseComparableCompletedSessions() {
   assert.match(planPage, /progress-insights\.js/);
 }
 
+function testWorkoutAvailabilityAndPublishedSafeClientViews() {
+  const planner = readProjectFile("dashboard/plan.js");
+  const planPage = readProjectFile("dashboard/plan/index.html");
+  const trackerData = readProjectFile("dashboard/data.js");
+  const programLibrary = readProjectFile("workoutplanner/program-library.js");
+  const clientAccess = readProjectFile("workoutplanner/client-access.js");
+  const clientWorkouts = readProjectFile("dashboard/client-workouts.js");
+  const availabilityMigration = readProjectFile("db/workoutplanner-migrations/016_workout-availability.sql");
+  const userPlanSummary = planner.slice(
+    planner.indexOf("function userPlanSummary"),
+    planner.indexOf("function setPlanText")
+  );
+
+  assert.match(planPage, /id="workoutAvailabilityInput"[\s\S]*?value="program">Program[\s\S]*?value="independent">Independent[\s\S]*?value="both">Both/);
+  assert.match(planner, /availability: document\.getElementById\("workoutAvailabilityInput"\)\.value/);
+  assert.match(planner, /day\.enabled && day\.exercises\.length && TrackerData\.workoutCanBeIndependent\(day\)/);
+  assert.match(planner, /type !== "workout" \|\| TrackerData\.workoutCanBeScheduled\(template\.data\)/);
+  assert.match(trackerData, /workoutCanBeScheduled\(workout\)/);
+  assert.match(clientWorkouts, /\.filter\(template => template\.availability === "program" \|\| template\.availability === "both"\)/);
+  assert.match(clientWorkouts, /template\.availability === "independent" \|\| template\.availability === "both"/);
+  assert.match(programLibrary, /name: currentOnly \? "Published program"/);
+  assert.match(programLibrary, /and w\.availability in \('program', 'both'\)/i);
+  assert.match(clientAccess, /w\.availability IN \('program', 'both'\)/);
+  assert.doesNotMatch(userPlanSummary, /draftProgram/);
+  assert.match(planner, /const program = planState\.data\.publishedProgram;/);
+  assert.match(availabilityMigration, /CHECK \(availability IN \('program', 'independent', 'both'\)\)/i);
+  assert.match("016_workout-availability.sql", /^\d+_[a-z0-9-]+\.sql$/i);
+}
+
 testPlannerEntryUsesCoachRoute();
 testCreateAndOpenUseOwnerApi();
 testAccountBasedCloneUiIsRemoved();
@@ -295,4 +324,5 @@ testLiveEditingAndUnpublishedPublishingControls();
 testMobileWorkoutLoggingAndCoachActions();
 testPrivateProgramPagesAreNoindexAndPrintable();
 testProgressIndicationsUseComparableCompletedSessions();
+testWorkoutAvailabilityAndPublishedSafeClientViews();
 console.log("WorkoutPlanner UI/API regression checks passed.");

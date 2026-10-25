@@ -16,6 +16,7 @@
       id: "strength-a",
       weekday: 0,
       name: "Full-body strength A",
+      availability: "program",
       type: "Strength",
       duration: 45,
       status: "completed",
@@ -32,6 +33,7 @@
       id: "easy-aerobic",
       weekday: 2,
       name: "Easy cardio + mobility",
+      availability: "program",
       type: "Cardio",
       duration: 35,
       status: "planned",
@@ -47,6 +49,7 @@
       id: "strength-b",
       weekday: 4,
       name: "Strength B",
+      availability: "program",
       type: "Strength",
       duration: 50,
       status: "planned",
@@ -63,6 +66,7 @@
       id: "recovery-mobility",
       weekday: 5,
       name: "Recovery mobility",
+      availability: "both",
       type: "Mobility",
       duration: 20,
       status: "planned",
@@ -79,6 +83,7 @@
     {
       id: "mobility-reset",
       name: "Mobility reset",
+      availability: "independent",
       type: "Mobility",
       duration: 10,
       status: "available",
@@ -93,6 +98,7 @@
     {
       id: "quick-strength",
       name: "Quick strength",
+      availability: "independent",
       type: "Strength",
       duration: 20,
       status: "available",
@@ -107,6 +113,7 @@
     {
       id: "core-reset",
       name: "Core reset",
+      availability: "independent",
       type: "Strength",
       duration: 12,
       status: "available",
@@ -189,19 +196,27 @@
   }
 
   function getWorkouts(weekStart) {
-    return workoutTemplates.map(template => ({
-      ...template,
-      date: addDays(weekStart, template.weekday),
-      exercises: template.exercises.map(exercise => ({ ...exercise }))
-    }));
+    return workoutTemplates
+      .filter(template => template.availability === "program" || template.availability === "both")
+      .map(template => ({
+        ...template,
+        date: addDays(weekStart, template.weekday),
+        exercises: template.exercises.map(exercise => ({ ...exercise }))
+      }));
   }
 
   function getIndependentWorkouts(state) {
-    return independentWorkoutTemplates.map(template => ({
+    const coachWorkouts = [
+      ...independentWorkoutTemplates.filter(template =>
+        template.availability === "independent" || template.availability === "both"
+      ),
+      ...workoutTemplates.filter(template => template.availability === "both")
+    ].map(template => ({
       ...template,
       exercises: template.exercises.map(exercise => ({ ...exercise })),
       source: "coach"
-    })).concat((state.personalWorkouts || []).map(workout => ({
+    }));
+    return coachWorkouts.concat((state.personalWorkouts || []).map(workout => ({
       ...workout,
       exercises: workout.exercises.map(exercise => ({ ...exercise })),
       source: "personal"
@@ -723,6 +738,7 @@
     addCreateExercise,
     finishSession,
     getWorkouts,
+    getIndependentWorkouts,
     handleAction,
     render,
     savePersonalWorkout,

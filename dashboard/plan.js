@@ -37,7 +37,7 @@ planState.databaseProgramClientId = planState.data.databaseProgramClientId || nu
 
 function userPlanSummary(saved) {
   const data = saved.data || {};
-  const program = data.program || data.publishedProgram || data.draftProgram || {};
+  const program = data.program || data.publishedProgram || {};
   return {
     id: saved.id,
     name: saved.name || program.name || "Training plan",
@@ -110,13 +110,27 @@ function templateTypeLabel(type) {
 }
 
 function templateDataSummary(template) {
-  if (template.type === "workout") return `${template.data.exercises?.length || 0} activities · ${template.data.sessionType || "Workout"}`;
+  if (template.type === "workout") {
+    return `${availabilityLabel(template.data)} · ${template.data.exercises?.length || 0} activities · ${template.data.sessionType || "Workout"}`;
+  }
   const activeDays = (template.data.days || []).filter(day => day.enabled && day.exercises?.length).length;
   return `${activeDays} training ${activeDays === 1 ? "day" : "days"} · 7-day schedule`;
 }
 
+function availabilityLabel(workout) {
+  const labels = {
+    program: "Program",
+    independent: "Independent",
+    both: "Both"
+  };
+  return labels[TrackerData.workoutAvailability(workout)] || labels.program;
+}
+
 function templateSelectOptions(type, emptyLabel) {
-  const items = planState.templates.filter(template => template.type === type);
+  const items = planState.templates.filter(template =>
+    template.type === type
+    && (type !== "workout" || TrackerData.workoutCanBeScheduled(template.data))
+  );
   return [`<option value="">${emptyLabel}</option>`, ...items.map(template =>
     `<option value="${escapePlanHtml(template.id)}">${escapePlanHtml(template.name)}</option>`
   )].join("");
@@ -727,13 +741,15 @@ function renderBuilder() {
   renderWeekTabs();
   document.getElementById("builderGrid").innerHTML = TrackerData.WEEKDAYS.map(weekday => {
     const day = week.days.find(item => item.weekday === weekday) || TrackerData.emptyDay(weekday);
-    const enabled = day.enabled && day.exercises.length;
+    const dayHasWorkout = day.enabled && day.exercises.length;
+    const enabled = dayHasWorkout
+      && (!sharedProgramWorkspace || TrackerData.workoutCanBeScheduled(day));
     return `
       <article class="builder-day ${enabled ? "has-workout" : "rest-day"}">
         <div class="builder-day-top">
           <div>
             <span class="builder-day-name">${TrackerData.DAY_NAMES[weekday]}</span>
-            <span class="builder-day-label">${enabled ? "Training day" : "Rest / open day"}</span>
+            <span class="builder-day-label">${enabled ? `${availabilityLabel(day)} workout` : dayHasWorkout && sharedProgramWorkspace ? "Optional workout" : "Rest / open day"}</span>
           </div>
           <span class="day-number-large">${TrackerData.DAY_NAMES[weekday][0]}</span>
         </div>
@@ -752,7 +768,9 @@ function renderBuilder() {
             <button class="text-button danger-button" type="button" data-clear-day="${weekday}">Clear day</button>
           </div>
         ` : `
-          <div class="rest-placeholder"><span>○</span><p>No workout assigned.<br />This day is rest / open.</p></div>
+          <div class="rest-placeholder"><span>○</span><p>${dayHasWorkout && sharedProgramWorkspace
+            ? "Optional workout.<br />See Independent workouts below."
+            : "No workout assigned.<br />This day is rest / open."}</p></div>
           <button class="button button-secondary add-day-button" type="button" data-edit-day="${weekday}">+ Add workout</button>
         `}
       </article>
@@ -770,17 +788,54 @@ function renderPublishedPreview() {
   const weeks = program.weeks || [program];
   const previewWeek = weeks[Math.min(planState.selectedWeekIndex, weeks.length - 1)] || weeks[0];
   setPlanText("publishedPreviewHeading", `Published Week ${previewWeek.weekNumber}`);
-  container.innerHTML = TrackerData.WEEKDAYS.map(weekday => {
+  const scheduledDays = TrackerData.WEEKDAYS.map(weekday => {
     const day = previewWeek.days.find(item => item.weekday === weekday) || TrackerData.emptyDay(weekday);
     const active = day.enabled && day.exercises.length;
+    const scheduled = active && TrackerData.workoutCanBeScheduled(day);
     return `
-      <div class="published-day ${active ? "has-workout" : "is-rest"}">
+      <div class="published-day ${scheduled ? "has-workout" : "is-rest"}">
         <span class="published-day-label">${TrackerData.DAY_NAMES[weekday]}</span>
-        <strong>${active ? escapePlanHtml(day.name) : "Rest / open day"}</strong>
-        <span>${active ? escapePlanHtml(workoutSummary(day)) : "No assignment"}</span>
+        <strong>${scheduled ? escapePlanHtml(day.name) : "Rest / open day"}</strong>
+        <span>${scheduled ? escapePlanHtml(workoutSummary(day)) : "No assignment"}</span>
       </div>
     `;
   }).join("");
+  const independentWorkouts = (previewWeek.days || []).filter(day =>
+    day.enabled && day.exercises.length && TrackerData.workoutCanBeIndependent(day)
+  );
+  container.innerHTML = `${scheduledDays}${independentWorkouts.length ? `
+    <section class="published-day has-workout">
+      <span class="published-day-label">OPTIONAL</span>
+      <strong>Independent workouts</strong>
+      ${independentWorkouts.map(day => `<span>${escapePlanHtml(day.name)} · ${escapePlanHtml(workoutSummary(day))}</span>`).join("")}
+    </section>` : ""}`;
+}
+
+function renderIndependentWorkouts() {
+  const section = document.getElementById("independentWorkoutsSection");
+  const container = document.getElementById("independentWorkoutsList");
+  if (!section || !container) return;
+  if (!sharedProgramWorkspace) {
+    section.hidden = true;
+    return;
+  }
+
+  const program = planState.data.publishedProgram;
+  const weeks = Array.isArray(program?.weeks) ? program.weeks : [];
+  const workouts = weeks.flatMap((week, weekIndex) =>
+    (week.days || [])
+      .filter(day => day.enabled && day.exercises.length && TrackerData.workoutCanBeIndependent(day))
+      .map(day => ({ week, weekIndex, day }))
+  );
+  section.hidden = workouts.length === 0;
+  container.innerHTML = workouts.map(({ week, weekIndex, day }) => `
+    <article class="published-day has-workout">
+      <span class="published-day-label">WEEK ${escapePlanHtml(week.weekNumber || weekIndex + 1)} · OPTIONAL</span>
+      <strong>${escapePlanHtml(day.name || "Independent workout")}</strong>
+      <span>${escapePlanHtml(day.description || day.sessionType || "Available whenever you want.")}</span>
+      <span>${escapePlanHtml(workoutSummary(day))}</span>
+    </article>
+  `).join("");
 }
 
 function renderLibrary() {
@@ -1353,6 +1408,7 @@ function renderAllPlan() {
     renderPlanOverview();
     renderBuilder();
     renderPublishedPreview();
+    renderIndependentWorkouts();
     renderPrintableProgram();
   }
   renderTemplateLibrary();
@@ -1615,6 +1671,7 @@ function openWorkoutModal(weekday) {
   setPlanText("workoutModalTitle", `${day.enabled ? "Edit" : "Add"} ${TrackerData.DAY_NAMES[weekday]} workout`);
   document.getElementById("workoutNameInput").value = day.name || "";
   document.getElementById("workoutDescriptionInput").value = day.description || "";
+  document.getElementById("workoutAvailabilityInput").value = TrackerData.workoutAvailability(day);
   const sessionType = document.getElementById("sessionTypeInput");
   sessionType.value = [...sessionType.options].some(option => option.value === day.sessionType) ? day.sessionType : "Other";
   document.getElementById("warmupInput").value = day.warmup || "";
@@ -1633,6 +1690,7 @@ function readWorkoutForm(weekday = planState.selectedWeekday) {
     enabled: true,
     name: document.getElementById("workoutNameInput").value.trim(),
     description: document.getElementById("workoutDescriptionInput").value.trim(),
+    availability: document.getElementById("workoutAvailabilityInput").value,
     sessionType: document.getElementById("sessionTypeInput").value,
     warmup: document.getElementById("warmupInput").value.trim(),
     cooldown: document.getElementById("cooldownInput").value.trim(),

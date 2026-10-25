@@ -640,10 +640,12 @@ async function run() {
     }
   }, generated.token);
   assert.deepStrictEqual(data.client, { displayName: "Ada" });
-  assert.deepStrictEqual(data.program, { id: "program-a", name: "Strength" });
+  assert.deepStrictEqual(data.program, { id: "program-a", name: "Published program" });
   assert.strictEqual(data.assignments[0].id, "assignment-a");
+  assert.strictEqual(data.assignments[0].program_name, "Published program");
   assert.strictEqual(data.assignments[0].exercises[0].name, "Goblet squat");
   assert.match(queries[1].sql, /'name',\s*we\.exercise_name/i);
+  assert.match(queries[1].sql, /w\.availability IN \('program', 'both'\)/i);
   assert.deepStrictEqual(queries[1].values, ["client-a", "program-a"]);
 
   const directLinkId = "direct-link-a";

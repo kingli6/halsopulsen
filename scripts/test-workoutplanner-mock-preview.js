@@ -1,6 +1,7 @@
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 const {
   createMockPreviewHarness,
   createClientPlannerPreviewHarness
@@ -11,6 +12,48 @@ const {
 } = require("../workoutplanner/mock-preview-server");
 const clientWorkoutWorkspace = require("../dashboard/client-workouts");
 const clientPlanningMockTools = require("../dashboard/client-planning-mock-tools");
+
+function testWorkoutAvailabilityNormalizationAndClientViews() {
+  const source = fs.readFileSync(path.join(__dirname, "..", "dashboard", "data.js"), "utf8");
+  const sandbox = { localStorage: { getItem() { return null; }, setItem() {} } };
+  vm.createContext(sandbox);
+  vm.runInContext(`${source}\nglobalThis.__trackerData = TrackerData;`, sandbox);
+  const trackerData = sandbox.__trackerData;
+  const exercise = { name: "Test squat", activityType: "strength", sets: 3, targetValue: 10, targetUnit: "reps" };
+  const program = trackerData.normalizeProgram({
+    name: "Availability test",
+    startDate: "2026-10-26",
+    weeks: [{
+      weekNumber: 1,
+      days: [
+        { weekday: 1, enabled: true, name: "Program only", availability: "program", exercises: [exercise] },
+        { weekday: 2, enabled: true, name: "Independent only", availability: "independent", exercises: [exercise] },
+        { weekday: 3, enabled: true, name: "Both", availability: "both", exercises: [exercise] }
+      ]
+    }]
+  });
+  assert.strictEqual(program.weeks[0].days[2].availability, "independent");
+  assert.strictEqual(trackerData.workoutCanBeScheduled(program.weeks[0].days[2]), false);
+  assert.strictEqual(trackerData.workoutCanBeIndependent(program.weeks[0].days[2]), true);
+  assert.strictEqual(trackerData.workoutCanBeScheduled(program.weeks[0].days[3]), true);
+  assert.strictEqual(trackerData.workoutCanBeIndependent(program.weeks[0].days[3]), true);
+  assert.strictEqual(trackerData.workoutAvailability({}), "program", "legacy workouts default to Program");
+
+  const assignmentState = { publishedProgram: program, assignments: [], assignmentPrefix: "test" };
+  trackerData.ensureAssignments(assignmentState);
+  assert.deepStrictEqual(
+    assignmentState.assignments.map(assignment => assignment.date),
+    ["2026-10-26", "2026-10-28"],
+    "Independent-only workouts must not receive scheduled assignments, while Both remains scheduled."
+  );
+
+  const planned = clientWorkoutWorkspace.getWorkouts("2026-10-26");
+  const optional = clientWorkoutWorkspace.getIndependentWorkouts(clientWorkoutWorkspace.createState());
+  assert.ok(planned.some(workout => workout.id === "recovery-mobility"));
+  assert.ok(optional.some(workout => workout.id === "recovery-mobility"), "Both workouts appear in both client lists.");
+  assert.ok(optional.some(workout => workout.id === "mobility-reset"));
+  assert.ok(!planned.some(workout => workout.id === "mobility-reset"), "Independent-only workouts are not scheduled.");
+}
 
 function makeResponse(body, status) {
   return {
@@ -618,6 +661,7 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
 }
 
 async function run() {
+  testWorkoutAvailabilityNormalizationAndClientViews();
   await testAllApiRequestsAreIntercepted();
   testCoachAndRecipientPagesReceivePreviewData();
   await testMockProgramAndSessionInteractionsStayInMemory();

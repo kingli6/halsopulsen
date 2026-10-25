@@ -4,6 +4,7 @@ const TrackerData = (() => {
   const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const WORKOUT_AVAILABILITIES = ["program", "independent", "both"];
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -76,6 +77,7 @@ const TrackerData = (() => {
     return {
       weekday,
       enabled: false,
+      availability: "program",
       name: "",
       description: "",
       sessionType: "Rest / open day",
@@ -168,9 +170,13 @@ const TrackerData = (() => {
       Training: "Other"
     };
     const rawSessionType = String(workout?.sessionType || "Other");
+    const availability = WORKOUT_AVAILABILITIES.includes(workout?.availability)
+      ? workout.availability
+      : "program";
     return {
       weekday,
       enabled: workout?.enabled !== false && exercises.length > 0,
+      availability,
       name: String(workout?.name || (exercises[0]?.name || "Workout")),
       description: String(workout?.description || ""),
       sessionType: sessionTypeMap[rawSessionType] || rawSessionType,
@@ -178,6 +184,20 @@ const TrackerData = (() => {
       cooldown: String(workout?.cooldown || ""),
       exercises
     };
+  }
+
+  function workoutAvailability(workout) {
+    return WORKOUT_AVAILABILITIES.includes(workout?.availability)
+      ? workout.availability
+      : "program";
+  }
+
+  function workoutCanBeScheduled(workout) {
+    return workoutAvailability(workout) !== "independent";
+  }
+
+  function workoutCanBeIndependent(workout) {
+    return workoutAvailability(workout) !== "program";
   }
 
   function normalizeWeek(week, fallbackWeekNumber = 1, programDefaults = {}) {
@@ -490,7 +510,7 @@ const TrackerData = (() => {
       const weekIndex = programWeekIndexForDate(program, date);
       const week = weeks[weekIndex];
       const workout = week?.days.find(day => day.weekday === weekday);
-      if (!workout?.enabled || !workout.exercises.length || existingDates.has(date)) continue;
+      if (!workout?.enabled || !workout.exercises.length || !workoutCanBeScheduled(workout) || existingDates.has(date)) continue;
       data.assignments.push({
         id: `${data.assignmentPrefix || "assignment"}-${date}`,
         date,
@@ -527,10 +547,14 @@ const TrackerData = (() => {
     formatDateRange,
     formatRest,
     targetLabel,
+    WORKOUT_AVAILABILITIES,
     emptyDay,
     defaultProgram,
     defaultData,
     normalizeExercise,
+    workoutAvailability,
+    workoutCanBeScheduled,
+    workoutCanBeIndependent,
     normalizeProgram,
     load,
     save,

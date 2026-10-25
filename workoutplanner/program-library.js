@@ -39,6 +39,7 @@ function emptyDay(weekday) {
   return {
     weekday,
     enabled: false,
+    availability: "program",
     name: "",
     description: "",
     sessionType: "Rest / open day",
@@ -119,6 +120,9 @@ function normalizeProgram(program) {
       return {
         weekday,
         enabled: Boolean(sourceDay.enabled) && exercises.length > 0,
+        availability: ["program", "independent", "both"].includes(sourceDay.availability)
+          ? sourceDay.availability
+          : "program",
         name: text(sourceDay.name),
         description: text(sourceDay.description),
         sessionType: text(sourceDay.sessionType, "Other") || "Other",
@@ -398,6 +402,7 @@ async function loadProgramWithClient(client, coachProfileId, programId, { curren
        w.warmup,
        w.cooldown,
        w.is_rest,
+       w.availability,
        we.id as workout_exercise_id,
        we.sort_order,
        we.exercise_id,
@@ -460,6 +465,7 @@ async function loadProgramWithClient(client, coachProfileId, programId, { curren
     const day = {
       weekday,
       enabled: !row.is_rest,
+      availability: row.availability || "program",
       name: row.workout_name || "",
       description: row.workout_description || "",
       sessionType: row.session_type || "Other",
@@ -487,8 +493,8 @@ async function loadProgramWithClient(client, coachProfileId, programId, { curren
     days: Array.from({ length: 7 }, (_, weekday) => emptyDay(weekday))
   };
   const program = {
-    name: first.program_name,
-    description: first.program_description || "",
+    name: currentOnly ? "Published program" : first.program_name,
+    description: currentOnly ? "" : first.program_description || "",
     version: Number(first.version_number) || 1,
     phase: firstWeek.phase,
     weekNumber: firstWeek.weekNumber,
@@ -502,7 +508,7 @@ async function loadProgramWithClient(client, coachProfileId, programId, { curren
   return {
     id: first.program_id,
     clientId: first.client_id || null,
-    personName: first.person_name || "",
+    personName: currentOnly ? "" : first.person_name || "",
     kind: first.program_kind || "library",
     sourceProgramId: first.source_program_id,
     sourceVersionId: first.source_version_id,
@@ -994,8 +1000,8 @@ async function saveProgram(
         const isRest = !day.enabled || !day.exercises.length;
         const workoutResult = await client.query(
           `insert into public.workouts
-            (program_week_id, day_of_week, name, description, session_type, warmup, cooldown, is_rest)
-           values ($1, $2, $3, $4, $5, $6, $7, $8)
+            (program_week_id, day_of_week, name, description, session_type, warmup, cooldown, is_rest, availability)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            returning id`,
           [
             weekId,
@@ -1005,7 +1011,8 @@ async function saveProgram(
             day.sessionType || "Other",
             day.warmup,
             day.cooldown,
-            isRest
+            isRest,
+            day.availability
           ]
         );
         const workoutId = workoutResult.rows[0].id;
@@ -1152,6 +1159,7 @@ async function saveProgram(
                 and pv.id = $2
                 and pv.status = 'published'
                 and w.is_rest = false
+                and w.availability in ('program', 'both')
                 and exists (
                   select 1
                     from public.workout_exercises we
@@ -1390,6 +1398,7 @@ async function publishProgram(db, coachProfileId, programId) {
           and pv.id = $2
            and p.client_id is not null
           and w.is_rest = false
+          and w.availability in ('program', 'both')
           and exists (
             select 1
               from public.workout_exercises we
@@ -1543,7 +1552,7 @@ async function cloneLibraryProgramVersion(
       );
       const clientWeekId = clientWeekResult.rows[0].id;
       const workouts = await client.query(
-        `select id, day_of_week, name, description, session_type, warmup, cooldown, is_rest
+        `select id, day_of_week, name, description, session_type, warmup, cooldown, is_rest, availability
            from public.workouts
           where program_week_id = $1
           order by day_of_week`,
@@ -1553,8 +1562,8 @@ async function cloneLibraryProgramVersion(
       for (const sourceWorkout of workouts.rows) {
         const clientWorkoutResult = await client.query(
           `insert into public.workouts
-            (program_week_id, day_of_week, name, description, session_type, warmup, cooldown, is_rest)
-           values ($1, $2, $3, $4, $5, $6, $7, $8)
+            (program_week_id, day_of_week, name, description, session_type, warmup, cooldown, is_rest, availability)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            returning id`,
           [
             clientWeekId,
@@ -1564,7 +1573,8 @@ async function cloneLibraryProgramVersion(
             sourceWorkout.session_type,
             sourceWorkout.warmup,
             sourceWorkout.cooldown,
-            sourceWorkout.is_rest
+            sourceWorkout.is_rest,
+            sourceWorkout.availability || "program"
           ]
         );
         const clientWorkoutId = clientWorkoutResult.rows[0].id;

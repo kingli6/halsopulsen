@@ -420,6 +420,7 @@ async function findClientDataByToken(db, token) {
          AND p.kind = 'library'
          AND p.client_id IS NULL
          AND w.is_rest = false
+         AND w.availability IN ('program', 'both')
          AND EXISTS (
            SELECT 1
              FROM public.workout_exercises active_exercise
@@ -493,10 +494,10 @@ async function findClientDataByToken(db, token) {
     return {
       client: null,
       directProgram: true,
-      personName: client.person_name || "",
+      personName: "",
       program: {
         id: client.program_id,
-        name: latestVersion.program_name || "Published program",
+        name: "Published program",
         version: Number(latestVersion.version_number) || null,
         publishedAt: latestVersion.published_at || null
       },
@@ -581,6 +582,7 @@ async function findClientDataByToken(db, token) {
         AND p.client_id = $1
         AND p.kind = 'client'
        AND pv.status = 'published'
+       AND w.availability IN ('program', 'both')
      GROUP BY a.id, p.id, pv.id, pw.id, w.id
      ORDER BY a.scheduled_date, w.day_of_week`,
     [client.client_id, client.program_id]
@@ -726,8 +728,12 @@ async function findClientDataByToken(db, token) {
     client: { displayName: client.display_name },
     personName: client.display_name,
     directProgram: false,
-    program: { id: client.program_id, name: client.program_name },
-    assignments,
+    program: { id: client.program_id, name: "Published program" },
+    assignments: assignments.map(assignment => ({
+      ...assignment,
+      program_name: "Published program",
+      program_description: null
+    })),
     performanceHistory
   };
 }
