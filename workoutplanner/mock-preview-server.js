@@ -2,6 +2,12 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
+const PLANNING_PROTOTYPE_FILE = path.join(
+  ROOT,
+  "dashboard",
+  "workoutplanner-planning-prototype",
+  "planning.html"
+);
 const PREVIEW_PAGES = {
   coach: {
     route: "/coach",
@@ -47,6 +53,15 @@ function registerWorkoutPlannerMockPreviewRoutes(app) {
   for (const [page, config] of Object.entries(PREVIEW_PAGES)) {
     app.get(`/__dev/workoutplanner${config.route}`, (req, res) => sendMockPreviewPage(res, page));
   }
+  app.get("/__dev/workoutplanner/planning/", (req, res) => {
+    if (!fs.existsSync(PLANNING_PROTOTYPE_FILE)) {
+      res.status(500).send("The WorkoutPlanner calendar prototype could not be loaded.");
+      return;
+    }
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.sendFile(PLANNING_PROTOTYPE_FILE);
+  });
 }
 
 module.exports = {

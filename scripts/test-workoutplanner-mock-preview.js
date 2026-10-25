@@ -4,7 +4,10 @@ const path = require("path");
 const {
   createMockPreviewHarness
 } = require("../workoutplanner/mock-preview-harness");
-const { injectMockPreview } = require("../workoutplanner/mock-preview-server");
+const {
+  injectMockPreview,
+  registerWorkoutPlannerMockPreviewRoutes
+} = require("../workoutplanner/mock-preview-server");
 
 function makeResponse(body, status) {
   return {
@@ -171,11 +174,64 @@ function testPagesUseActualHtmlWithMockBootstrap() {
   assert.match(planUi, /if \(!sharedProgramWorkspace && !mockPreviewWorkspace\) \{\s*TrackerData\.ensureAssignments[\s\S]*?TrackerData\.save/);
 }
 
+function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
+  const registeredRoutes = new Map();
+  registerWorkoutPlannerMockPreviewRoutes({
+    get(route, handler) {
+      registeredRoutes.set(route, handler);
+    }
+  });
+  const handler = registeredRoutes.get("/__dev/workoutplanner/planning/");
+  assert.strictEqual(typeof handler, "function", "the calendar prototype should have a dedicated preview route");
+
+  const response = {
+    headers: {},
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    sendFile(file) {
+      this.file = file;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    send(body) {
+      this.body = body;
+    }
+  };
+  handler({}, response);
+  assert.ok(response.file && fs.existsSync(response.file), "the route should serve the isolated prototype HTML");
+  assert.strictEqual(response.headers["Cache-Control"], "no-store");
+  assert.strictEqual(response.headers["X-Robots-Tag"], "noindex, nofollow");
+
+  const prototypeHtml = fs.readFileSync(response.file, "utf8");
+  const prototypeScriptPath = path.join(
+    __dirname,
+    "..",
+    "dashboard",
+    "workoutplanner-planning-prototype",
+    "planning.js"
+  );
+  const prototypeScript = fs.readFileSync(prototypeScriptPath, "utf8");
+  assert.match(prototypeHtml, /MOCK DATA PREVIEW/i);
+  assert.match(prototypeHtml, /planning\.css/);
+  assert.match(prototypeHtml, /planning\.js/);
+  assert.match(prototypeScript, /createMockPreviewHarness\("coach"\)/);
+  assert.match(prototypeScript, /state\.records\.filter\(record => record\.row\?\.hasCurrentVersion\)/);
+  assert.doesNotMatch(prototypeScript, /\bfetch\s*\(/, "the prototype must not call APIs");
+  assert.doesNotMatch(prototypeScript, /\blocalStorage\b/, "the prototype must keep edits in memory only");
+
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /WORKOUTPLANNER_MOCK_PREVIEWS === '1'[\s\S]*?NODE_ENV !== 'production'[\s\S]*?registerWorkoutPlannerMockPreviewRoutes/);
+}
+
 async function run() {
   await testAllApiRequestsAreIntercepted();
   testCoachAndRecipientPagesReceivePreviewData();
   await testMockProgramAndSessionInteractionsStayInMemory();
   testPagesUseActualHtmlWithMockBootstrap();
+  testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
 }
 

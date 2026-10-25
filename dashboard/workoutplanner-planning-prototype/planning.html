@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f1f5f1">
+  <title>HälsoPulsen · Workout planning</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+  <link rel="stylesheet" href="/dashboard/workoutplanner-planning-prototype/planning.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" type="button" data-action="calendar-home" aria-label="HälsoPulsen planning home">
+        <span class="brand-mark" aria-hidden="true">H</span>
+        <span class="brand-copy"><strong>HälsoPulsen</strong><small>Coach workspace</small></span>
+      </button>
+      <nav class="topnav" aria-label="Workspace">
+        <button class="nav-item" type="button" data-action="calendar-home" aria-current="page">Planning</button>
+        <button class="nav-item" type="button" data-action="preview-nav">Client view</button>
+      </nav>
+      <div class="topbar-right">
+        <span class="workspace-label"><span class="workspace-dot"></span>Individual coaching</span>
+        <span class="mock-badge">Mock data preview</span>
+      </div>
+    </header>
+    <main class="main" id="app-main" tabindex="-1"></main>
+  </div>
+  <div class="dialog-backdrop" id="dialog-backdrop" hidden>
+    <section class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"></section>
+  </div>
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="/workoutplanner/mock-preview-harness.js"></script>
+  <script src="/dashboard/workoutplanner-planning-prototype/planning.js"></script>
+</body>
+</html>

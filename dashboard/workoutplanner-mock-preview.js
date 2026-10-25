@@ -37,6 +37,18 @@
     .workoutplanner-mock-banner strong {
       letter-spacing: .04em;
     }
+    .workoutplanner-mock-banner a {
+      border: 1px solid #c6a947;
+      border-radius: 999px;
+      color: #5c4510;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      text-decoration: none;
+    }
+    .workoutplanner-mock-banner a:hover {
+      background: #fffaf0;
+    }
   `;
   document.head.append(style);
 
@@ -45,7 +57,11 @@
     const banner = document.createElement("aside");
     banner.className = "workoutplanner-mock-banner";
     banner.setAttribute("role", "status");
-    banner.innerHTML = "<strong>MOCK DATA PREVIEW</strong><span>Changes stay in this tab. No real data is read or saved.</span>";
+    banner.innerHTML = `<strong>MOCK DATA PREVIEW</strong><span>Changes stay in this tab. No real data is read or saved.</span>${
+      page === "coach"
+        ? '<a href="/__dev/workoutplanner/planning/">Open calendar prototype</a>'
+        : ""
+    }`;
     document.body.prepend(banner);
   }
 
