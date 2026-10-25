@@ -468,6 +468,8 @@ function testIndependentWorkoutsAndPersonalCreationStayInMemory() {
   assert.match(clientWorkoutWorkspace.render(instantState), /Extra · Completed/);
 
   const recordingState = clientWorkoutWorkspace.createState(new Date("2026-10-25T12:00:00Z"));
+  clientWorkoutWorkspace.handleAction(recordingState, "previous-week");
+  assert.strictEqual(recordingState.weekStart, "2026-10-12");
   clientWorkoutWorkspace.handleAction(recordingState, "open-workout", "strength-b", "planned");
   clientWorkoutWorkspace.handleAction(recordingState, "record-workout");
   assert.match(clientWorkoutWorkspace.render(recordingState), /Sunday 25 October/);
@@ -475,17 +477,19 @@ function testIndependentWorkoutsAndPersonalCreationStayInMemory() {
   clientWorkoutWorkspace.setResult(recordingState, selectedWorkout, "reverse-lunge", 0, "reps", "9");
   clientWorkoutWorkspace.setCompleted(recordingState, selectedWorkout, "reverse-lunge", 0, true);
   clientWorkoutWorkspace.handleAction(recordingState, "finish-session");
+  assert.strictEqual(recordingState.weekStart, "2026-10-12", "finishing a session should preserve the week the client was viewing.");
   assert.strictEqual(recordingState.recordedSessions[0].performedOn, "2026-10-25");
-  assert.strictEqual(recordingState.recordedSessions[0].workout.date, "2026-10-23");
+  assert.strictEqual(recordingState.recordedSessions[0].workout.date, "2026-10-16");
   assert.strictEqual(
     clientWorkoutWorkspace.statusFor(
-      recordingState,
-      clientWorkoutWorkspace.getWorkouts("2026-10-19").find(workout => workout.id === "strength-b")
+      recordingState, selectedWorkout
     ),
     "planned",
     "recording a prescribed workout on another day must not complete or move the scheduled workout."
   );
   clientWorkoutWorkspace.handleAction(recordingState, "back-to-week");
+  assert.strictEqual(recordingState.weekStart, "2026-10-12", "Back to Workouts should keep the previously selected week.");
+  clientWorkoutWorkspace.handleAction(recordingState, "next-week");
   const actualDayOverview = clientWorkoutWorkspace.render(recordingState);
   assert.match(actualDayOverview, /Extra · Completed/);
   assert.match(actualDayOverview, /Strength B/);

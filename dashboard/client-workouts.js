@@ -396,7 +396,6 @@
       state.recordedSessions.push(record);
     }
     state.sessions[sessionKey(state, workout)] = session;
-    state.weekStart = state.todayWeekStart;
     return true;
   }
 
