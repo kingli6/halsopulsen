@@ -23,13 +23,21 @@ const PREVIEW_PAGES = {
     route: "/recipient",
     file: path.join(ROOT, "dashboard", "client.html"),
     marker: '<script src="/dashboard/progress-insights.js"></script>'
+  },
+  "client-planning": {
+    route: "/client-planning",
+    file: path.join(ROOT, "dashboard", "client-planning.html"),
+    marker: '<script src="/dashboard/client-planning.js" defer></script>'
   }
 };
 
 function injectMockPreview(html, page) {
-  const pageConfig = `<script>window.WORKOUTPLANNER_MOCK_PREVIEW_PAGE=${JSON.stringify(page)};</script>
-    <script src="/workoutplanner/mock-preview-harness.js"></script>
-    <script src="/dashboard/workoutplanner-mock-preview.js"></script>`;
+  const pageConfig = page === "client-planning"
+    ? `<script src="/workoutplanner/mock-preview-harness.js"></script>
+       <script src="/dashboard/client-planner-mock-preview.js"></script>`
+    : `<script>window.WORKOUTPLANNER_MOCK_PREVIEW_PAGE=${JSON.stringify(page)};</script>
+       <script src="/workoutplanner/mock-preview-harness.js"></script>
+       <script src="/dashboard/workoutplanner-mock-preview.js"></script>`;
   const marker = PREVIEW_PAGES[page].marker;
   if (!html.includes(marker)) {
     throw new Error(`Could not find the ${page} page script insertion point.`);

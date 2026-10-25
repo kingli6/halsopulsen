@@ -956,7 +956,175 @@
     };
   }
 
+  function createClientPlannerPreviewHarness() {
+    const source = makeState();
+    const token = "mock-client-planning";
+    const programs = source.programs.map((record, index) => ({
+      id: `mock-client-program-${index + 1}`,
+      program: clone(record.program),
+      status: "active",
+      revision: index + 1,
+      version: Number(record.program.version) || 1,
+      versionStatus: record.row.versionStatus,
+      currentVersionId: record.row.currentVersionId,
+      placement: {
+        plannedStartDate: record.program.startDate || isoDate(addDays(new Date(), index * 7)),
+        durationWeeks: Math.max(1, Number(record.program.weeks?.length) || 1),
+        revision: 0
+      }
+    }));
+    const requests = [];
+    let nextProgramNumber = programs.length + 1;
+
+    function summary(record) {
+      return {
+        id: record.id,
+        name: record.program.name || "Untitled program",
+        description: record.program.description || "",
+        status: record.status,
+        revision: record.revision,
+        version: record.version,
+        versionStatus: record.versionStatus,
+        placement: clone(record.placement)
+      };
+    }
+
+    function metadata(record) {
+      return {
+        id: record.id,
+        revision: record.revision,
+        version: record.version,
+        versionStatus: record.versionStatus,
+        currentVersionId: record.currentVersionId
+      };
+    }
+
+    function request(url, options = {}) {
+      const parsedUrl = new URL(url, "http://client-planner-mock.local");
+      const pathname = parsedUrl.pathname;
+      const method = String(options.method || "GET").toUpperCase();
+      const body = parseBody(options.body);
+      const base = `/api/client-planner/${token}`;
+      requests.push({ method, path: pathname });
+
+      if (pathname === base && method === "GET") {
+        return {
+          status: 200,
+          body: { ok: true, client: { displayName: "Taylor" }, programs: programs.map(summary) }
+        };
+      }
+
+      if (pathname === `${base}/programs` && method === "POST") {
+        const program = clone(body.program || {});
+        const record = {
+          id: `mock-client-program-${nextProgramNumber++}`,
+          program,
+          status: "active",
+          revision: 1,
+          version: Number(program.version) || 1,
+          versionStatus: "draft",
+          currentVersionId: null,
+          placement: {
+            plannedStartDate: body.placement?.plannedStartDate || null,
+            durationWeeks: Number(body.placement?.durationWeeks) || 1,
+            revision: 0
+          }
+        };
+        programs.push(record);
+        return {
+          status: 201,
+          body: {
+            ok: true,
+            programId: record.id,
+            program: clone(record.program),
+            meta: metadata(record),
+            placement: clone(record.placement)
+          }
+        };
+      }
+
+      const match = pathname.match(
+        new RegExp(`^${base.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}/programs/([^/]+)(?:/(placement))?$`)
+      );
+      if (!match) {
+        return { status: 404, body: { ok: false, error: "This API request is blocked in the client Planning mock." } };
+      }
+      const record = programs.find(item => item.id === decodeURIComponent(match[1]));
+      if (!record) return { status: 404, body: { ok: false, error: "Mock program not found." } };
+
+      if (!match[2] && method === "GET") {
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            program: clone(record.program),
+            meta: metadata(record),
+            placement: clone(record.placement)
+          }
+        };
+      }
+
+      if (!match[2] && method === "PUT") {
+        if (Number(body.expectedRevision) !== record.revision) {
+          return {
+            status: 409,
+            body: { ok: false, error: "This mock program changed in another tab.", code: "STALE_REVISION" }
+          };
+        }
+        record.program = clone(body.program || record.program);
+        record.revision += 1;
+        if (isComplete(record.program)) {
+          if (record.versionStatus !== "draft" || record.currentVersionId) record.version += 1;
+          record.versionStatus = "published";
+          record.currentVersionId = `mock-version-${record.id}-v${record.version}`;
+        }
+        record.program.version = record.version;
+        return {
+          status: 200,
+          body: {
+            ok: true,
+            program: clone(record.program),
+            meta: { ...metadata(record), unchanged: false },
+            placement: clone(record.placement)
+          }
+        };
+      }
+
+      if (match[2] === "placement" && method === "PATCH") {
+        if (Number(body.expectedRevision) !== Number(record.placement?.revision || 0)) {
+          return {
+            status: 409,
+            body: { ok: false, error: "This mock program period changed in another tab.", code: "STALE_PLACEMENT" }
+          };
+        }
+        record.placement = {
+          plannedStartDate: body.plannedStartDate,
+          durationWeeks: Number(body.durationWeeks),
+          revision: Number(record.placement?.revision || 0) + 1
+        };
+        return { status: 200, body: { ok: true, placement: clone(record.placement) } };
+      }
+
+      if (!match[2] && method === "DELETE") {
+        const index = programs.indexOf(record);
+        programs.splice(index, 1);
+        return { status: 200, body: { ok: true, archived: true } };
+      }
+
+      return { status: 405, body: { ok: false, error: "That action is not available in the client Planning mock." } };
+    }
+
+    return {
+      token,
+      client: { displayName: "Taylor" },
+      programs,
+      requests,
+      request
+    };
+  }
+
   return {
-    createMockPreviewHarness
+    createMockPreviewHarness,
+    createClientPlannerPreviewHarness
   };
 });

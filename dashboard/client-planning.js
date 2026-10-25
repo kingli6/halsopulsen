@@ -1,8 +1,12 @@
 (() => {
   "use strict";
 
+  const mockRoute = /^\/__dev\/workoutplanner\/client-planning\/?$/;
+  const previewHarness = mockRoute.test(window.location.pathname)
+    ? window.WorkoutPlannerClientPlanningPreview
+    : null;
   const pathMatch = window.location.pathname.match(/^\/planning\/([^/]+)\/?$/);
-  const token = pathMatch ? decodeURIComponent(pathMatch[1]) : "";
+  const token = previewHarness?.token || (pathMatch ? decodeURIComponent(pathMatch[1]) : "");
   const app = document.getElementById("planner-app");
   const alertBox = document.getElementById("planner-alert");
   const modalBackdrop = document.getElementById("planner-modal-backdrop");
@@ -80,15 +84,27 @@
     alertBox.hidden = !message;
   }
   async function request(url, options = {}) {
-    const response = await fetch(url, {
-      cache: "no-store",
-      ...options,
-      headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) }
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.ok) {
+    let result;
+    let status;
+    let ok;
+    if (previewHarness) {
+      const response = await previewHarness.request(url, options);
+      result = response.body || {};
+      status = response.status;
+      ok = status >= 200 && status < 300;
+    } else {
+      const response = await fetch(url, {
+        cache: "no-store",
+        ...options,
+        headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) }
+      });
+      result = await response.json().catch(() => ({}));
+      status = response.status;
+      ok = response.ok;
+    }
+    if (!ok || !result.ok) {
       const error = new Error(result.error || "The request could not be completed.");
-      error.status = response.status;
+      error.status = status;
       error.code = result.code;
       throw error;
     }

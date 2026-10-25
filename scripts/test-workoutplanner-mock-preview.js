@@ -2,7 +2,8 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const {
-  createMockPreviewHarness
+  createMockPreviewHarness,
+  createClientPlannerPreviewHarness
 } = require("../workoutplanner/mock-preview-harness");
 const {
   injectMockPreview,
@@ -150,6 +151,63 @@ async function testMockProgramAndSessionInteractionsStayInMemory() {
   assert.deepStrictEqual(nativeRequests, [], "mock edits and session saves must remain in memory");
 }
 
+async function testClientPlanningMockApiStaysInMemory() {
+  const preview = createClientPlannerPreviewHarness();
+  const base = `/api/client-planner/${preview.token}`;
+  const listed = await preview.request(base);
+  assert.strictEqual(listed.status, 200);
+  assert.strictEqual(listed.body.programs.length, 2);
+
+  const programId = listed.body.programs[0].id;
+  const detail = await preview.request(`${base}/programs/${programId}`);
+  assert.strictEqual(detail.status, 200);
+  const edited = await preview.request(`${base}/programs/${programId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      expectedRevision: detail.body.meta.revision,
+      program: { ...detail.body.program, description: "A mock-only description edit." }
+    })
+  });
+  assert.strictEqual(edited.status, 200);
+  assert.strictEqual(edited.body.program.description, "A mock-only description edit.");
+
+  const moved = await preview.request(`${base}/programs/${programId}/placement`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      expectedRevision: detail.body.placement.revision,
+      plannedStartDate: "2026-11-02",
+      durationWeeks: 3
+    })
+  });
+  assert.strictEqual(moved.status, 200);
+  assert.strictEqual(moved.body.placement.plannedStartDate, "2026-11-02");
+  assert.strictEqual(moved.body.placement.durationWeeks, 3);
+
+  const staleWrite = await preview.request(`${base}/programs/${programId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      expectedRevision: detail.body.meta.revision,
+      program: detail.body.program
+    })
+  });
+  assert.strictEqual(staleWrite.status, 409);
+
+  const created = await preview.request(`${base}/programs`, {
+    method: "POST",
+    body: JSON.stringify({
+      program: { name: "Mock-only new program", version: 1, weeks: [] },
+      placement: { plannedStartDate: "2026-11-09", durationWeeks: 1 }
+    })
+  });
+  assert.strictEqual(created.status, 201);
+  const deleted = await preview.request(`${base}/programs/${created.body.programId}`, {
+    method: "DELETE"
+  });
+  assert.strictEqual(deleted.status, 200);
+  assert.strictEqual(preview.programs.length, 2);
+  assert.ok(preview.requests.every(request => request.path.startsWith(base)));
+}
+
 function testPagesUseActualHtmlWithMockBootstrap() {
   const previewServer = fs.readFileSync(
     path.join(__dirname, "..", "workoutplanner", "mock-preview-server.js"),
@@ -224,12 +282,43 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /WORKOUTPLANNER_MOCK_PREVIEWS === '1'[\s\S]*?NODE_ENV !== 'production'[\s\S]*?registerWorkoutPlannerMockPreviewRoutes/);
+
+  const clientPlanningHandler = registeredRoutes.get("/__dev/workoutplanner/client-planning");
+  assert.strictEqual(typeof clientPlanningHandler, "function", "client Planning should have an isolated mock-preview route");
+  const clientPlanningResponse = {
+    headers: {},
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    type(contentType) {
+      this.contentType = contentType;
+      return this;
+    },
+    send(body) {
+      this.body = body;
+    }
+  };
+  clientPlanningHandler({}, clientPlanningResponse);
+  assert.strictEqual(clientPlanningResponse.contentType, "html");
+  assert.strictEqual(clientPlanningResponse.headers["Cache-Control"], "no-store");
+  assert.strictEqual(clientPlanningResponse.headers["X-Robots-Tag"], "noindex, nofollow");
+  assert.match(clientPlanningResponse.body, /client-planning\.css/);
+  assert.match(clientPlanningResponse.body, /client-planner-mock-preview\.js/);
+  assert.match(clientPlanningResponse.body, /dashboard\/client-planning\.js/);
+  assert.doesNotMatch(clientPlanningResponse.body, /dashboard\/workoutplanner-mock-preview\.js/);
+
+  const mockBootstrap = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planner-mock-preview.js"),
+    "utf8"
+  );
+  assert.doesNotMatch(mockBootstrap, /\bfetch\s*\(/, "the client Planning mock must not make network requests");
 }
 
 async function run() {
   await testAllApiRequestsAreIntercepted();
   testCoachAndRecipientPagesReceivePreviewData();
   await testMockProgramAndSessionInteractionsStayInMemory();
+  await testClientPlanningMockApiStaysInMemory();
   testPagesUseActualHtmlWithMockBootstrap();
   testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
