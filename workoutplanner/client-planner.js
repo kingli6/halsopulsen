@@ -156,21 +156,33 @@ async function setClientProgramPlacement(db, context, tokenHash, programId, plac
     if (link.rowCount !== 1) throw plannerError("This private planning link is no longer active.", 403);
 
     const updated = await client.query(
-      `update public.client_program_placements placement
-          set planned_start_date = $1,
-              duration_weeks = $2,
-              revision = revision + 1,
-              updated_at = now()
+      `insert into public.client_program_placements as current_placement
+        (program_id, client_id, planned_start_date, duration_weeks, revision)
+       select p.id, p.client_id, $1, $2, 1
          from public.programs p
-        where placement.program_id = $3
-          and placement.client_id = $4
-          and placement.program_id = p.id
+        where p.id = $3
           and p.client_id = $4
           and p.coach_profile_id = $5
           and p.kind = 'client'
           and p.status <> 'archived'
-          and placement.revision = $6
-        returning placement.revision`,
+          and (
+            $6 = 0
+            or exists (
+              select 1
+                from public.client_program_placements expected_placement
+               where expected_placement.program_id = p.id
+                 and expected_placement.client_id = p.client_id
+                 and expected_placement.revision = $6
+            )
+          )
+       on conflict (program_id) do update
+         set planned_start_date = excluded.planned_start_date,
+             duration_weeks = excluded.duration_weeks,
+             revision = current_placement.revision + 1,
+             updated_at = now()
+       where current_placement.client_id = excluded.client_id
+         and current_placement.revision = $6
+       returning current_placement.revision`,
       [
         placement.plannedStartDate,
         Number(placement.durationWeeks),
