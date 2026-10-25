@@ -154,12 +154,12 @@ function normalizeProgram(program) {
   };
 }
 
-function isCompleteProgramForCurrent(inputProgram) {
+function isCompleteProgramContent(inputProgram) {
   if (!inputProgram || typeof inputProgram !== "object" || Array.isArray(inputProgram)) return false;
   const weeks = Array.isArray(inputProgram.weeks) && inputProgram.weeks.length
     ? inputProgram.weeks
     : [{ days: inputProgram.days }];
-  if (!dateOrNull(inputProgram.startDate) || weeks.length === 0) return false;
+  if (weeks.length === 0) return false;
 
   let hasActiveWorkout = false;
   for (const week of weeks) {
@@ -175,6 +175,10 @@ function isCompleteProgramForCurrent(inputProgram) {
     }
   }
   return hasActiveWorkout;
+}
+
+function isCompleteProgramForCurrent(inputProgram) {
+  return Boolean(dateOrNull(inputProgram?.startDate)) && isCompleteProgramContent(inputProgram);
 }
 
 function programContentKey(program) {
@@ -688,11 +692,18 @@ async function saveProgram(
     : text(personName).slice(0, 100);
   const makeCurrentWhenValid = options.makeCurrentWhenValid === true;
   const clientLinkSave = options.clientLinkSave === true;
+  const plannerLinkSave = options.plannerLinkSave === true;
   const directLinkSave = options.directLinkSave === true;
   const clientAccessTokenHash = String(options.clientAccessTokenHash || "");
+  const plannerClientId = String(options.plannerClientId || "");
   const expectedRevision = Number(options.expectedRevision);
-  if ((clientLinkSave || directLinkSave) && !/^[a-f0-9]{64}$/i.test(clientAccessTokenHash)) {
+  if ((clientLinkSave || plannerLinkSave || directLinkSave) && !/^[a-f0-9]{64}$/i.test(clientAccessTokenHash)) {
     const error = new Error("An active private program link is required to edit this program.");
+    error.statusCode = 403;
+    throw error;
+  }
+  if (plannerLinkSave && !isUuid(plannerClientId)) {
+    const error = new Error("An active private client planning link is required.");
     error.statusCode = 403;
     throw error;
   }
@@ -705,7 +716,9 @@ async function saveProgram(
     error.statusCode = 400;
     throw error;
   }
-  const candidateIsComplete = makeCurrentWhenValid && isCompleteProgramForCurrent(inputProgram);
+  const candidateIsComplete = makeCurrentWhenValid && (plannerLinkSave
+    ? isCompleteProgramContent(inputProgram)
+    : isCompleteProgramForCurrent(inputProgram));
   if ((clientLinkSave || directLinkSave) && !candidateIsComplete) {
     const error = new Error("A shared program edit must keep every program week complete.");
     error.statusCode = 400;
@@ -714,6 +727,25 @@ async function saveProgram(
   const client = await db.connect();
   try {
     await client.query("begin");
+    if (plannerLinkSave) {
+      const activeLink = await client.query(
+        `select l.id
+           from public.client_planner_access_links l
+           join public.clients c on c.id = l.client_id
+          where l.token_hash = $1
+            and l.client_id = $2
+            and l.coach_profile_id = $3
+            and l.revoked_at is null
+            and c.active = true
+          for update of l`,
+        [clientAccessTokenHash, plannerClientId, coachProfileId]
+      );
+      if (activeLink.rowCount !== 1) {
+        const error = new Error("This private client planning link is no longer active.");
+        error.statusCode = 403;
+        throw error;
+      }
+    }
     let resolvedProgramId = programId;
     let root = null;
 
@@ -723,8 +755,9 @@ async function saveProgram(
            from public.programs
           where id = $1
             and coach_profile_id = $2
+            and ($3::uuid is null or (client_id = $3 and kind = 'client'))
           for update`,
-        [resolvedProgramId, coachProfileId]
+        [resolvedProgramId, coachProfileId, plannerLinkSave ? plannerClientId : null]
       );
       if (owned.rowCount !== 1) {
         const error = new Error("Program not found.");
@@ -736,12 +769,16 @@ async function saveProgram(
       const isCurrentClientLinkSave = clientLinkSave
         && root.kind === "client"
         && root.client_id != null;
+      const isCurrentPlannerLinkSave = plannerLinkSave
+        && root.kind === "client"
+        && root.client_id === plannerClientId;
       const isCurrentDirectLinkSave = directLinkSave
         && root.kind === "library"
         && root.client_id == null;
       if (makeCurrentWhenValid
         && !isCurrentLibrarySave
         && !isCurrentClientLinkSave
+        && !isCurrentPlannerLinkSave
         && !isCurrentDirectLinkSave) {
         const error = new Error("Immediate current saves are only supported for authorized shared programs.");
         error.statusCode = 400;
@@ -749,6 +786,11 @@ async function saveProgram(
       }
       if (clientLinkSave && !isCurrentClientLinkSave) {
         const error = new Error("This private link cannot edit the selected program.");
+        error.statusCode = 403;
+        throw error;
+      }
+      if (plannerLinkSave && !isCurrentPlannerLinkSave) {
+        const error = new Error("This private client planning link cannot edit the selected program.");
         error.statusCode = 403;
         throw error;
       }
@@ -825,7 +867,7 @@ async function saveProgram(
         `update public.programs
             set name = $1,
                 description = $2,
-                start_date = $3,
+                start_date = case when $7 then start_date else $3 end,
                 person_name = coalesce($4, person_name),
                 updated_at = now()
           where id = $5
@@ -836,23 +878,32 @@ async function saveProgram(
           program.startDate,
           normalizedPersonName,
           resolvedProgramId,
-          coachProfileId
+          coachProfileId,
+          plannerLinkSave
         ]
       );
     } else {
-      const inserted = await client.query(
-        `insert into public.programs
-          (coach_profile_id, client_id, kind, person_name, name, description, status, start_date)
-         values ($1, null, 'library', $2, $3, $4, 'draft', $5)
-         returning id`,
-        [
-          coachProfileId,
-          normalizedPersonName || "",
-          program.name,
-          program.description,
-          program.startDate
-        ]
-      );
+      const inserted = plannerLinkSave
+        ? await client.query(
+          `insert into public.programs
+            (coach_profile_id, client_id, kind, person_name, name, description, status, start_date)
+           values ($1, $2, 'client', '', $3, $4, 'draft', null)
+           returning id`,
+          [coachProfileId, plannerClientId, program.name, program.description]
+        )
+        : await client.query(
+          `insert into public.programs
+            (coach_profile_id, client_id, kind, person_name, name, description, status, start_date)
+           values ($1, null, 'library', $2, $3, $4, 'draft', $5)
+           returning id`,
+          [
+            coachProfileId,
+            normalizedPersonName || "",
+            program.name,
+            program.description,
+            program.startDate
+          ]
+        );
       resolvedProgramId = inserted.rows[0].id;
     }
 
@@ -1010,8 +1061,16 @@ async function saveProgram(
         error.statusCode = 400;
         throw error;
       }
+      if (plannerLinkSave && !(completeWeeks && hasActiveWorkout)) {
+        const error = new Error("A current program needs complete week schedules and at least one workout.");
+        error.statusCode = 400;
+        throw error;
+      }
 
-      if (program.startDate && completeWeeks && hasActiveWorkout) {
+      const shouldPromote = plannerLinkSave
+        ? completeWeeks && hasActiveWorkout
+        : program.startDate && completeWeeks && hasActiveWorkout;
+      if (shouldPromote) {
         await client.query(
           `update public.program_versions
               set status = 'archived'
@@ -1032,11 +1091,11 @@ async function saveProgram(
         await client.query(
           `update public.programs
               set current_version_id = $1,
-                  published_start_date = start_date,
+                  published_start_date = case when $4 then published_start_date else start_date end,
                   status = case when kind = 'client' then 'active' else status end
             where id = $2
               and coach_profile_id = $3`,
-          [versionId, resolvedProgramId, coachProfileId]
+          [versionId, resolvedProgramId, coachProfileId, plannerLinkSave]
         );
         if (clientLinkSave) {
           await client.query(
@@ -1081,6 +1140,28 @@ async function saveProgram(
         }
         becameCurrent = true;
       }
+    }
+
+    if (plannerLinkSave && options.plannerPlacement) {
+      const placement = options.plannerPlacement;
+      const startDate = dateOrNull(placement.plannedStartDate);
+      const durationWeeks = integerOrNull(placement.durationWeeks);
+      if (!startDate || durationWeeks == null || durationWeeks < 1 || durationWeeks > MAX_WEEKS) {
+        const error = new Error("Choose a valid planned start date and duration between 1 and 52 weeks.");
+        error.statusCode = 400;
+        throw error;
+      }
+      await client.query(
+        `insert into public.client_program_placements
+          (program_id, client_id, planned_start_date, duration_weeks)
+         values ($1, $2, $3, $4)
+         on conflict (program_id) do update
+           set planned_start_date = excluded.planned_start_date,
+               duration_weeks = excluded.duration_weeks,
+               revision = public.client_program_placements.revision + 1,
+               updated_at = now()`,
+        [resolvedProgramId, plannerClientId, startDate, durationWeeks]
+      );
     }
 
     await client.query(
@@ -1521,6 +1602,7 @@ module.exports = {
   loadProgram,
   loadCurrentProgram,
   isCompleteProgramForCurrent,
+  isCompleteProgramContent,
   normalizeProgram,
   publishProgram,
   saveProgram

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="Your private training plan calendar." />
+  <title>Your Planning — HälsoPulsen</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/dashboard/client-planning.css" />
+</head>
+<body>
+  <header class="planner-topbar">
+    <a class="planner-brand" href="https://halsopulsen.se/" aria-label="HälsoPulsen main site">
+      <span class="planner-brand-mark">H</span>
+      <span>Hälso<span>Pulsen</span></span>
+    </a>
+    <nav aria-label="Client workspace"><span aria-current="page">Planning</span></nav>
+    <a class="planner-main-site" href="https://halsopulsen.se/">Main site</a>
+  </header>
+
+  <main class="planner-shell">
+    <div id="planner-alert" class="planner-alert" role="alert" hidden></div>
+    <div id="planner-app" aria-live="polite">
+      <section class="planner-loading">
+        <span class="loading-dot" aria-hidden="true"></span>
+        <p>Loading your planning calendar…</p>
+      </section>
+    </div>
+  </main>
+
+  <div class="planner-modal-backdrop" id="planner-modal-backdrop" hidden>
+    <section class="planner-modal" id="planner-modal" role="dialog" aria-modal="true" aria-labelledby="planner-modal-title"></section>
+  </div>
+  <div id="planner-toast" class="planner-toast" role="status" aria-live="polite"></div>
+  <script src="/dashboard/client-planning.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+:root {
+  color-scheme: light;
+  --plan-ink: #20352a;
+  --plan-muted: #6e7c73;
+  --plan-canvas: #f3f6f2;
+  --plan-paper: #fff;
+  --plan-line: #dce5dd;
+  --plan-green: #2c6848;
+  --plan-green-dark: #205238;
+  --plan-soft: #eaf3eb;
+  --plan-shadow: 0 16px 42px rgba(31, 61, 42, .08);
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--plan-ink);
+  background: var(--plan-canvas);
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--plan-canvas); }
+button, input, textarea, select { font: inherit; }
+button { color: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible {
+  outline: 3px solid rgba(45, 112, 74, .28); outline-offset: 2px;
+}
+[hidden] { display: none !important; }
+.planner-topbar {
+  height: 68px; display: flex; align-items: center; gap: 32px; padding: 0 clamp(16px, 4vw, 52px);
+  background: rgba(255,255,255,.95); border-bottom: 1px solid var(--plan-line);
+}
+.planner-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--plan-ink); font: 700 15px "Space Grotesk",sans-serif; text-decoration: none; }
+.planner-brand > span:last-child > span { color: var(--plan-green); }
+.planner-brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px 10px 10px 3px; background: var(--plan-green); color: white; }
+.planner-topbar nav { display: flex; align-self: stretch; align-items: center; }
+.planner-topbar nav span { height: 100%; display: grid; place-items: center; border-bottom: 2px solid var(--plan-green); padding: 0 4px; color: var(--plan-green-dark); font-size: 13px; font-weight: 700; }
+.planner-main-site { margin-left: auto; color: var(--plan-muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+.planner-shell { width: min(1440px, 100%); margin: 0 auto; padding: 34px clamp(16px, 3.5vw, 48px) 64px; }
+.planner-alert { margin: 0 auto 16px; border: 1px solid #e8c3b8; border-radius: 12px; background: #fff5f2; padding: 13px 16px; color: #8a3b2e; font-size: 13px; }
+.planner-loading { display: grid; place-items: center; min-height: 46vh; color: var(--plan-muted); font-size: 14px; }
+.loading-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--plan-green); box-shadow: 18px 0 #a9c6b1, -18px 0 #d2dfd4; animation: loading-pulse 1s infinite ease-in-out alternate; }
+@keyframes loading-pulse { to { opacity: .4; transform: scale(.8); } }
+.planner-page-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin: 0 0 24px; }
+.planner-eyebrow { margin: 0 0 7px; color: var(--plan-green); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.planner-page-heading h1, .planner-title h1 { margin: 0; font: 600 clamp(26px, 4vw, 39px)/1.12 "Space Grotesk",sans-serif; letter-spacing: -.045em; }
+.planner-lede { max-width: 650px; margin: 10px 0 0; color: var(--plan-muted); font-size: 14px; line-height: 1.6; }
+.planner-button {
+  display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 40px; border: 1px solid var(--plan-line);
+  border-radius: 10px; padding: 8px 13px; background: #fff; color: var(--plan-ink); font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.planner-button:hover { border-color: #afc8b4; background: #f8fbf8; }
+.planner-button:active { transform: translateY(1px); }
+.planner-button-primary { border-color: var(--plan-green); background: var(--plan-green); color: #fff; }
+.planner-button-primary:hover { border-color: var(--plan-green-dark); background: var(--plan-green-dark); color: #fff; }
+.planner-button-quiet { min-height: 34px; padding: 6px 10px; font-size: 11px; }
+.planner-button-danger { border-color: #e4cbc5; color: #9a493c; }
+.planner-button-icon { width: 34px; min-height: 34px; padding: 0; font-size: 20px; line-height: 1; }
+.planner-button:disabled { opacity: .45; cursor: not-allowed; }
+.planner-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 12px 14px; border: 1px solid var(--plan-line); border-radius: 15px; background: #fff; box-shadow: 0 5px 20px rgba(30,55,39,.04); }
+.planner-period-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.planner-period-title { min-width: 210px; margin: 0 3px; font: 600 15px "Space Grotesk",sans-serif; letter-spacing: -.02em; }
+.planner-stepper { display: flex; gap: 5px; }
+.planner-ranges { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--plan-line); border-radius: 10px; background: #f6f8f6; }
+.planner-range { border: 0; border-radius: 7px; padding: 7px 9px; background: transparent; color: var(--plan-muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+.planner-range[aria-pressed="true"] { background: #fff; color: var(--plan-green-dark); box-shadow: 0 1px 4px #1d36251a; }
+.planner-legend { display: flex; flex-wrap: wrap; gap: 15px; margin: 14px 2px 13px; color: var(--plan-muted); font-size: 10px; }
+.legend-mark { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 3px; background: #7ba987; vertical-align: 0; }
+.planner-month-stack { display: grid; gap: 14px; }
+.planner-month { min-width: 0; overflow: hidden; border: 1px solid var(--plan-line); border-radius: 16px; background: var(--plan-paper); box-shadow: 0 7px 24px rgba(30,55,39,.04); }
+.planner-month-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 17px 20px 11px; }
+.planner-month-head h2 { margin: 0; font: 600 20px "Space Grotesk",sans-serif; letter-spacing: -.035em; }
+.planner-month-head h2 span { margin-left: 7px; color: var(--plan-muted); font-size: 14px; font-weight: 500; }
+.planner-month-meta { color: var(--plan-muted); font-size: 10px; }
+.planner-timeline { padding: 0 15px 15px; }
+.planner-timeline-headers { display: grid; grid-template-columns: repeat(var(--week-count), minmax(0,1fr)); gap: 4px; }
+.planner-week-head { min-width: 0; padding: 7px 8px 8px; border-bottom: 1px solid #e8eee9; }
+.planner-week-number { display: block; color: var(--plan-ink); font-size: 9px; font-weight: 800; }
+.planner-week-dates { display: block; margin-top: 3px; color: var(--plan-muted); font-size: 9px; white-space: nowrap; }
+.planner-track { display: grid; grid-template-columns: repeat(var(--week-count), minmax(0,1fr)); grid-auto-rows: 39px; gap: 4px; padding-top: 7px; }
+.planner-bar { position: relative; grid-column: var(--start-col) / span var(--week-span); grid-row: var(--lane); min-width: 0; border: 1px solid var(--bar-border); border-radius: 8px; padding: 0; background: var(--bar-bg); color: var(--bar-ink); text-align: left; overflow: hidden; cursor: pointer; }
+.planner-bar:hover { filter: saturate(1.12); box-shadow: 0 3px 10px #20352a18; }
+.planner-bar-inner { position: absolute; inset: 0 auto 0 var(--bar-left); width: var(--bar-width); display: flex; align-items: center; gap: 7px; min-width: 0; padding: 0 9px; overflow: hidden; }
+.planner-bar-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.planner-bar-name { overflow: hidden; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.planner-bar-period { margin-left: auto; flex: 0 0 auto; font-size: 9px; font-weight: 600; white-space: nowrap; opacity: .75; }
+.planner-bar.is-overlap { border-style: dashed; }
+.planner-empty-track { display: grid; place-items: center; min-height: 52px; color: #8a968e; font-size: 10px; }
+.planner-mobile-list { display: none; }
+.planner-unscheduled { margin-top: 17px; }
+.planner-unscheduled h2 { margin: 0 0 9px; font: 600 15px "Space Grotesk",sans-serif; }
+.planner-unscheduled-list { display: grid; gap: 8px; }
+.planner-unscheduled-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px dashed #bacbbd; border-radius: 12px; background: #fbfdfb; text-align: left; cursor: pointer; }
+.planner-unscheduled-item strong { font-size: 12px; }
+.planner-unscheduled-item small { display: block; margin-top: 3px; color: var(--plan-muted); font-size: 10px; }
+.planner-calendar-footnote { margin: 14px 2px 0; color: var(--plan-muted); font-size: 10px; }
+.planner-editor-crumb { display: flex; align-items: center; gap: 8px; margin: 0 0 13px; color: var(--plan-muted); font-size: 11px; }
+.planner-editor-crumb button { border: 0; padding: 0; background: none; color: var(--plan-green); font-weight: 700; cursor: pointer; }
+.planner-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 23px; border: 1px solid var(--plan-line); border-radius: 16px; background: #fff; box-shadow: var(--plan-shadow); }
+.planner-title { min-width: 0; }
+.planner-title h1 { overflow-wrap: anywhere; font-size: clamp(24px, 3.5vw, 32px); }
+.planner-summary { margin: 8px 0 0; color: var(--plan-muted); font-size: 12px; line-height: 1.6; }
+.planner-meta-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+.planner-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--plan-line); border-radius: 999px; background: #f8faf8; color: #607167; font-size: 9px; font-weight: 700; }
+.planner-editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.planner-section { margin-top: 14px; overflow: hidden; border: 1px solid var(--plan-line); border-radius: 15px; background: #fff; }
+.planner-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 15px 18px; border-bottom: 1px solid #e9eee9; }
+.planner-section-head h2 { margin: 0; font: 600 16px "Space Grotesk",sans-serif; }
+.planner-section-head p { margin: 4px 0 0; color: var(--plan-muted); font-size: 10px; }
+.planner-week-card { margin: 12px; border: 1px solid #e2eae3; border-radius: 12px; background: #fbfdfb; overflow: hidden; }
+.planner-week-head { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 11px 13px; background: #f5f9f5; border-bottom: 1px solid #e5ece5; }
+.planner-week-label { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.planner-week-index { display: grid; flex: 0 0 auto; place-items: center; width: 29px; height: 29px; border-radius: 9px; background: #e4f0e6; color: var(--plan-green); font-size: 11px; font-weight: 800; }
+.planner-week-name { display: block; font-size: 12px; font-weight: 800; }
+.planner-week-phase { display: block; margin-top: 2px; color: var(--plan-muted); font-size: 10px; }
+.planner-week-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.planner-workout-list { padding: 5px 12px 10px; }
+.planner-workout-row { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid #edf1ed; }
+.planner-workout-row:last-child { border-bottom: 0; }
+.planner-day-pill { display: grid; place-items: center; width: 34px; height: 29px; border-radius: 8px; background: #eef3ee; color: #64766a; font-size: 9px; font-weight: 800; }
+.planner-workout-row.is-active .planner-day-pill { background: #e4f1e6; color: var(--plan-green); }
+.planner-workout-summary { min-width: 0; }
+.planner-workout-summary strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.planner-workout-summary small { display: block; margin-top: 3px; color: var(--plan-muted); font-size: 9px; }
+.planner-row-actions { display: flex; gap: 4px; align-items: center; }
+.planner-inline-fields { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(0, 1.3fr); gap: 10px; padding: 13px 15px; background: #fff; }
+.planner-field { display: grid; gap: 5px; color: #637268; font-size: 10px; font-weight: 700; }
+.planner-field input, .planner-field select, .planner-field textarea { width: 100%; min-width: 0; border: 1px solid #dce5dd; border-radius: 8px; padding: 9px 10px; background: #fff; color: var(--plan-ink); font-size: 12px; font-weight: 500; }
+.planner-field textarea { min-height: 68px; resize: vertical; }
+.planner-field input[type="number"] { font-variant-numeric: tabular-nums; }
+.planner-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+.planner-form-grid .wide { grid-column: 1 / -1; }
+.planner-form-actions { display: flex; align-items: center; gap: 10px; padding-top: 12px; }
+.planner-status { min-height: 17px; margin: 0; color: var(--plan-muted); font-size: 10px; }
+.planner-status.error { color: #a04235; font-weight: 700; }
+.planner-status.success { color: var(--plan-green); font-weight: 700; }
+.planner-cycle-note { margin: 10px 13px 0; color: var(--plan-muted); font-size: 10px; line-height: 1.5; }
+.planner-workout-editor { padding: 17px; }
+.planner-exercise-list { display: grid; gap: 10px; margin-top: 16px; }
+.planner-exercise-card { border: 1px solid #dfe8e0; border-radius: 12px; overflow: hidden; background: #fff; }
+.planner-exercise-head { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 10px 12px; background: #f8faf8; }
+.planner-exercise-number { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; background: #e5f0e6; color: var(--plan-green); font-size: 10px; font-weight: 800; }
+.planner-exercise-head strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.planner-exercise-head small { margin-left: 7px; color: var(--plan-muted); font-size: 9px; }
+.planner-exercise-form { padding: 13px; border-top: 1px solid #ebf0eb; }
+.planner-advanced { margin-top: 12px; border-top: 1px solid #edf1ed; padding-top: 10px; }
+.planner-advanced summary { color: var(--plan-green); cursor: pointer; font-size: 10px; font-weight: 800; }
+.planner-advanced .planner-form-grid { margin-top: 11px; }
+.planner-exercise-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 12px; }
+.planner-dialog-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 16px; background: #12231bb8; }
+.planner-modal { width: min(520px,100%); max-height: min(90vh, 850px); overflow: auto; border: 1px solid var(--plan-line); border-radius: 17px; background: #fff; box-shadow: 0 24px 80px #101f1880; }
+.planner-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 13px; border-bottom: 1px solid #e9eee9; }
+.planner-modal-head h2 { margin: 0; font: 600 18px "Space Grotesk",sans-serif; }
+.planner-modal-head p { margin: 5px 0 0; color: var(--plan-muted); font-size: 10px; line-height: 1.5; }
+.planner-modal-body { display: grid; gap: 12px; padding: 16px 20px; }
+.planner-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 18px; }
+.planner-modal-error { min-height: 16px; color: #a04235; font-size: 10px; }
+.planner-toast { position: fixed; z-index: 120; bottom: 20px; left: 50%; transform: translate(-50%, 20px); padding: 11px 15px; border-radius: 10px; background: #20382b; color: #fff; font-size: 11px; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
+.planner-toast.is-visible { opacity: 1; transform: translate(-50%,0); }
+@media (max-width: 760px) {
+  .planner-shell { padding: 25px 15px 46px; }
+  .planner-page-heading { align-items: stretch; flex-direction: column; gap: 14px; }
+  .planner-page-heading > .planner-button { align-self: flex-start; }
+  .planner-toolbar { align-items: stretch; flex-direction: column; }
+  .planner-period-nav { justify-content: space-between; }
+  .planner-period-title { min-width: 0; flex: 1; font-size: 13px; }
+  .planner-ranges { align-self: flex-start; }
+  .planner-month { border-radius: 13px; }
+  .planner-timeline { display: none; }
+  .planner-mobile-list { display: grid; gap: 7px; padding: 0 12px 12px; }
+  .planner-mobile-program { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; align-items: center; gap: 10px; min-width: 0; border: 1px solid var(--bar-border); border-radius: 10px; padding: 10px; background: var(--bar-bg); color: var(--bar-ink); text-align: left; cursor: pointer; }
+  .planner-mobile-program .mark { width: 7px; height: 25px; border-radius: 99px; background: currentColor; opacity: .55; }
+  .planner-mobile-program strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+  .planner-mobile-program small { display: block; margin-top: 4px; font-size: 9px; opacity: .78; }
+  .planner-mobile-empty { padding: 9px; color: var(--plan-muted); font-size: 10px; }
+  .planner-editor-head { flex-direction: column; padding: 17px; }
+  .planner-editor-actions { justify-content: flex-start; }
+  .planner-week-head { align-items: flex-start; flex-direction: column; }
+  .planner-week-actions { width: 100%; }
+  .planner-workout-row { grid-template-columns: 36px minmax(0,1fr); }
+  .planner-row-actions { grid-column: 2; }
+  .planner-inline-fields { grid-template-columns: 1fr; }
+}
+@media (max-width: 460px) {
+  .planner-topbar { height: 58px; gap: 17px; padding-inline: 13px; }
+  .planner-main-site { font-size: 10px; }
+  .planner-ranges { width: 100%; justify-content: space-between; }
+  .planner-range { flex: 1; padding-inline: 4px; }
+  .planner-form-grid { grid-template-columns: 1fr; }
+  .planner-form-grid .wide { grid-column: auto; }
+  .planner-month-head { padding-inline: 14px; }
+  .planner-month-head h2 { font-size: 17px; }
+  .planner-month-meta { font-size: 9px; }
+  .planner-week-card { margin: 9px; }
+  .planner-workout-list { padding-inline: 9px; }
+  .planner-exercise-head { grid-template-columns: 26px minmax(0,1fr); }
+  .planner-exercise-head .planner-row-actions { grid-column: 2; }
+}

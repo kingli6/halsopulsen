@@ -32,6 +32,16 @@ const {
   regenerateProgramAccessLink,
   revokeProgramAccessLink
 } = require('./workoutplanner/client-access');
+const {
+  archiveClientPlannerProgram,
+  createClientPlannerLink,
+  getClientPlannerContext,
+  getClientPlannerLink,
+  getClientPlannerProgram,
+  listClientPlannerPrograms,
+  revokeClientPlannerLink,
+  setClientProgramPlacement
+} = require('./workoutplanner/client-planner');
 const { saveClientSession } = require('./workoutplanner/session-logging');
 const {
   cloneLibraryProgramVersion,
@@ -568,6 +578,71 @@ app.delete('/api/workoutplanner/clients/:clientId/programs/:programId/link', req
   }
 });
 
+app.get('/api/workoutplanner/clients/:clientId/planner-link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const link = await getClientPlannerLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId
+    );
+    if (!link) return res.status(404).json({ ok: false, error: 'No active client Planning link was found.' });
+    if (!link.token) {
+      return res.status(409).json({
+        ok: false,
+        error: 'The active link cannot be recovered. Replace it to create a copyable link.'
+      });
+    }
+    const plannerPath = `/planning/${link.token}`;
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({
+      ok: true,
+      path: plannerPath,
+      url: `${req.protocol}://${req.get('host')}${plannerPath}`
+    });
+  } catch (error) {
+    console.error('Could not retrieve WorkoutPlanner client Planning link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The client Planning link could not be retrieved.' });
+  }
+});
+
+app.post('/api/workoutplanner/clients/:clientId/planner-link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const generated = await createClientPlannerLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId
+    );
+    if (!generated) return res.status(404).json({ ok: false, error: 'Client not found.' });
+    const plannerPath = `/planning/${generated.token}`;
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.status(201).json({
+      ok: true,
+      client: { id: generated.client.id, displayName: generated.client.display_name },
+      path: plannerPath,
+      url: `${req.protocol}://${req.get('host')}${plannerPath}`
+    });
+  } catch (error) {
+    console.error('Could not create WorkoutPlanner client Planning link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The client Planning link could not be created.' });
+  }
+});
+
+app.delete('/api/workoutplanner/clients/:clientId/planner-link', requireWorkoutPlannerOwner, async (req, res) => {
+  try {
+    const result = await revokeClientPlannerLink(
+      getWorkoutPlannerPool(),
+      req.workoutPlannerProfile.id,
+      req.params.clientId
+    );
+    return res.json({ ok: true, revoked: result.revoked });
+  } catch (error) {
+    console.error('Could not revoke WorkoutPlanner client Planning link:', error.message);
+    return res.status(503).json({ ok: false, error: 'The client Planning link could not be revoked.' });
+  }
+});
+
 app.get('/api/workoutplanner/programs/:programId/link', requireWorkoutPlannerOwner, async (req, res) => {
   try {
     const link = await getProgramAccessLink(
@@ -702,6 +777,184 @@ app.get('/api/client/:token/program', async (req, res) => {
   } catch (error) {
     console.error('Could not load the current WorkoutPlanner client program:', error.message);
     return res.status(503).json({ ok: false, error: 'The current training program is unavailable.' });
+  }
+});
+
+app.get('/api/client-planner/:token', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientPlannerContext(pool, tokenHash);
+    if (!context) return res.status(404).json({ ok: false, error: 'Private client Planning link not found.' });
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({
+      ok: true,
+      client: { displayName: context.displayName },
+      programs: await listClientPlannerPrograms(pool, context)
+    });
+  } catch (error) {
+    console.error('Could not load WorkoutPlanner client Planning data:', error.message);
+    return res.status(503).json({ ok: false, error: 'The client Planning workspace is unavailable.' });
+  }
+});
+
+app.post('/api/client-planner/:token/programs', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientPlannerContext(pool, tokenHash);
+    if (!context) return res.status(404).json({ ok: false, error: 'Private client Planning link not found.' });
+    const result = await saveProgram(
+      pool,
+      context.coachProfileId,
+      req.body?.program,
+      null,
+      null,
+      {
+        makeCurrentWhenValid: true,
+        plannerLinkSave: true,
+        plannerClientId: context.clientId,
+        clientAccessTokenHash: tokenHash,
+        plannerPlacement: req.body?.placement
+      }
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.status(201).json({
+      ok: true,
+      programId: result.id,
+      program: result.program,
+      meta: result,
+      placement: req.body.placement
+    });
+  } catch (error) {
+    console.error('Could not create WorkoutPlanner client program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program could not be created.',
+      code: error.code || undefined
+    });
+  }
+});
+
+app.get('/api/client-planner/:token/programs/:programId', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const context = await getClientPlannerContext(pool, hashClientAccessToken(req.params.token));
+    if (!context) return res.status(404).json({ ok: false, error: 'Private client Planning link not found.' });
+    const result = await getClientPlannerProgram(pool, context, req.params.programId);
+    if (!result) return res.status(404).json({ ok: false, error: 'Program not found.' });
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error('Could not load WorkoutPlanner client program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program could not be loaded.'
+    });
+  }
+});
+
+app.put('/api/client-planner/:token/programs/:programId', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientPlannerContext(pool, tokenHash);
+    if (!context) return res.status(404).json({ ok: false, error: 'Private client Planning link not found.' });
+    const result = await saveProgram(
+      pool,
+      context.coachProfileId,
+      req.body?.program,
+      req.params.programId,
+      null,
+      {
+        makeCurrentWhenValid: true,
+        expectedRevision: req.body?.expectedRevision,
+        plannerLinkSave: true,
+        plannerClientId: context.clientId,
+        clientAccessTokenHash: tokenHash
+      }
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({ ok: true, program: result.program, meta: result });
+  } catch (error) {
+    console.error('Could not save WorkoutPlanner client program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program could not be saved.',
+      code: error.code || undefined
+    });
+  }
+});
+
+app.patch('/api/client-planner/:token/programs/:programId/placement', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientPlannerContext(pool, tokenHash);
+    if (!context) return res.status(404).json({ ok: false, error: 'Private client Planning link not found.' });
+    const result = await setClientProgramPlacement(
+      pool,
+      context,
+      tokenHash,
+      req.params.programId,
+      req.body
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({ ok: true, placement: result });
+  } catch (error) {
+    console.error('Could not move WorkoutPlanner client program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program period could not be updated.',
+      code: error.code || undefined
+    });
+  }
+});
+
+app.delete('/api/client-planner/:token/programs/:programId', async (req, res) => {
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).json({ ok: false, error: 'WorkoutPlanner database access is not configured.' });
+  }
+  try {
+    const pool = getWorkoutPlannerPool();
+    const tokenHash = hashClientAccessToken(req.params.token);
+    const context = await getClientPlannerContext(pool, tokenHash);
+    if (!context) return res.status(404).json({ ok: false, error: 'Private client Planning link not found.' });
+    const result = await archiveClientPlannerProgram(
+      pool,
+      context,
+      tokenHash,
+      req.params.programId
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error('Could not remove WorkoutPlanner client program:', error.message);
+    return res.status(error.statusCode || 503).json({
+      ok: false,
+      error: error.statusCode ? error.message : 'The client program could not be removed.'
+    });
   }
 });
 
@@ -853,6 +1106,24 @@ function serveBookingAdminPage(req, res) {
 }
 app.get(['/admin/booking', '/admin/booking/'], serveBookingAdminPage);
 app.get('/dashboard/admin/booking.html', serveBookingAdminPage);
+app.get(['/planning/:token', '/planning/:token/'], async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (!isWorkoutPlannerConfigured()) {
+    return res.status(503).send('WorkoutPlanner database access is not configured.');
+  }
+  try {
+    const context = await getClientPlannerContext(
+      getWorkoutPlannerPool(),
+      hashClientAccessToken(req.params.token)
+    );
+    if (!context) return res.sendStatus(404);
+    return res.sendFile(path.join(__dirname, 'dashboard', 'client-planning.html'));
+  } catch (error) {
+    console.error('Could not validate private client Planning link:', error.message);
+    return res.status(503).send('The client Planning workspace is unavailable.');
+  }
+});
 app.get(['/p/:token', '/p/:token/'], async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Referrer-Policy', 'no-referrer');

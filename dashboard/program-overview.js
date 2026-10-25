@@ -236,6 +236,19 @@ function renderProgramDetail() {
           }
         </div>
       </section>
+      ${legacy && program.clientId ? `
+        <section class="program-link-card card client-planner-link-card" aria-labelledby="clientPlannerLinkHeading">
+          <div class="section-kicker">CLIENT PLANNING</div>
+          <h2 id="clientPlannerLinkHeading">Client-owned planning workspace</h2>
+          <p class="program-link-status" id="clientPlannerLinkStatus" role="status" aria-live="polite">
+            This private link opens the client’s calendar and all programs for this coach/client relationship.
+          </p>
+          <div class="program-link-actions">
+            <button class="button button-primary button-small" type="button" data-planner-link-action="copy">Copy Planning link</button>
+            <button class="button button-secondary button-small" type="button" data-planner-link-action="replace">Create / replace link</button>
+            <button class="text-button danger-button" type="button" data-planner-link-action="revoke">Revoke link</button>
+          </div>
+        </section>` : ""}
       <section class="program-progress-card card program-progress" aria-labelledby="recentProgressHeading">
         <p class="section-kicker">RECENT PROGRESS</p>
         <h2 id="recentProgressHeading">Recorded workouts</h2>
@@ -350,6 +363,52 @@ async function updateProgramLink(program, action) {
   }
 }
 
+async function updateClientPlannerLink(program, action) {
+  const status = document.getElementById("clientPlannerLinkStatus");
+  if (!status || !program.clientId) return;
+  const endpoint = `/api/workoutplanner/clients/${encodeURIComponent(program.clientId)}/planner-link`;
+  if (action === "replace" && !window.confirm("Create or replace this client Planning link? Any previous Planning link will stop working.")) return;
+  if (action === "revoke" && !window.confirm("Revoke the client Planning link? Anyone using it will lose access.")) return;
+  try {
+    if (action === "copy") {
+      status.textContent = "Retrieving Planning link…";
+      const response = await fetch(endpoint);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || "The Planning link could not be retrieved.");
+      const url = new URL(result.path, window.location.origin).href;
+      try {
+        await navigator.clipboard.writeText(url);
+        status.textContent = "Client Planning link copied.";
+      } catch {
+        window.prompt("Copy this client Planning link:", url);
+        status.textContent = "Client Planning link ready to copy.";
+      }
+      return;
+    }
+    if (action === "revoke") {
+      const response = await fetch(endpoint, { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || "The Planning link could not be revoked.");
+      status.textContent = result.revoked ? "Client Planning link revoked." : "No active client Planning link was found.";
+      return;
+    }
+    status.textContent = "Creating client Planning link…";
+    const response = await fetch(endpoint, { method: "POST" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "The Planning link could not be created.");
+    const url = new URL(result.path, window.location.origin).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      status.textContent = "Client Planning link created and copied. Any previous Planning link no longer works.";
+    } catch {
+      window.prompt("Copy this client Planning link:", url);
+      status.textContent = "Client Planning link created. Copy the link shown above.";
+    }
+  } catch (error) {
+    status.textContent = error.message || "The client Planning link could not be updated.";
+  }
+}
+
 document.getElementById("programList").addEventListener("click", event => {
   const item = event.target.closest("[data-program-id]");
   if (item) selectProgram(item.dataset.programId);
@@ -359,6 +418,12 @@ document.getElementById("programSearch").addEventListener("input", renderProgram
 document.getElementById("programStatusFilter").addEventListener("change", renderProgramList);
 
 document.getElementById("programDetail").addEventListener("click", event => {
+  const plannerButton = event.target.closest("[data-planner-link-action]");
+  if (plannerButton) {
+    const program = programOverviewState.programs.find(item => item.id === programOverviewState.selectedProgramId);
+    if (program) updateClientPlannerLink(program, plannerButton.dataset.plannerLinkAction);
+    return;
+  }
   const button = event.target.closest("[data-link-action]");
   if (!button) return;
   const program = programOverviewState.programs.find(item => item.id === programOverviewState.selectedProgramId);
