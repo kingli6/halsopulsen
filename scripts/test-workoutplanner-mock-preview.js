@@ -13,6 +13,121 @@ const {
 const clientWorkoutWorkspace = require("../dashboard/client-workouts");
 const clientPlanningMockTools = require("../dashboard/client-planning-mock-tools");
 const planningPrototypeState = require("../dashboard/workoutplanner-planning-prototype/planning-state");
+const unifiedWorkoutMockData = require("../dashboard/workoutplanner-unified-mock/workout-data");
+
+function renderUnifiedMockScreen(screen) {
+  const app = {
+    innerHTML: "",
+    classList: { remove() {}, add() {} }
+  };
+  const mainNav = { innerHTML: "" };
+  const elements = {
+    "app-main": app,
+    "main-nav": mainNav,
+    "modal-backdrop": { hidden: true, addEventListener() {} },
+    modal: { innerHTML: "", addEventListener() {}, querySelector() { return { focus() {} }; } }
+  };
+  const document = {
+    getElementById(id) {
+      return elements[id] || (elements[id] = { innerHTML: "" });
+    },
+    querySelectorAll() { return []; },
+    addEventListener() {}
+  };
+  const location = {
+    pathname: "/__dev/workoutplanner/",
+    search: `?screen=${screen}`
+  };
+  const window = {
+    WorkoutPlannerUnifiedMockData: unifiedWorkoutMockData,
+    location,
+    addEventListener() {},
+    scrollTo() {}
+  };
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "workoutplanner-unified-mock", "unified.js"),
+    "utf8"
+  );
+  vm.runInNewContext(source, {
+    window,
+    location,
+    document,
+    history: { pushState() {} },
+    URLSearchParams,
+    Date,
+    setTimeout,
+    clearTimeout
+  });
+  return app.innerHTML;
+}
+
+function loadClientWorkoutWorkspaceWithSharedData(sharedData) {
+  const module = { exports: {} };
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-workouts.js"),
+    "utf8"
+  );
+  const window = { WorkoutPlannerUnifiedMockData: sharedData };
+  vm.runInNewContext(source, { window, module, exports: module.exports, Date });
+  return module.exports;
+}
+
+function addIsoDays(value, amount) {
+  const date = new Date(`${value}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+function displayIsoDate(value) {
+  return new Date(`${value}T12:00:00.000Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC"
+  });
+}
+
+function testUnifiedMockScreensShareWorkoutData() {
+  const previewWorkspace = loadClientWorkoutWorkspaceWithSharedData(unifiedWorkoutMockData);
+  const state = previewWorkspace.createState(new Date());
+  const workouts = previewWorkspace.getWorkouts(state.weekStart);
+  const workoutsMarkup = previewWorkspace.render(state);
+  const planningMarkup = renderUnifiedMockScreen("client-planning");
+  const overviewMarkup = renderUnifiedMockScreen("client-overview");
+
+  for (const scheduleEntry of unifiedWorkoutMockData.program.schedule) {
+    const definition = unifiedWorkoutMockData.workouts.find(item => item.id === scheduleEntry.workoutId);
+    const workout = workouts.find(item => item.id === scheduleEntry.workoutId);
+    assert.ok(definition && workout, `shared workout ${scheduleEntry.workoutId} should be available`);
+    assert.strictEqual(workout.name, definition.name);
+    assert.strictEqual(workout.duration, definition.duration);
+    assert.strictEqual(workout.exercises.length, definition.exercises.length);
+
+    const weekDate = addIsoDays(state.weekStart, scheduleEntry.weekday);
+    const dateLabel = displayIsoDate(weekDate);
+    assert.strictEqual(workout.date, weekDate, `${definition.name} should have one shared week date`);
+    assert.ok(planningMarkup.includes(dateLabel), `${definition.name} date should appear in Client Planning`);
+    assert.ok(planningMarkup.includes(`data-id="${definition.id}"`));
+    assert.ok(planningMarkup.includes(`data-duration="${definition.duration}"`));
+    assert.ok(planningMarkup.includes(`data-exercise-count="${definition.exercises.length}"`));
+
+    assert.ok(workoutsMarkup.includes(`data-workout-id="${definition.id}"`));
+    assert.ok(workoutsMarkup.includes(`${definition.name}`));
+    assert.ok(workoutsMarkup.includes(`${dateLabel}`));
+    assert.ok(workoutsMarkup.includes(`${definition.duration} min · ${definition.exercises.length} exercises`));
+
+    const recentDate = displayIsoDate(addIsoDays(weekDate, -7));
+    assert.ok(overviewMarkup.includes(`data-workout-id="${definition.id}"`));
+    assert.ok(overviewMarkup.includes(`data-duration="${definition.duration}"`));
+    assert.ok(overviewMarkup.includes(`data-exercise-count="${definition.exercises.length}"`));
+    assert.ok(overviewMarkup.includes(definition.name));
+    assert.ok(overviewMarkup.includes(recentDate), `${definition.name} recent date should match the previous week's schedule`);
+  }
+
+  const mobility = unifiedWorkoutMockData.workouts.find(item => item.id === "mobility-reset");
+  assert.ok(planningMarkup.includes(`data-id="${mobility.id}"`));
+  assert.ok(workoutsMarkup.includes(mobility.name));
+  assert.ok(workoutsMarkup.includes(`${mobility.duration} min · ${mobility.exercises.length} exercises`));
+}
 
 function testWorkoutAvailabilityNormalizationAndClientViews() {
   const source = fs.readFileSync(path.join(__dirname, "..", "dashboard", "data.js"), "utf8");

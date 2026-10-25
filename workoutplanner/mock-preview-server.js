@@ -32,9 +32,10 @@ const PREVIEW_PAGES = {
   }
 };
 
-function injectMockPreview(html, page) {
+function injectMockPreview(html, page, options = {}) {
   const pageConfig = page === "client-planning"
-    ? `<script src="/workoutplanner/mock-preview-harness.js"></script>
+    ? `${options.unifiedWorkoutData ? '<script src="/dashboard/workoutplanner-unified-mock/workout-data.js"></script>' : ""}
+       <script src="/workoutplanner/mock-preview-harness.js"></script>
        <script src="/dashboard/client-planner-mock-preview.js"></script>`
     : `<script>window.WORKOUTPLANNER_MOCK_PREVIEW_PAGE=${JSON.stringify(page)};</script>
        <script src="/workoutplanner/mock-preview-harness.js"></script>
@@ -46,12 +47,12 @@ function injectMockPreview(html, page) {
   return html.replace(marker, `${pageConfig}\n    ${marker}`);
 }
 
-function sendMockPreviewPage(res, page) {
+function sendMockPreviewPage(res, page, options = {}) {
   try {
     const html = fs.readFileSync(PREVIEW_PAGES[page].file, "utf8");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
-    res.type("html").send(injectMockPreview(html, page));
+    res.type("html").send(injectMockPreview(html, page, options));
   } catch (error) {
     console.error(`Could not render WorkoutPlanner ${page} mock preview:`, error.message);
     res.status(500).send("The local WorkoutPlanner mock preview could not be loaded.");
@@ -75,7 +76,11 @@ function registerWorkoutPlannerMockPreviewRoutes(app) {
   app.get("/__dev/workoutplanner/library/", (req, res) => sendUnifiedMockPreview(res));
   app.get("/__dev/workoutplanner/client-schedule/", (req, res) => sendUnifiedMockPreview(res));
   for (const [page, config] of Object.entries(PREVIEW_PAGES)) {
-    app.get(`/__dev/workoutplanner${config.route}`, (req, res) => sendMockPreviewPage(res, page));
+    app.get(`/__dev/workoutplanner${config.route}`, (req, res) => sendMockPreviewPage(res, page, {
+      unifiedWorkoutData: page === "client-planning"
+        && req.query.embed === "1"
+        && req.query.workspace === "workouts"
+    }));
   }
   app.get("/__dev/workoutplanner/planning/", (req, res) => {
     if (!fs.existsSync(PLANNING_PROTOTYPE_FILE)) {

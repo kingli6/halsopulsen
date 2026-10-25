@@ -14,12 +14,20 @@
   const TODAY = new Date();
   TODAY.setHours(0, 0, 0, 0);
   const DAY_MS = 86400000;
+  const sharedMockData = window.WorkoutPlannerUnifiedMockData;
+  if (!sharedMockData) throw new Error("Unified WorkoutPlanner mock data is unavailable.");
+  const displayWorkout = workout => ({
+    ...workout,
+    availability: workout.availability === "both"
+      ? "Both"
+      : workout.availability === "independent" ? "Independent" : "Program",
+    exercises: workout.exercises.length,
+    prescription: workout.exercises.map(exercise => [exercise.name, exercise.displayPrescription])
+  });
   const data = {
-    workouts: [
-      { id: "strength-a", name: "Full-body strength A", type: "Strength", availability: "Program", duration: 42, exercises: 5, description: "A familiar, steady full-body session built around controlled repetitions and a comfortable pace.", updated: "Used in Foundation", prescription: [["Goblet squat", "3 sets · 8 reps · 20 kg"], ["Incline push-up", "3 sets · 10 reps"], ["One-arm dumbbell row", "3 sets · 10 reps · each side"], ["Glute bridge", "2 sets · 12 reps"], ["Dead bug", "2 sets · 8 each side"]] },
-      { id: "easy-cardio", name: "Easy aerobic base", type: "Cardio", availability: "Program", duration: 32, exercises: 2, description: "Build an easy aerobic base without chasing pace. Keep the effort conversational.", updated: "Used in Foundation", prescription: [["Outdoor walk or easy jog", "28–32 min · easy effort"], ["Hip mobility flow", "5 min · relaxed range"]] },
-      { id: "strength-b", name: "Strength B + mobility", type: "Strength", availability: "Both", duration: 48, exercises: 5, description: "Lower-body and trunk strength followed by a little space to move comfortably.", updated: "Used in Foundation", prescription: [["Reverse lunge", "3 sets · 8 each side"], ["Glute bridge", "3 sets · 12 reps"], ["Bird dog", "3 sets · 8 each side"], ["Hip mobility flow", "10 min"], ["Easy walk", "5 min"]] },
-      { id: "mobility-reset", name: "Mobility reset", type: "Mobility", availability: "Independent", duration: 18, exercises: 4, description: "A gentle movement break for shoulders, hips and ankles. Nothing to push through.", updated: "Available to client", prescription: [["Open-book rotation", "2 sets · 8 each side"], ["Ankle rocks", "2 sets · 10 each side"], ["Hip flexor stretch", "2 × 30 sec each side"], ["Easy breathing", "2 min"]] },
+    workouts: sharedMockData.workouts.map(displayWorkout),
+    program: sharedMockData.program,
+    libraryWorkouts: [
       { id: "walk-run", name: "Walk-run intervals", type: "Cardio", availability: "Program", duration: 28, exercises: 1, description: "Short, relaxed jog intervals separated by unhurried walking. Repeat a week when needed.", updated: "Saved draft", prescription: [["Walk-run intervals", "6 rounds · 1 min jog / 3 min walk"]] },
       { id: "core", name: "Core control", type: "Strength", availability: "Both", duration: 20, exercises: 4, description: "A simple trunk session with no equipment and plenty of time to find a smooth rhythm.", updated: "Available to client", prescription: [["Bird dog", "2 sets · 8 each side"], ["Dead bug", "2 sets · 8 each side"], ["Side plank", "2 × 20 sec each side"], ["Glute bridge", "2 sets · 12 reps"]] }
     ],
@@ -41,7 +49,7 @@
   const addDays = (date, count) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + count);
   const mondayOf = date => addDays(date, -((date.getDay() + 6) % 7));
   const dateLabel = (date, options = {}) => date.toLocaleDateString("en-GB", options);
-  const allWorkouts = () => [...data.workouts, ...data.newWorkouts];
+  const allWorkouts = () => [...data.workouts, ...data.libraryWorkouts, ...data.newWorkouts];
   const app = document.getElementById("app-main");
   const modalBackdrop = document.getElementById("modal-backdrop");
   const modal = document.getElementById("modal");
@@ -146,19 +154,26 @@
   function clientPage() {
     const next = nextWorkouts()[0];
     const nextDate = next ? next.date : addDays(TODAY, 1);
-    const recent = [
-      { day: addDays(TODAY, -1), name: "Strength A", detail: "42 min · Good energy" },
-      { day: addDays(TODAY, -4), name: "Easy aerobic base", detail: "30 min · Easy effort" },
-      { day: addDays(TODAY, -7), name: "Strength B + mobility", detail: "46 min · Felt steady" }
-    ];
+    const recent = data.program.recentSessions.map(entry => {
+      const schedule = data.program.schedule.find(item => item.workoutId === entry.workoutId);
+      const workout = getWorkout(entry.workoutId);
+      return {
+        day: addDays(mondayOf(TODAY), schedule.weekday - (entry.weeksAgo * 7)),
+        name: workout.name,
+        detail: `${workout.duration} min · ${entry.note}`,
+        workoutId: workout.id,
+        duration: workout.duration,
+        exercises: workout.exercises
+      };
+    });
     return `${notice()}
-      <section class="client-banner"><div class="client-banner-copy"><p class="page-kicker">Client space / Your program</p><h1>Build a rhythm that works for you.</h1><p>Your plan is here to guide you, not rush you. Check what’s next, then make it your own.</p><div class="program-facts"><span>Strength &amp; Mobility Foundations</span><span>Week 1 of 2</span><span>3 sessions each week</span></div></div><div class="client-banner-side" aria-hidden="true"><span class="mini-ring">01</span><small>steady effort<br>over time</small></div></section>
+      <section class="client-banner"><div class="client-banner-copy"><p class="page-kicker">Client space / Your program</p><h1>Build a rhythm that works for you.</h1><p>Your plan is here to guide you, not rush you. Check what’s next, then make it your own.</p><div class="program-facts"><span>${escape(data.program.name)}</span><span>Week 1 of ${data.program.durationWeeks}</span><span>${data.program.sessionsPerWeek} sessions each week</span></div></div><div class="client-banner-side" aria-hidden="true"><span class="mini-ring">01</span><small>steady effort<br>over time</small></div></section>
       <div class="client-overview-grid">
         <section class="next-session surface"><div class="next-session-head"><div class="section-heading"><h2>Coming up</h2><span class="next-day-label">${dateLabel(nextDate, { weekday: "long" })}</span></div></div>
-          <div class="session-spotlight"><div class="session-date-block"><small>${dateLabel(nextDate, { month: "short" })}</small><strong>${dateLabel(nextDate, { day: "numeric" })}</strong></div><div class="session-summary"><h3>${next ? escape(next.name) : "A recovery day"}</h3><p>${next ? "A planned session from your current program." : "An open day to rest or move as you like."}</p><div class="workout-stats"><span><b>◷</b>${next ? next.duration : 0} min</span><span><b>≋</b>${next ? next.exercises : 0} exercises</span></div></div>${next ? `<button class="button button-primary button-small" type="button" data-action="open-workout" data-id="${next.id}">Open workout</button>` : ""}</div>
+           <div class="session-spotlight"><div class="session-date-block"><small>${dateLabel(nextDate, { month: "short" })}</small><strong>${dateLabel(nextDate, { day: "numeric" })}</strong></div><div class="session-summary"><h3>${next ? escape(next.name) : "A recovery day"}</h3><p>${next ? "A planned session from your current program." : "An open day to rest or move as you like."}</p><div class="workout-stats"><span><b>◷</b>${next ? next.duration : 0} min</span><span><b>≋</b>${next ? next.exercises : 0} exercises</span></div></div>${next ? `<button class="button button-primary button-small" type="button" data-action="open-workout" data-id="${next.id}" data-exercise-count="${next.exercises}">Open workout</button>` : ""}</div>
           <div class="session-actions"><span class="section-note">Your schedule is a guide, not a deadline.</span>${routeLink("client-planning", "See your week")}</div>
         </section>
-        <section class="recent-sessions surface"><h2>Recent activity</h2>${recent.map(item => `<article class="recent-row"><span class="recent-date"><small>${dateLabel(item.day, { month: "short" })}</small><strong>${dateLabel(item.day, { day: "numeric" })}</strong></span><span class="recent-copy"><strong>${item.name}</strong><span>${item.detail}</span></span><span class="done-mark" aria-label="Completed">✓</span></article>`).join("")}</section>
+        <section class="recent-sessions surface"><h2>Recent activity</h2>${recent.map(item => `<article class="recent-row" data-workout-id="${escape(item.workoutId)}" data-duration="${item.duration}" data-exercise-count="${item.exercises}"><span class="recent-date"><small>${dateLabel(item.day, { month: "short" })}</small><strong>${dateLabel(item.day, { day: "numeric" })}</strong></span><span class="recent-copy"><strong>${item.name}</strong><span>${item.detail}</span></span><span class="done-mark" aria-label="Completed">✓</span></article>`).join("")}</section>
       </div>
       <div class="client-link-panel">
         <a class="client-link-tile surface" href="${ROUTES["client-planning"]}" data-go="client-planning"><span><strong>Your week</strong><small>A date-based look at the next seven days</small></span><span aria-hidden="true">→</span></a>
@@ -169,19 +184,23 @@
     const start = mondayOf(TODAY);
     const shifted = addDays(start, data.weekShift * 7);
     const thisWeek = mondayOf(TODAY).getTime() === shifted.getTime();
-    const schedule = {
-      0: [{ id: "strength-a", time: "08:30", label: "Program" }],
-      2: [{ id: "easy-cardio", time: "Flexible", label: "Program" }, { id: "mobility-reset", time: "Optional", label: "Anytime" }],
-      4: [{ id: "strength-b", time: "Flexible", label: "Program" }]
-    };
     return Array.from({ length: 7 }, (_, index) => {
       const date = addDays(shifted, index);
-      let sessions = schedule[index] || [];
-      if (thisWeek && iso(date) < iso(TODAY)) {
-        sessions = sessions.map((entry, sessionIndex) => ({ ...entry, status: sessionIndex === 0 ? "Completed" : "Planned" }));
-      } else {
-        sessions = sessions.map(entry => ({ ...entry, status: "Planned" }));
-      }
+      const entries = [
+        ...data.program.schedule.filter(entry => entry.weekday === index),
+        ...data.program.optionalSessions.filter(entry => entry.weekday === index)
+      ];
+      const sessions = entries.map(entry => {
+        const workout = getWorkout(entry.workoutId);
+        const isPast = thisWeek && iso(date) < iso(TODAY);
+        return {
+          id: entry.workoutId,
+          time: entry.time,
+          label: entry.label,
+          status: isPast && entry.status === "completed" ? "Completed" : "Planned",
+          workout
+        };
+      });
       return { date, index, sessions };
     });
   }
@@ -199,8 +218,8 @@
       <section class="week-grid" aria-label="Seven-day workout calendar">${days.map(day => {
         const today = iso(day.date) === iso(TODAY);
         return `<article class="day-column${today ? " is-today" : ""}" aria-label="${dateLabel(day.date, { weekday: "long", day: "numeric", month: "long" })}${today ? ", Today" : ""}"><header class="day-head"><div class="day-head-row"><strong>${dateLabel(day.date, { weekday: "short" })}</strong>${today ? '<span class="today-pill">Today</span>' : ""}</div><span class="day-date">${dateLabel(day.date, { day: "numeric", month: "short" })}</span></header><div class="day-sessions">${day.sessions.length ? day.sessions.map(session => {
-          const workout = allWorkouts().find(item => item.id === session.id);
-          return `<button class="calendar-workout ${typeClass(workout.type) ? `is-${typeClass(workout.type)}` : ""}" type="button" data-action="open-workout" data-id="${workout.id}" aria-label="Open ${escape(workout.name)}, ${session.status}"><strong>${escape(workout.name)}</strong><small>${session.time} · ${workout.duration} min · ${session.label}</small><span class="session-status">${session.status}</span></button>`;
+           const workout = session.workout;
+           return `<button class="calendar-workout ${typeClass(workout.type) ? `is-${typeClass(workout.type)}` : ""}" type="button" data-action="open-workout" data-id="${workout.id}" data-duration="${workout.duration}" data-exercise-count="${workout.exercises}" aria-label="Open ${escape(workout.name)}, ${session.status}"><strong>${escape(workout.name)}</strong><small>${session.time} · ${workout.duration} min · ${session.label}</small><span class="session-status">${session.status}</span></button>`;
         }).join("") : '<div class="rest-state">Rest / open day</div>'}</div></article>`;
       }).join("")}</section>
       <section class="calendar-bottom surface"><div><strong>Steady is a good pace.</strong><p>There’s no catch-up required on a rest day. Your next planned session will still be here.</p></div>${routeLink("client-overview", "Back to overview", "button button-small")}</section>
@@ -238,15 +257,10 @@
     toastTimer = setTimeout(() => { region.innerHTML = ""; }, 3200);
   }
   function nextWorkouts() {
-    const schedule = [
-      { offset: 0, id: "strength-a" },
-      { offset: 2, id: "easy-cardio" },
-      { offset: 4, id: "strength-b" }
-    ];
     const monday = mondayOf(TODAY);
-    return [0, 7].flatMap(weekOffset => schedule.map(entry => ({
-      ...getWorkout(entry.id),
-      date: addDays(monday, entry.offset + weekOffset)
+    return [0, 7].flatMap(weekOffset => data.program.schedule.map(entry => ({
+      ...getWorkout(entry.workoutId),
+      date: addDays(monday, entry.weekday + weekOffset)
     }))).filter(item => item.date >= TODAY).sort((a, b) => a.date - b.date);
   }
   function render() {

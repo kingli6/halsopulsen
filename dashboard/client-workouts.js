@@ -11,7 +11,7 @@
     { offset: 6, label: "Sunday", short: "Sun" }
   ];
 
-  const workoutTemplates = [
+  const localWorkoutTemplates = [
     {
       id: "strength-a",
       weekday: 0,
@@ -79,7 +79,7 @@
       ]
     }
   ];
-  const independentWorkoutTemplates = [
+  const localIndependentWorkoutTemplates = [
     {
       id: "mobility-reset",
       name: "Mobility reset",
@@ -126,6 +126,31 @@
       ]
     }
   ];
+  const unifiedMockData = root.WorkoutPlannerUnifiedMockData;
+  const workoutTemplates = unifiedMockData
+    ? unifiedMockData.program.schedule.map(entry => {
+      const workout = unifiedMockData.workouts.find(item => item.id === entry.workoutId);
+      if (!workout) throw new Error(`Unified mock workout "${entry.workoutId}" was not found.`);
+      return {
+        ...workout,
+        weekday: entry.weekday,
+        status: entry.status || workout.status
+      };
+    })
+    : localWorkoutTemplates;
+  const independentWorkoutTemplates = unifiedMockData
+    ? [
+      ...unifiedMockData.program.independentWorkoutIds.map(id => {
+        const workout = unifiedMockData.workouts.find(item => item.id === id);
+        if (!workout) throw new Error(`Unified mock independent workout "${id}" was not found.`);
+        return { ...workout, status: "available" };
+      }),
+      ...localIndependentWorkoutTemplates.filter(workout => workout.id !== "mobility-reset"),
+      ...localWorkoutTemplates
+        .filter(workout => workout.id === "recovery-mobility")
+        .map(workout => ({ ...workout, availability: "independent" }))
+    ]
+    : localIndependentWorkoutTemplates;
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
