@@ -58,6 +58,11 @@
   function toISO(date) {
     return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
   }
+  function isMondayISODate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+    const date = fromISO(value);
+    return !Number.isNaN(date.getTime()) && toISO(date) === value && date.getUTCDay() === 1;
+  }
   function monthStart(date) {
     return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
   }
@@ -943,6 +948,12 @@
   app.addEventListener("click", event => {
     const workoutAction = event.target.closest("[data-workout-action]");
     if (workoutAction && state.clientWorkspace === "workouts" && clientWorkoutWorkspace) {
+      if (workoutAction.dataset.workoutAction === "back-to-planning"
+        && previewHarness
+        && state.workouts.returnToPlanning) {
+        window.parent.postMessage({ type: "workoutplanner:return-to-planning" }, window.location.origin);
+        return;
+      }
       if (workoutAction.closest(".client-independent-library")) state.workouts.libraryExpanded = true;
       clientWorkoutWorkspace.handleAction(
         state.workouts,
@@ -1059,7 +1070,24 @@
         ? "workouts"
         : "planning";
       document.title = `${state.client?.displayName || "Your"} ${initialTab === "workouts" ? "Workouts" : "Planning"} — HälsoPulsen`;
-      if (initialTab === "workouts") renderClientWorkouts();
+      if (initialTab === "workouts") {
+        const launchFromUnifiedPlanning = previewHarness
+          && params.get("embed") === "1"
+          && params.get("workspace") === "workouts"
+          && params.get("returnTo") === "planning";
+        const weekStart = params.get("week");
+        const workoutId = params.get("workout");
+        if (launchFromUnifiedPlanning
+          && state.workouts
+          && workoutId
+          && isMondayISODate(weekStart)
+          && clientWorkoutWorkspace.getWorkouts(weekStart).some(workout => workout.id === workoutId)) {
+          state.workouts.weekStart = weekStart;
+          state.workouts.returnToPlanning = true;
+          clientWorkoutWorkspace.handleAction(state.workouts, "open-workout", workoutId, "planned");
+        }
+        renderClientWorkouts();
+      }
       else renderCalendar();
     } catch (error) {
       showError(error.message || "Your Planning workspace could not be loaded.");

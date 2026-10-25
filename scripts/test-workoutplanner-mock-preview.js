@@ -15,12 +15,14 @@ const clientPlanningMockTools = require("../dashboard/client-planning-mock-tools
 const planningPrototypeState = require("../dashboard/workoutplanner-planning-prototype/planning-state");
 const unifiedWorkoutMockData = require("../dashboard/workoutplanner-unified-mock/workout-data");
 
-function renderUnifiedMockScreen(screen) {
+function createUnifiedMockPreview(screen) {
   const app = {
     innerHTML: "",
     classList: { remove() {}, add() {} }
   };
   const mainNav = { innerHTML: "" };
+  const documentListeners = {};
+  const windowListeners = {};
   const elements = {
     "app-main": app,
     "main-nav": mainNav,
@@ -32,16 +34,17 @@ function renderUnifiedMockScreen(screen) {
       return elements[id] || (elements[id] = { innerHTML: "" });
     },
     querySelectorAll() { return []; },
-    addEventListener() {}
+    addEventListener(type, handler) { documentListeners[type] = handler; }
   };
   const location = {
     pathname: "/__dev/workoutplanner/",
-    search: `?screen=${screen}`
+    search: `?screen=${screen}`,
+    origin: "http://workoutplanner.mock"
   };
   const window = {
     WorkoutPlannerUnifiedMockData: unifiedWorkoutMockData,
     location,
-    addEventListener() {},
+    addEventListener(type, handler) { windowListeners[type] = handler; },
     scrollTo() {}
   };
   const source = fs.readFileSync(
@@ -52,13 +55,24 @@ function renderUnifiedMockScreen(screen) {
     window,
     location,
     document,
-    history: { pushState() {} },
+    history: {
+      pushState(_state, _title, url) {
+        const next = new URL(url, location.origin);
+        location.pathname = next.pathname;
+        location.search = next.search;
+      }
+    },
     URLSearchParams,
     Date,
     setTimeout,
     clearTimeout
   });
-  return app.innerHTML;
+  return { app, documentListeners, windowListeners, location };
+}
+
+function renderUnifiedMockScreen(screen) {
+  const preview = createUnifiedMockPreview(screen);
+  return preview.app.innerHTML;
 }
 
 function loadClientWorkoutWorkspaceWithSharedData(sharedData) {
@@ -76,6 +90,12 @@ function addIsoDays(value, amount) {
   const date = new Date(`${value}T12:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + amount);
   return date.toISOString().slice(0, 10);
+}
+
+function localMondayIso(date, weekOffset = 0) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) + (weekOffset * 7));
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
 }
 
 function displayIsoDate(value) {
@@ -154,6 +174,72 @@ function testUnifiedMockScreensShareWorkoutData() {
   assert.ok(
     !workoutsMarkup.includes('data-workout-action="open-workout" data-workout-id="recovery-mobility"'),
     "the embedded Workouts preview should use only the shared fixture's scheduled sessions"
+  );
+}
+
+function testPlanningCalendarOpensWorkoutDetailsAndReturnsToWeek() {
+  const preview = createUnifiedMockPreview("client-planning");
+  const clickAction = (actionName, id) => {
+    const action = { dataset: { action: actionName, id } };
+    preview.documentListeners.click({
+      target: {
+        closest(selector) {
+          return selector === "[data-action]" ? action : null;
+        }
+      },
+      preventDefault() {}
+    });
+  };
+
+  clickAction("week-next");
+  const selectedWeekMarkup = preview.app.innerHTML;
+  clickAction("open-planned-workout", "strength-b");
+
+  assert.strictEqual(preview.location.search, "?screen=workouts");
+  const iframeSource = preview.app.innerHTML.match(/<iframe[^>]+src="([^"]+)"/)?.[1];
+  assert.ok(iframeSource, "opening a planned workout should use the existing embedded Workouts interface");
+  const workoutUrl = new URL(iframeSource.replaceAll("&amp;", "&"), preview.location.origin);
+  assert.strictEqual(workoutUrl.searchParams.get("workspace"), "workouts");
+  assert.strictEqual(workoutUrl.searchParams.get("workout"), "strength-b");
+  assert.strictEqual(workoutUrl.searchParams.get("week"), localMondayIso(new Date(), 1));
+  assert.strictEqual(workoutUrl.searchParams.get("returnTo"), "planning");
+
+  const sharedWorkspace = loadClientWorkoutWorkspaceWithSharedData(unifiedWorkoutMockData);
+  const workoutState = sharedWorkspace.createState(new Date());
+  workoutState.weekStart = workoutUrl.searchParams.get("week");
+  workoutState.returnToPlanning = true;
+  sharedWorkspace.handleAction(workoutState, "open-workout", workoutUrl.searchParams.get("workout"), "planned");
+  const details = sharedWorkspace.render(workoutState);
+  assert.match(details, /<h1>Strength B<\/h1>/);
+  assert.match(details, /Reverse lunge/);
+  assert.match(details, /Back to Planning/);
+  assert.match(details, /Record workout/);
+
+  sharedWorkspace.handleAction(workoutState, "record-workout");
+  const recording = sharedWorkspace.render(workoutState);
+  assert.match(recording, /Back to Planning/);
+  assert.match(recording, /data-workout-result="reps"/);
+  assert.match(recording, /Finish session/);
+
+  const clientPlanningSource = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planning.js"),
+    "utf8"
+  );
+  assert.match(clientPlanningSource, /params\.get\("returnTo"\) === "planning"/);
+  assert.match(clientPlanningSource, /params\.get\("week"\)/);
+  assert.match(clientPlanningSource, /params\.get\("workout"\)/);
+  assert.match(clientPlanningSource, /clientWorkoutWorkspace\.handleAction\(state\.workouts, "open-workout", workoutId, "planned"\)/);
+  assert.match(clientPlanningSource, /window\.parent\.postMessage\(\{ type: "workoutplanner:return-to-planning" \}/);
+
+  preview.windowListeners.message({
+    origin: preview.location.origin,
+    data: { type: "workoutplanner:return-to-planning" }
+  });
+  assert.strictEqual(preview.location.search, "?screen=client-planning");
+  assert.strictEqual(
+    preview.app.innerHTML,
+    selectedWeekMarkup,
+    "Back to Planning should restore the calendar at the previously selected week"
   );
 }
 
@@ -938,6 +1024,7 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
 
 async function run() {
   testUnifiedMockScreensShareWorkoutData();
+  testPlanningCalendarOpensWorkoutDetailsAndReturnsToWeek();
   testWorkoutAvailabilityNormalizationAndClientViews();
   await testAllApiRequestsAreIntercepted();
   testCoachAndRecipientPagesReceivePreviewData();

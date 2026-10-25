@@ -216,7 +216,8 @@
       nextPersonalWorkoutId: 1,
       nextEntryId: 1,
       createDraft: null,
-      createError: ""
+      createError: "",
+      returnToPlanning: false
     };
   }
 
@@ -303,6 +304,12 @@
       return state.recordedSessions.find(entry => entry.id === state.selectedEntryId)?.workout || null;
     }
     return null;
+  }
+
+  function overviewBackButton(state) {
+    const action = state.returnToPlanning ? "back-to-planning" : "back-to-week";
+    const label = state.returnToPlanning ? "Back to Planning" : "Back to Workouts";
+    return `<button class="planner-button client-workout-back-button" type="button" data-workout-action="${action}"><span aria-hidden="true">←</span> ${label}</button>`;
   }
 
   function statusFor(state, workout) {
@@ -561,7 +568,7 @@
     }).join("");
 
     return `<section class="client-workouts">
-      <button class="planner-button client-workout-back-button" type="button" data-workout-action="back-to-week"><span aria-hidden="true">←</span> Back to Workouts</button>
+      ${overviewBackButton(state)}
       <header class="client-workout-detail-head">
         <div><p class="planner-eyebrow">${escapeHtml(workout.type)} · ${escapeHtml(sourceLabel)}</p>
           <h1>${escapeHtml(workout.name)}</h1><p class="planner-lede">${escapeHtml(workout.description)}</p></div>
@@ -600,7 +607,7 @@
       : state.today;
 
     return `<section class="client-workouts">
-      <button class="planner-button client-workout-back-button" type="button" data-workout-action="back-to-week"><span aria-hidden="true">←</span> Back to Workouts</button>
+      ${overviewBackButton(state)}
       <header class="client-workout-detail-head">
         <div><p class="planner-eyebrow">${session.finished ? "COMPLETED SESSION" : "RECORDING SESSION"} · ${dateLabel(performedOn, { weekday: "long", day: "numeric", month: "long" })}</p>
           <h1>${escapeHtml(workout.name)}</h1><p class="planner-lede">Log what you actually performed. Your prescribed workout stays as written.</p></div>
@@ -610,7 +617,7 @@
         ${exerciseCards}
         <label class="client-workout-notes"><span>Session notes</span><textarea data-workout-notes placeholder="How did the session feel?" ${session.finished ? "disabled" : ""}>${escapeHtml(session.notes)}</textarea></label>
         ${session.finished
-          ? `<button class="planner-button" type="button" data-workout-action="back-to-week">Back to Workouts</button>`
+          ? `<button class="planner-button" type="button" data-workout-action="${state.returnToPlanning ? "back-to-planning" : "back-to-week"}">${state.returnToPlanning ? "Back to Planning" : "Back to Workouts"}</button>`
           : `<button class="planner-button planner-button-primary" type="button" data-workout-action="finish-session">Finish session</button>`}
       </section>
     </section>`;
