@@ -115,18 +115,46 @@ function testUnifiedMockScreensShareWorkoutData() {
     assert.ok(workoutsMarkup.includes(`${dateLabel}`));
     assert.ok(workoutsMarkup.includes(`${definition.duration} min · ${definition.exercises.length} exercises`));
 
-    const recentDate = displayIsoDate(addIsoDays(weekDate, -7));
+    previewWorkspace.handleAction(state, "open-workout", definition.id);
+    const detailsMarkup = previewWorkspace.render(state);
+    assert.ok(detailsMarkup.includes(definition.name));
+    assert.ok(detailsMarkup.includes(`${definition.duration} min`));
+    for (const exercise of definition.exercises) {
+      assert.ok(detailsMarkup.includes(exercise.name), `${exercise.name} should appear in ${definition.name} details`);
+      if (exercise.instruction) {
+        assert.ok(detailsMarkup.includes(exercise.instruction), `${exercise.name} instruction should appear in workout details`);
+      }
+    }
+    previewWorkspace.handleAction(state, "back-to-week");
+
+    const recentDate = new Date(`${addIsoDays(weekDate, -7)}T12:00:00.000Z`);
+    const recentMonth = recentDate.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
+    const recentDay = recentDate.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
     assert.ok(overviewMarkup.includes(`data-workout-id="${definition.id}"`));
     assert.ok(overviewMarkup.includes(`data-duration="${definition.duration}"`));
     assert.ok(overviewMarkup.includes(`data-exercise-count="${definition.exercises.length}"`));
     assert.ok(overviewMarkup.includes(definition.name));
-    assert.ok(overviewMarkup.includes(recentDate), `${definition.name} recent date should match the previous week's schedule`);
+    assert.ok(
+      overviewMarkup.includes(`<small>${recentMonth}</small><strong>${recentDay}</strong>`),
+      `${definition.name} recent date should match the previous week's schedule`
+    );
   }
 
   const mobility = unifiedWorkoutMockData.workouts.find(item => item.id === "mobility-reset");
   assert.ok(planningMarkup.includes(`data-id="${mobility.id}"`));
   assert.ok(workoutsMarkup.includes(mobility.name));
   assert.ok(workoutsMarkup.includes(`${mobility.duration} min · ${mobility.exercises.length} exercises`));
+
+  const standaloneState = clientWorkoutWorkspace.createState(new Date());
+  const standaloneMarkup = clientWorkoutWorkspace.render(standaloneState);
+  assert.ok(
+    standaloneMarkup.includes('data-workout-id="recovery-mobility"'),
+    "the standalone client mock should retain its existing Recovery mobility sample"
+  );
+  assert.ok(
+    !workoutsMarkup.includes('data-workout-action="open-workout" data-workout-id="recovery-mobility"'),
+    "the embedded Workouts preview should use only the shared fixture's scheduled sessions"
+  );
 }
 
 function testWorkoutAvailabilityNormalizationAndClientViews() {
@@ -866,7 +894,7 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
       this.body = body;
     }
   };
-  clientPlanningHandler({}, clientPlanningResponse);
+  clientPlanningHandler({ query: {} }, clientPlanningResponse);
   assert.strictEqual(clientPlanningResponse.contentType, "html");
   assert.strictEqual(clientPlanningResponse.headers["Cache-Control"], "no-store");
   assert.strictEqual(clientPlanningResponse.headers["X-Robots-Tag"], "noindex, nofollow");
@@ -874,6 +902,32 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
   assert.match(clientPlanningResponse.body, /client-planner-mock-preview\.js/);
   assert.match(clientPlanningResponse.body, /dashboard\/client-planning\.js/);
   assert.doesNotMatch(clientPlanningResponse.body, /dashboard\/workoutplanner-mock-preview\.js/);
+  assert.doesNotMatch(
+    clientPlanningResponse.body,
+    /dashboard\/workoutplanner-unified-mock\/workout-data\.js/,
+    "the standalone client Planning route should not receive the unified mock fixture"
+  );
+
+  const embeddedClientPlanningResponse = {
+    headers: {},
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    type(contentType) {
+      this.contentType = contentType;
+      return this;
+    },
+    send(body) {
+      this.body = body;
+    }
+  };
+  clientPlanningHandler({ query: { embed: "1", workspace: "workouts" } }, embeddedClientPlanningResponse);
+  assert.match(
+    embeddedClientPlanningResponse.body,
+    /<script src="\/dashboard\/workoutplanner-unified-mock\/workout-data\.js"><\/script>/,
+    "the embedded Workouts route should load the shared fixture"
+  );
+  assert.match(embeddedClientPlanningResponse.body, /<script src="\/dashboard\/client-workouts\.js" defer><\/script>/);
 
   const mockBootstrap = fs.readFileSync(
     path.join(__dirname, "..", "dashboard", "client-planner-mock-preview.js"),
@@ -883,6 +937,7 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
 }
 
 async function run() {
+  testUnifiedMockScreensShareWorkoutData();
   testWorkoutAvailabilityNormalizationAndClientViews();
   await testAllApiRequestsAreIntercepted();
   testCoachAndRecipientPagesReceivePreviewData();
