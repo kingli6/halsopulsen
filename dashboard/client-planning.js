@@ -14,6 +14,7 @@
   const toastBox = document.getElementById("planner-toast");
   const workspaceNav = document.getElementById("client-workspace-nav");
   const clientWorkoutWorkspace = window.ClientWorkoutWorkspace;
+  const clientPlanningMockTools = window.ClientPlanningMockTools;
   const colors = [
     ["#e8f2e9", "#b8d2bd", "#28583b"],
     ["#e9edf2", "#c6d1dc", "#425b70"],
@@ -38,7 +39,8 @@
     range: 3, programId: null, program: null, meta: null, placement: null,
     weekIndex: 0, weekday: 0, saving: false,
     clientWorkspace: "planning",
-    workouts: clientWorkoutWorkspace?.createState()
+    workouts: clientWorkoutWorkspace?.createState(),
+    workoutSessionIndex: 0
   };
   let toastTimer;
 
@@ -285,7 +287,10 @@
   }
   function currentDay() {
     const week = currentWeek();
-    return week?.days?.find(day => Number(day.weekday) === state.weekday) || null;
+    const day = week?.days?.find(item => Number(item.weekday) === state.weekday) || null;
+    return previewHarness && clientPlanningMockTools
+      ? clientPlanningMockTools.getSession(day, state.workoutSessionIndex)
+      : day;
   }
   function reindexWeeks() {
     state.program.weeks.forEach((week, index) => { week.weekNumber = index + 1; });
@@ -293,6 +298,7 @@
     if (state.weekIndex >= state.program.weeks.length) state.weekIndex = state.program.weeks.length - 1;
   }
   function cycleCard(week, index) {
+    if (previewHarness && clientPlanningMockTools) return mockCycleCard(week, index);
     const days = mondayFirstWeekdays
       .map(item => (week.days || []).find(day => Number(day.weekday) === item.weekday))
       .filter(Boolean);
@@ -328,6 +334,51 @@
       <div class="planner-workout-list">${rows}</div>
     </article>`;
   }
+  function mockCycleCard(week, index) {
+    const rows = mondayFirstWeekdays.map(item => {
+      const day = (week.days || []).find(entry => Number(entry.weekday) === item.weekday);
+      if (!day) return "";
+      const sessions = clientPlanningMockTools.listSessions(day);
+      if (!sessions.length) {
+        return `<div class="planner-workout-row is-rest-day">
+          <span class="planner-day-pill">${item.label}</span>
+          <span class="planner-workout-summary"><strong>Rest / open day</strong><small>No workout planned</small></span>
+          <span class="planner-row-actions"><button class="planner-button planner-button-quiet" type="button" data-action="add-workout" data-week="${index}" data-day="${item.weekday}">＋ Add workout</button></span>
+        </div>`;
+      }
+      return sessions.map((session, sessionIndex) => {
+        const position = weekdayPosition(item.weekday);
+        const earlier = position > 0 ? mondayFirstWeekdays[position - 1] : null;
+        const later = position < mondayFirstWeekdays.length - 1 ? mondayFirstWeekdays[position + 1] : null;
+        const count = session.exercises?.length || 0;
+        return `<div class="planner-workout-row is-active${sessionIndex > 0 ? " is-additional-session" : ""}">
+          <span class="planner-day-pill">${item.label}${sessions.length > 1 ? `<small>${sessionIndex + 1}/${sessions.length}</small>` : ""}</span>
+          <span class="planner-workout-summary"><strong>${escapeHtml(session.name || "Workout")}</strong>
+            <small>${escapeHtml(session.sessionType || "Workout")} · ${count} ${count === 1 ? "exercise" : "exercises"}${sessionIndex > 0 ? " · Additional session" : ""}</small></span>
+          <span class="planner-row-actions">
+            <button class="planner-button planner-button-quiet" type="button" data-action="move-workout" data-week="${index}" data-day="${item.weekday}" data-session-index="${sessionIndex}" data-direction="-1" aria-label="Move ${escapeHtml(session.name || "workout")} to ${earlier?.label || "an earlier day"}" ${earlier ? "" : "disabled"}>←</button>
+            <button class="planner-button planner-button-quiet" type="button" data-action="move-workout" data-week="${index}" data-day="${item.weekday}" data-session-index="${sessionIndex}" data-direction="1" aria-label="Move ${escapeHtml(session.name || "workout")} to ${later?.label || "a later day"}" ${later ? "" : "disabled"}>→</button>
+            <button class="planner-button planner-button-quiet" type="button" data-action="open-workout" data-week="${index}" data-day="${item.weekday}" data-session-index="${sessionIndex}">Open</button>
+            <button class="planner-button planner-button-quiet planner-button-danger" type="button" data-action="remove-workout" data-week="${index}" data-day="${item.weekday}" data-session-index="${sessionIndex}" aria-label="Remove ${escapeHtml(session.name || "workout")}">×</button>
+          </span>
+        </div>`;
+      }).join("") + `<div class="planner-workout-add-row"><button class="planner-button planner-button-quiet" type="button" data-action="add-workout" data-week="${index}" data-day="${item.weekday}">＋ Add another session</button></div>`;
+    }).join("");
+    return `<article class="planner-week-card">
+      <header class="planner-week-head">
+        <div class="planner-week-label"><span class="planner-week-index">${index + 1}</span><span><span class="planner-week-name">${escapeHtml(week.name || `Week ${index + 1}`)}</span><span class="planner-week-phase">${escapeHtml(week.phase || "Foundation")}</span></span></div>
+        <div class="planner-week-actions">
+          <button class="planner-button planner-button-quiet" type="button" data-action="move-week" data-week="${index}" data-direction="-1" aria-label="Move week earlier" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button class="planner-button planner-button-quiet" type="button" data-action="move-week" data-week="${index}" data-direction="1" aria-label="Move week later" ${index === state.program.weeks.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="planner-button planner-button-quiet" type="button" data-action="duplicate-week" data-week="${index}">Duplicate</button>
+          <button class="planner-button planner-button-quiet" type="button" data-action="edit-cycle" data-week="${index}">Edit week</button>
+          <button class="planner-button planner-button-quiet planner-button-danger" type="button" data-action="remove-week" data-week="${index}" aria-label="Remove week ${index + 1}" ${state.program.weeks.length <= 1 ? "disabled" : ""}>×</button>
+        </div>
+      </header>
+      ${(week.progressionNotes || week.successMetric) ? `<p class="planner-cycle-note">${escapeHtml([week.progressionNotes, week.successMetric].filter(Boolean).join(" · "))}</p>` : ""}
+      <div class="planner-workout-list">${rows}</div>
+    </article>`;
+  }
   function renderProgram() {
     state.screen = "program";
     renderWorkspaceNav("planning");
@@ -338,7 +389,10 @@
     const period = state.placement?.plannedStartDate
       ? `${dateLabel(state.placement.plannedStartDate, { day: "numeric", month: "short", year: "numeric" })} – ${dateLabel(addDays(state.placement.plannedStartDate, Number(state.placement.durationWeeks) * 7 - 1), { day: "numeric", month: "short", year: "numeric" })}`
       : "Not placed on the calendar";
-    const workouts = state.program.weeks.reduce((total, week) => total + (week.days || []).filter(day => day.enabled || day.exercises?.length).length, 0);
+    const workouts = state.program.weeks.reduce((total, week) => total + (week.days || []).reduce((dayTotal, day) => (
+      dayTotal + (day.enabled || day.exercises?.length ? 1 : 0)
+        + (previewHarness && clientPlanningMockTools ? (day.additionalWorkouts?.length || 0) : 0)
+    ), 0), 0);
     const programDuration = weekCount;
     const periodDuration = Number(state.placement?.durationWeeks) || programDuration;
     const periodIsCustom = Number(state.placement?.revision) > 0;
@@ -473,6 +527,7 @@
       state.placement = result.placement;
       state.weekIndex = 0;
       state.weekday = 0;
+      state.workoutSessionIndex = 0;
       renderProgram();
     } catch (error) {
       showError(error.message);
@@ -655,29 +710,71 @@
       const week = state.program.weeks[weekIndex];
       const day = week?.days?.find(item => Number(item.weekday) === dayIndex);
       if (!day) return;
+      if (previewHarness && clientPlanningMockTools) {
+        const session = {
+          enabled: true,
+          name: "Workout",
+          description: "",
+          sessionType: "Strength",
+          warmup: "",
+          cooldown: "",
+          exercises: [blankExercise()]
+        };
+        const sessionIndex = clientPlanningMockTools.addSession(week, dayIndex, session);
+        if (sessionIndex < 0) return;
+        state.weekIndex = weekIndex;
+        state.weekday = dayIndex;
+        state.workoutSessionIndex = sessionIndex;
+        await saveProgramContent();
+        return renderWorkout();
+      }
       day.enabled = true;
       day.name = "Workout";
       day.sessionType = "Strength";
       day.exercises = [blankExercise()];
       state.weekIndex = weekIndex;
       state.weekday = dayIndex;
+      state.workoutSessionIndex = 0;
       await saveProgramContent();
       return renderWorkout();
     }
     if (action === "open-workout") {
       state.weekIndex = weekIndex;
       state.weekday = dayIndex;
+      state.workoutSessionIndex = previewHarness ? Number(element.dataset.sessionIndex || 0) : 0;
       return renderWorkout();
     }
     if (action === "remove-workout") {
       const day = state.program.weeks[weekIndex]?.days?.find(item => Number(item.weekday) === dayIndex);
-      if (!day || !window.confirm(`Remove the ${weekdayLabel(dayIndex)} workout and its planned prescription? Past completed sessions will remain unchanged.`)) return;
+      const sessionIndex = previewHarness ? Number(element.dataset.sessionIndex || 0) : 0;
+      const workout = previewHarness && clientPlanningMockTools
+        ? clientPlanningMockTools.getSession(day, sessionIndex)
+        : day;
+      if (!day || !workout || !window.confirm(`Remove ${workout.name || "this workout"} from ${weekdayLabel(dayIndex)}?`)) return;
+      if (previewHarness && clientPlanningMockTools) {
+        clientPlanningMockTools.removeSession(state.program.weeks[weekIndex], dayIndex, sessionIndex);
+        state.workoutSessionIndex = 0;
+        await saveProgramContent();
+        return renderProgram();
+      }
       Object.assign(day, blankDay(dayIndex));
       await saveProgramContent();
       return renderProgram();
     }
     if (action === "move-workout") {
       const week = state.program.weeks[weekIndex];
+      if (previewHarness && clientPlanningMockTools) {
+        const result = clientPlanningMockTools.moveSession(
+          week,
+          dayIndex,
+          Number(element.dataset.direction),
+          Number(element.dataset.sessionIndex || 0)
+        );
+        if (!result.moved) return showToast(result.reason === "week-boundary" ? "This workout is already at the edge of the week." : "The workout could not be moved.");
+        state.workoutSessionIndex = result.sessionIndex;
+        await saveProgramContent();
+        return renderProgram();
+      }
       const active = week.days.filter(day => day.enabled || day.exercises?.length)
         .sort((a, b) => weekdayPosition(a.weekday) - weekdayPosition(b.weekday));
       const current = active.findIndex(day => Number(day.weekday) === dayIndex);
@@ -720,6 +817,14 @@
 
   async function submitForm(event) {
     const form = event.target;
+    if (form.matches("[data-client-workout-create]") && state.clientWorkspace === "workouts") {
+      event.preventDefault();
+      if (clientWorkoutWorkspace.savePersonalWorkout(state.workouts)) {
+        state.workouts.libraryExpanded = true;
+        renderClientWorkouts();
+      } else renderClientWorkouts();
+      return;
+    }
     if (form.matches("[data-modal-form]")) {
       event.preventDefault();
       const data = new FormData(form);
@@ -838,12 +943,18 @@
   app.addEventListener("click", event => {
     const workoutAction = event.target.closest("[data-workout-action]");
     if (workoutAction && state.clientWorkspace === "workouts" && clientWorkoutWorkspace) {
+      if (workoutAction.closest(".client-independent-library")) state.workouts.libraryExpanded = true;
       clientWorkoutWorkspace.handleAction(
         state.workouts,
         workoutAction.dataset.workoutAction,
-        workoutAction.dataset.workoutId
+        workoutAction.dataset.workoutId,
+        workoutAction.dataset.source,
+        workoutAction.dataset.entryId || workoutAction.dataset.exerciseIndex
       );
       renderClientWorkouts();
+      if (workoutAction.dataset.workoutAction === "browse-independent") {
+        document.getElementById("client-independent-library")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
       return;
     }
     const rangeButton = event.target.closest("[data-range]");
@@ -866,8 +977,11 @@
   });
   app.addEventListener("input", event => {
     if (state.clientWorkspace !== "workouts" || !clientWorkoutWorkspace) return;
-    const workout = clientWorkoutWorkspace.getWorkouts(state.workouts.weekStart)
-      .find(item => item.id === state.workouts.selectedWorkoutId);
+    if (event.target.closest("[data-client-workout-create]")) {
+      clientWorkoutWorkspace.updateCreateDraft(state.workouts, event.target.name, event.target.value);
+      return;
+    }
+    const workout = clientWorkoutWorkspace.activeWorkout(state.workouts);
     if (!workout) return;
     const result = event.target.closest("[data-workout-result]");
     if (result) {
@@ -886,9 +1000,12 @@
   });
   app.addEventListener("change", event => {
     if (state.clientWorkspace !== "workouts" || !clientWorkoutWorkspace) return;
+    if (event.target.closest("[data-client-workout-create]")) {
+      clientWorkoutWorkspace.updateCreateDraft(state.workouts, event.target.name, event.target.value);
+      return;
+    }
     const checkbox = event.target.closest("[data-workout-complete-set]");
-    const workout = clientWorkoutWorkspace.getWorkouts(state.workouts.weekStart)
-      .find(item => item.id === state.workouts.selectedWorkoutId);
+    const workout = clientWorkoutWorkspace.activeWorkout(state.workouts);
     if (!checkbox || !workout) return;
     clientWorkoutWorkspace.setCompleted(
       state.workouts,

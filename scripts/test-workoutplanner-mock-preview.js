@@ -10,6 +10,7 @@ const {
   registerWorkoutPlannerMockPreviewRoutes
 } = require("../workoutplanner/mock-preview-server");
 const clientWorkoutWorkspace = require("../dashboard/client-workouts");
+const clientPlanningMockTools = require("../dashboard/client-planning-mock-tools");
 
 function makeResponse(body, status) {
   return {
@@ -328,7 +329,7 @@ function testClientWorkoutsWorkspaceInteractionsStayInMemory() {
 
   clientWorkoutWorkspace.handleAction(state, "open-workout", "strength-b");
   const details = clientWorkoutWorkspace.render(state);
-  assert.match(details, /Back to week overview/);
+  assert.match(details, /Back to Workouts/);
   assert.match(details, /Reverse lunge/);
   assert.match(details, /3 × 8 reps/);
   assert.match(details, /75 sec rest/);
@@ -356,12 +357,12 @@ function testClientWorkoutsWorkspaceInteractionsStayInMemory() {
 
   clientWorkoutWorkspace.handleAction(state, "finish-session");
   assert.match(clientWorkoutWorkspace.render(state), /Session recorded/);
-  assert.strictEqual(clientWorkoutWorkspace.statusFor(state, workout), "completed");
+  assert.strictEqual(clientWorkoutWorkspace.statusFor(state, workout), "planned", "a session performed on a different date must not complete the scheduled workout.");
   assert.strictEqual(workout.exercises[0].weight, prescribedWeight, "recording results must not rewrite the prescription.");
 
   clientWorkoutWorkspace.handleAction(state, "back-to-week");
   assert.match(clientWorkoutWorkspace.render(state), /Strength B/);
-  assert.strictEqual(clientWorkoutWorkspace.statusFor(state, workout), "completed");
+  assert.strictEqual(clientWorkoutWorkspace.statusFor(state, workout), "planned");
 
   const workspaceSource = fs.readFileSync(
     path.join(__dirname, "..", "dashboard", "client-workouts.js"),
@@ -383,6 +384,127 @@ function testClientWorkoutsWorkspaceInteractionsStayInMemory() {
   assert.match(planningUi, /if \(!previewHarness \|\| !workspaceNav\) return/);
   assert.match(planningHtml, /client-workouts\.js/);
   assert.match(planningCss, /@media \(max-width: 460px\)[\s\S]*?client-workout-set-row/);
+}
+
+function testPlanningMockMovesSessionsOneDayWithoutOverwriting() {
+  const week = {
+    days: Array.from({ length: 7 }, (_, index) => ({
+      weekday: index + 1,
+      enabled: false,
+      name: "",
+      description: "",
+      sessionType: "Rest / open day",
+      warmup: "",
+      cooldown: "",
+      exercises: []
+    }))
+  };
+  const workout = name => ({
+    enabled: true,
+    name,
+    sessionType: "Strength",
+    description: "",
+    warmup: "",
+    cooldown: "",
+    exercises: [{ name: `${name} exercise` }]
+  });
+  clientPlanningMockTools.addSession(week, 3, workout("Wednesday session"));
+  clientPlanningMockTools.addSession(week, 5, workout("Friday session"));
+
+  const toThursday = clientPlanningMockTools.moveSession(week, 3, 1, 0);
+  assert.strictEqual(toThursday.moved, true);
+  assert.strictEqual(toThursday.targetWeekday, 4);
+  assert.strictEqual(clientPlanningMockTools.listSessions(clientPlanningMockTools.findDay(week, 3)).length, 0);
+  assert.deepStrictEqual(
+    clientPlanningMockTools.listSessions(clientPlanningMockTools.findDay(week, 4)).map(item => item.name),
+    ["Wednesday session"],
+    "the move should stop on Thursday rather than skip to the next planned day."
+  );
+
+  const toFriday = clientPlanningMockTools.moveSession(week, 4, 1, 0);
+  assert.strictEqual(toFriday.moved, true);
+  assert.strictEqual(toFriday.targetWeekday, 5);
+  assert.deepStrictEqual(
+    clientPlanningMockTools.listSessions(clientPlanningMockTools.findDay(week, 5)).map(item => item.name),
+    ["Friday session", "Wednesday session"],
+    "moving onto an occupied day should preserve both sessions without swapping or overwriting."
+  );
+  clientPlanningMockTools.addSession(week, 5, workout("Third Friday session"));
+  assert.strictEqual(clientPlanningMockTools.listSessions(clientPlanningMockTools.findDay(week, 5)).length, 3);
+  clientPlanningMockTools.removeSession(week, 5, 0);
+  assert.deepStrictEqual(
+    clientPlanningMockTools.listSessions(clientPlanningMockTools.findDay(week, 5)).map(item => item.name),
+    ["Wednesday session", "Third Friday session"],
+    "removing a day's first session should promote, not discard, the remaining sessions."
+  );
+  assert.strictEqual(clientPlanningMockTools.moveSession(week, 7, 1, 0).moved, false);
+}
+
+function testIndependentWorkoutsAndPersonalCreationStayInMemory() {
+  const state = clientWorkoutWorkspace.createState(new Date("2026-10-25T12:00:00Z"));
+  const initialOverview = clientWorkoutWorkspace.render(state);
+  assert.match(initialOverview, /class="client-workout-day[^"]*is-today/);
+  assert.match(initialOverview, /class="client-workout-today-pill">Today/);
+  assert.match(initialOverview, /No planned workout today/);
+  assert.match(initialOverview, /<details class="client-independent-library/);
+  assert.match(initialOverview, /Record now/);
+  assert.match(initialOverview, /Add to today/);
+
+  clientWorkoutWorkspace.handleAction(state, "add-to-today", "quick-strength", "coach");
+  const addedOverview = clientWorkoutWorkspace.render(state);
+  assert.match(addedOverview, /Quick strength/);
+  assert.match(addedOverview, /Extra · Planned/);
+  assert.strictEqual(state.addedWorkouts[0].date, state.today);
+  assert.strictEqual(state.recordedSessions.length, 0, "adding an independent workout must not mark it complete.");
+  assert.match(addedOverview, /<details class="client-independent-library"[^>]*open/);
+
+  const instantState = clientWorkoutWorkspace.createState(new Date("2026-10-25T12:00:00Z"));
+  clientWorkoutWorkspace.handleAction(instantState, "record-now", "mobility-reset", "coach");
+  assert.match(clientWorkoutWorkspace.render(instantState), /RECORDING SESSION · Sunday 25 October/);
+  clientWorkoutWorkspace.handleAction(instantState, "finish-session");
+  assert.strictEqual(instantState.recordedSessions[0].performedOn, "2026-10-25");
+  clientWorkoutWorkspace.handleAction(instantState, "back-to-week");
+  assert.match(clientWorkoutWorkspace.render(instantState), /Mobility reset/);
+  assert.match(clientWorkoutWorkspace.render(instantState), /Extra · Completed/);
+
+  const recordingState = clientWorkoutWorkspace.createState(new Date("2026-10-25T12:00:00Z"));
+  clientWorkoutWorkspace.handleAction(recordingState, "open-workout", "strength-b", "planned");
+  clientWorkoutWorkspace.handleAction(recordingState, "record-workout");
+  assert.match(clientWorkoutWorkspace.render(recordingState), /Sunday 25 October/);
+  const selectedWorkout = clientWorkoutWorkspace.activeWorkout(recordingState);
+  clientWorkoutWorkspace.setResult(recordingState, selectedWorkout, "reverse-lunge", 0, "reps", "9");
+  clientWorkoutWorkspace.setCompleted(recordingState, selectedWorkout, "reverse-lunge", 0, true);
+  clientWorkoutWorkspace.handleAction(recordingState, "finish-session");
+  assert.strictEqual(recordingState.recordedSessions[0].performedOn, "2026-10-25");
+  assert.strictEqual(recordingState.recordedSessions[0].workout.date, "2026-10-23");
+  assert.strictEqual(
+    clientWorkoutWorkspace.statusFor(
+      recordingState,
+      clientWorkoutWorkspace.getWorkouts("2026-10-19").find(workout => workout.id === "strength-b")
+    ),
+    "planned",
+    "recording a prescribed workout on another day must not complete or move the scheduled workout."
+  );
+  clientWorkoutWorkspace.handleAction(recordingState, "back-to-week");
+  const actualDayOverview = clientWorkoutWorkspace.render(recordingState);
+  assert.match(actualDayOverview, /Extra · Completed/);
+  assert.match(actualDayOverview, /Strength B/);
+
+  const personalState = clientWorkoutWorkspace.createState(new Date("2026-10-25T12:00:00Z"));
+  clientWorkoutWorkspace.handleAction(personalState, "create-personal");
+  clientWorkoutWorkspace.updateCreateDraft(personalState, "name", "My evening circuit");
+  clientWorkoutWorkspace.updateCreateDraft(personalState, "description", "Easy bodyweight work at home.");
+  clientWorkoutWorkspace.updateCreateDraft(personalState, "exercise.0.name", "Sit-to-stand");
+  clientWorkoutWorkspace.updateCreateDraft(personalState, "exercise.0.sets", "2");
+  clientWorkoutWorkspace.addCreateExercise(personalState);
+  clientWorkoutWorkspace.updateCreateDraft(personalState, "exercise.1.name", "Wall push-up");
+  clientWorkoutWorkspace.updateCreateDraft(personalState, "exercise.1.reps", "12");
+  assert.strictEqual(clientWorkoutWorkspace.savePersonalWorkout(personalState), true);
+  assert.strictEqual(personalState.personalWorkouts[0].exercises.length, 2);
+  const personalOverview = clientWorkoutWorkspace.render(personalState);
+  assert.match(personalOverview, /My evening circuit/);
+  assert.match(personalOverview, /My workouts/);
+  assert.match(personalOverview, /Personal workouts you create for yourself/);
 }
 
 function testPagesUseActualHtmlWithMockBootstrap() {
@@ -498,6 +620,8 @@ async function run() {
   await testClientPlanningMockApiStaysInMemory();
   testClientPlanningWeekEditorIsCompactAndResponsive();
   testClientWorkoutsWorkspaceInteractionsStayInMemory();
+  testPlanningMockMovesSessionsOneDayWithoutOverwriting();
+  testIndependentWorkoutsAndPersonalCreationStayInMemory();
   testPagesUseActualHtmlWithMockBootstrap();
   testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
