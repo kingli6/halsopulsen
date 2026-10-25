@@ -42,6 +42,7 @@
     "@clerk/shared": "^4.29.3",
     "express": "^4.19.2",
     "http-proxy-middleware": "^3.0.7",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "proxy-addr": "^2.0.8"
   }
 }

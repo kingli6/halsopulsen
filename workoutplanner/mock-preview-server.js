@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
+const UNIFIED_PREVIEW_FILE = path.join(ROOT, "dashboard", "workoutplanner-unified-mock", "unified.html");
 const PLANNING_PROTOTYPE_FILE = path.join(
   ROOT,
   "dashboard",
@@ -57,7 +58,22 @@ function sendMockPreviewPage(res, page) {
   }
 }
 
+function sendUnifiedMockPreview(res) {
+  try {
+    const html = fs.readFileSync(UNIFIED_PREVIEW_FILE, "utf8");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.type("html").send(html);
+  } catch (error) {
+    console.error("Could not render the unified WorkoutPlanner mock preview:", error.message);
+    res.status(500).send("The local WorkoutPlanner mock preview could not be loaded.");
+  }
+}
+
 function registerWorkoutPlannerMockPreviewRoutes(app) {
+  app.get("/__dev/workoutplanner/", (req, res) => sendUnifiedMockPreview(res));
+  app.get("/__dev/workoutplanner/library/", (req, res) => sendUnifiedMockPreview(res));
+  app.get("/__dev/workoutplanner/client-schedule/", (req, res) => sendUnifiedMockPreview(res));
   for (const [page, config] of Object.entries(PREVIEW_PAGES)) {
     app.get(`/__dev/workoutplanner${config.route}`, (req, res) => sendMockPreviewPage(res, page));
   }
@@ -74,5 +90,6 @@ function registerWorkoutPlannerMockPreviewRoutes(app) {
 
 module.exports = {
   injectMockPreview,
+  sendUnifiedMockPreview,
   registerWorkoutPlannerMockPreviewRoutes
 };

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f1f4ee">
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+  <title>HälsoPulsen · WorkoutPlanner preview</title>
+  <link rel="stylesheet" href="/dashboard/workoutplanner-unified-mock/unified.css">
+</head>
+<body>
+  <div class="app-frame">
+    <header class="topbar">
+      <a class="brand" href="/__dev/workoutplanner/" aria-label="HälsoPulsen WorkoutPlanner preview">
+        <span class="brand-symbol" aria-hidden="true">H</span>
+        <span class="brand-copy"><strong>HälsoPulsen</strong><small>WorkoutPlanner preview</small></span>
+      </a>
+      <nav class="main-nav" id="main-nav" aria-label="WorkoutPlanner navigation"></nav>
+      <div class="topbar-tools">
+        <span class="preview-label">Local mock preview</span>
+        <div class="role-switch" role="group" aria-label="Preview role">
+          <button type="button" data-role="coach" aria-pressed="true">Coach</button>
+          <button type="button" data-role="client" aria-pressed="false">Client</button>
+        </div>
+      </div>
+    </header>
+    <main id="app-main" class="page-wrap" tabindex="-1"></main>
+  </div>
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section>
+  </div>
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="/dashboard/workoutplanner-unified-mock/unified.js"></script>
+</body>
+</html>

@@ -32,6 +32,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .planner-topbar nav span { height: 100%; display: grid; place-items: center; border-bottom: 2px solid var(--plan-green); padding: 0 4px; color: var(--plan-green-dark); font-size: 13px; font-weight: 700; }
 .planner-main-site { margin-left: auto; color: var(--plan-muted); font-size: 12px; font-weight: 600; text-decoration: none; }
 .planner-shell { width: min(1440px, 100%); margin: 0 auto; padding: 34px clamp(16px, 3.5vw, 48px) 64px; }
+html.workoutplanner-embedded-preview .planner-topbar { display: none; }
+html.workoutplanner-embedded-preview .planner-shell { width: 100%; padding: 18px clamp(12px, 2vw, 24px) 28px; }
 .planner-alert { margin: 0 auto 16px; border: 1px solid #e8c3b8; border-radius: 12px; background: #fff5f2; padding: 13px 16px; color: #8a3b2e; font-size: 13px; }
 .planner-loading { display: grid; place-items: center; min-height: 46vh; color: var(--plan-muted); font-size: 14px; }
 .loading-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--plan-green); box-shadow: 18px 0 #a9c6b1, -18px 0 #d2dfd4; animation: loading-pulse 1s infinite ease-in-out alternate; }

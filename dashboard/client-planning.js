@@ -1054,7 +1054,8 @@
     try {
       if (previewHarness) renderWorkspaceNav("planning");
       await refreshProgramList();
-      const initialTab = previewHarness && new URLSearchParams(window.location.search).get("tab") === "workouts"
+      const params = new URLSearchParams(window.location.search);
+      const initialTab = previewHarness && (params.get("workspace") === "workouts" || params.get("tab") === "workouts")
         ? "workouts"
         : "planning";
       document.title = `${state.client?.displayName || "Your"} ${initialTab === "workouts" ? "Workouts" : "Planning"} — HälsoPulsen`;

@@ -638,6 +638,43 @@ function testPagesUseActualHtmlWithMockBootstrap() {
   assert.match(planUi, /mockPreviewWorkspace/);
   assert.match(planUi, /!sharedProgramWorkspace && !mockPreviewWorkspace/);
   assert.match(planUi, /if \(!sharedProgramWorkspace && !mockPreviewWorkspace\) \{\s*TrackerData\.ensureAssignments[\s\S]*?TrackerData\.save/);
+
+  const unifiedHtml = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "workoutplanner-unified-mock", "unified.html"),
+    "utf8"
+  );
+  const unifiedUi = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "workoutplanner-unified-mock", "unified.js"),
+    "utf8"
+  );
+  assert.match(unifiedHtml, /data-role="coach"/);
+  assert.match(unifiedHtml, /data-role="client"/);
+  assert.match(unifiedHtml, /id="main-nav"/);
+  for (const screen of ["coach-overview", "coach-planning", "library", "client-overview", "client-planning", "workouts"]) {
+    assert.ok(unifiedUi.includes(`?screen=${screen}"`), `${screen} should have a direct shell route`);
+  }
+  assert.match(unifiedUi, /route === "client-planning"\) app\.innerHTML = clientPlanningPage\(\)/);
+  assert.match(unifiedUi, /client-planning\/\?embed=1&workspace=workouts/);
+  assert.match(unifiedUi, /availability-tag/);
+
+  const registeredRoutes = new Map();
+  registerWorkoutPlannerMockPreviewRoutes({
+    get(route, handler) { registeredRoutes.set(route, handler); }
+  });
+  for (const route of ["/__dev/workoutplanner/", "/__dev/workoutplanner/library/", "/__dev/workoutplanner/client-schedule/"]) {
+    assert.strictEqual(typeof registeredRoutes.get(route), "function", `${route} should serve the unified mock shell`);
+    const response = {
+      headers: {},
+      setHeader(name, value) { this.headers[name] = value; },
+      type() { return this; },
+      send(body) { this.body = body; }
+    };
+    registeredRoutes.get(route)({}, response);
+    assert.match(response.body, /id="main-nav"/);
+    assert.strictEqual(response.headers["X-Robots-Tag"], "noindex, nofollow");
+  }
+  assert.strictEqual(typeof registeredRoutes.get("/__dev/workoutplanner/planning/"), "function", "the original Planning prototype route stays available");
+  assert.strictEqual(typeof registeredRoutes.get("/__dev/workoutplanner/client-planning"), "function", "the original Client Workouts/Planning mock route stays available");
 }
 
 function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
