@@ -6,6 +6,7 @@
   const dialog = document.getElementById("dialog");
   const toastRegion = document.getElementById("toast-region");
   const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const planningState = window.WorkoutPlannerPlanningState;
   const COLORS = [
     { bg: "#e5f0e6", border: "#b9d2bd", ink: "#28583b" },
     { bg: "#e9edf2", border: "#c6d1dc", ink: "#425b70" },
@@ -55,10 +56,7 @@
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
   };
-  const emptyDay = weekday => ({
-    weekday, enabled: false, name: "", description: "", sessionType: "Rest / open day",
-    warmup: "", cooldown: "", exercises: []
-  });
+  const emptyDay = weekday => planningState.emptyDay(weekday);
   const emptyWeek = number => ({
     weekNumber: number,
     name: `Week ${number}`,
@@ -98,6 +96,7 @@
     activeId: null,
     activeWeek: 0,
     activeWeekday: 1,
+    activeSessionIndex: 0,
     expandedExercise: null,
     returnView: "calendar",
     previewReturnId: null,
@@ -110,6 +109,7 @@
     return records.map((source, index) => {
       const record = clone(source);
       const program = record.program || {};
+      (Array.isArray(program.weeks) ? program.weeks : []).forEach(week => planningState.normalizeWeek(week));
       const startDate = program.startDate || record.row?.startDate || iso(new Date());
       const weeksCount = Math.max(1, Number(program.durationWeeks) || (program.weeks && program.weeks.length) || 1);
       return {
@@ -151,21 +151,13 @@
   }
 
   function getDay(week, weekday) {
-    if (!Array.isArray(week.days)) week.days = [];
-    let day = week.days.find(item => Number(item.weekday) === Number(weekday));
-    if (!day) {
-      day = emptyDay(Number(weekday));
-      week.days.push(day);
-      week.days.sort((a, b) => Number(a.weekday) - Number(b.weekday));
-    }
-    if (!Array.isArray(day.exercises)) day.exercises = [];
-    return day;
+    return planningState.ensureDay(week, Number(weekday));
   }
 
   function getActiveWorkout() {
     const record = getProgram();
     const week = record && getWeek(record, state.activeWeek);
-    return week ? getDay(week, state.activeWeekday) : null;
+    return week ? planningState.getSession(getDay(week, state.activeWeekday), state.activeSessionIndex) : null;
   }
 
   function toast(message) {
@@ -371,7 +363,9 @@
     if (!record) { state.view = "calendar"; render(); return; }
     const program = record.program;
     const weeks = ensureWeeks(record);
-    const activeWorkouts = weeks.reduce((sum, week) => sum + (week.days || []).filter(day => day.enabled && (day.name || (day.exercises || []).length)).length, 0);
+    const sessions = weeks.flatMap(week => (week.days || []).flatMap(day => planningState.listSessions(day)));
+    const scheduledWorkouts = sessions.filter(planningState.isScheduled).length;
+    const independentWorkouts = sessions.filter(planningState.isIndependent).length;
     const header = `
       ${crumbs("Program")}
       <div class="editor-summary">
@@ -384,7 +378,8 @@
             <span class="meta-chip">Planned ${escapeHtml(dateRange(record.schedule.startDate, record.schedule.endDate))}</span>
             <span class="meta-chip">${Math.max(1, Number(program.durationWeeks) || 1)} intended weeks</span>
             <span class="meta-chip">${weeks.length} cycle ${weeks.length === 1 ? "week" : "weeks"}</span>
-            <span class="meta-chip">${activeWorkouts} prescribed workouts</span>
+            <span class="meta-chip">${scheduledWorkouts} scheduled workouts</span>
+            <span class="meta-chip">${independentWorkouts} independent workouts</span>
           </div>
         </div>
         <div class="editor-actions">
@@ -422,26 +417,35 @@
   }
 
   function renderWeekCard(week, index, total) {
-    const days = (Array.isArray(week.days) ? week.days : []).filter(day => day && (day.enabled || day.name || (day.exercises || []).length)).sort((a, b) => Number(a.weekday) - Number(b.weekday));
-    const workouts = days.map(day => {
-      const weekday = Number(day.weekday);
-      const exerciseCount = Array.isArray(day.exercises) ? day.exercises.length : 0;
-      return `<div class="workout-row">
-        <span class="workout-day">${DAY_NAMES[(weekday + 6) % 7] || "Day"}</span>
-        <span class="workout-info"><span class="workout-name">${escapeHtml(day.name || "Untitled workout")}</span><span class="workout-subline">${escapeHtml(day.sessionType || "Workout")}${day.description ? ` · ${escapeHtml(day.description)}` : ""}</span></span>
-        <span class="workout-count">${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}</span>
-        <span class="workout-row-actions">
-          <button class="compact-action" type="button" data-action="move-workout" data-week="${index}" data-weekday="${weekday}" data-direction="-1" aria-label="Move ${escAttr(day.name || "workout")} earlier" ${days[0] === day ? "disabled" : ""}>↑</button>
-          <button class="compact-action" type="button" data-action="move-workout" data-week="${index}" data-weekday="${weekday}" data-direction="1" aria-label="Move ${escAttr(day.name || "workout")} later" ${days[days.length - 1] === day ? "disabled" : ""}>↓</button>
-          <button class="workout-open" type="button" data-action="open-workout" data-week="${index}" data-weekday="${weekday}">Open</button>
-        </span>
-      </div>`;
+    planningState.normalizeWeek(week);
+    const workouts = Array.from({ length: 7 }, (_, weekday) => {
+      const day = getDay(week, weekday);
+      const dayLabel = DAY_NAMES[(weekday + 6) % 7] || "Day";
+      const sessions = planningState.listSessions(day);
+      const rows = sessions.map((workout, sessionIndex) => {
+        const exerciseCount = Array.isArray(workout.exercises) ? workout.exercises.length : 0;
+        const availability = planningState.normalizeAvailability(workout.availability);
+        const availabilityLabel = availability === "both" ? "Program + independent" : availability === "independent" ? "Independent" : "Program";
+        return `<div class="workout-row">
+          <span class="workout-info"><span class="workout-name">${escapeHtml(workout.name || "Untitled workout")}</span><span class="workout-subline">${escapeHtml(workout.sessionType || "Workout")}${workout.description ? ` · ${escapeHtml(workout.description)}` : ""}</span></span>
+          <span class="workout-availability availability-${availability}">${availabilityLabel}</span>
+          <span class="workout-count">${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}</span>
+          <span class="workout-row-actions">
+            <button class="compact-action" type="button" data-action="move-workout" data-week="${index}" data-weekday="${weekday}" data-session-index="${sessionIndex}" data-direction="-1" aria-label="Move ${escAttr(workout.name || "workout")} to the previous day" ${weekday === 0 ? "disabled" : ""}>↑</button>
+            <button class="compact-action" type="button" data-action="move-workout" data-week="${index}" data-weekday="${weekday}" data-session-index="${sessionIndex}" data-direction="1" aria-label="Move ${escAttr(workout.name || "workout")} to the next day" ${weekday === 6 ? "disabled" : ""}>↓</button>
+            <button class="workout-open" type="button" data-action="open-workout" data-week="${index}" data-weekday="${weekday}" data-session-index="${sessionIndex}">Open</button>
+          </span>
+        </div>`;
+      }).join("");
+      return `<section class="workout-day-group">
+        <header class="workout-day-heading"><strong>${dayLabel}</strong><button class="button button-small day-add-button" type="button" data-action="add-workout" data-week="${index}" data-weekday="${weekday}">＋ Add workout</button></header>
+        <div class="workout-day-sessions">${rows || `<p class="empty-day-note">No workout scheduled</p>`}</div>
+      </section>`;
     }).join("");
     return `<article class="week-card">
       <header class="week-card-head">
         <div class="week-heading"><span class="week-index">${Number(week.weekNumber) || index + 1}</span><div><p class="week-name">${escapeHtml(week.name || `Week ${index + 1}`)}</p><p class="week-phase">${escapeHtml(week.phase || "Unassigned phase")}</p></div></div>
         <div class="week-head-actions">
-          <button class="button button-small" type="button" data-action="add-workout" data-week="${index}">＋ Workout</button>
           <button class="compact-action" type="button" data-action="edit-cycle" data-week="${index}" aria-label="Edit cycle week ${index + 1}">Edit cycle</button>
           <button class="compact-action" type="button" data-action="remove-week" data-week="${index}" aria-label="Remove week ${index + 1}" ${total <= 1 ? "disabled" : ""}>×</button>
         </div>
@@ -450,7 +454,7 @@
         <div class="cycle-note"><strong>Progression</strong><p>${escapeHtml(week.progressionNotes || "No coach progression notes.")}</p></div>
         <div class="cycle-note"><strong>Success metric</strong><p>${escapeHtml(week.successMetric || "No success metric.")}</p></div>
       </div>
-      <div class="workout-list">${workouts || `<div class="empty-week">No workouts prescribed in this cycle week yet.</div>`}</div>
+      <div class="workout-list">${workouts}</div>
     </article>`;
   }
 
@@ -473,7 +477,7 @@
       ${crumbs(`${record.program.name || "Program"} / Workout`)}
       <div class="inspector-top"><button class="back-button" type="button" data-action="back-to-program">← Back to program</button><span class="muted-small">Week ${Number(week.weekNumber) || state.activeWeek + 1} · ${escapeHtml(week.phase || "")}</span></div>
       <div class="editor-summary">
-        <div class="editor-title-area"><p class="eyebrow">Workout prescription</p><h1 class="editor-title">${escapeHtml(workout.name || "Untitled workout")}</h1><p class="editor-description">This is the prescribed workout. It is separate from anything the client has completed.</p></div>
+         <div class="editor-title-area"><p class="eyebrow">Workout details</p><h1 class="editor-title">${escapeHtml(workout.name || "Untitled workout")}</h1><p class="editor-description">Set where this workout is available. Availability changes do not record or complete a client session.</p></div>
         <div class="editor-actions"><span class="meta-chip">${escapeHtml(workout.sessionType || "Workout")}</span><span class="meta-chip">${exercises.length} exercises</span><button class="button button-small button-danger" type="button" data-action="remove-workout">Remove workout</button></div>
       </div>
       <div class="workout-editor-grid">
@@ -482,6 +486,7 @@
             <div class="form-section"><div class="form-grid">
               <div class="field"><label for="workout-name">Workout name</label><input id="workout-name" name="name" required value="${escAttr(workout.name || "")}"></div>
               <div class="field"><label for="workout-type">Session type</label><select id="workout-type" name="sessionType">${optionList(["Strength", "Cardio", "Mixed", "Mobility / recovery", "Guided session", "Other"], workout.sessionType || "Strength")}</select></div>
+              <div class="field"><label for="workout-availability">Available as</label><select id="workout-availability" name="availability">${availabilityOptions(workout.availability)}</select></div>
               <div class="field full"><label for="workout-description">Description</label><textarea id="workout-description" name="description">${escapeHtml(workout.description || "")}</textarea></div>
               <div class="field"><label for="workout-warmup">Warm-up</label><textarea id="workout-warmup" name="warmup">${escapeHtml(workout.warmup || "")}</textarea></div>
               <div class="field"><label for="workout-cooldown">Cool-down</label><textarea id="workout-cooldown" name="cooldown">${escapeHtml(workout.cooldown || "")}</textarea></div>
@@ -503,6 +508,13 @@
   function optionList(values, current) {
     const all = values.includes(current) ? values : [...values, current].filter(Boolean);
     return all.map(value => `<option value="${escAttr(value)}" ${value === current ? "selected" : ""}>${escapeHtml(value)}</option>`).join("");
+  }
+
+  function availabilityOptions(current) {
+    const value = planningState.normalizeAvailability(current);
+    return [["program", "Program"], ["independent", "Independent"], ["both", "Both"]]
+      .map(([key, label]) => `<option value="${key}" ${value === key ? "selected" : ""}>${label}</option>`)
+      .join("");
   }
 
   function renderExercise(exercise, index, total, summary) {
@@ -576,8 +588,8 @@
     app.innerHTML = pageShell(`
       ${crumbs("Client view")}
       <div class="client-preview-wrap">
-        <div class="client-preview-top"><div><p class="eyebrow">Read-only client view</p><h1>What the client sees</h1><p class="heading-subtitle">A simple view of intended programs and coaching instructions. No editor controls, attendance or session logging.</p></div><button class="back-button" type="button" data-action="back-from-preview">← Return to planning</button></div>
-        <p class="client-label">Preview for Taylor · example client · prescribed plans only</p>
+         <div class="client-preview-top"><div><p class="eyebrow">Read-only client view</p><h1>What the client sees</h1><p class="heading-subtitle">Program workouts and optional independent sessions. No editor controls, attendance or session logging.</p></div><button class="back-button" type="button" data-action="back-from-preview">← Return to planning</button></div>
+         <p class="client-label">Preview for Taylor · example client · mock sessions only</p>
         ${cards || `<section class="client-program-card"><div class="client-week"><p class="client-empty">No published programs are available in this preview.</p></div></section>`}
       </div>`);
   }
@@ -586,18 +598,33 @@
     const program = record.program;
     const weeks = Array.isArray(program.weeks) ? program.weeks : [];
     const weekMarkup = weeks.map(week => {
-      const workouts = (week.days || []).filter(day => day && (day.enabled || day.name || (day.exercises || []).length))
-        .sort((a, b) => Number(a.weekday) - Number(b.weekday));
+      const sessions = (week.days || []).flatMap(day => planningState.listSessions(day)
+        .map(workout => ({ day, workout })));
+      const scheduledWorkouts = sessions.filter(({ workout }) => planningState.isScheduled(workout));
+      const independentWorkouts = sessions.filter(({ workout }) => planningState.isIndependent(workout));
       const instruction = week.progressionNotes || week.successMetric;
+      const workoutCard = ({ day, workout }) => {
+        const weekday = Number(day.weekday);
+        const dayLabel = DAY_NAMES[(weekday + 6) % 7] || "Day";
+        const availability = planningState.normalizeAvailability(workout.availability);
+        const availabilityLabel = availability === "both" ? "Program + independent" : availability === "independent" ? "Independent" : "Program";
+        return `<article class="client-workout">
+          <div class="client-workout-meta"><span>${dayLabel}</span><span class="workout-availability availability-${availability}">${availabilityLabel}</span></div>
+          <strong>${escapeHtml(workout.name || "Workout")}</strong><p>${escapeHtml(workout.description || workout.sessionType || "Workout")}</p>
+          ${workout.warmup ? `<p><strong>Warm-up</strong> · ${escapeHtml(workout.warmup)}</p>` : ""}
+          ${(workout.exercises || []).map(exercise => `<div class="client-exercise"><span>${escapeHtml(exercise.name || "Exercise")}${exercise.notes ? ` · ${escapeHtml(exercise.notes)}` : ""}</span><span>${escapeHtml(clientPrescription(exercise))}</span></div>`).join("") || `<span class="muted-small">No exercises prescribed.</span>`}
+          ${workout.cooldown ? `<p style="margin:7px 0 0"><strong>Cool-down</strong> · ${escapeHtml(workout.cooldown)}</p>` : ""}
+        </article>`;
+      };
       return `<section class="client-week">
         <h3>${escapeHtml(week.name || `Week ${week.weekNumber || ""}`)}${week.phase ? ` · ${escapeHtml(week.phase)}` : ""}</h3>
         ${instruction ? `<div class="client-instructions"><p><strong>Coach instruction</strong><br>${escapeHtml(week.progressionNotes || "No progression note.")}</p><p><strong>Focus</strong><br>${escapeHtml(week.successMetric || "No success metric added.")}</p></div>` : ""}
-        <div class="client-workouts">${workouts.map(day => `<article class="client-workout">
-          <strong>${escapeHtml(day.name || "Workout")}</strong><p>${escapeHtml(day.description || day.sessionType || "Prescribed workout")}</p>
-          ${day.warmup ? `<p><strong>Warm-up</strong> · ${escapeHtml(day.warmup)}</p>` : ""}
-          ${(day.exercises || []).map(exercise => `<div class="client-exercise"><span>${escapeHtml(exercise.name || "Exercise")}${exercise.notes ? ` · ${escapeHtml(exercise.notes)}` : ""}</span><span>${escapeHtml(clientPrescription(exercise))}</span></div>`).join("") || `<span class="muted-small">No exercises prescribed.</span>`}
-          ${day.cooldown ? `<p style="margin:7px 0 0"><strong>Cool-down</strong> · ${escapeHtml(day.cooldown)}</p>` : ""}
-        </article>`).join("") || `<div class="client-empty">No workouts available in this week.</div>`}</div>
+        <h4 class="client-workout-section-title">Program schedule</h4>
+        <div class="client-workouts">${scheduledWorkouts.map(workoutCard).join("") || `<div class="client-empty">No workouts scheduled in this week.</div>`}</div>
+        ${independentWorkouts.length ? `<details class="client-independent-library">
+          <summary><strong>Independent workouts</strong><span>${independentWorkouts.length} available</span></summary>
+          <div class="client-workouts">${independentWorkouts.map(workoutCard).join("")}</div>
+        </details>` : ""}
       </section>`;
     }).join("");
     return `<article class="client-program-card">
@@ -840,6 +867,7 @@
       if (!workout) return;
       workout.name = String(data.get("name") || "").trim();
       workout.sessionType = String(data.get("sessionType") || "Other");
+      workout.availability = planningState.normalizeAvailability(String(data.get("availability") || "program"));
       workout.description = String(data.get("description") || "").trim();
       workout.warmup = String(data.get("warmup") || "").trim();
       workout.cooldown = String(data.get("cooldown") || "").trim();
@@ -894,27 +922,14 @@
     }
   }
 
-  function moveWorkout(weekIndex, weekday, direction) {
+  function moveWorkout(weekIndex, weekday, direction, sessionIndex) {
     const record = getProgram();
     const week = record && getWeek(record, weekIndex);
     if (!week) return;
-    const workouts = week.days.filter(day => day && (day.enabled || day.name || (day.exercises || []).length)).sort((a, b) => Number(a.weekday) - Number(b.weekday));
-    const currentIndex = workouts.findIndex(day => Number(day.weekday) === Number(weekday));
-    const targetIndex = currentIndex + direction;
-    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= workouts.length) return;
-    const a = workouts[currentIndex];
-    const b = workouts[targetIndex];
-    const aWeekday = a.weekday;
-    const bWeekday = b.weekday;
-    const aContent = { ...a };
-    const bContent = { ...b };
-    Object.keys(a).forEach(key => { if (key !== "weekday") delete a[key]; });
-    Object.keys(b).forEach(key => { if (key !== "weekday") delete b[key]; });
-    Object.keys(bContent).forEach(key => { if (key !== "weekday") a[key] = bContent[key]; });
-    Object.keys(aContent).forEach(key => { if (key !== "weekday") b[key] = aContent[key]; });
-    a.weekday = aWeekday;
-    b.weekday = bWeekday;
-    toast("Workout order updated by moving its weekday slot.");
+    const moved = planningState.moveSession(week, weekday, direction, sessionIndex);
+    if (!moved) return;
+    const targetName = DAY_NAMES[(moved.targetWeekday + 6) % 7] || "the next day";
+    toast(`Workout moved to ${targetName}. Other workouts were kept in place.`);
     render();
   }
 
@@ -929,31 +944,29 @@
     toast("Exercise order updated.");
   }
 
-  function addWorkout(weekIndex) {
+  function addWorkout(weekIndex, weekday) {
     const record = getProgram();
     const week = record && getWeek(record, weekIndex);
     if (!week) return;
-    let weekday = [1, 3, 5, 0, 2, 4, 6].find(day => {
-      const existing = week.days.find(item => Number(item.weekday) === day);
-      return !existing || (!existing.enabled && !existing.name && !(existing.exercises || []).length);
+    const targetWeekday = Number(weekday);
+    if (!Number.isInteger(targetWeekday) || targetWeekday < 0 || targetWeekday > 6) return;
+    const day = getDay(week, targetWeekday);
+    const sessionIndex = planningState.addSession(day, {
+      enabled: true,
+      name: "New workout",
+      description: "",
+      sessionType: "Strength",
+      availability: "program",
+      warmup: "",
+      cooldown: "",
+      exercises: []
     });
-    if (weekday == null) {
-      toast("All weekday slots are in use. Reorder or remove a workout first.");
-      return;
-    }
-    const day = getDay(week, weekday);
-    day.enabled = true;
-    day.name = "New workout";
-    day.description = "";
-    day.sessionType = "Strength";
-    day.warmup = "";
-    day.cooldown = "";
-    day.exercises = [];
     state.activeWeek = weekIndex;
-    state.activeWeekday = weekday;
+    state.activeWeekday = targetWeekday;
+    state.activeSessionIndex = sessionIndex;
     state.view = "workout";
     render();
-    toast("New workout added. Add its description and exercise prescriptions.");
+    toast("New workout added to this day. Add its details and exercise prescriptions.");
   }
 
   function dispatch(action, element) {
@@ -1055,14 +1068,20 @@
         break;
       }
       case "add-workout":
-        addWorkout(Number(element.dataset.week));
+        addWorkout(Number(element.dataset.week), Number(element.dataset.weekday));
         break;
       case "move-workout":
-        moveWorkout(Number(element.dataset.week), Number(element.dataset.weekday), Number(element.dataset.direction));
+        moveWorkout(
+          Number(element.dataset.week),
+          Number(element.dataset.weekday),
+          Number(element.dataset.direction),
+          Number(element.dataset.sessionIndex)
+        );
         break;
       case "open-workout":
         state.activeWeek = Number(element.dataset.week);
         state.activeWeekday = Number(element.dataset.weekday);
+        state.activeSessionIndex = Number(element.dataset.sessionIndex) || 0;
         state.expandedExercise = null;
         state.view = "workout";
         render();
@@ -1075,10 +1094,10 @@
         const workout = getActiveWorkout();
         if (!workout) break;
         confirm(`Remove “${workout.name || "this workout"}” from this cycle week? Its prescribed exercises will be removed from the local copy.`, () => {
-          const weekday = Number(workout.weekday);
           const week = getWeek(getProgram(), state.activeWeek);
-          const index = week.days.findIndex(day => Number(day.weekday) === weekday);
-          if (index >= 0) week.days[index] = emptyDay(weekday);
+          const day = week && getDay(week, state.activeWeekday);
+          planningState.removeSession(day, state.activeSessionIndex);
+          state.activeSessionIndex = 0;
           state.view = "program";
           toast("Workout removed from this cycle week.");
           render();

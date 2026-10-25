@@ -12,6 +12,7 @@ const {
 } = require("../workoutplanner/mock-preview-server");
 const clientWorkoutWorkspace = require("../dashboard/client-workouts");
 const clientPlanningMockTools = require("../dashboard/client-planning-mock-tools");
+const planningPrototypeState = require("../dashboard/workoutplanner-planning-prototype/planning-state");
 
 function testWorkoutAvailabilityNormalizationAndClientViews() {
   const source = fs.readFileSync(path.join(__dirname, "..", "dashboard", "data.js"), "utf8");
@@ -554,6 +555,67 @@ function testIndependentWorkoutsAndPersonalCreationStayInMemory() {
   assert.match(personalOverview, /Personal workouts you create for yourself/);
 }
 
+function testPlanningPrototypePreservesWorkoutsWhenMovingBetweenDays() {
+  const week = { days: [] };
+  planningPrototypeState.normalizeWeek(week);
+  assert.strictEqual(week.days.length, 7, "the Planning prototype should keep every weekday available.");
+
+  const monday = planningPrototypeState.ensureDay(week, 1);
+  const tuesday = planningPrototypeState.ensureDay(week, 2);
+  planningPrototypeState.addSession(monday, {
+    name: "Monday strength",
+    availability: "program",
+    exercises: [{ name: "Squat" }]
+  });
+  planningPrototypeState.addSession(tuesday, {
+    name: "Tuesday mobility",
+    availability: "both",
+    exercises: [{ name: "Mobility flow" }]
+  });
+
+  const moved = planningPrototypeState.moveSession(week, 1, 1, 0);
+  assert.deepStrictEqual(moved, { sourceWeekday: 1, targetWeekday: 2, destinationIndex: 1 });
+  assert.deepStrictEqual(planningPrototypeState.listSessions(monday), [], "the moved workout should leave its original day.");
+  assert.deepStrictEqual(
+    planningPrototypeState.listSessions(tuesday).map(workout => workout.name),
+    ["Tuesday mobility", "Monday strength"],
+    "moving onto an occupied day should append the workout instead of swapping or overwriting."
+  );
+  assert.strictEqual(planningPrototypeState.getSession(tuesday, 0).availability, "both");
+  assert.strictEqual(planningPrototypeState.getSession(tuesday, 1).availability, "program");
+  assert.strictEqual(planningPrototypeState.isScheduled(planningPrototypeState.getSession(tuesday, 0)), true);
+  assert.strictEqual(planningPrototypeState.isIndependent(planningPrototypeState.getSession(tuesday, 0)), true);
+
+  const dayWithExtraOnly = planningPrototypeState.emptyDay(4);
+  dayWithExtraOnly.additionalWorkouts.push({ name: "Keep this workout", availability: "independent", exercises: [] });
+  planningPrototypeState.addSession(dayWithExtraOnly, { name: "New primary", exercises: [] });
+  assert.deepStrictEqual(
+    planningPrototypeState.listSessions(dayWithExtraOnly).map(workout => workout.name),
+    ["New primary", "Keep this workout"],
+    "adding the first primary workout must not discard existing sessions."
+  );
+
+  planningPrototypeState.addSession(tuesday, {
+    name: "Extra recovery",
+    availability: "independent",
+    exercises: []
+  });
+  assert.strictEqual(planningPrototypeState.listSessions(tuesday).length, 3, "a day may contain multiple workouts.");
+  assert.strictEqual(planningPrototypeState.isScheduled(planningPrototypeState.getSession(tuesday, 2)), false);
+  assert.strictEqual(planningPrototypeState.isIndependent(planningPrototypeState.getSession(tuesday, 2)), true);
+
+  assert.strictEqual(planningPrototypeState.removeSession(tuesday, 1), true);
+  assert.deepStrictEqual(
+    planningPrototypeState.listSessions(tuesday).map(workout => workout.name),
+    ["Tuesday mobility", "Extra recovery"],
+    "removing one workout should preserve the other sessions."
+  );
+  assert.strictEqual(planningPrototypeState.removeSession(tuesday, 0), true);
+  assert.strictEqual(planningPrototypeState.getSession(tuesday, 0).name, "Extra recovery", "the next session should be promoted without loss.");
+  assert.strictEqual(planningPrototypeState.moveSession(week, 0, -1, 0), null, "moving past the start of the week should do nothing.");
+  assert.strictEqual(planningPrototypeState.normalizeAvailability("unknown"), "program");
+}
+
 function testPagesUseActualHtmlWithMockBootstrap() {
   const previewServer = fs.readFileSync(
     path.join(__dirname, "..", "workoutplanner", "mock-preview-server.js"),
@@ -620,9 +682,17 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
   const prototypeScript = fs.readFileSync(prototypeScriptPath, "utf8");
   assert.match(prototypeHtml, /MOCK DATA PREVIEW/i);
   assert.match(prototypeHtml, /planning\.css/);
+  assert.match(prototypeHtml, /planning-state\.js/);
   assert.match(prototypeHtml, /planning\.js/);
+  assert.ok(
+    prototypeHtml.indexOf("planning-state.js") < prototypeHtml.indexOf("planning.js"),
+    "local Planning state helpers should load before the prototype UI."
+  );
   assert.match(prototypeScript, /createMockPreviewHarness\("coach"\)/);
   assert.match(prototypeScript, /state\.records\.filter\(record => record\.row\?\.hasCurrentVersion\)/);
+  assert.match(prototypeScript, /Available as/);
+  assert.match(prototypeScript, /client-independent-library/);
+  assert.match(prototypeScript, /planningState\.moveSession/);
   assert.doesNotMatch(prototypeScript, /\bfetch\s*\(/, "the prototype must not call APIs");
   assert.doesNotMatch(prototypeScript, /\blocalStorage\b/, "the prototype must keep edits in memory only");
 
@@ -670,6 +740,7 @@ async function run() {
   testClientWorkoutsWorkspaceInteractionsStayInMemory();
   testPlanningMockMovesSessionsOneDayWithoutOverwriting();
   testIndependentWorkoutsAndPersonalCreationStayInMemory();
+  testPlanningPrototypePreservesWorkoutsWhenMovingBetweenDays();
   testPagesUseActualHtmlWithMockBootstrap();
   testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
