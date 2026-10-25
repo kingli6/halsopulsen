@@ -195,17 +195,115 @@ async function testClientPlanningMockApiStaysInMemory() {
   const created = await preview.request(`${base}/programs`, {
     method: "POST",
     body: JSON.stringify({
-      program: { name: "Mock-only new program", version: 1, weeks: [] },
-      placement: { plannedStartDate: "2026-11-09", durationWeeks: 1 }
+      program: {
+        name: "Mock-only four-week program",
+        version: 1,
+        weeks: Array.from({ length: 4 }, (_, index) => ({
+          weekNumber: index + 1,
+          name: `Week ${index + 1}`,
+          phase: "Foundation",
+          days: []
+        }))
+      },
+      placement: { plannedStartDate: "2026-11-09", durationWeeks: 4 }
     })
   });
   assert.strictEqual(created.status, 201);
+  assert.strictEqual(created.body.program.weeks.length, 4);
+  assert.strictEqual(created.body.placement.durationWeeks, 4);
+
+  const sixWeeks = await preview.request(`${base}/programs/${created.body.programId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      expectedRevision: created.body.meta.revision,
+      program: {
+        ...created.body.program,
+        weeks: Array.from({ length: 6 }, (_, index) => ({
+          weekNumber: index + 1,
+          name: `Week ${index + 1}`,
+          phase: "Foundation",
+          days: []
+        }))
+      }
+    })
+  });
+  assert.strictEqual(sixWeeks.status, 200);
+  assert.strictEqual(sixWeeks.body.program.weeks.length, 6);
+  assert.strictEqual(sixWeeks.body.placement.durationWeeks, 6);
+  assert.strictEqual(sixWeeks.body.placement.revision, 0, "The period remains linked while it matches the program.");
+
+  const fiveWeeks = await preview.request(`${base}/programs/${created.body.programId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      expectedRevision: sixWeeks.body.meta.revision,
+      program: {
+        ...sixWeeks.body.program,
+        weeks: Array.from({ length: 5 }, (_, index) => ({
+          weekNumber: index + 1,
+          name: `Week ${index + 1}`,
+          phase: "Foundation",
+          days: []
+        }))
+      }
+    })
+  });
+  assert.strictEqual(fiveWeeks.body.placement.durationWeeks, 5, "Removing a week updates a linked period.");
+
+  const customPeriod = await preview.request(`${base}/programs/${created.body.programId}/placement`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      expectedRevision: fiveWeeks.body.placement.revision,
+      plannedStartDate: "2026-11-16",
+      durationWeeks: 4
+    })
+  });
+  assert.strictEqual(customPeriod.status, 200);
+  assert.strictEqual(customPeriod.body.placement.revision, 1);
+
+  const changedCustomProgram = await preview.request(`${base}/programs/${created.body.programId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      expectedRevision: fiveWeeks.body.meta.revision,
+      program: {
+        ...fiveWeeks.body.program,
+        weeks: Array.from({ length: 6 }, (_, index) => ({
+          weekNumber: index + 1,
+          name: `Week ${index + 1}`,
+          phase: "Foundation",
+          days: []
+        }))
+      }
+    })
+  });
+  assert.strictEqual(changedCustomProgram.body.program.weeks.length, 6);
+  assert.strictEqual(changedCustomProgram.body.placement.durationWeeks, 4, "An explicitly customized period stays fixed.");
+  assert.strictEqual(changedCustomProgram.body.placement.revision, 1);
+
   const deleted = await preview.request(`${base}/programs/${created.body.programId}`, {
     method: "DELETE"
   });
   assert.strictEqual(deleted.status, 200);
   assert.strictEqual(preview.programs.length, 2);
   assert.ok(preview.requests.every(request => request.path.startsWith(base)));
+}
+
+function testClientPlanningWeekEditorIsCompactAndResponsive() {
+  const clientPlanningUi = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planning.js"),
+    "utf8"
+  );
+  const clientPlanningCss = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "client-planning.css"),
+    "utf8"
+  );
+  assert.match(clientPlanningUi, /data-week-selector/);
+  assert.match(clientPlanningUi, /data-action="previous-week"/);
+  assert.match(clientPlanningUi, /data-action="next-week"/);
+  assert.match(clientPlanningUi, /data-action="duplicate-week"/);
+  assert.match(clientPlanningUi, /Week \$\{state\.weekIndex \+ 1\} of \$\{weekCount\}/);
+  assert.match(clientPlanningUi, /selectedWeek \? cycleCard\(selectedWeek, state\.weekIndex\)/);
+  assert.doesNotMatch(clientPlanningUi, /state\.program\.weeks\.map\(cycleCard\)/);
+  assert.match(clientPlanningCss, /@media \(max-width: 460px\)[\s\S]*?planner-week-selector select/);
 }
 
 function testPagesUseActualHtmlWithMockBootstrap() {
@@ -319,6 +417,7 @@ async function run() {
   testCoachAndRecipientPagesReceivePreviewData();
   await testMockProgramAndSessionInteractionsStayInMemory();
   await testClientPlanningMockApiStaysInMemory();
+  testClientPlanningWeekEditorIsCompactAndResponsive();
   testPagesUseActualHtmlWithMockBootstrap();
   testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");

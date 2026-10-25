@@ -1071,7 +1071,13 @@
             body: { ok: false, error: "This mock program changed in another tab.", code: "STALE_REVISION" }
           };
         }
+        const previousDuration = record.program.weeks?.length;
+        const placementFollowsProgram = Number(record.placement?.revision || 0) === 0
+          && Number(record.placement?.durationWeeks) === previousDuration;
         record.program = clone(body.program || record.program);
+        if (placementFollowsProgram) {
+          record.placement.durationWeeks = Math.max(1, record.program.weeks?.length || 1);
+        }
         record.revision += 1;
         if (isComplete(record.program)) {
           if (record.versionStatus !== "draft" || record.currentVersionId) record.version += 1;

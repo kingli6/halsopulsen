@@ -295,6 +295,7 @@
         <div class="planner-week-actions">
           <button class="planner-button planner-button-quiet" type="button" data-action="move-week" data-week="${index}" data-direction="-1" aria-label="Move week earlier" ${index === 0 ? "disabled" : ""}>↑</button>
           <button class="planner-button planner-button-quiet" type="button" data-action="move-week" data-week="${index}" data-direction="1" aria-label="Move week later" ${index === state.program.weeks.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="planner-button planner-button-quiet" type="button" data-action="duplicate-week" data-week="${index}">Duplicate</button>
           <button class="planner-button planner-button-quiet" type="button" data-action="edit-cycle" data-week="${index}">Edit week</button>
           <button class="planner-button planner-button-quiet planner-button-danger" type="button" data-action="remove-week" data-week="${index}" aria-label="Remove week ${index + 1}" ${state.program.weeks.length <= 1 ? "disabled" : ""}>×</button>
         </div>
@@ -306,16 +307,27 @@
   function renderProgram() {
     state.screen = "program";
     if (!state.program) return renderCalendar();
+    const weekCount = state.program.weeks.length;
+    state.weekIndex = Math.max(0, Math.min(state.weekIndex, weekCount - 1));
+    const selectedWeek = state.program.weeks[state.weekIndex];
     const period = state.placement?.plannedStartDate
       ? `${dateLabel(state.placement.plannedStartDate, { day: "numeric", month: "short", year: "numeric" })} – ${dateLabel(addDays(state.placement.plannedStartDate, Number(state.placement.durationWeeks) * 7 - 1), { day: "numeric", month: "short", year: "numeric" })}`
       : "Not placed on the calendar";
     const workouts = state.program.weeks.reduce((total, week) => total + (week.days || []).filter(day => day.enabled || day.exercises?.length).length, 0);
+    const programDuration = weekCount;
+    const periodDuration = Number(state.placement?.durationWeeks) || programDuration;
+    const periodIsCustom = Number(state.placement?.revision) > 0;
+    const periodModeLabel = periodIsCustom
+      ? `Custom calendar period · ${periodDuration} weeks`
+      : periodDuration === programDuration
+        ? `Period follows program · ${periodDuration} weeks`
+        : `Calendar period · ${periodDuration} weeks`;
     app.innerHTML = `
       <div class="planner-editor-crumb"><button type="button" data-action="calendar">Planning</button><span>/</span><span>${escapeHtml(state.program.name || "Program")}</span></div>
       <header class="planner-editor-head">
         <div class="planner-title"><p class="planner-eyebrow">YOUR PROGRAM</p><h1>${escapeHtml(state.program.name || "Untitled program")}</h1>
           <p class="planner-summary">${escapeHtml(state.program.description || "Add a short purpose for this training block.")}</p>
-          <div class="planner-meta-chips"><span class="planner-chip">${escapeHtml(state.meta?.versionStatus || "Draft")} · v${escapeHtml(state.meta?.version || 1)}</span><span class="planner-chip">Planned ${escapeHtml(period)}</span><span class="planner-chip">${state.program.weeks.length} ${state.program.weeks.length === 1 ? "week" : "weeks"}</span><span class="planner-chip">${workouts} workouts</span></div>
+          <div class="planner-meta-chips"><span class="planner-chip">${escapeHtml(state.meta?.versionStatus || "Draft")} · v${escapeHtml(state.meta?.version || 1)}</span><span class="planner-chip">Planned ${escapeHtml(period)}</span><span class="planner-chip">${programDuration} program ${programDuration === 1 ? "week" : "weeks"}</span><span class="planner-chip">${escapeHtml(periodModeLabel)}</span><span class="planner-chip">${workouts} workouts</span></div>
         </div>
         <div class="planner-editor-actions">
           <button class="planner-button" type="button" data-action="edit-period">Move / resize period</button>
@@ -323,6 +335,9 @@
           <button class="planner-button planner-button-primary" type="button" data-action="calendar">Back to calendar</button>
         </div>
       </header>
+      ${state.placement && periodDuration !== programDuration
+        ? `<p class="planner-duration-note" role="status">This program contains ${programDuration} ${programDuration === 1 ? "week" : "weeks"}; its calendar period is ${periodDuration} ${periodDuration === 1 ? "week" : "weeks"}. The period is kept separate. Use <strong>Move / resize period</strong> to change it.</p>`
+        : ""}
       <section class="planner-section">
         <header class="planner-section-head"><div><h2>Program details</h2><p>Program content is versioned separately from its calendar period.</p></div></header>
         <form class="planner-inline-fields" data-form="program-details">
@@ -332,8 +347,19 @@
         </form>
       </section>
       <section class="planner-section">
-        <header class="planner-section-head"><div><h2>Training weeks</h2><p>Each week holds its own progression, workouts and prescriptions.</p></div><button class="planner-button planner-button-quiet" type="button" data-action="add-week">＋ Add week</button></header>
-        ${state.program.weeks.map(cycleCard).join("")}
+        <header class="planner-section-head planner-weeks-section-head">
+          <div><h2>Training weeks</h2><p>Work on one week at a time; each keeps its own progression, workouts and prescriptions.</p></div>
+          <div class="planner-week-tools">
+            <div class="planner-week-navigation" aria-label="Week navigation">
+              <button class="planner-button planner-button-quiet" type="button" data-action="previous-week" aria-label="Previous week" ${state.weekIndex === 0 ? "disabled" : ""}>‹ Previous</button>
+              <label class="planner-week-selector"><span class="sr-only">Jump to week</span><select data-week-selector aria-label="Jump to week">${state.program.weeks.map((week, index) => `<option value="${index}" ${index === state.weekIndex ? "selected" : ""}>Week ${index + 1}${week.name ? ` · ${escapeHtml(week.name)}` : ""}</option>`).join("")}</select></label>
+              <strong class="planner-week-position" aria-live="polite">Week ${state.weekIndex + 1} of ${weekCount}</strong>
+              <button class="planner-button planner-button-quiet" type="button" data-action="next-week" aria-label="Next week" ${state.weekIndex >= weekCount - 1 ? "disabled" : ""}>Next ›</button>
+            </div>
+            <button class="planner-button planner-button-quiet" type="button" data-action="add-week">＋ Add week</button>
+          </div>
+        </header>
+        ${selectedWeek ? cycleCard(selectedWeek, state.weekIndex) : ""}
       </section>`;
   }
   function optionList(values, selected) {
@@ -435,8 +461,11 @@
         method: "PUT",
         body: JSON.stringify({ program: state.program, expectedRevision: state.meta?.revision })
       });
+      state.program = result.program || state.program;
       state.meta = { ...state.meta, ...result.meta };
       await refreshProgramList();
+      const savedSummary = state.programs.find(program => program.id === state.programId);
+      if (savedSummary) state.placement = savedSummary.placement || null;
       showToast(result.meta?.unchanged ? "No changes needed." : "Program content saved.");
       return true;
     } catch (error) {
@@ -475,18 +504,23 @@
   }
   function openAddProgram() {
     const today = toISO(new Date());
-    openModal("Add a program", "Start a program and set its planned calendar period. You can build its weeks and workouts next.", `
+    openModal("Add a program", "Choose the program length and start date. Its initial calendar period follows these weeks; you can set a custom period later.", `
       <form class="planner-modal-body" id="planner-dialog-form" data-modal-form="add">
         <label class="planner-field">Program name<input name="name" maxlength="120" required value="New training block"></label>
         <label class="planner-field">Purpose / goal<textarea name="description" maxlength="1000" placeholder="What do you want this block to help you work toward?"></textarea></label>
-        <div class="planner-form-grid"><label class="planner-field">Planned start<input name="plannedStartDate" type="date" required value="${today}"></label><label class="planner-field">Planned duration · weeks<input name="durationWeeks" type="number" min="1" max="52" required value="4"></label></div>
+        <div class="planner-form-grid"><label class="planner-field">Planned start<input name="plannedStartDate" type="date" required value="${today}"></label><label class="planner-field">Program length · weeks<input name="durationWeeks" type="number" min="1" max="52" required value="4"></label></div>
         <p class="planner-modal-error" data-modal-error role="alert"></p>
       </form>`, "Add program");
   }
   function openPeriodEditor() {
     const start = state.placement?.plannedStartDate || toISO(new Date());
-    const weeks = Number(state.placement?.durationWeeks) || Math.max(1, Number(state.program?.durationWeeks) || 4);
-    openModal("Move or resize period", "Only the calendar placement changes. Program weeks and completed sessions stay untouched.", `
+    const weeks = Number(state.placement?.durationWeeks) || Math.max(1, Number(state.program?.weeks?.length) || 4);
+    const customPeriod = Number(state.placement?.revision) > 0
+      || (Number(state.placement?.durationWeeks) > 0 && Number(state.placement.durationWeeks) !== state.program?.weeks?.length);
+    const description = customPeriod
+      ? "This is a separate calendar period. Saving a range here keeps it unchanged when program weeks are edited."
+      : "The calendar period currently follows the program length. Saving a different duration here makes the period custom.";
+    openModal("Move or resize period", description, `
       <form class="planner-modal-body" id="planner-dialog-form" data-modal-form="period">
         <label class="planner-field">Program<input value="${escapeHtml(state.program.name || "")}" readonly></label>
         <div class="planner-form-grid"><label class="planner-field">Planned start<input name="plannedStartDate" type="date" required value="${escapeHtml(start)}"></label><label class="planner-field">Planned duration · weeks<input name="durationWeeks" type="number" min="1" max="52" required value="${weeks}"></label></div>
@@ -550,23 +584,44 @@
     if (action === "add-week") {
       if (state.program.weeks.length >= 52) return showToast("A program can contain up to 52 weeks.");
       state.program.weeks.push(blankWeek(state.program.weeks.length + 1));
+      state.weekIndex = state.program.weeks.length - 1;
       reindexWeeks();
-      await saveProgramContent();
+      if (!await saveProgramContent()) return renderProgram();
+      return renderProgram();
+    }
+    if (action === "previous-week" || action === "next-week") {
+      const nextIndex = state.weekIndex + (action === "next-week" ? 1 : -1);
+      if (nextIndex < 0 || nextIndex >= state.program.weeks.length) return;
+      state.weekIndex = nextIndex;
+      return renderProgram();
+    }
+    if (action === "duplicate-week") {
+      if (state.program.weeks.length >= 52) return showToast("A program can contain up to 52 weeks.");
+      const sourceWeek = state.program.weeks[weekIndex];
+      if (!sourceWeek) return;
+      const duplicate = JSON.parse(JSON.stringify(sourceWeek));
+      duplicate.name = `${sourceWeek.name || `Week ${weekIndex + 1}`} · Copy`.slice(0, 100);
+      state.program.weeks.splice(weekIndex + 1, 0, duplicate);
+      state.weekIndex = weekIndex + 1;
+      reindexWeeks();
+      if (!await saveProgramContent()) return renderProgram();
       return renderProgram();
     }
     if (action === "move-week") {
       const target = weekIndex + Number(element.dataset.direction);
       if (target < 0 || target >= state.program.weeks.length) return;
       [state.program.weeks[weekIndex], state.program.weeks[target]] = [state.program.weeks[target], state.program.weeks[weekIndex]];
+      state.weekIndex = target;
       reindexWeeks();
-      await saveProgramContent();
+      if (!await saveProgramContent()) return renderProgram();
       return renderProgram();
     }
     if (action === "remove-week") {
       if (state.program.weeks.length <= 1) return;
       state.program.weeks.splice(weekIndex, 1);
+      state.weekIndex = Math.min(weekIndex, state.program.weeks.length - 1);
       reindexWeeks();
-      await saveProgramContent();
+      if (!await saveProgramContent()) return renderProgram();
       return renderProgram();
     }
     if (action === "edit-cycle") return openCycleEditor(weekIndex);
@@ -653,7 +708,9 @@
         }
         const program = {
           name, description: String(data.get("description") || "").trim(),
-          startDate: null, durationWeeks: 1, weeks: [blankWeek(1)]
+          startDate: null,
+          durationWeeks,
+          weeks: Array.from({ length: durationWeeks }, (_, index) => blankWeek(index + 1))
         };
         try {
           const result = await request(endpoint("/programs"), {
@@ -766,6 +823,14 @@
     }
     const programButton = event.target.closest("[data-open-program]");
     if (programButton) openProgram(programButton.dataset.openProgram);
+  });
+  app.addEventListener("change", event => {
+    const selector = event.target.closest("[data-week-selector]");
+    if (!selector || state.screen !== "program") return;
+    const nextIndex = Number(selector.value);
+    if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex >= state.program.weeks.length) return;
+    state.weekIndex = nextIndex;
+    renderProgram();
   });
   modal.addEventListener("click", event => {
     const button = event.target.closest('[data-action="close-modal"]');

@@ -8,7 +8,10 @@ const {
   listClientPlannerPrograms,
   setClientProgramPlacement
 } = require("../workoutplanner/client-planner");
-const { saveProgram } = require("../workoutplanner/program-library");
+const {
+  saveProgram,
+  synchronizePlannerPlacementDuration
+} = require("../workoutplanner/program-library");
 
 const coachId = "11111111-1111-4111-8111-111111111111";
 const clientId = "22222222-2222-4222-8222-222222222222";
@@ -287,14 +290,14 @@ async function testRevokedLinkAndProgramRemovalStayScoped() {
   assertNoAssignmentOrSessionWrites(archiveClient.calls);
 }
 
-function blankProgram() {
+function blankProgram(weekCount = 1) {
   return {
     name: "Client planning test",
     description: "A draft created by the private client planner.",
     startDate: null,
-    weeks: [{
-      weekNumber: 1,
-      name: "Week 1",
+    weeks: Array.from({ length: weekCount }, (_, index) => ({
+      weekNumber: index + 1,
+      name: `Week ${index + 1}`,
       phase: "Foundation",
       days: Array.from({ length: 7 }, (_, weekday) => ({
         weekday,
@@ -303,7 +306,7 @@ function blankProgram() {
         sessionType: "Other",
         exercises: []
       }))
-    }]
+    }))
   };
 }
 
@@ -386,7 +389,7 @@ async function testProgramSavePathIsVersionedAndDoesNotTouchSessions() {
   const result = await saveProgram(
     pool,
     coachId,
-    blankProgram(),
+    blankProgram(4),
     null,
     null,
     {
@@ -404,8 +407,8 @@ async function testProgramSavePathIsVersionedAndDoesNotTouchSessions() {
   assert.strictEqual(result.becameCurrent, false, "An empty program remains an editable draft.");
   assert.strictEqual(
     client.calls.filter(call => /insert into public\.workouts/i.test(call.sql)).length,
-    7,
-    "A saved program version retains all seven weekday slots."
+    28,
+    "A four-week program retains all seven weekday slots in each week."
   );
   const programInsert = client.calls.find(call => /insert into public\.programs/i.test(call.sql));
   assert.match(programInsert.sql, /values \(\$1, \$2, 'client', ''/i);
@@ -413,6 +416,55 @@ async function testProgramSavePathIsVersionedAndDoesNotTouchSessions() {
   assert.ok(savedPlacement, "The new program's independent calendar placement is saved in the same transaction.");
   assert.ok(client.calls.some(call => normalizedSql(call.sql).toLowerCase() === "commit"));
   assertNoAssignmentOrSessionWrites(client.calls);
+}
+
+async function testPlannerPlacementFollowsStructureOnlyWhileItMatches() {
+  const calls = [];
+  const matchedClient = {
+    async query(sql, values) {
+      calls.push({ sql: String(sql), values });
+      return queryResult([{ program_id: programId }]);
+    }
+  };
+  const synced = await synchronizePlannerPlacementDuration(matchedClient, {
+    programId,
+    clientId,
+    previousDurationWeeks: 4,
+    nextDurationWeeks: 6
+  });
+  assert.deepStrictEqual(synced, { updated: true });
+  assert.match(calls[0].sql, /revision = 0/i);
+  assert.match(calls[0].sql, /duration_weeks = \$4/i);
+  assert.deepStrictEqual(calls[0].values, [6, programId, clientId, 4]);
+
+  const customCalls = [];
+  const customClient = {
+    async query(sql, values) {
+      customCalls.push({ sql: String(sql), values });
+      return queryResult();
+    }
+  };
+  const custom = await synchronizePlannerPlacementDuration(customClient, {
+    programId,
+    clientId,
+    previousDurationWeeks: 4,
+    nextDurationWeeks: 6
+  });
+  assert.deepStrictEqual(custom, { updated: false });
+  assert.match(customCalls[0].sql, /revision = 0/i);
+  assert.match(customCalls[0].sql, /duration_weeks = \$4/i);
+
+  const noChangeCalls = [];
+  const noChange = await synchronizePlannerPlacementDuration({
+    async query(...args) { noChangeCalls.push(args); }
+  }, {
+    programId,
+    clientId,
+    previousDurationWeeks: 4,
+    nextDurationWeeks: 4
+  });
+  assert.deepStrictEqual(noChange, { updated: false });
+  assert.strictEqual(noChangeCalls.length, 0);
 }
 
 async function testExistingProgramSaveChecksOwnerAndRevision() {
@@ -498,6 +550,7 @@ async function run() {
   await testPlacementUpsertAndStaleWriteRejection();
   await testRevokedLinkAndProgramRemovalStayScoped();
   await testProgramSavePathIsVersionedAndDoesNotTouchSessions();
+  await testPlannerPlacementFollowsStructureOnlyWhileItMatches();
   await testExistingProgramSaveChecksOwnerAndRevision();
   testRouteAndSchemaContracts();
   console.log("WorkoutPlanner client-planner ownership, save-path, placement, and session-isolation checks passed.");

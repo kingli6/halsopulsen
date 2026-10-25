@@ -667,6 +667,31 @@ async function listProgramVersions(db, coachProfileId, programId) {
   }));
 }
 
+async function synchronizePlannerPlacementDuration(
+  client,
+  { programId, clientId, previousDurationWeeks, nextDurationWeeks }
+) {
+  const previousWeeks = integerOrNull(previousDurationWeeks);
+  const nextWeeks = integerOrNull(nextDurationWeeks);
+  if (!programId || !clientId || previousWeeks == null || nextWeeks == null
+    || previousWeeks < 1 || nextWeeks < 1
+    || previousWeeks === nextWeeks) {
+    return { updated: false };
+  }
+
+  const result = await client.query(
+    `update public.client_program_placements
+        set duration_weeks = $1,
+            updated_at = now()
+      where program_id = $2
+        and client_id = $3
+        and revision = 0
+        and duration_weeks = $4`,
+    [nextWeeks, programId, clientId, previousWeeks]
+  );
+  return { updated: result.rowCount === 1 };
+}
+
 async function saveProgram(
   db,
   coachProfileId,
@@ -725,6 +750,7 @@ async function saveProgram(
     throw error;
   }
   const client = await db.connect();
+  let previous = null;
   try {
     await client.query("begin");
     if (plannerLinkSave) {
@@ -842,7 +868,7 @@ async function saveProgram(
         throw error;
       }
 
-      const previous = await loadProgramWithClient(
+      previous = await loadProgramWithClient(
         client,
         coachProfileId,
         resolvedProgramId,
@@ -1024,6 +1050,16 @@ async function saveProgram(
       }
     }
 
+    if (plannerLinkSave && previous
+      && previous.program.weeks.length !== program.weeks.length) {
+      await synchronizePlannerPlacementDuration(client, {
+        programId: resolvedProgramId,
+        clientId: plannerClientId,
+        previousDurationWeeks: previous.program.weeks.length,
+        nextDurationWeeks: program.weeks.length
+      });
+    }
+
     let becameCurrent = false;
     if (candidateIsComplete) {
       const weekValidation = await client.query(
@@ -1148,6 +1184,11 @@ async function saveProgram(
       const durationWeeks = integerOrNull(placement.durationWeeks);
       if (!startDate || durationWeeks == null || durationWeeks < 1 || durationWeeks > MAX_WEEKS) {
         const error = new Error("Choose a valid planned start date and duration between 1 and 52 weeks.");
+        error.statusCode = 400;
+        throw error;
+      }
+      if (durationWeeks !== program.weeks.length) {
+        const error = new Error("The initial calendar period must match the program's number of weeks.");
         error.statusCode = 400;
         throw error;
       }
@@ -1605,5 +1646,6 @@ module.exports = {
   isCompleteProgramContent,
   normalizeProgram,
   publishProgram,
-  saveProgram
+  saveProgram,
+  synchronizePlannerPlacementDuration
 };
