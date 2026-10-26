@@ -112,7 +112,10 @@ function testUnifiedMockScreensShareWorkoutData() {
   const workouts = previewWorkspace.getWorkouts(state.weekStart);
   const workoutsMarkup = previewWorkspace.render(state);
   const planningMarkup = renderUnifiedMockScreen("client-planning");
+  const planningCalendarMarkup = previewWorkspace.renderPlanningCalendar(state);
   const overviewMarkup = renderUnifiedMockScreen("client-overview");
+  assert.match(planningMarkup, /planning-calendar-preview/);
+  assert.match(planningMarkup, /embed=1&amp;unified=1&amp;workspace=planning/);
 
   for (const scheduleEntry of unifiedWorkoutMockData.program.schedule) {
     const definition = unifiedWorkoutMockData.workouts.find(item => item.id === scheduleEntry.workoutId);
@@ -125,10 +128,8 @@ function testUnifiedMockScreensShareWorkoutData() {
     const weekDate = addIsoDays(state.weekStart, scheduleEntry.weekday);
     const dateLabel = displayIsoDate(weekDate);
     assert.strictEqual(workout.date, weekDate, `${definition.name} should have one shared week date`);
-    assert.ok(planningMarkup.includes(dateLabel), `${definition.name} date should appear in Client Planning`);
-    assert.ok(planningMarkup.includes(`data-id="${definition.id}"`));
-    assert.ok(planningMarkup.includes(`data-duration="${definition.duration}"`));
-    assert.ok(planningMarkup.includes(`data-exercise-count="${definition.exercises.length}"`));
+    assert.ok(planningCalendarMarkup.includes(dateLabel), `${definition.name} date should appear in Client Planning`);
+    assert.ok(planningCalendarMarkup.includes(`data-workout-id="${definition.id}"`));
 
     assert.ok(workoutsMarkup.includes(`data-workout-id="${definition.id}"`));
     assert.ok(workoutsMarkup.includes(`${definition.name}`));
@@ -161,7 +162,8 @@ function testUnifiedMockScreensShareWorkoutData() {
   }
 
   const mobility = unifiedWorkoutMockData.workouts.find(item => item.id === "mobility-reset");
-  assert.ok(planningMarkup.includes(`data-id="${mobility.id}"`));
+  assert.ok(planningCalendarMarkup.includes(`data-workout-id="${mobility.id}"`));
+  assert.match(planningCalendarMarkup, /data-source="coach"/);
   assert.ok(workoutsMarkup.includes(mobility.name));
   assert.ok(workoutsMarkup.includes(`${mobility.duration} min · ${mobility.exercises.length} exercises`));
 
@@ -179,36 +181,23 @@ function testUnifiedMockScreensShareWorkoutData() {
 
 function testPlanningCalendarOpensWorkoutDetailsAndReturnsToWeek() {
   const preview = createUnifiedMockPreview("client-planning");
-  const clickAction = (actionName, id) => {
-    const action = { dataset: { action: actionName, id } };
-    preview.documentListeners.click({
-      target: {
-        closest(selector) {
-          return selector === "[data-action]" ? action : null;
-        }
-      },
-      preventDefault() {}
-    });
-  };
-
-  clickAction("week-next");
-  const selectedWeekMarkup = preview.app.innerHTML;
-  clickAction("open-planned-workout", "strength-b");
-
-  assert.strictEqual(preview.location.search, "?screen=workouts");
   const iframeSource = preview.app.innerHTML.match(/<iframe[^>]+src="([^"]+)"/)?.[1];
-  assert.ok(iframeSource, "opening a planned workout should use the existing embedded Workouts interface");
-  const workoutUrl = new URL(iframeSource.replaceAll("&amp;", "&"), preview.location.origin);
-  assert.strictEqual(workoutUrl.searchParams.get("workspace"), "workouts");
-  assert.strictEqual(workoutUrl.searchParams.get("workout"), "strength-b");
-  assert.strictEqual(workoutUrl.searchParams.get("week"), localMondayIso(new Date(), 1));
-  assert.strictEqual(workoutUrl.searchParams.get("returnTo"), "planning");
+  assert.ok(iframeSource, "Client Planning should render through the existing embedded client workspace");
+  const planningUrl = new URL(iframeSource.replaceAll("&amp;", "&"), preview.location.origin);
+  assert.strictEqual(planningUrl.searchParams.get("workspace"), "planning");
+  assert.strictEqual(planningUrl.searchParams.get("unified"), "1");
 
   const sharedWorkspace = loadClientWorkoutWorkspaceWithSharedData(unifiedWorkoutMockData);
   const workoutState = sharedWorkspace.createState(new Date());
-  workoutState.weekStart = workoutUrl.searchParams.get("week");
   workoutState.returnToPlanning = true;
-  sharedWorkspace.handleAction(workoutState, "open-workout", workoutUrl.searchParams.get("workout"), "planned");
+  sharedWorkspace.handleAction(workoutState, "next-week");
+  const selectedWeek = workoutState.weekStart;
+  const selectedWeekMarkup = sharedWorkspace.renderPlanningCalendar(workoutState);
+  assert.ok(selectedWeekMarkup.includes(displayIsoDate(selectedWeek)));
+  assert.match(selectedWeekMarkup, /data-workout-action="open-workout" data-workout-id="strength-b" data-source="planned"/);
+
+  workoutState.returnToPlanning = true;
+  sharedWorkspace.handleAction(workoutState, "open-workout", "strength-b", "planned");
   const details = sharedWorkspace.render(workoutState);
   assert.match(details, /<h1>Strength B<\/h1>/);
   assert.match(details, /Reverse lunge/);
@@ -221,26 +210,28 @@ function testPlanningCalendarOpensWorkoutDetailsAndReturnsToWeek() {
   assert.match(recording, /data-workout-result="reps"/);
   assert.match(recording, /Finish session/);
 
+  sharedWorkspace.handleAction(workoutState, "back-to-week");
+  assert.strictEqual(workoutState.weekStart, selectedWeek, "returning from workout details should preserve Planning's selected week.");
+  const returnedCalendar = sharedWorkspace.renderPlanningCalendar(workoutState);
+  assert.ok(returnedCalendar.includes(displayIsoDate(selectedWeek)));
+
+  sharedWorkspace.handleAction(workoutState, "previous-week");
+  assert.strictEqual(workoutState.weekStart, addIsoDays(selectedWeek, -7));
+  sharedWorkspace.handleAction(workoutState, "today-week");
+  assert.strictEqual(workoutState.weekStart, workoutState.todayWeekStart);
+
   const clientPlanningSource = fs.readFileSync(
     path.join(__dirname, "..", "dashboard", "client-planning.js"),
     "utf8"
   );
+  assert.match(clientPlanningSource, /previewParams\.get\("unified"\) === "1"/);
+  assert.match(clientPlanningSource, /clientWorkoutWorkspace\.renderPlanningCalendar\(state\.workouts\)/);
+  assert.match(clientPlanningSource, /const unifiedPlanningAction = unifiedPlanningMode && state\.clientWorkspace === "planning"/);
   assert.match(clientPlanningSource, /params\.get\("returnTo"\) === "planning"/);
   assert.match(clientPlanningSource, /params\.get\("week"\)/);
   assert.match(clientPlanningSource, /params\.get\("workout"\)/);
   assert.match(clientPlanningSource, /clientWorkoutWorkspace\.handleAction\(state\.workouts, "open-workout", workoutId, "planned"\)/);
   assert.match(clientPlanningSource, /window\.parent\.postMessage\(\{ type: "workoutplanner:return-to-planning" \}/);
-
-  preview.windowListeners.message({
-    origin: preview.location.origin,
-    data: { type: "workoutplanner:return-to-planning" }
-  });
-  assert.strictEqual(preview.location.search, "?screen=client-planning");
-  assert.strictEqual(
-    preview.app.innerHTML,
-    selectedWeekMarkup,
-    "Back to Planning should restore the calendar at the previously selected week"
-  );
 }
 
 function testWorkoutAvailabilityNormalizationAndClientViews() {
@@ -883,7 +874,7 @@ function testPagesUseActualHtmlWithMockBootstrap() {
     assert.ok(unifiedUi.includes(`?screen=${screen}"`), `${screen} should have a direct shell route`);
   }
   assert.match(unifiedUi, /route === "client-planning"\) app\.innerHTML = clientPlanningPage\(\)/);
-  assert.match(unifiedUi, /client-planning\/\?embed=1&workspace=workouts/);
+  assert.match(unifiedUi, /client-planning\/\?embed=1&unified=1&workspace=workouts/);
   assert.match(unifiedUi, /availability-tag/);
 
   const registeredRoutes = new Map();
@@ -1014,6 +1005,33 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
     "the embedded Workouts route should load the shared fixture"
   );
   assert.match(embeddedClientPlanningResponse.body, /<script src="\/dashboard\/client-workouts\.js" defer><\/script>/);
+
+  const unifiedPlanningResponse = {
+    headers: {},
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    type(contentType) {
+      this.contentType = contentType;
+      return this;
+    },
+    send(body) {
+      this.body = body;
+    }
+  };
+  clientPlanningHandler({
+    query: { embed: "1", unified: "1", workspace: "planning" }
+  }, unifiedPlanningResponse);
+  assert.match(
+    unifiedPlanningResponse.body,
+    /<script src="\/dashboard\/workoutplanner-unified-mock\/workout-data\.js"><\/script>/,
+    "the unified Planning workspace should load the shared workout fixture"
+  );
+  assert.match(
+    unifiedPlanningResponse.body,
+    /workoutplanner-unified-mock\/unified\.css/,
+    "the embedded unified calendar should reuse its existing visual styles"
+  );
 
   const mockBootstrap = fs.readFileSync(
     path.join(__dirname, "..", "dashboard", "client-planner-mock-preview.js"),

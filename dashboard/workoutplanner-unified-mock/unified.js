@@ -33,10 +33,8 @@
     ],
     newWorkouts: [],
     libraryFilter: "All",
-    librarySearch: "",
-    weekShift: 0
+    librarySearch: ""
   };
-  let clientWorkoutLaunch = null;
 
   const icons = {
     coach: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 18.5h16M6.5 15V9.8m5 5.2V5.5m5 9.5v-3.8M4.5 19h15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -69,7 +67,6 @@
   }
   function go(route) {
     if (route === "planning") route = "coach-planning";
-    if (route !== "workouts") clientWorkoutLaunch = null;
     history.pushState({}, "", ROUTES[route] || ROUTES.hub);
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -182,58 +179,18 @@
         <a class="client-link-tile surface" href="${ROUTES.workouts}" data-go="workouts"><span><strong>Workouts</strong><small>Open a session or record what you did</small></span><span aria-hidden="true">→</span></a>
       </div><p class="footnote">This is a sample client workspace. Workout completion and schedule data are illustrative.</p>`;
   }
-  function makeWeekDays() {
-    const start = mondayOf(TODAY);
-    const shifted = addDays(start, data.weekShift * 7);
-    const thisWeek = mondayOf(TODAY).getTime() === shifted.getTime();
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = addDays(shifted, index);
-      const entries = [
-        ...data.program.schedule.filter(entry => entry.weekday === index),
-        ...data.program.optionalSessions.filter(entry => entry.weekday === index)
-      ];
-      const sessions = entries.map(entry => {
-        const workout = getWorkout(entry.workoutId);
-        const isPast = thisWeek && iso(date) < iso(TODAY);
-        return {
-          id: entry.workoutId,
-          time: entry.time,
-          label: entry.label,
-          status: isPast && entry.status === "completed" ? "Completed" : "Planned",
-          workout
-        };
-      });
-      return { date, index, sessions };
-    });
-  }
-  function weekRangeLabel(days) {
-    const first = days[0].date;
-    const last = days[6].date;
-    if (first.getMonth() === last.getMonth()) return `${dateLabel(first, { day: "numeric" })}–${dateLabel(last, { day: "numeric", month: "long", year: "numeric" })}`;
-    return `${dateLabel(first, { day: "numeric", month: "short" })}–${dateLabel(last, { day: "numeric", month: "short", year: "numeric" })}`;
-  }
   function clientPlanningPage() {
-    const days = makeWeekDays();
+    const source = "/__dev/workoutplanner/client-planning/?embed=1&unified=1&workspace=planning";
     return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">Client space / Your schedule</p><h1>A week with room to move.</h1><p class="lede">Your plan, by date. Open any session for the details, and let the rest days stay restful.</p></div><div class="page-head-actions">${routeLink("workouts", "Go to Workouts", "button")}</div></header>
-      <section class="calendar-bar surface" aria-label="Week navigation"><div class="week-control"><button class="button button-icon button-small" type="button" data-action="week-prev" aria-label="Previous week">‹</button><div class="week-range"><small>WEEK OF</small><strong>${weekRangeLabel(days)}</strong></div><button class="button button-icon button-small" type="button" data-action="week-next" aria-label="Next week">›</button></div><button class="button button-small" type="button" data-action="week-today">Today</button><span class="calendar-info">Seven-day view · Local preview only</span></section>
-      <div class="calendar-legend"><span><i class="legend-dot"></i> Program session</span><span><i class="legend-rest"></i> Rest / open day</span></div>
-      <section class="week-grid" aria-label="Seven-day workout calendar">${days.map(day => {
-        const today = iso(day.date) === iso(TODAY);
-        return `<article class="day-column${today ? " is-today" : ""}" aria-label="${dateLabel(day.date, { weekday: "long", day: "numeric", month: "long" })}${today ? ", Today" : ""}"><header class="day-head"><div class="day-head-row"><strong>${dateLabel(day.date, { weekday: "short" })}</strong>${today ? '<span class="today-pill">Today</span>' : ""}</div><span class="day-date">${dateLabel(day.date, { day: "numeric", month: "short" })}</span></header><div class="day-sessions">${day.sessions.length ? day.sessions.map(session => {
-           const workout = session.workout;
-            return `<button class="calendar-workout ${typeClass(workout.type) ? `is-${typeClass(workout.type)}` : ""}" type="button" data-action="open-planned-workout" data-id="${workout.id}" data-duration="${workout.duration}" data-exercise-count="${workout.exercises}" aria-label="Open ${escape(workout.name)}, ${session.status}"><strong>${escape(workout.name)}</strong><small>${session.time} · ${workout.duration} min · ${session.label}</small><span class="session-status">${session.status}</span></button>`;
-        }).join("") : '<div class="rest-state">Rest / open day</div>'}</div></article>`;
-      }).join("")}</section>
+      <iframe class="planning-calendar-preview" src="${escape(source)}" title="Seven-day workout calendar" loading="eager"></iframe>
       <section class="calendar-bottom surface"><div><strong>Steady is a good pace.</strong><p>There’s no catch-up required on a rest day. Your next planned session will still be here.</p></div>${routeLink("client-overview", "Back to overview", "button button-small")}</section>
-      <p class="footnote">The weekly schedule is read-only in this view. To record a completed session, open Workouts.</p>`;
+      <p class="footnote">The weekly schedule is read-only. Open any session for its details or to record what you did.</p>`;
   }
   function embeddedPage(title, source) {
     return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">WorkoutPlanner / Local mock</p><h1>${escape(title)}</h1><p class="lede">This screen reuses the existing isolated preview. It does not load or save production data.</p></div></header><iframe class="embedded-preview" src="${escape(source)}" title="${escape(title)}" loading="eager"></iframe>`;
   }
   function clientWorkoutsSource() {
-    const base = "/__dev/workoutplanner/client-planning/?embed=1&workspace=workouts";
-    if (!clientWorkoutLaunch) return base;
-    return `${base}&workout=${encodeURIComponent(clientWorkoutLaunch.workoutId)}&week=${clientWorkoutLaunch.weekStart}&returnTo=planning`;
+    return "/__dev/workoutplanner/client-planning/?embed=1&unified=1&workspace=workouts";
   }
   function getWorkout(id) { return allWorkouts().find(item => item.id === id); }
   function openWorkout(id) {
@@ -302,7 +259,6 @@
     const nav = event.target.closest("[data-go]");
     if (nav) {
       event.preventDefault();
-      if (nav.dataset.go === "workouts") clientWorkoutLaunch = null;
       go(nav.dataset.go);
       return;
     }
@@ -316,20 +272,10 @@
     if (!action) return;
     switch (action.dataset.action) {
       case "open-workout": openWorkout(action.dataset.id); break;
-      case "open-planned-workout":
-        clientWorkoutLaunch = {
-          workoutId: action.dataset.id,
-          weekStart: iso(addDays(mondayOf(TODAY), data.weekShift * 7))
-        };
-        go("workouts");
-        break;
       case "close-modal": closeModal(); break;
       case "create-workout": createWorkoutDialog(); break;
       case "clear-search": data.librarySearch = ""; data.libraryFilter = "All"; render(); break;
-      case "open-workouts": clientWorkoutLaunch = null; go("workouts"); break;
-      case "week-prev": data.weekShift -= 1; render(); break;
-      case "week-next": data.weekShift += 1; render(); break;
-      case "week-today": data.weekShift = 0; render(); break;
+      case "open-workouts": go("workouts"); break;
     }
   }
   function handleInput(event) {
@@ -376,12 +322,5 @@
     }
   });
   window.addEventListener("popstate", render);
-  window.addEventListener("message", event => {
-    if (event.origin !== window.location.origin
-      || event.data?.type !== "workoutplanner:return-to-planning"
-      || currentRoute() !== "workouts"
-      || !clientWorkoutLaunch) return;
-    go("client-planning");
-  });
   render();
 })();

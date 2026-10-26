@@ -5,6 +5,10 @@
   const previewHarness = mockRoute.test(window.location.pathname)
     ? window.WorkoutPlannerClientPlanningPreview
     : null;
+  const previewParams = new URLSearchParams(window.location.search);
+  const unifiedPlanningMode = previewHarness
+    && previewParams.get("embed") === "1"
+    && previewParams.get("unified") === "1";
   const pathMatch = window.location.pathname.match(/^\/planning\/([^/]+)\/?$/);
   const token = previewHarness?.token || (pathMatch ? decodeURIComponent(pathMatch[1]) : "");
   const app = document.getElementById("planner-app");
@@ -106,10 +110,33 @@
     renderWorkspaceNav("workouts");
     app.innerHTML = clientWorkoutWorkspace.render(state.workouts);
   }
+  function renderUnifiedPlanning() {
+    if (!previewHarness || !unifiedPlanningMode || !clientWorkoutWorkspace || !state.workouts) return;
+    state.workouts.returnToPlanning = true;
+    renderWorkspaceNav("planning");
+    app.innerHTML = ["details", "recording"].includes(state.workouts.screen)
+      ? clientWorkoutWorkspace.render(state.workouts)
+      : clientWorkoutWorkspace.renderPlanningCalendar(state.workouts);
+  }
+  function isWorkoutEditorActive() {
+    return state.clientWorkspace === "workouts"
+      || (unifiedPlanningMode
+        && state.clientWorkspace === "planning"
+        && ["details", "recording"].includes(state.workouts?.screen));
+  }
   function selectWorkspaceTab(tab) {
     if (!previewHarness) return;
     document.title = `${state.client?.displayName || "Your"} ${tab === "workouts" ? "Workouts" : "Planning"} — HälsoPulsen`;
-    if (tab === "workouts") return renderClientWorkouts();
+    if (tab === "workouts") {
+      if (state.workouts) state.workouts.returnToPlanning = false;
+      return renderClientWorkouts();
+    }
+    if (unifiedPlanningMode) {
+      if (["details", "recording"].includes(state.workouts?.screen)) {
+        clientWorkoutWorkspace.handleAction(state.workouts, "back-to-week");
+      }
+      return renderUnifiedPlanning();
+    }
     state.clientWorkspace = "planning";
     renderCalendar();
   }
@@ -947,22 +974,30 @@
 
   app.addEventListener("click", event => {
     const workoutAction = event.target.closest("[data-workout-action]");
-    if (workoutAction && state.clientWorkspace === "workouts" && clientWorkoutWorkspace) {
+    const unifiedPlanningAction = unifiedPlanningMode && state.clientWorkspace === "planning";
+    if (workoutAction
+      && clientWorkoutWorkspace
+      && (state.clientWorkspace === "workouts" || unifiedPlanningAction)) {
       if (workoutAction.dataset.workoutAction === "back-to-planning"
         && previewHarness
-        && state.workouts.returnToPlanning) {
+        && state.workouts.returnToPlanning
+        && !unifiedPlanningMode) {
         window.parent.postMessage({ type: "workoutplanner:return-to-planning" }, window.location.origin);
         return;
       }
       if (workoutAction.closest(".client-independent-library")) state.workouts.libraryExpanded = true;
+      const action = unifiedPlanningMode && workoutAction.dataset.workoutAction === "back-to-planning"
+        ? "back-to-week"
+        : workoutAction.dataset.workoutAction;
       clientWorkoutWorkspace.handleAction(
         state.workouts,
-        workoutAction.dataset.workoutAction,
+        action,
         workoutAction.dataset.workoutId,
         workoutAction.dataset.source,
         workoutAction.dataset.entryId || workoutAction.dataset.exerciseIndex
       );
-      renderClientWorkouts();
+      if (unifiedPlanningAction) renderUnifiedPlanning();
+      else renderClientWorkouts();
       if (workoutAction.dataset.workoutAction === "browse-independent") {
         document.getElementById("client-independent-library")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -987,7 +1022,7 @@
     if (tab) selectWorkspaceTab(tab.dataset.workspaceTab);
   });
   app.addEventListener("input", event => {
-    if (state.clientWorkspace !== "workouts" || !clientWorkoutWorkspace) return;
+    if (!isWorkoutEditorActive() || !clientWorkoutWorkspace) return;
     if (event.target.closest("[data-client-workout-create]")) {
       clientWorkoutWorkspace.updateCreateDraft(state.workouts, event.target.name, event.target.value);
       return;
@@ -1010,7 +1045,7 @@
     if (notes) clientWorkoutWorkspace.setNotes(state.workouts, workout, notes.value);
   });
   app.addEventListener("change", event => {
-    if (state.clientWorkspace !== "workouts" || !clientWorkoutWorkspace) return;
+    if (!isWorkoutEditorActive() || !clientWorkoutWorkspace) return;
     if (event.target.closest("[data-client-workout-create]")) {
       clientWorkoutWorkspace.updateCreateDraft(state.workouts, event.target.name, event.target.value);
       return;
@@ -1071,6 +1106,7 @@
         : "planning";
       document.title = `${state.client?.displayName || "Your"} ${initialTab === "workouts" ? "Workouts" : "Planning"} — HälsoPulsen`;
       if (initialTab === "workouts") {
+        state.workouts.returnToPlanning = false;
         const launchFromUnifiedPlanning = previewHarness
           && params.get("embed") === "1"
           && params.get("workspace") === "workouts"
@@ -1088,6 +1124,7 @@
         }
         renderClientWorkouts();
       }
+      else if (unifiedPlanningMode) renderUnifiedPlanning();
       else renderCalendar();
     } catch (error) {
       showError(error.message || "Your Planning workspace could not be loaded.");

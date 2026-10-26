@@ -79,7 +79,8 @@ function registerWorkoutPlannerMockPreviewRoutes(app) {
     app.get(`/__dev/workoutplanner${config.route}`, (req, res) => sendMockPreviewPage(res, page, {
       unifiedWorkoutData: page === "client-planning"
         && req.query.embed === "1"
-        && req.query.workspace === "workouts"
+        && (req.query.workspace === "workouts"
+          || (req.query.workspace === "planning" && req.query.unified === "1"))
     }));
   }
   app.get("/__dev/workoutplanner/planning/", (req, res) => {

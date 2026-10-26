@@ -78,6 +78,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .role-switch button { min-height: 27px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; }
 .role-switch button[aria-pressed="true"] { background: var(--pine); color: #f7f8f2; box-shadow: 0 1px 3px rgba(36,72,55,.16); }
 .embedded-preview { display: block; width: 100%; height: min(1000px, calc(100dvh - 115px)); min-height: 680px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+.planning-calendar-preview { display: block; width: 100%; height: 490px; margin: 0; border: 0; background: transparent; }
 
 .page-wrap { width: min(1320px, 100%); margin: auto; padding: 37px clamp(18px, 4.5vw, 70px) 76px; }
 .page-kicker { margin: 0 0 9px; color: var(--pine); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
@@ -406,6 +407,7 @@ h3 { font: 700 14px/1.3 var(--font); letter-spacing: -.02em; }
   .client-link-panel { grid-template-columns: 1fr; gap: 8px; }
   .client-link-tile { padding: 12px 14px; }
   .calendar-bar { flex-wrap: wrap; padding: 10px; }
+  .planning-calendar-preview { height: 1040px; }
   .calendar-info { width: 100%; text-align: center; }
   .week-control { width: 100%; justify-content: space-between; }
   .week-range { min-width: 0; flex: 1; }

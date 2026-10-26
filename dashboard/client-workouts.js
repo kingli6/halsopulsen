@@ -538,6 +538,81 @@
     </section>`;
   }
 
+  function renderPlanningCalendar(state) {
+    if (!unifiedMockData) {
+      throw new Error("The unified Planning calendar requires the shared WorkoutPlanner mock fixture.");
+    }
+
+    const scheduledWorkouts = getWorkouts(state.weekStart);
+    const independentWorkouts = getIndependentWorkouts(state);
+    const schedule = unifiedMockData.program.schedule || [];
+    const optionalSessions = unifiedMockData.program.optionalSessions || [];
+    const days = weekdays.map(day => {
+      const dayDate = addDays(state.weekStart, day.offset);
+      const entries = [
+        ...schedule.filter(entry => Number(entry.weekday) === day.offset).map(entry => ({
+          ...entry,
+          workout: scheduledWorkouts.find(workout => workout.id === entry.workoutId),
+          source: "planned"
+        })),
+        ...optionalSessions.filter(entry => Number(entry.weekday) === day.offset).map(entry => ({
+          ...entry,
+          workout: independentWorkouts.find(workout => workout.id === entry.workoutId),
+          source: "coach"
+        }))
+      ];
+      const today = dayDate === state.today;
+      const sessions = entries.map(entry => {
+        if (!entry.workout) {
+          throw new Error(`The unified Planning fixture is missing workout "${entry.workoutId}".`);
+        }
+        const isPast = state.weekStart === state.todayWeekStart && dayDate < state.today;
+        return {
+          ...entry,
+          date: dayDate,
+          status: isPast && entry.status === "completed" ? "Completed" : "Planned"
+        };
+      });
+      const sessionMarkup = sessions.length
+        ? sessions.map(session => {
+          const workout = session.workout;
+          const typeClass = workout.type === "Cardio" ? "is-cardio" : workout.type === "Mobility" ? "is-mobility" : "";
+          return `<button class="calendar-workout${typeClass ? ` ${typeClass}` : ""}" type="button"
+            data-workout-action="open-workout" data-workout-id="${escapeHtml(workout.id)}" data-source="${session.source}"
+            aria-label="Open ${escapeHtml(workout.name)}, ${session.status}">
+            <strong>${escapeHtml(workout.name)}</strong>
+            <small>${escapeHtml(session.time)} · ${workout.duration} min · ${escapeHtml(session.label)}</small>
+            <span class="session-status">${session.status}</span>
+          </button>`;
+        }).join("")
+        : '<div class="rest-state">Rest / open day</div>';
+      return `<article class="day-column${today ? " is-today" : ""}" aria-label="${dateLabel(dayDate, { weekday: "long", day: "numeric", month: "long" })}${today ? ", Today" : ""}">
+        <header class="day-head"><div class="day-head-row"><strong>${day.short}</strong>${today ? '<span class="today-pill">Today</span>' : ""}</div>
+          <span class="day-date">${dateLabel(dayDate, { day: "numeric", month: "short" })}</span></header>
+        <div class="day-sessions">${sessionMarkup}</div>
+      </article>`;
+    }).join("");
+    const weekEnd = addDays(state.weekStart, 6);
+    const startDate = dateFromISO(state.weekStart);
+    const endDate = dateFromISO(weekEnd);
+    const sameMonth = startDate.getUTCMonth() === endDate.getUTCMonth();
+    const rangeLabel = sameMonth
+      ? `${dateLabel(state.weekStart, { day: "numeric" })}–${dateLabel(weekEnd, { day: "numeric", month: "long", year: "numeric" })}`
+      : `${dateLabel(state.weekStart, { day: "numeric", month: "short" })}–${dateLabel(weekEnd, { day: "numeric", month: "short", year: "numeric" })}`;
+
+    return `<section class="calendar-bar surface" aria-label="Week navigation">
+        <div class="week-control">
+          <button class="button button-icon button-small" type="button" data-workout-action="previous-week" aria-label="Previous week">‹</button>
+          <div class="week-range"><small>WEEK OF</small><strong>${rangeLabel}</strong></div>
+          <button class="button button-icon button-small" type="button" data-workout-action="next-week" aria-label="Next week">›</button>
+        </div>
+        <button class="button button-small" type="button" data-workout-action="today-week">Today</button>
+        <span class="calendar-info">Seven-day view · Local preview only</span>
+      </section>
+      <div class="calendar-legend"><span><i class="legend-dot"></i> Program session</span><span><i class="legend-rest"></i> Rest / open day</span></div>
+      <section class="week-grid" aria-label="Seven-day workout calendar">${days}</section>`;
+  }
+
   function renderDetails(state, workout) {
     const planned = state.selectedWorkoutSource === "planned";
     const status = planned
@@ -702,7 +777,11 @@
   }
 
   function handleAction(state, action, workoutId, source, entryId) {
-    if (action === "previous-week") {
+    if (action === "today-week") {
+      state.weekStart = state.todayWeekStart;
+      state.screen = "overview";
+      clearSelection(state);
+    } else if (action === "previous-week") {
       state.weekStart = addDays(state.weekStart, -7);
       state.screen = "overview";
       clearSelection(state);
@@ -773,6 +852,7 @@
     getIndependentWorkouts,
     handleAction,
     render,
+    renderPlanningCalendar,
     savePersonalWorkout,
     setCompleted,
     setNotes,

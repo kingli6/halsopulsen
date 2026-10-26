@@ -12,8 +12,18 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/dashboard/client-planning.css" />
   <script>
-    if (new URLSearchParams(location.search).get("embed") === "1") {
+    const previewParams = new URLSearchParams(location.search);
+    if (previewParams.get("embed") === "1") {
       document.documentElement.classList.add("workoutplanner-embedded-preview");
+    }
+    if (previewParams.get("embed") === "1"
+      && previewParams.get("unified") === "1"
+      && previewParams.get("workspace") === "planning") {
+      document.documentElement.classList.add("workoutplanner-unified-planning-preview");
+      const unifiedStyles = document.createElement("link");
+      unifiedStyles.rel = "stylesheet";
+      unifiedStyles.href = "/dashboard/workoutplanner-unified-mock/unified.css";
+      document.head.append(unifiedStyles);
     }
   </script>
 </head>
