@@ -91,6 +91,13 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '512kb', strict: true }));
 
+app.use('/dashboard/workoutplanner-showroom', (req, res, next) => {
+  const showroomEnabled = process.env.WORKOUTPLANNER_MOCK_PREVIEWS === '1'
+    && process.env.NODE_ENV !== 'production';
+  if (showroomEnabled) return next();
+  return res.sendStatus(404);
+});
+
 if (
   process.env.WORKOUTPLANNER_MOCK_PREVIEWS === '1'
   && process.env.NODE_ENV !== 'production'

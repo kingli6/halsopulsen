@@ -1040,6 +1040,155 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
   assert.doesNotMatch(mockBootstrap, /\bfetch\s*\(/, "the client Planning mock must not make network requests");
 }
 
+function testShowroomUsesOnlyDevelopmentMockPreviews() {
+  const registeredRoutes = new Map();
+  registerWorkoutPlannerMockPreviewRoutes({
+    get(route, handler) {
+      registeredRoutes.set(route, handler);
+    }
+  });
+  const handler = registeredRoutes.get("/__dev/workoutplanner/showroom/");
+  assert.strictEqual(typeof handler, "function", "the showroom should have a development-only route");
+
+  const response = {
+    headers: {},
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    send(body) {
+      this.body = body;
+    },
+    sendFile(file) {
+      this.file = file;
+    }
+  };
+  handler({}, response);
+  assert.ok(response.file && fs.existsSync(response.file), "the showroom route should serve its UI file");
+  assert.strictEqual(response.headers["Cache-Control"], "no-store");
+  assert.strictEqual(response.headers["X-Robots-Tag"], "noindex, nofollow");
+  assert.strictEqual(response.headers["Referrer-Policy"], "no-referrer");
+
+  const showroomHtml = fs.readFileSync(response.file, "utf8");
+  const showroomScriptPath = path.join(
+    __dirname,
+    "..",
+    "dashboard",
+    "workoutplanner-showroom",
+    "showroom.js"
+  );
+  const showroomScript = fs.readFileSync(showroomScriptPath, "utf8");
+  assert.match(showroomHtml, /Sample data, by design/i);
+  assert.match(showroomHtml, /showroom\.css/);
+  assert.match(showroomHtml, /showroom\.js/);
+  assert.match(showroomHtml, /No Goal Map prototype found/);
+  assert.match(showroomScript, /client-shared-workspace/);
+  assert.match(showroomScript, /client-legacy-json/);
+  assert.match(showroomScript, /dashboard\/index\.html/);
+  assert.doesNotMatch(showroomScript, /\bfetch\s*\(/, "the showroom must not make API requests");
+
+  const previewUrls = [...showroomScript.matchAll(/preview:\s*"([^"]+)"/g)].map(match => match[1]);
+  const allowedPreviewUrls = [
+    "/__dev/workoutplanner/?screen=coach-overview",
+    "/__dev/workoutplanner/planning/",
+    "/__dev/workoutplanner/coach/",
+    "/__dev/workoutplanner/overview/",
+    "/__dev/workoutplanner/?screen=library",
+    "/__dev/workoutplanner/?screen=client-overview",
+    "/__dev/workoutplanner/?screen=client-planning",
+    "/__dev/workoutplanner/?screen=workouts",
+    "/__dev/workoutplanner/client-planning/",
+    "/__dev/workoutplanner/recipient/"
+  ];
+  assert.deepStrictEqual(
+    [...previewUrls].sort(),
+    [...allowedPreviewUrls].sort(),
+    "the showroom may embed only the reviewed local mock routes"
+  );
+  assert.ok(previewUrls.every(url => url.startsWith("/__dev/workoutplanner/")));
+
+  const elements = new Map();
+  const makeNode = properties => ({
+    hidden: false,
+    textContent: "",
+    className: "",
+    setAttribute() {},
+    removeAttribute(name) { delete this[name]; },
+    classList: { add() {}, remove() {}, toggle() {} },
+    ...properties
+  });
+  const filters = ["all", "coach", "client"].map(filter => makeNode({
+    dataset: { filter },
+    setAttribute(name, value) { this[name] = value; }
+  }));
+  const groups = ["coach", "client"].map(id => makeNode({ id }));
+  const entries = [
+    "coach-unified-overview", "coach-planning-prototype", "coach-library",
+    "coach-overview-production", "coach-unified-library", "client-unified-overview",
+    "client-unified-planning", "client-unified-workouts", "client-planning-production",
+    "client-recipient-production", "client-shared-workspace", "client-legacy-json"
+  ].map(id => makeNode({
+    dataset: { entry: id },
+    setAttribute(name, value) { this[name] = value; }
+  }));
+  const nodesWithQueries = {
+    "[data-filter]": filters,
+    ".catalog-group": groups,
+    "[data-entry]": entries
+  };
+  const documentListeners = {};
+  const window = { matchMedia() { return { matches: false }; } };
+  const document = {
+    getElementById(id) {
+      if (!elements.has(id)) elements.set(id, makeNode());
+      return elements.get(id);
+    },
+    querySelectorAll(selector) { return nodesWithQueries[selector] || []; },
+    addEventListener(type, handler) { documentListeners[type] = handler; }
+  };
+  vm.runInNewContext(showroomScript, { document, window });
+  const frame = elements.get("mock-frame");
+  const openLink = elements.get("open-preview");
+  const unavailable = elements.get("unavailable-panel");
+  assert.strictEqual(frame.src, "/__dev/workoutplanner/?screen=coach-overview");
+  documentListeners.click({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspect]"
+          ? { dataset: { inspect: "coach-library" } }
+          : null;
+      }
+    }
+  });
+  assert.strictEqual(frame.src, "/__dev/workoutplanner/coach/");
+  assert.strictEqual(openLink.href, "/__dev/workoutplanner/coach/");
+  assert.strictEqual(unavailable.hidden, true);
+  documentListeners.click({
+    target: {
+      closest(selector) {
+        return selector === "[data-inspect]"
+          ? { dataset: { inspect: "client-shared-workspace" } }
+          : null;
+      }
+    }
+  });
+  assert.strictEqual(frame.hidden, true, "private-token pages must not be embedded");
+  assert.strictEqual(unavailable.hidden, false);
+  assert.strictEqual(openLink.hidden, true, "unavailable pages must not link to production routes");
+  assert.strictEqual(openLink.href, undefined);
+  assert.match(elements.get("unavailable-copy").textContent, /real private recipient token/);
+
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(
+    server,
+    /app\.use\('\/dashboard\/workoutplanner-showroom'[\s\S]*?WORKOUTPLANNER_MOCK_PREVIEWS === '1'[\s\S]*?NODE_ENV !== 'production'[\s\S]*?res\.sendStatus\(404\)/,
+    "direct access to the showroom assets must be blocked unless development mocks are enabled"
+  );
+}
+
 async function run() {
   testUnifiedMockScreensShareWorkoutData();
   testPlanningCalendarOpensWorkoutDetailsAndReturnsToWeek();
@@ -1055,6 +1204,7 @@ async function run() {
   testPlanningPrototypePreservesWorkoutsWhenMovingBetweenDays();
   testPagesUseActualHtmlWithMockBootstrap();
   testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute();
+  testShowroomUsesOnlyDevelopmentMockPreviews();
   console.log("WorkoutPlanner mock-preview isolation checks passed.");
 }
 

@@ -3,6 +3,7 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const UNIFIED_PREVIEW_FILE = path.join(ROOT, "dashboard", "workoutplanner-unified-mock", "unified.html");
+const SHOWROOM_FILE = path.join(ROOT, "dashboard", "workoutplanner-showroom", "index.html");
 const PLANNING_PROTOTYPE_FILE = path.join(
   ROOT,
   "dashboard",
@@ -71,7 +72,19 @@ function sendUnifiedMockPreview(res) {
   }
 }
 
+function sendWorkoutPlannerShowroom(res) {
+  if (!fs.existsSync(SHOWROOM_FILE)) {
+    res.status(500).send("The WorkoutPlanner Showroom could not be loaded.");
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.sendFile(SHOWROOM_FILE);
+}
+
 function registerWorkoutPlannerMockPreviewRoutes(app) {
+  app.get("/__dev/workoutplanner/showroom/", (req, res) => sendWorkoutPlannerShowroom(res));
   app.get("/__dev/workoutplanner/", (req, res) => sendUnifiedMockPreview(res));
   app.get("/__dev/workoutplanner/library/", (req, res) => sendUnifiedMockPreview(res));
   app.get("/__dev/workoutplanner/client-schedule/", (req, res) => sendUnifiedMockPreview(res));

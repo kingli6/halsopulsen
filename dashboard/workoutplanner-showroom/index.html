@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9e8dc">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+  <title>WorkoutPlanner Showroom · HälsoPulsen</title>
+  <link rel="stylesheet" href="/dashboard/workoutplanner-showroom/showroom.css">
+</head>
+<body>
+  <header class="masthead">
+    <a class="wordmark" href="#top" aria-label="WorkoutPlanner Showroom home">
+      <span class="wordmark-stamp" aria-hidden="true">W</span>
+      <span><strong>HälsoPulsen</strong><small>product workbench / 04</small></span>
+    </a>
+    <div class="masthead-right">
+      <span class="environment"><i aria-hidden="true"></i> Development only</span>
+      <span class="edition">Interface comparison catalog</span>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="intro">
+      <div class="intro-copy">
+        <p class="eyebrow"><span>01</span> WorkoutPlanner / Showroom</p>
+        <h1>One product.<br><em>Several ways in.</em></h1>
+        <p class="intro-lede">A working catalog of the coach and client experiences already in the repository. Compare the real implementations in context, without mistaking a prototype for a production page.</p>
+      </div>
+      <div class="intro-index" aria-label="Catalog summary">
+        <div><strong>10</strong><span>safe mock views</span></div>
+        <div><strong>02</strong><span>perspectives</span></div>
+        <div><strong>02</strong><span>unavailable private routes</span></div>
+      </div>
+    </section>
+
+    <aside class="safety-note" aria-label="Data safety notice">
+      <span class="note-mark" aria-hidden="true">i</span>
+      <p><strong>Sample data, by design.</strong> The showroom and every embedded example use mock data only. Nothing here reads or saves to production. Private token routes are shown as provenance text only and are never embedded.</p>
+      <span class="note-tag">LOCAL MOCKS</span>
+    </aside>
+
+    <div class="workbench">
+      <section class="catalog" aria-label="Interface catalog">
+        <div class="catalog-toolbar">
+          <div>
+            <p class="eyebrow">The collection</p>
+            <h2>Browse by perspective</h2>
+          </div>
+          <div class="filter-switch" role="group" aria-label="Filter catalog">
+            <button type="button" data-filter="all" aria-pressed="true">All <span>12</span></button>
+            <button type="button" data-filter="coach" aria-pressed="false">Coach <span>5</span></button>
+            <button type="button" data-filter="client" aria-pressed="false">Client <span>7</span></button>
+          </div>
+        </div>
+
+        <section class="catalog-group" id="coach" aria-labelledby="coach-heading">
+          <header class="group-heading">
+            <span class="group-index">A</span>
+            <div><p class="eyebrow">Build / review / share</p><h2 id="coach-heading">Coach</h2></div>
+            <span class="group-count">05 entries</span>
+          </header>
+          <div class="catalog-list" id="coach-list"></div>
+        </section>
+
+        <section class="catalog-group client-group" id="client" aria-labelledby="client-heading">
+          <header class="group-heading">
+            <span class="group-index">B</span>
+            <div><p class="eyebrow">Plan / follow / record</p><h2 id="client-heading">Client</h2></div>
+            <span class="group-count">07 entries</span>
+          </header>
+          <div class="catalog-list" id="client-list"></div>
+        </section>
+
+        <aside class="repository-note">
+          <span class="repository-mark" aria-hidden="true">!</span>
+          <div>
+            <p class="eyebrow">Repository note</p>
+            <h3>No Goal Map prototype found</h3>
+            <p>Search found no Goal Map implementation in the current repository, so there is nothing to preview here.</p>
+          </div>
+        </aside>
+      </section>
+
+      <aside class="preview-desk" aria-label="Selected interface preview">
+        <div class="preview-heading">
+          <div>
+            <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Live mock preview</p>
+            <h2 id="preview-title">Unified Coach overview</h2>
+          </div>
+          <button class="icon-button" id="reload-preview" type="button" aria-label="Reload selected preview" title="Reload preview">↻</button>
+        </div>
+        <div class="preview-meta">
+          <span class="status-pill" id="preview-status">Mock-only</span>
+          <span id="preview-perspective">Coach / Overview</span>
+        </div>
+        <p class="preview-differentiator" id="preview-differentiator"></p>
+        <div class="frame-shell" id="frame-shell">
+          <iframe id="mock-frame" title="Unified Coach overview mock preview" src="/__dev/workoutplanner/?screen=coach-overview" loading="eager" referrerpolicy="no-referrer"></iframe>
+          <div class="unavailable-panel" id="unavailable-panel" hidden>
+            <span class="unavailable-number">—</span>
+            <p class="eyebrow">Not safely previewable</p>
+            <h3 id="unavailable-title">Private-link data required</h3>
+            <p id="unavailable-copy">This page requires a private recipient link and associated data, so it is intentionally not embedded.</p>
+            <span class="unavailable-caption" id="unavailable-caption">No token or production data requested</span>
+          </div>
+        </div>
+        <div class="preview-actions">
+          <span class="frame-hint"><span class="keycap">↗</span> Links inside the mock remain navigable</span>
+          <a class="button button-dark" id="open-preview" href="/__dev/workoutplanner/?screen=coach-overview" target="_blank" rel="noopener noreferrer">Open mock in new tab <span aria-hidden="true">↗</span></a>
+        </div>
+        <dl class="provenance">
+          <div><dt>Source file</dt><dd id="preview-source">dashboard/workoutplanner-unified-mock/unified.html</dd></div>
+          <div><dt>Original route</dt><dd id="preview-route">/admin/programs/</dd></div>
+        </dl>
+        <p class="preview-foot">This frame only points to an allowlisted development mock. Production routes above are plain-text provenance, never destinations.</p>
+      </aside>
+    </div>
+    <footer class="page-footer">
+      <span>WorkoutPlanner Showroom <b>·</b> Development catalog</span>
+      <a href="#top">Back to top <span aria-hidden="true">↑</span></a>
+    </footer>
+  </main>
+
+  <script src="/dashboard/workoutplanner-showroom/showroom.js"></script>
+</body>
+</html>
