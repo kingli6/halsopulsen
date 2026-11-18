@@ -55,6 +55,12 @@ const {
 const {
   createGlobalFailedLoginLimiter
 } = require('./admin-login-limiter');
+const { createWorkoutPlannerMockPreviewAccess } = require('./workoutplanner/mock-preview-access');
+const {
+  registerWorkoutPlannerMockPreviewRoutes,
+  sendUnifiedMockPreview,
+  sendWorkoutPlannerShowroom
+} = require('./workoutplanner/mock-preview-server');
 const {
   createMassageFeedbackCorsMiddleware,
   createMassageFeedbackRouter,
@@ -90,21 +96,6 @@ app.use((req, res, next) => {
   return clerk(req, res, next);
 });
 app.use(express.json({ limit: '512kb', strict: true }));
-
-app.use('/dashboard/workoutplanner-showroom', (req, res, next) => {
-  const showroomEnabled = process.env.WORKOUTPLANNER_MOCK_PREVIEWS === '1'
-    && process.env.NODE_ENV !== 'production';
-  if (showroomEnabled) return next();
-  return res.sendStatus(404);
-});
-
-if (
-  process.env.WORKOUTPLANNER_MOCK_PREVIEWS === '1'
-  && process.env.NODE_ENV !== 'production'
-) {
-  const { registerWorkoutPlannerMockPreviewRoutes } = require('./workoutplanner/mock-preview-server');
-  registerWorkoutPlannerMockPreviewRoutes(app);
-}
 
 const MAX_PROGRAM_WEEKS = 52;
 const MAX_DAY_ACTIVITIES = 30;
@@ -229,6 +220,20 @@ function requireAdmin(req, res, next) {
   if (!readAdminSession(req)) return res.status(401).json({ ok: false, error: 'Admin sign-in required.' });
   next();
 }
+
+const workoutPlannerPreviewAccess = createWorkoutPlannerMockPreviewAccess({
+  nodeEnv: process.env.NODE_ENV,
+  previewsEnabled: process.env.WORKOUTPLANNER_MOCK_PREVIEWS === '1',
+  isAdmin: readAdminSession
+});
+app.use('/__dev/workoutplanner', workoutPlannerPreviewAccess.page);
+app.use('/dashboard/workoutplanner-unified-mock', workoutPlannerPreviewAccess.asset);
+app.use('/dashboard/workoutplanner-showroom', workoutPlannerPreviewAccess.asset);
+app.use('/dashboard/workoutplanner-planning-prototype', workoutPlannerPreviewAccess.asset);
+app.use('/dashboard/workoutplanner-mock-preview.js', workoutPlannerPreviewAccess.asset);
+app.use('/dashboard/client-planner-mock-preview.js', workoutPlannerPreviewAccess.asset);
+app.use('/workoutplanner/mock-preview-harness.js', workoutPlannerPreviewAccess.asset);
+registerWorkoutPlannerMockPreviewRoutes(app);
 
 function sameSecret(left, right) {
   const leftBuffer = Buffer.from(String(left || ''));
@@ -1105,6 +1110,16 @@ app.get(['/admin/programs', '/admin/programs/'], (req, res) => {
   }
   res.sendFile(path.join(__dirname, 'dashboard', 'coach-overview.html'));
 });
+app.get(
+  ['/admin/workoutplanner-preview', '/admin/workoutplanner-preview/'],
+  workoutPlannerPreviewAccess.adminPage,
+  (req, res) => sendUnifiedMockPreview(res)
+);
+app.get(
+  ['/admin/workoutplanner-showroom', '/admin/workoutplanner-showroom/'],
+  workoutPlannerPreviewAccess.adminPage,
+  (req, res) => sendWorkoutPlannerShowroom(res)
+);
 function serveBookingAdminPage(req, res) {
   if (!readAdminSession(req)) {
     return res.redirect(`/admin?next=${encodeURIComponent('/admin/booking/')}`);

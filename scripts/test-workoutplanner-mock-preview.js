@@ -961,7 +961,9 @@ function testCalendarPrototypeIsServedOnlyFromTheMockPreviewRoute() {
   assert.doesNotMatch(prototypeScript, /\blocalStorage\b/, "the prototype must keep edits in memory only");
 
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
-  assert.match(server, /WORKOUTPLANNER_MOCK_PREVIEWS === '1'[\s\S]*?NODE_ENV !== 'production'[\s\S]*?registerWorkoutPlannerMockPreviewRoutes/);
+  assert.match(server, /previewsEnabled: process\.env\.WORKOUTPLANNER_MOCK_PREVIEWS === '1'/);
+  assert.match(server, /app\.use\('\/__dev\/workoutplanner', workoutPlannerPreviewAccess\.page\)/);
+  assert.match(server, /registerWorkoutPlannerMockPreviewRoutes\(app\)/);
 
   const clientPlanningHandler = registeredRoutes.get("/__dev/workoutplanner/client-planning");
   assert.strictEqual(typeof clientPlanningHandler, "function", "client Planning should have an isolated mock-preview route");
@@ -1055,7 +1057,7 @@ function testShowroomUsesOnlyDevelopmentMockPreviews() {
     }
   });
   const handler = registeredRoutes.get("/__dev/workoutplanner/showroom/");
-  assert.strictEqual(typeof handler, "function", "the showroom should have a development-only route");
+  assert.strictEqual(typeof handler, "function", "the showroom should have a mock preview route");
 
   const response = {
     headers: {},
@@ -1191,8 +1193,18 @@ function testShowroomUsesOnlyDevelopmentMockPreviews() {
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(
     server,
-    /app\.use\('\/dashboard\/workoutplanner-showroom'[\s\S]*?WORKOUTPLANNER_MOCK_PREVIEWS === '1'[\s\S]*?NODE_ENV !== 'production'[\s\S]*?res\.sendStatus\(404\)/,
-    "direct access to the showroom assets must be blocked unless development mocks are enabled"
+    /app\.use\('\/dashboard\/workoutplanner-showroom', workoutPlannerPreviewAccess\.asset\)/,
+    "the showroom HTML and assets must use the preview access guard"
+  );
+  assert.match(
+    server,
+    /app\.use\('\/dashboard\/workoutplanner-unified-mock', workoutPlannerPreviewAccess\.asset\)/,
+    "the unified mock HTML and assets must use the preview access guard"
+  );
+  assert.match(
+    server,
+    /app\.use\('\/__dev\/workoutplanner', workoutPlannerPreviewAccess\.page\)/,
+    "all embedded mock screens must use the preview access guard"
   );
 }
 

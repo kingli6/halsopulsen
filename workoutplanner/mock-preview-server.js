@@ -53,6 +53,7 @@ function sendMockPreviewPage(res, page, options = {}) {
     const html = fs.readFileSync(PREVIEW_PAGES[page].file, "utf8");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.setHeader("Referrer-Policy", "no-referrer");
     res.type("html").send(injectMockPreview(html, page, options));
   } catch (error) {
     console.error(`Could not render WorkoutPlanner ${page} mock preview:`, error.message);
@@ -65,6 +66,7 @@ function sendUnifiedMockPreview(res) {
     const html = fs.readFileSync(UNIFIED_PREVIEW_FILE, "utf8");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.setHeader("Referrer-Policy", "no-referrer");
     res.type("html").send(html);
   } catch (error) {
     console.error("Could not render the unified WorkoutPlanner mock preview:", error.message);
@@ -103,6 +105,7 @@ function registerWorkoutPlannerMockPreviewRoutes(app) {
     }
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.setHeader("Referrer-Policy", "no-referrer");
     res.sendFile(PLANNING_PROTOTYPE_FILE);
   });
 }
@@ -110,5 +113,6 @@ function registerWorkoutPlannerMockPreviewRoutes(app) {
 module.exports = {
   injectMockPreview,
   sendUnifiedMockPreview,
+  sendWorkoutPlannerShowroom,
   registerWorkoutPlannerMockPreviewRoutes
 };
