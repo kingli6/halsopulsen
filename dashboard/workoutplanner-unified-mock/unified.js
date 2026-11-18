@@ -1,15 +1,22 @@
 (function () {
   "use strict";
 
+  const PREVIEW_PATH = "/__dev/workoutplanner/";
   const ROUTES = {
-    hub: "/__dev/workoutplanner/?screen=coach-overview",
-    "coach-overview": "/__dev/workoutplanner/?screen=coach-overview",
-    planning: "/__dev/workoutplanner/?screen=coach-planning",
-    "coach-planning": "/__dev/workoutplanner/?screen=coach-planning",
-    library: "/__dev/workoutplanner/?screen=library",
-    "client-overview": "/__dev/workoutplanner/?screen=client-overview",
-    "client-planning": "/__dev/workoutplanner/?screen=client-planning",
-    workouts: "/__dev/workoutplanner/?screen=workouts"
+    hub: `${PREVIEW_PATH}?screen=hub`,
+    "coach-overview": `${PREVIEW_PATH}?screen=coach-overview`,
+    "coach-planning": `${PREVIEW_PATH}?screen=coach-planning`,
+    "coach-library": `${PREVIEW_PATH}?screen=library`,
+    "coach-programs": `${PREVIEW_PATH}?screen=coach-programs`,
+    "coach-goals": `${PREVIEW_PATH}?screen=coach-goals`,
+    "client-overview": `${PREVIEW_PATH}?screen=client-overview`,
+    "client-planning": `${PREVIEW_PATH}?screen=client-planning`,
+    "client-library": `${PREVIEW_PATH}?screen=client-library`,
+    "client-programs": `${PREVIEW_PATH}?screen=client-programs`,
+    "client-goals": `${PREVIEW_PATH}?screen=client-goals`,
+    planning: `${PREVIEW_PATH}?screen=coach-planning`,
+    library: `${PREVIEW_PATH}?screen=library`,
+    workouts: `${PREVIEW_PATH}?screen=workouts`
   };
   const TODAY = new Date();
   TODAY.setHours(0, 0, 0, 0);
@@ -56,26 +63,76 @@
   function currentRoute() {
     const path = location.pathname.replace(/\/+$/, "") || "/";
     const requested = new URLSearchParams(location.search).get("screen");
-    if (["coach-overview", "coach-planning", "library", "client-overview", "client-planning", "workouts"].includes(requested)) return requested;
+    const aliases = {
+      planning: "coach-planning",
+      library: "coach-library",
+      workouts: "client-library"
+    };
+    const screens = [
+      "hub",
+      "coach-overview", "coach-planning", "coach-library", "coach-programs", "coach-goals",
+      "client-overview", "client-planning", "client-library", "client-programs", "client-goals"
+    ];
+    if (screens.includes(requested)) return requested;
+    if (aliases[requested]) return aliases[requested];
     if (path.endsWith("/overview")) return "coach-overview";
     if (path.endsWith("/recipient")) return "client-overview";
-    if (path.endsWith("/library")) return "library";
+    if (path.endsWith("/library")) return "coach-library";
     if (path.endsWith("/client-schedule")) return "client-planning";
     if (path.endsWith("/planning")) return "coach-planning";
     if (path.endsWith("/client-planning")) return "client-overview";
     return "coach-overview";
   }
-  function go(route) {
-    if (route === "planning") route = "coach-planning";
-    history.pushState({}, "", ROUTES[route] || ROUTES.hub);
+  function roleForRoute(route = currentRoute()) {
+    return route.startsWith("client-") ? "client" : "coach";
+  }
+  function sectionForRoute(route) {
+    if (route.endsWith("-overview")) return "overview";
+    if (route.endsWith("-planning")) return "planning";
+    if (route.endsWith("-library") || route.endsWith("-programs")) return "library";
+    if (route.endsWith("-goals")) return "goals";
+    return "";
+  }
+  function resolveRoute(route) {
+    const role = roleForRoute();
+    const sections = {
+      overview: `${role}-overview`,
+      planning: `${role}-planning`,
+      library: `${role}-library`,
+      goals: `${role}-goals`,
+      "goals-progress": `${role}-goals`,
+      programs: `${role}-programs`,
+      "saved-programs": `${role}-programs`,
+      workouts: "client-library"
+    };
+    return sections[route] || route;
+  }
+  function defaultPlanningView(route) {
+    return roleForRoute(route) === "client" ? "week" : "timeline";
+  }
+  function routeHref(route, view) {
+    const resolved = resolveRoute(route);
+    if (resolved.endsWith("-planning")) {
+      const selectedView = view === "timeline" || view === "week" ? view : defaultPlanningView(resolved);
+      return `${PREVIEW_PATH}?screen=${resolved}&view=${selectedView}`;
+    }
+    return ROUTES[resolved] || ROUTES.hub;
+  }
+  function go(route, view) {
+    const resolved = resolveRoute(route);
+    history.pushState({}, "", routeHref(resolved, view));
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function routeLink(route, label, cls = "") {
-    return `<a class="${cls}" href="${ROUTES[route]}" data-go="${route}">${label}</a>`;
+    return `<a class="${cls}" href="${escape(routeHref(route))}" data-go="${escape(route)}">${label}</a>`;
   }
   function notice() {
     return `<div class="notice"><span class="notice-mark" aria-hidden="true">i</span><span><strong>Preview environment.</strong> This workspace uses sample coaching data. Your changes stay in this browser session.</span></div>`;
+  }
+  function planningView(route = currentRoute()) {
+    const requested = new URLSearchParams(location.search).get("view");
+    return requested === "timeline" || requested === "week" ? requested : defaultPlanningView(route);
   }
   function hubPage() {
     return `${notice()}
@@ -88,10 +145,10 @@
       </section>
       <div class="section-heading"><h2>Choose a point of view</h2><span class="section-note">Everything here is a local mock</span></div>
       <section class="hub-route-grid" aria-label="WorkoutPlanner preview sections">
-        <a class="route-card surface" href="${ROUTES["coach-overview"]}" data-go="coach-overview"><span class="route-symbol">${icons.coach}</span><span class="route-copy"><h2>Coach overview</h2><p>Active programs, recent progress and quick paths into planning.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
-        <a class="route-card surface" href="${ROUTES.planning}" data-go="planning"><span class="route-symbol">${icons.calendar}</span><span class="route-copy"><h2>Coach planning</h2><p>Shape a repeatable program in the existing planning prototype.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
-        <a class="route-card surface" href="${ROUTES.library}" data-go="library"><span class="route-symbol">${icons.library}</span><span class="route-copy"><h2>Workout library</h2><p>Reusable mock sessions for strength, aerobic work and mobility.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
-        <a class="route-card surface" href="${ROUTES["client-overview"]}" data-go="client-overview"><span class="route-symbol">${icons.client}</span><span class="route-copy"><h2>Client view</h2><p>A clear next session, the current program and a week at a glance.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
+         <a class="route-card surface" href="${routeHref("coach-overview")}" data-go="coach-overview"><span class="route-symbol">${icons.coach}</span><span class="route-copy"><h2>Coach overview</h2><p>Active programs, recent progress and quick paths into planning.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
+         <a class="route-card surface" href="${routeHref("coach-planning")}" data-go="coach-planning"><span class="route-symbol">${icons.calendar}</span><span class="route-copy"><h2>Coach planning</h2><p>Shape a repeatable program in the existing planning prototype.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
+         <a class="route-card surface" href="${routeHref("coach-library")}" data-go="coach-library"><span class="route-symbol">${icons.library}</span><span class="route-copy"><h2>Workout library</h2><p>Reusable mock sessions for strength, aerobic work and mobility.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
+         <a class="route-card surface" href="${routeHref("client-overview")}" data-go="client-overview"><span class="route-symbol">${icons.client}</span><span class="route-copy"><h2>Client view</h2><p>A clear next session, the current program and a week at a glance.</p></span><span class="route-arrow" aria-hidden="true">↗</span></a>
       </section>
       <footer class="hub-foot"><span><strong>HälsoPulsen</strong> · A practical training companion</span><span>Local preview · No account or sync required</span></footer>`;
   }
@@ -121,10 +178,11 @@
             <div class="activity-item"><span class="activity-icon" aria-hidden="true">+</span><span class="activity-info"><strong>Walk-run draft saved</strong><span>Three weeks · Return to running</span></span><time class="activity-time">Fri</time></div>
           </div></section>
           <section class="quick-links surface"><h2>Useful paths</h2>
-            <a href="${ROUTES.planning}" data-go="planning">Plan a program <span>↗</span></a>
-            <a href="${ROUTES.library}" data-go="library">Browse workout library <span>↗</span></a>
-            <a href="${ROUTES["client-overview"]}" data-go="client-overview">See Taylor’s client view <span>↗</span></a>
-            <a href="${ROUTES.hub}" data-go="hub">Return to preview hub <span>↗</span></a>
+             <a href="${routeHref("coach-planning")}" data-go="coach-planning">Plan a program <span>↗</span></a>
+             <a href="${routeHref("coach-library")}" data-go="coach-library">Browse workout library <span>↗</span></a>
+             <a href="${routeHref("coach-programs")}" data-go="coach-programs">Saved programs <span>↗</span></a>
+             <a href="${routeHref("client-overview")}" data-go="client-overview">See Taylor’s client view <span>↗</span></a>
+             <a href="${routeHref("hub")}" data-go="hub">Return to preview hub <span>↗</span></a>
           </section>
         </aside>
       </div>`;
@@ -143,7 +201,7 @@
       const matchesSearch = `${item.name} ${item.type} ${item.description}`.toLowerCase().includes(data.librarySearch.toLowerCase());
       return matchesSearch && (data.libraryFilter === "All" || item.type === data.libraryFilter);
     });
-    return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">Coach workspace / Reusable definitions</p><h1>Workout library</h1><p class="lede">A considered collection of sessions you can reuse in a plan. The definitions here are local mock examples.</p></div><div class="page-head-actions"><button class="button button-primary" type="button" data-action="create-workout"><span aria-hidden="true">+</span> Create workout</button></div></header>
+    return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">Coach workspace / Reusable definitions</p><h1>Workout library</h1><p class="lede">A considered collection of sessions you can reuse in a plan. The definitions here are local mock examples.</p></div><div class="page-head-actions">${routeLink("coach-programs", "Saved programs", "button")}<button class="button button-primary" type="button" data-action="create-workout"><span aria-hidden="true">+</span> Create workout</button></div></header>
       <div class="library-tools"><label class="search-field"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4.1 4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="sr-only">Search workout library</span><input id="library-search" type="search" placeholder="Search workouts or training type" value="${escape(data.librarySearch)}"></label>
       <div class="filter-pills" role="group" aria-label="Filter by workout type">${["All", "Strength", "Cardio", "Mobility"].map(filter => `<button type="button" data-filter="${filter}" aria-pressed="${data.libraryFilter === filter}">${filter}</button>`).join("")}</div></div>
       <div class="library-meta"><span>${list.length} ${list.length === 1 ? "workout" : "workouts"} in your library</span><span>Updated just now · Preview only</span></div>
@@ -175,22 +233,91 @@
         <section class="recent-sessions surface"><h2>Recent activity</h2>${recent.map(item => `<article class="recent-row" data-workout-id="${escape(item.workoutId)}" data-duration="${item.duration}" data-exercise-count="${item.exercises}"><span class="recent-date"><small>${dateLabel(item.day, { month: "short" })}</small><strong>${dateLabel(item.day, { day: "numeric" })}</strong></span><span class="recent-copy"><strong>${item.name}</strong><span>${item.detail}</span></span><span class="done-mark" aria-label="Completed">✓</span></article>`).join("")}</section>
       </div>
       <div class="client-link-panel">
-        <a class="client-link-tile surface" href="${ROUTES["client-planning"]}" data-go="client-planning"><span><strong>Your week</strong><small>A date-based look at the next seven days</small></span><span aria-hidden="true">→</span></a>
-        <a class="client-link-tile surface" href="${ROUTES.workouts}" data-go="workouts"><span><strong>Workouts</strong><small>Open a session or record what you did</small></span><span aria-hidden="true">→</span></a>
+        <a class="client-link-tile surface" href="${escape(routeHref("client-planning", "week"))}" data-go="client-planning"><span><strong>Your week</strong><small>A date-based look at the next seven days</small></span><span aria-hidden="true">→</span></a>
+        <a class="client-link-tile surface" href="${escape(routeHref("client-library"))}" data-go="client-library"><span><strong>Your workouts</strong><small>Open a session or record what you did</small></span><span aria-hidden="true">→</span></a>
       </div><p class="footnote">This is a sample client workspace. Workout completion and schedule data are illustrative.</p>`;
   }
-  function clientPlanningPage() {
-    const source = "/__dev/workoutplanner/client-planning/?embed=1&unified=1&workspace=planning";
-    return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">Client space / Your schedule</p><h1>A week with room to move.</h1><p class="lede">Your plan, by date. Open any session for the details, and let the rest days stay restful.</p></div><div class="page-head-actions">${routeLink("workouts", "Go to Workouts", "button")}</div></header>
-      <iframe class="planning-calendar-preview" src="${escape(source)}" title="Seven-day workout calendar" loading="eager"></iframe>
-      <section class="calendar-bottom surface"><div><strong>Steady is a good pace.</strong><p>There’s no catch-up required on a rest day. Your next planned session will still be here.</p></div>${routeLink("client-overview", "Back to overview", "button button-small")}</section>
-      <p class="footnote">The weekly schedule is read-only. Open any session for its details or to record what you did.</p>`;
+  function planningPage(role, selectedView = planningView()) {
+    const view = selectedView === "week" ? "week" : "timeline";
+    const timeline = view === "timeline";
+    const source = timeline
+      ? "/__dev/workoutplanner/planning/"
+      : "/__dev/workoutplanner/client-planning/?embed=1&unified=1&workspace=planning";
+    const title = timeline ? "Planning timeline" : "A week with room to move.";
+    const lede = timeline
+      ? "See the program timeline, open program details, and return to the calendar within the existing mock."
+      : "Your plan, by date. Open any session for the details, and let the rest days stay restful.";
+    const previewNote = timeline
+      ? "This uses the Coach Timeline mock in both roles. Sample data is local; shared state and role permissions are not modeled yet."
+      : "This uses the existing seven-day calendar mock. Timeline and Week remain separate previews for this milestone.";
+    return `${notice()}<header class="page-head planning-page-head"><div class="page-head-copy"><p class="page-kicker">${role === "coach" ? "Coach workspace" : "Client space"} / Planning</p><h1>${escape(title)}</h1><p class="lede">${escape(lede)}</p></div>
+        <div class="planning-view-switch" role="group" aria-label="Planning view">
+          <button type="button" data-planning-view="timeline" aria-pressed="${timeline}">Timeline</button>
+          <button type="button" data-planning-view="week" aria-pressed="${!timeline}">Week</button>
+        </div></header>
+      <p class="planning-preview-note" role="note">${escape(previewNote)}</p>
+      <iframe class="${timeline ? "embedded-preview" : "planning-calendar-preview"}" data-embed-kind="${timeline ? "timeline" : "client-week"}" src="${escape(source)}" title="${role === "coach" ? "Coach" : "Client"} ${timeline ? "Planning Timeline" : "seven-day Planning calendar"}" loading="eager"></iframe>
+      ${timeline
+        ? `<div class="planning-return">${routeLink(`${role}-overview`, "Back to overview", "button button-small")}</div>`
+        : `<section class="calendar-bottom surface"><div><strong>Steady is a good pace.</strong><p>There’s no catch-up required on a rest day. Your next planned session will still be here.</p></div>${routeLink(`${role}-overview`, "Back to overview", "button button-small")}</section>
+          <p class="footnote">The weekly schedule is read-only. Open any session for details or recording, then use its Back to Planning action.</p>`}`;
   }
-  function embeddedPage(title, source) {
-    return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">WorkoutPlanner / Local mock</p><h1>${escape(title)}</h1><p class="lede">This screen reuses the existing isolated preview. It does not load or save production data.</p></div></header><iframe class="embedded-preview" src="${escape(source)}" title="${escape(title)}" loading="eager"></iframe>`;
+  function clientLibraryPage() {
+    return `${notice()}<div class="destination-strip"><span><strong>Your workouts</strong><small>Independent, personal, and recorded sessions in the existing mock.</small></span>${routeLink("client-programs", "Your program", "button button-small")}</div>
+      <iframe class="embedded-preview" data-embed-kind="client-workouts" src="${escape(clientWorkoutsSource())}" title="Client saved and available workouts" loading="eager"></iframe>`;
+  }
+  function savedProgramsPage(role) {
+    if (role === "coach") {
+      return `${notice()}<div class="destination-back">${routeLink("coach-library", "← Back to Library", "button button-small")}</div>
+        <iframe class="embedded-preview" data-embed-kind="program-library" src="${escape(embeddedProgramLibrarySource())}" title="Saved programs and editor mock" loading="eager"></iframe>`;
+    }
+    return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">Client library / Assigned program</p><h1>Your program</h1><p class="lede">Your active plan is shown in Planning. Saved reusable program templates are a coach workspace feature.</p></div></header>
+      <section class="assigned-program-card surface"><span class="program-status">Current program · Preview</span><h2>${escape(data.program.name)}</h2><p>A ${data.program.durationWeeks}-week plan with ${data.program.sessionsPerWeek} sessions each week.</p>
+        <div class="program-facts"><span>Assigned plan</span><span>Details are part of Planning</span></div>
+        <div class="placeholder-actions">${routeLink("client-planning", "Open Planning", "button button-primary")}${routeLink("client-overview", "Back to overview", "button")}</div>
+      </section><p class="footnote">Program versions, sharing, and settings are not implemented in this client preview.</p>`;
+  }
+  function goalsProgressPage(role) {
+    const audience = role === "coach" ? "your clients" : "your training";
+    return `${notice()}<header class="page-head"><div class="page-head-copy"><p class="page-kicker">${role === "coach" ? "Coach workspace" : "Client space"} / Preview</p><h1>Goals &amp; Progress</h1><p class="lede">A future home for goals and progress over time for ${audience}.</p></div></header>
+      <section class="placeholder-grid">
+        <article class="placeholder-card surface"><span class="placeholder-label">Preview only</span><h2>Goals</h2><p>Goal setting and check-ins will live here. No goal editing or Goal Map is implemented in this mock.</p></article>
+        <article class="placeholder-card surface"><span class="placeholder-label">Preview only</span><h2>Progress</h2><p>Progress summaries will use completed sessions and comparable results. No new metrics are calculated on this screen.</p></article>
+      </section><div class="placeholder-actions">${routeLink(`${role}-overview`, "Back to overview", "button")}${routeLink(`${role}-planning`, "Open Planning", "button button-primary")}</div>`;
+  }
+  function embeddedProgramLibrarySource() {
+    return "/__dev/workoutplanner/coach/";
   }
   function clientWorkoutsSource() {
     return "/__dev/workoutplanner/client-planning/?embed=1&unified=1&workspace=workouts";
+  }
+  function styleEmbeddedFrames() {
+    if (typeof app.querySelectorAll !== "function") return;
+    app.querySelectorAll("iframe[data-embed-kind]").forEach(frame => {
+      const kind = frame.dataset.embedKind;
+      const applyFrameStyle = () => {
+        try {
+          const frameDocument = frame.contentDocument;
+          if (!frameDocument?.head || frameDocument.getElementById("unified-frame-chrome")) return;
+          const style = frameDocument.createElement("style");
+          style.id = "unified-frame-chrome";
+          style.textContent = kind === "timeline"
+            ? ".topbar .brand{display:none!important}.topnav .nav-item[aria-current='page']{display:none!important}"
+            : kind === "program-library"
+              ? "header.topbar,.workoutplanner-mock-banner{display:none!important}"
+              : "";
+          if (style.textContent) frameDocument.head.append(style);
+        } catch (error) {
+          // The preview frames are same-origin in the development workspace; keep the parent usable if that changes.
+        }
+      };
+      frame.addEventListener("load", applyFrameStyle, { once: true });
+      try {
+        if (frame.contentDocument?.readyState === "complete") applyFrameStyle();
+      } catch (error) {
+        // Styling is optional; embedded mock pages remain navigable without it.
+      }
+    });
   }
   function getWorkout(id) { return allWorkouts().find(item => item.id === id); }
   function openWorkout(id) {
@@ -229,26 +356,30 @@
   }
   function render() {
     const route = currentRoute();
-    const clientMode = route.startsWith("client") || route === "workouts";
-    const items = clientMode
-      ? [["client-overview", "Overview"], ["client-planning", "Planning"], ["workouts", "Workouts"]]
-      : [["coach-overview", "Overview"], ["coach-planning", "Planning"], ["library", "Workout Library"]];
-    document.getElementById("main-nav").innerHTML = items.map(([key, label]) =>
-      `<a href="${ROUTES[key]}" data-go="${key}" ${route === key ? 'aria-current="page"' : ""}>${label}</a>`
-    ).join("");
+    const role = roleForRoute(route);
+    const activeSection = sectionForRoute(route);
+    const items = [["overview", "Overview"], ["planning", "Planning"], ["library", "Library"], ["goals", "Goals &amp; Progress"]];
+    document.getElementById("main-nav").innerHTML = items.map(([section, label]) => {
+      const key = `${role}-${section}`;
+      return `<a href="${escape(routeHref(key))}" data-go="${key}" ${activeSection === section ? 'aria-current="page"' : ""}>${label}</a>`;
+    }).join("");
     document.querySelectorAll("[data-role]").forEach(button => {
-      button.setAttribute("aria-pressed", String(button.dataset.role === (clientMode ? "client" : "coach")));
+      button.setAttribute("aria-pressed", String(button.dataset.role === role));
     });
-    if (route === "coach-overview") app.innerHTML = coachPage();
-    else if (route === "coach-planning") app.innerHTML = embeddedPage("Planning", "/__dev/workoutplanner/planning/");
-    else if (route === "library") app.innerHTML = libraryPage();
+    if (route === "hub") app.innerHTML = hubPage();
+    else if (route === "coach-overview") app.innerHTML = coachPage();
     else if (route === "client-overview") app.innerHTML = clientPage();
-    else if (route === "client-planning") app.innerHTML = clientPlanningPage();
-    else if (route === "workouts") app.innerHTML = embeddedPage("Workouts", clientWorkoutsSource());
+    else if (route === "coach-planning" || route === "client-planning") app.innerHTML = planningPage(role, planningView(route));
+    else if (route === "coach-library") app.innerHTML = libraryPage();
+    else if (route === "client-library") app.innerHTML = clientLibraryPage();
+    else if (route === "coach-programs") app.innerHTML = savedProgramsPage("coach");
+    else if (route === "client-programs") app.innerHTML = savedProgramsPage("client");
+    else if (route === "coach-goals" || route === "client-goals") app.innerHTML = goalsProgressPage(role);
     else app.innerHTML = hubPage();
     app.classList.remove("view-in");
     void app.offsetWidth;
     app.classList.add("view-in");
+    styleEmbeddedFrames();
   }
   function handleClick(event) {
     const role = event.target.closest("[data-role]");
@@ -256,10 +387,15 @@
       go(role.dataset.role === "client" ? "client-overview" : "coach-overview");
       return;
     }
+    const planningViewButton = event.target.closest("[data-planning-view]");
+    if (planningViewButton) {
+      go(currentRoute(), planningViewButton.dataset.planningView);
+      return;
+    }
     const nav = event.target.closest("[data-go]");
     if (nav) {
       event.preventDefault();
-      go(nav.dataset.go);
+      go(nav.dataset.go, nav.dataset.view);
       return;
     }
     const filter = event.target.closest("[data-filter]");
@@ -275,7 +411,7 @@
       case "close-modal": closeModal(); break;
       case "create-workout": createWorkoutDialog(); break;
       case "clear-search": data.librarySearch = ""; data.libraryFilter = "All"; render(); break;
-      case "open-workouts": go("workouts"); break;
+      case "open-workouts": go("client-library"); break;
     }
   }
   function handleInput(event) {

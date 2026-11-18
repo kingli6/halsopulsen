@@ -871,10 +871,17 @@ function testPagesUseActualHtmlWithMockBootstrap() {
   assert.match(unifiedHtml, /data-role="client"/);
   assert.match(unifiedHtml, /id="main-nav"/);
   for (const screen of ["coach-overview", "coach-planning", "library", "client-overview", "client-planning", "workouts"]) {
-    assert.ok(unifiedUi.includes(`?screen=${screen}"`), `${screen} should have a direct shell route`);
+    assert.ok(
+      unifiedUi.includes(`screen=${screen}`) || unifiedUi.includes(`"${screen}"`),
+      `${screen} should retain a compatible shell route`
+    );
   }
-  assert.match(unifiedUi, /route === "client-planning"\) app\.innerHTML = clientPlanningPage\(\)/);
+  assert.match(unifiedUi, /route === "coach-planning" \|\| route === "client-planning"\) app\.innerHTML = planningPage\(role, planningView\(route\)\)/);
+  assert.match(unifiedUi, /data-planning-view="timeline"/);
+  assert.match(unifiedUi, /data-planning-view="week"/);
+  assert.match(unifiedUi, /"Goals &amp; Progress"/);
   assert.match(unifiedUi, /client-planning\/\?embed=1&unified=1&workspace=workouts/);
+  assert.match(unifiedUi, /\/__dev\/workoutplanner\/coach\//);
   assert.match(unifiedUi, /availability-tag/);
 
   const registeredRoutes = new Map();
