@@ -239,17 +239,21 @@ h1 { margin-bottom: 6px; font: 700 clamp(25px, 3vw, 34px)/1.1 var(--display); le
   height: 28px;
   align-self: center;
   margin: 0 4px;
+  padding: 0;
   overflow: hidden;
   border: 1px solid var(--program-border, #b9d2bd);
   border-radius: 6px;
   background: var(--program-bg, #e6f1e7);
   color: var(--program-ink, #25563a);
+  font: inherit;
   box-shadow: 0 1px 2px rgba(41, 74, 49, .08);
   cursor: pointer;
   text-align: left;
   transition: filter .14s ease, transform .14s ease;
 }
 .program-bar:hover { z-index: 4; filter: saturate(1.16); transform: translateY(-1px); }
+.program-bar.is-static { cursor: default; }
+.program-bar.is-static:hover { filter: none; transform: none; }
 .program-bar.is-overlap { border-style: dashed; box-shadow: 0 0 0 1px rgba(152, 87, 57, .15); }
 .program-bar-inner {
   position: absolute;
@@ -498,6 +502,7 @@ h1 { margin-bottom: 6px; font: 700 clamp(25px, 3vw, 34px)/1.1 var(--display); le
   .month-grid { display: none; }
   .month-list { display: grid; gap: 6px; padding: 9px; }
   .mobile-program { display: grid; grid-template-columns: 5px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 9px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; text-align: left; cursor: pointer; }
+  .mobile-program.is-static { cursor: default; }
   .mobile-program-mark { align-self: stretch; min-height: 35px; border-radius: 4px; background: var(--program-bg, #e6f1e7); border: 1px solid var(--program-border, #b9d2bd); }
   .mobile-program strong { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-program small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }

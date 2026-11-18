@@ -124,8 +124,9 @@
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-  function routeLink(route, label, cls = "") {
-    return `<a class="${cls}" href="${escape(routeHref(route))}" data-go="${escape(route)}">${label}</a>`;
+  function routeLink(route, label, cls = "", view) {
+    const viewAttribute = view ? ` data-view="${escape(view)}"` : "";
+    return `<a class="${cls}" href="${escape(routeHref(route, view))}" data-go="${escape(route)}"${viewAttribute}>${label}</a>`;
   }
   function notice() {
     return `<div class="notice"><span class="notice-mark" aria-hidden="true">i</span><span><strong>Preview environment.</strong> This workspace uses sample coaching data. Your changes stay in this browser session.</span></div>`;
@@ -228,38 +229,38 @@
       <div class="client-overview-grid">
         <section class="next-session surface"><div class="next-session-head"><div class="section-heading"><h2>Coming up</h2><span class="next-day-label">${dateLabel(nextDate, { weekday: "long" })}</span></div></div>
            <div class="session-spotlight"><div class="session-date-block"><small>${dateLabel(nextDate, { month: "short" })}</small><strong>${dateLabel(nextDate, { day: "numeric" })}</strong></div><div class="session-summary"><h3>${next ? escape(next.name) : "A recovery day"}</h3><p>${next ? "A planned session from your current program." : "An open day to rest or move as you like."}</p><div class="workout-stats"><span><b>◷</b>${next ? next.duration : 0} min</span><span><b>≋</b>${next ? next.exercises : 0} exercises</span></div></div>${next ? `<button class="button button-primary button-small" type="button" data-action="open-workout" data-id="${next.id}" data-exercise-count="${next.exercises}">Open workout</button>` : ""}</div>
-          <div class="session-actions"><span class="section-note">Your schedule is a guide, not a deadline.</span>${routeLink("client-planning", "See your week")}</div>
+          <div class="session-actions"><span class="section-note">Your schedule is a guide, not a deadline.</span></div>
         </section>
         <section class="recent-sessions surface"><h2>Recent activity</h2>${recent.map(item => `<article class="recent-row" data-workout-id="${escape(item.workoutId)}" data-duration="${item.duration}" data-exercise-count="${item.exercises}"><span class="recent-date"><small>${dateLabel(item.day, { month: "short" })}</small><strong>${dateLabel(item.day, { day: "numeric" })}</strong></span><span class="recent-copy"><strong>${item.name}</strong><span>${item.detail}</span></span><span class="done-mark" aria-label="Completed">✓</span></article>`).join("")}</section>
       </div>
-      <div class="client-link-panel">
-        <a class="client-link-tile surface" href="${escape(routeHref("client-planning", "week"))}" data-go="client-planning"><span><strong>Your week</strong><small>A date-based look at the next seven days</small></span><span aria-hidden="true">→</span></a>
-        <a class="client-link-tile surface" href="${escape(routeHref("client-library"))}" data-go="client-library"><span><strong>Your workouts</strong><small>Open a session or record what you did</small></span><span aria-hidden="true">→</span></a>
+      <div class="client-link-panel" aria-label="Planning shortcuts">
+        ${routeLink("client-planning", '<span><strong>Open Week</strong><small>Your seven-day calendar</small></span><span aria-hidden="true">→</span>', "client-link-tile surface", "week")}
+        ${routeLink("client-planning", '<span><strong>Open Timeline</strong><small>Your plan across the coming months</small></span><span aria-hidden="true">→</span>', "client-link-tile surface", "timeline")}
       </div><p class="footnote">This is a sample client workspace. Workout completion and schedule data are illustrative.</p>`;
   }
   function planningPage(role, selectedView = planningView()) {
     const view = selectedView === "week" ? "week" : "timeline";
     const timeline = view === "timeline";
     const source = timeline
-      ? "/__dev/workoutplanner/planning/"
+      ? `/__dev/workoutplanner/planning/${role === "client" ? "?audience=client" : ""}`
       : "/__dev/workoutplanner/client-planning/?embed=1&unified=1&workspace=planning";
-    const title = timeline ? "Planning timeline" : "A week with room to move.";
-    const lede = timeline
-      ? "See the program timeline, open program details, and return to the calendar within the existing mock."
-      : "Your plan, by date. Open any session for the details, and let the rest days stay restful.";
-    const previewNote = timeline
-      ? "This uses the Coach Timeline mock in both roles. Sample data is local; shared state and role permissions are not modeled yet."
-      : "This uses the existing seven-day calendar mock. Timeline and Week remain separate previews for this milestone.";
-    return `${notice()}<header class="page-head planning-page-head"><div class="page-head-copy"><p class="page-kicker">${role === "coach" ? "Coach workspace" : "Client space"} / Planning</p><h1>${escape(title)}</h1><p class="lede">${escape(lede)}</p></div>
-        <div class="planning-view-switch" role="group" aria-label="Planning view">
+    const lede = role === "coach"
+      ? "Review the week or see program plans across the coming months."
+      : "Move between your seven-day schedule and your longer-range timeline.";
+    const previewNote = "Week and Timeline use separate sample views in this preview.";
+    return `${notice()}<header class="page-head planning-page-head"><div class="page-head-copy"><p class="page-kicker">${role === "coach" ? "Coach workspace" : "Client space"} / Planning</p><h1>Planning</h1><p class="lede">${escape(lede)}</p></div>
+        <div class="planning-page-actions">
+          ${role === "coach" ? routeLink("coach-programs", "Saved programs", "button button-small") : ""}
+          <div class="planning-view-switch" role="group" aria-label="Planning view">
           <button type="button" data-planning-view="timeline" aria-pressed="${timeline}">Timeline</button>
           <button type="button" data-planning-view="week" aria-pressed="${!timeline}">Week</button>
+          </div>
         </div></header>
       <p class="planning-preview-note" role="note">${escape(previewNote)}</p>
-      <iframe class="${timeline ? "embedded-preview" : "planning-calendar-preview"}" data-embed-kind="${timeline ? "timeline" : "client-week"}" src="${escape(source)}" title="${role === "coach" ? "Coach" : "Client"} ${timeline ? "Planning Timeline" : "seven-day Planning calendar"}" loading="eager"></iframe>
+      <iframe class="${timeline ? "embedded-preview" : "planning-calendar-preview"}" data-embed-kind="${timeline ? (role === "client" ? "client-timeline" : "timeline") : "client-week"}" src="${escape(source)}" title="${role === "coach" ? "Coach" : "Client"} Planning ${timeline ? "Timeline" : "Week"}" loading="eager"></iframe>
       ${timeline
-        ? `<div class="planning-return">${routeLink(`${role}-overview`, "Back to overview", "button button-small")}</div>`
-        : `<section class="calendar-bottom surface"><div><strong>Steady is a good pace.</strong><p>There’s no catch-up required on a rest day. Your next planned session will still be here.</p></div>${routeLink(`${role}-overview`, "Back to overview", "button button-small")}</section>
+        ? ""
+        : `<section class="calendar-bottom surface"><div><strong>Steady is a good pace.</strong><p>There’s no catch-up required on a rest day. Your next planned session will still be here.</p></div></section>
           <p class="footnote">The weekly schedule is read-only. Open any session for details or recording, then use its Back to Planning action.</p>`}`;
   }
   function clientLibraryPage() {
@@ -301,8 +302,8 @@
           if (!frameDocument?.head || frameDocument.getElementById("unified-frame-chrome")) return;
           const style = frameDocument.createElement("style");
           style.id = "unified-frame-chrome";
-          style.textContent = kind === "timeline"
-            ? ".topbar .brand{display:none!important}.topnav .nav-item[aria-current='page']{display:none!important}"
+          style.textContent = kind === "timeline" || kind === "client-timeline"
+            ? ".topbar,.mock-notice,.page-heading{display:none!important}.main{padding-top:0!important}"
             : kind === "program-library"
               ? "header.topbar,.workoutplanner-mock-banner{display:none!important}"
               : "";

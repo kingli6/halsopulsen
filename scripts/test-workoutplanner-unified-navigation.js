@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 const workoutData = require("../dashboard/workoutplanner-unified-mock/workout-data");
+const planningPrototypeState = require("../dashboard/workoutplanner-planning-prototype/planning-state");
+const mockPreviewHarness = require("../workoutplanner/mock-preview-harness");
 
 function createPreview(screen, view) {
   const app = {
@@ -79,6 +81,55 @@ function click(preview, selector, dataset) {
   preview.documentListeners.click(event);
 }
 
+function createPlanningPrototypePreview(audience = "coach") {
+  const makeElement = () => ({
+    innerHTML: "",
+    hidden: false,
+    addEventListener() {},
+    replaceChildren() {},
+    querySelector() { return null; }
+  });
+  const elements = {
+    "app-main": makeElement(),
+    "dialog-backdrop": makeElement(),
+    dialog: makeElement(),
+    "toast-region": makeElement()
+  };
+  const previewNav = {
+    removed: false,
+    remove() { this.removed = true; }
+  };
+  const workspaceLabel = { textContent: "Coach workspace" };
+  const navItems = ["calendar-home", "preview-nav"].map(action => ({
+    dataset: { action },
+    setAttribute(name, value) { this[name] = value; }
+  }));
+  const documentListeners = {};
+  const document = {
+    getElementById(id) { return elements[id] || (elements[id] = makeElement()); },
+    querySelector(selector) {
+      if (selector === ".brand-copy small") return workspaceLabel;
+      if (selector === '.topnav [data-action="preview-nav"]') return previewNav;
+      if (selector === ".topbar") return makeElement();
+      return null;
+    },
+    querySelectorAll(selector) { return selector === ".nav-item" ? navItems : []; },
+    addEventListener(type, handler) { documentListeners[type] = handler; }
+  };
+  const window = {
+    WorkoutPlannerMockHarness: mockPreviewHarness,
+    WorkoutPlannerPlanningState: planningPrototypeState,
+    location: { search: audience === "client" ? "?audience=client" : "" },
+    setTimeout() {}
+  };
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "workoutplanner-planning-prototype", "planning.js"),
+    "utf8"
+  );
+  vm.runInNewContext(source, { window, document, URLSearchParams, Date });
+  return { app: elements["app-main"], navItems, previewNav, workspaceLabel, documentListeners };
+}
+
 function testRoleNavigationAndPlanningViews() {
   const preview = createPreview("coach-overview");
   assert.match(preview.mainNav.innerHTML, />Overview</);
@@ -107,7 +158,50 @@ function testRoleNavigationAndPlanningViews() {
   assert.match(preview.location.search, /screen=client-planning&view=week/);
   click(preview, "[data-planning-view]", { planningView: "timeline" });
   assert.match(preview.location.search, /screen=client-planning&view=timeline/);
-  assert.match(preview.app.innerHTML, /role permissions are not modeled yet/);
+  assert.match(preview.app.innerHTML, /Week and Timeline use separate sample views/);
+  assert.doesNotMatch(preview.app.innerHTML, /Coach Timeline mock in both roles/);
+}
+
+function testClientOverviewUsesOnePlanningDestinationForBothViews() {
+  const preview = createPreview("client-overview");
+  const overview = preview.app.innerHTML;
+  assert.match(overview, /Coming up/);
+  assert.match(overview, /Recent activity/);
+  assert.match(overview, /<strong>Open Week<\/strong>/);
+  assert.match(overview, /<strong>Open Timeline<\/strong>/);
+  assert.doesNotMatch(overview, /<strong>Your workouts<\/strong>/);
+  assert.doesNotMatch(overview, /See your week/);
+  assert.match(overview, /href="\/__dev\/workoutplanner\/\?screen=client-planning&amp;view=week"/);
+  assert.match(overview, /href="\/__dev\/workoutplanner\/\?screen=client-planning&amp;view=timeline"/);
+
+  click(preview, "[data-go]", { go: "client-planning", view: "week" });
+  assert.match(preview.location.search, /screen=client-planning&view=week/);
+  assert.match(preview.app.innerHTML, /data-embed-kind="client-week"/);
+  click(preview, "[data-planning-view]", { planningView: "timeline" });
+  assert.match(preview.location.search, /screen=client-planning&view=timeline/);
+  assert.match(preview.app.innerHTML, /data-embed-kind="client-timeline"/);
+  assert.match(preview.app.innerHTML, /planning\/\?audience=client/);
+  assert.match(preview.app.innerHTML, /<h1>Planning<\/h1>/);
+  assert.match(preview.app.innerHTML, /data-planning-view="week"/);
+}
+
+function testClientTimelineUsesTheCoachCalendarWithoutCoachControls() {
+  const coach = createPlanningPrototypePreview("coach");
+  assert.match(coach.app.innerHTML, /data-action="add-program"/);
+  assert.match(coach.app.innerHTML, /<button class="program-bar/);
+
+  const client = createPlanningPrototypePreview("client");
+  assert.strictEqual(client.workspaceLabel.textContent, "Client workspace");
+  assert.strictEqual(client.previewNav.removed, true);
+  assert.match(client.app.innerHTML, /Client planning timeline/);
+  assert.match(client.app.innerHTML, /published sample program/);
+  assert.match(client.app.innerHTML, /Strength &amp; Mobility Foundations/);
+  assert.doesNotMatch(client.app.innerHTML, /Return-to-Running/);
+  assert.doesNotMatch(client.app.innerHTML, /data-action="(?:add-program|open-program|edit-schedule|preview-program)"/);
+  assert.doesNotMatch(client.app.innerHTML, /<button class="program-bar/);
+  assert.match(client.app.innerHTML, /<div class="program-bar is-static/);
+  assert.match(client.app.innerHTML, /<div class="mobile-program is-static"/);
+  assert.match(client.app.innerHTML, /This timeline is read-only/);
 }
 
 function testLibrariesProgramsAndGoalsAreReachable() {
@@ -147,7 +241,23 @@ function testLegacyShowroomScreensStillResolve() {
   assert.match(clientWorkouts.mainNav.innerHTML, />Library</);
 }
 
+function testPlanningControlsStayResponsiveAndCoachProgramNavigationIsAvailable() {
+  const coachOverview = createPreview("coach-overview");
+  assert.match(coachOverview.app.innerHTML, /data-go="coach-programs">Saved programs/);
+  const coach = createPreview("coach-planning", "week");
+  assert.match(coach.app.innerHTML, /data-go="coach-programs">Saved programs<\/a>/);
+  const styles = fs.readFileSync(
+    path.join(__dirname, "..", "dashboard", "workoutplanner-unified-mock", "unified.css"),
+    "utf8"
+  );
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*?\.planning-page-actions \{ width: 100%; \}/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*?\.planning-view-switch button \{ flex: 1 1 50%; \}/);
+}
+
 testRoleNavigationAndPlanningViews();
+testClientOverviewUsesOnePlanningDestinationForBothViews();
+testClientTimelineUsesTheCoachCalendarWithoutCoachControls();
 testLibrariesProgramsAndGoalsAreReachable();
 testLegacyShowroomScreensStillResolve();
+testPlanningControlsStayResponsiveAndCoachProgramNavigationIsAvailable();
 console.log("Unified WorkoutPlanner navigation checks passed.");

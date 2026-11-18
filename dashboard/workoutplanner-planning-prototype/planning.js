@@ -7,6 +7,7 @@
   const toastRegion = document.getElementById("toast-region");
   const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const planningState = window.WorkoutPlannerPlanningState;
+  const clientTimelineMode = new URLSearchParams(window.location.search || "").get("audience") === "client";
   const COLORS = [
     { bg: "#e5f0e6", border: "#b9d2bd", ink: "#28583b" },
     { bg: "#e9edf2", border: "#c6d1dc", ink: "#425b70" },
@@ -87,6 +88,12 @@
   const fixtureRecords = fixture && fixture.state && Array.isArray(fixture.state.programs)
     ? clone(fixture.state.programs)
     : null;
+  if (clientTimelineMode) {
+    const workspaceLabel = document.querySelector(".brand-copy small");
+    if (workspaceLabel) workspaceLabel.textContent = "Client workspace";
+    const coachPreviewLink = document.querySelector('.topnav [data-action="preview-nav"]');
+    if (coachPreviewLink) coachPreviewLink.remove();
+  }
 
   const state = {
     records: [],
@@ -138,6 +145,12 @@
 
   function getProgram() {
     return getRecord(state.activeId);
+  }
+
+  function calendarRecords() {
+    return clientTimelineMode
+      ? state.records.filter(record => record.row?.hasCurrentVersion)
+      : state.records;
   }
 
   function ensureWeeks(record) {
@@ -208,15 +221,18 @@
       app.innerHTML = `<section class="error-state"><h2>Mock preview data is unavailable</h2><p>This planning prototype needs <strong>WorkoutPlannerMockHarness.createMockPreviewHarness('coach').state.programs</strong> to load its example programs. No API or production data fallback is used. Load the mock-preview harness before planning.js and refresh this page.</p></section>`;
       return;
     }
+    const calendarPrograms = calendarRecords();
     const months = Array.from({ length: state.range }, (_, index) => new Date(state.focusDate.getFullYear(), state.focusDate.getMonth() + index, 1));
     const last = months[months.length - 1];
     const title = state.range === 1
       ? `${monthLabel(months[0])} ${months[0].getFullYear()}`
       : `${monthLabel(months[0])} ${months[0].getFullYear()} — ${monthLabel(last)} ${last.getFullYear()}`;
+    const addProgramAction = clientTimelineMode ? "" : `
+        <div class="heading-actions"><button class="button button-primary" type="button" data-action="add-program"><span aria-hidden="true">＋</span> Add program</button></div>`;
     const controls = `
       <div class="page-heading">
-        <div><p class="eyebrow">Coach planning board</p><h1>Training plans, in view.</h1><p class="heading-subtitle">Place programs across time. Workout prescriptions stay inside their program; this calendar describes intent, not completed sessions.</p></div>
-        <div class="heading-actions"><button class="button button-primary" type="button" data-action="add-program"><span aria-hidden="true">＋</span> Add program</button></div>
+        <div><p class="eyebrow">${clientTimelineMode ? "Client planning timeline" : "Coach planning board"}</p><h1>${clientTimelineMode ? "Your program, over time." : "Training plans, in view."}</h1><p class="heading-subtitle">${clientTimelineMode ? "See published sample plans across the calendar. Dates are illustrative." : "Place programs across time. Workout prescriptions stay inside their program; this calendar describes intent, not completed sessions."}</p></div>
+        ${addProgramAction}
       </div>
       <div class="control-bar">
         <div class="period-navigation">
@@ -237,25 +253,27 @@
         <span class="legend-item">Weeks start Monday · dates use actual calendar days</span>
       </div>`;
     const monthCards = months.map(renderMonth).join("");
-    const overlapCount = countOverlaps();
-    const footnote = `<p class="calendar-footnote"><strong>${state.records.length}</strong> program${state.records.length === 1 ? "" : "s"} in this local plan · <span class="overlap-note">${overlapCount ? `${overlapCount} visible overlap${overlapCount === 1 ? "" : "s"} allowed` : "No overlapping periods in the visible plan"}</span>. Select a program block to inspect its details or adjust dates.</p>`;
+    const overlapCount = countOverlaps(calendarPrograms);
+    const footnote = clientTimelineMode
+      ? `<p class="calendar-footnote"><strong>${calendarPrograms.length}</strong> published sample program${calendarPrograms.length === 1 ? "" : "s"} · Dates are illustrative. This timeline is read-only.</p>`
+      : `<p class="calendar-footnote"><strong>${calendarPrograms.length}</strong> program${calendarPrograms.length === 1 ? "" : "s"} in this local plan · <span class="overlap-note">${overlapCount ? `${overlapCount} visible overlap${overlapCount === 1 ? "" : "s"} allowed` : "No overlapping periods in the visible plan"}</span>. Select a program block to inspect its details or adjust dates.</p>`;
     app.innerHTML = pageShell(`${controls}<section class="calendar-stack" aria-label="Program planning calendar">${monthCards || `<div class="month-card"><div class="empty-track">No periods are visible yet.</div></div>`}</section>${footnote}`);
   }
 
-  function countOverlaps() {
+  function countOverlaps(records = calendarRecords()) {
     let count = 0;
-    for (let i = 0; i < state.records.length; i += 1) {
-      for (let j = i + 1; j < state.records.length; j += 1) {
-        const a = state.records[i].schedule;
-        const b = state.records[j].schedule;
+    for (let i = 0; i < records.length; i += 1) {
+      for (let j = i + 1; j < records.length; j += 1) {
+        const a = records[i].schedule;
+        const b = records[j].schedule;
         if (a.startDate <= b.endDate && b.startDate <= a.endDate) count += 1;
       }
     }
     return count;
   }
 
-  function overlapsWith(record) {
-    return state.records.some(other => other !== record &&
+  function overlapsWith(record, records = calendarRecords()) {
+    return records.some(other => other !== record &&
       record.schedule.startDate <= other.schedule.endDate &&
       other.schedule.startDate <= record.schedule.endDate);
   }
@@ -287,7 +305,8 @@
     const monthStartDate = iso(monthStart(date.getFullYear(), date.getMonth()));
     const monthEndDate = iso(new Date(date.getFullYear(), date.getMonth() + 1, 0));
     const weeks = getMonthWeeks(date);
-    const active = state.records.filter(record =>
+    const records = calendarRecords();
+    const active = records.filter(record =>
       record.schedule.startDate <= monthEndDate && record.schedule.endDate >= monthStartDate
     );
     const sorted = active.slice().sort((a, b) => a.schedule.startDate.localeCompare(b.schedule.startDate) || a.schedule.endDate.localeCompare(b.schedule.endDate));
@@ -326,11 +345,15 @@
         const lane = p.lane + 1;
         const span = p.endWeekIndex - p.startWeekIndex + 1;
         const rowStyle = `grid-column:${p.startWeekIndex + 1} / span ${span};grid-row:${lane};--bar-left:${p.left}%;--bar-width:${p.width}%;--program-bg:${color.bg};--program-border:${color.border};--program-ink:${color.ink}`;
-        const overlapClass = overlapsWith(record) ? " is-overlap" : "";
+        const hasOverlap = overlapsWith(record, records);
+        const overlapClass = hasOverlap ? " is-overlap" : "";
         const name = record.program.name || record.row?.name || "Untitled program";
         const dates = dateRange(record.schedule.startDate, record.schedule.endDate);
         const durationDays = Math.max(1, dayDiff(record.schedule.startDate, record.schedule.endDate) + 1);
-        return `<button class="program-bar${overlapClass}" style="${rowStyle}" type="button" data-action="open-program" data-id="${escAttr(record.row.id)}" aria-label="Open ${escAttr(name)}, planned ${escAttr(dates)}, ${durationDays} days${overlapsWith(record) ? ", overlaps another program" : ""}"><span class="program-bar-inner"><span class="bar-status"></span><span class="bar-name">${escapeHtml(name)}</span><span class="bar-dates">${escapeHtml(dates)} · ${durationDays}d</span></span></button>`;
+        const timelineLabel = `${name}, planned ${dates}, ${durationDays} days${hasOverlap ? ", overlaps another program" : ""}`;
+        return clientTimelineMode
+          ? `<div class="program-bar is-static${overlapClass}" style="${rowStyle}" role="img" aria-label="${escAttr(timelineLabel)}"><span class="program-bar-inner"><span class="bar-status"></span><span class="bar-name">${escapeHtml(name)}</span><span class="bar-dates">${escapeHtml(dates)} · ${durationDays}d</span></span></div>`
+          : `<button class="program-bar${overlapClass}" style="${rowStyle}" type="button" data-action="open-program" data-id="${escAttr(record.row.id)}" aria-label="Open ${escAttr(timelineLabel)}"><span class="program-bar-inner"><span class="bar-status"></span><span class="bar-name">${escapeHtml(name)}</span><span class="bar-dates">${escapeHtml(dates)} · ${durationDays}d</span></span></button>`;
       }).join("");
       track = `<div class="program-track" style="--week-count:${weeks.length};--lane-count:${Math.max(1, laneEnds.length)}">${bars}</div>`;
     }
@@ -339,7 +362,13 @@
         const color = COLORS[record.localColor % COLORS.length];
         const name = record.program.name || record.row?.name || "Untitled program";
         const durationDays = Math.max(1, dayDiff(record.schedule.startDate, record.schedule.endDate) + 1);
-        return `<button class="mobile-program" type="button" data-action="open-program" data-id="${escAttr(record.row.id)}" style="--program-bg:${color.bg};--program-border:${color.border}" aria-label="Open ${escAttr(name)}"><span class="mobile-program-mark"></span><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(dateRange(record.schedule.startDate, record.schedule.endDate))} · ${durationDays} planned days</small></span><span class="mobile-status">${overlapsWith(record) ? "Overlap" : ""}</span></button>`;
+        const hasOverlap = overlapsWith(record, records);
+        const mobileTag = clientTimelineMode ? "div" : "button";
+        const mobileClass = `mobile-program${clientTimelineMode ? " is-static" : ""}`;
+        const mobileAttributes = clientTimelineMode
+          ? `role="group" aria-label="${escAttr(name)}, ${escAttr(dateRange(record.schedule.startDate, record.schedule.endDate))}, ${durationDays} planned days"`
+          : `type="button" data-action="open-program" data-id="${escAttr(record.row.id)}" aria-label="Open ${escAttr(name)}"`;
+        return `<${mobileTag} class="${mobileClass}" ${mobileAttributes} style="--program-bg:${color.bg};--program-border:${color.border}"><span class="mobile-program-mark"></span><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(dateRange(record.schedule.startDate, record.schedule.endDate))} · ${durationDays} planned days</small></span><span class="mobile-status">${hasOverlap ? "Overlap" : ""}</span></${mobileTag}>`;
       }).join("")
       : `<div class="mobile-empty">No program is planned for this month.</div>`;
     return `<article class="month-card" data-month="${monthKey(date)}">
